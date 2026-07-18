@@ -1,0 +1,19 @@
+{
+    "name": "ProjectC.Gameplay",
+    "rootNamespace": "ProjectC.Gameplay",
+    "references": [
+        "ProjectC.Core",
+        "Unity.InputSystem",
+        "DOTween.Modules",
+        "DOTweenPro.Scripts"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

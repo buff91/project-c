@@ -1,0 +1,43 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Asset meta data (only ignore when the asset itself is ignored)
+!/[Aa]ssets/**/*.meta
+
+# Visual Studio / Rider / VSCode generated
+.vs/
+.idea/
+/*.csproj
+/*.sln
+/*.slnx
+/*.unityproj
+/*.user
+/*.userprefs
+/*.pidb
+/*.booproj
+/*.svd
+/*.suo
+ExportedObj/
+.consulo/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlog.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# OS
+.DS_Store
