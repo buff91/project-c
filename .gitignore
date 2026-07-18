@@ -39,5 +39,23 @@ crashlog.txt
 *.unitypackage
 *.app
 
+# Android signing / build (절대 커밋 금지 — 서명 키)
+*.keystore
+*.keystore.meta
+*.jks
+.gradle/
+
+# iOS signing / provisioning
+*.pfx
+*.mobileprovision
+*.p12
+
+# Addressables / StreamingAssets 대용량 바이너리
+/[Aa]ssets/[Ss]treamingAssets/
+/[Aa]ssets/AddressableAssetsData/*/*.bin
+
+# Claude Code 로컬 개인 설정
+.claude/settings.local.json
+
 # OS
 .DS_Store

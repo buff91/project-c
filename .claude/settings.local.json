@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Skill(plannotator-annotate)",
-      "Skill(plannotator-annotate:*)"
-    ]
-  }
-}
