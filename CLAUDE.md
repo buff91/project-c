@@ -8,6 +8,7 @@
 - `GDD.md` — 게임 기획서. **설계 결정의 최종 출처(SSOT).** 코드/기획 판단 시 먼저 참조.
 - `docs/ROADMAP.md` — 마일스톤 + 현재 진행/환경 상태.
 - `docs/SYSTEMS.md` — 시스템 설계 요약(격자·FOV·낙하·상태이상·AI·크로스플랫폼).
+- `docs/UI_ARCHITECTURE.md` — UI 이원화(UI Toolkit/UGUI) 방침 + Claude 디자인 워크플로. **UI 판단 SSOT.**
 - `Assets/_Project/M0_SETUP.md` — 씬 연결 가이드.
 
 ## 프로젝트 개요
