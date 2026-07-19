@@ -2,6 +2,7 @@
 
 > UI를 **UI Toolkit**과 **UGUI**로 이원화한다. Claude가 HTML/CSS 디자인 시안을 뽑고, 그중 화면공간 평면 UI는 UI Toolkit(UXML/USS)로 이식한다.
 > 상세 근거는 `GDD.md` §4.2·§12, `docs/SYSTEMS.md` §12 참조. 이 문서는 UI 판단의 SSOT.
+> **시각 언어(색·타이포·컴포넌트)는 `docs/UI_DESIGN_SYSTEM.md` + `Assets/_Project/UI/DesignSystem.uss`가 SSOT.**
 
 ## 한 줄 판단 기준
 

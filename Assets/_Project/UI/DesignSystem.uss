@@ -1,0 +1,296 @@
+/* ============================================================
+   Project-C UI 디자인 시스템 "Torchstone" — USS 토큰 + 공통 컴포넌트
+   SSOT: docs/UI_DESIGN_SYSTEM.md (근거·사용 규칙은 문서 참조)
+   사용법: UXML에서 화면별 USS보다 먼저 로드한다.
+     <ui:Style src="DesignSystem.uss" />
+     <ui:Style src="화면별.uss" />
+   규칙: 화면별 USS는 색·크기 리터럴 대신 var(--pc-*) 토큰을 쓴다.
+   ============================================================ */
+
+:root {
+    /* --- 색: 바탕 --- */
+    --pc-void: rgb(10, 18, 21);            /* 던전 배경(최하층 어둠) */
+    --pc-panel: rgba(13, 20, 24, 0.92);    /* 기본 패널 바탕 */
+    --pc-panel-solid: rgb(13, 20, 24);     /* 불투명이 필요한 패널 */
+    --pc-inset: rgb(24, 31, 34);           /* 패널 안 음각 스트립(readout) */
+
+    /* --- 색: 스톤 베벨 (픽셀 베벨 = 밝은 상·좌 / 어두운 하·우) --- */
+    --pc-bevel-hi: rgb(92, 108, 109);
+    --pc-bevel-lo: rgb(39, 49, 53);
+
+    /* --- 색: 텍스트 --- */
+    --pc-text: rgb(238, 230, 204);         /* 양피지 — 기본 텍스트 */
+    --pc-text-title: rgb(209, 185, 128);   /* 토치골드 — 패널 제목/강조 */
+    --pc-text-dim: rgb(150, 158, 148);     /* 보조 텍스트 */
+
+    /* --- 색: 액센트 --- */
+    --pc-mint: rgb(119, 211, 195);         /* 시스템/정보/마법 (힌트, 모드) */
+    --pc-ember: rgb(255, 211, 117);        /* 액션/공격 텍스트 */
+    --pc-ember-bg: rgb(75, 49, 34);        /* 액션 버튼 바탕 */
+    --pc-ember-hi: rgb(148, 99, 52);       /* 액션 베벨 밝은쪽 */
+    --pc-ember-lo: rgb(52, 33, 27);        /* 액션 베벨 어두운쪽 */
+    --pc-ice: rgb(180, 252, 238);          /* 원거리/빙결 텍스트 */
+    --pc-ice-bg: rgb(24, 72, 74);
+    --pc-ice-hi: rgb(76, 177, 166);
+    --pc-ice-lo: rgb(18, 42, 45);
+
+    /* --- 색: 시맨틱 (상태이상·자원) --- */
+    --pc-hp: rgb(224, 82, 74);             /* HP/화상 */
+    --pc-poison: rgb(139, 195, 74);        /* 중독 */
+    --pc-gold-marker: rgb(221, 178, 92);   /* 현재 층 마커/재화 */
+
+    /* --- 간격 (4px 그리드) --- */
+    --pc-space-1: 4px;
+    --pc-space-2: 8px;
+    --pc-space-3: 12px;
+    --pc-space-4: 16px;
+    --pc-space-6: 24px;
+
+    /* --- 타이포 스케일 --- */
+    --pc-fs-hint: 9px;      /* 힌트·캡션 */
+    --pc-fs-label: 10px;    /* 패널 제목·버튼 */
+    --pc-fs-body: 12px;     /* 본문·수치 */
+    --pc-fs-strong: 14px;   /* 강조 수치 */
+    --pc-fs-display: 18px;  /* 큰 수치·아이콘 글리프 */
+
+    /* --- 베벨 두께 --- */
+    --pc-bevel-w: 2px;
+    --pc-bevel-w-thin: 1px;
+}
+
+/* ============================================================
+   패널 — 스톤 베벨 상자. 모든 화면공간 패널의 기본.
+   ============================================================ */
+
+.pc-panel {
+    background-color: var(--pc-panel);
+    padding: var(--pc-space-2);
+    border-left-width: var(--pc-bevel-w);
+    border-right-width: var(--pc-bevel-w);
+    border-top-width: var(--pc-bevel-w);
+    border-bottom-width: var(--pc-bevel-w);
+    border-left-color: var(--pc-bevel-hi);
+    border-top-color: var(--pc-bevel-hi);
+    border-right-color: var(--pc-bevel-lo);
+    border-bottom-color: var(--pc-bevel-lo);
+}
+
+/* 민트 베벨 변형 — 시스템 안내(수직 경로 등) 패널 */
+.pc-panel--system {
+    border-left-color: var(--pc-ice-hi);
+    border-top-color: var(--pc-ice-hi);
+    border-right-color: var(--pc-ice-lo);
+    border-bottom-color: var(--pc-ice-lo);
+}
+
+/* 패널 제목 — 토치골드, 대문자 전제, 자간 */
+.pc-title {
+    color: var(--pc-text-title);
+    font-size: var(--pc-fs-label);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-bottom: var(--pc-space-1);
+}
+
+/* 음각 리드아웃 — 패널 안 수치 표시 스트립 */
+.pc-readout {
+    color: var(--pc-text);
+    background-color: var(--pc-inset);
+    font-size: var(--pc-fs-label);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+/* ============================================================
+   버튼 — 기본은 스톤, 변형은 색만 바꾼다 (구조 동일)
+   ============================================================ */
+
+.pc-btn {
+    color: var(--pc-text);
+    background-color: rgb(44, 57, 60);
+    font-size: var(--pc-fs-label);
+    -unity-font-style: bold;
+    border-left-width: var(--pc-bevel-w);
+    border-right-width: var(--pc-bevel-w);
+    border-top-width: var(--pc-bevel-w);
+    border-bottom-width: var(--pc-bevel-w);
+    border-left-color: rgb(102, 121, 120);
+    border-top-color: rgb(102, 121, 120);
+    border-right-color: rgb(25, 31, 34);
+    border-bottom-color: rgb(25, 31, 34);
+}
+
+.pc-btn:hover {
+    background-color: rgb(70, 85, 84);
+}
+
+.pc-btn:active {
+    background-color: rgb(145, 91, 43);
+}
+
+/* 액션(공격/확정) — 엠버 */
+.pc-btn--action {
+    color: var(--pc-ember);
+    background-color: var(--pc-ember-bg);
+    border-left-color: var(--pc-ember-hi);
+    border-top-color: var(--pc-ember-hi);
+    border-right-color: var(--pc-ember-lo);
+    border-bottom-color: var(--pc-ember-lo);
+}
+
+.pc-btn--action:hover {
+    background-color: rgb(97, 64, 43);
+}
+
+/* 원거리/마법 — 아이스 */
+.pc-btn--ranged {
+    color: var(--pc-ice);
+    background-color: var(--pc-ice-bg);
+    border-left-color: var(--pc-ice-hi);
+    border-top-color: var(--pc-ice-hi);
+    border-right-color: var(--pc-ice-lo);
+    border-bottom-color: var(--pc-ice-lo);
+}
+
+.pc-btn--ranged:hover {
+    background-color: rgb(33, 94, 96);
+}
+
+/* 시스템 토글(모드 전환 등) — 얇은 민트 */
+.pc-btn--system {
+    color: var(--pc-mint);
+    background-color: rgb(29, 42, 44);
+    border-left-width: var(--pc-bevel-w-thin);
+    border-right-width: var(--pc-bevel-w-thin);
+    border-top-width: var(--pc-bevel-w-thin);
+    border-bottom-width: var(--pc-bevel-w-thin);
+    border-left-color: rgb(73, 97, 96);
+    border-top-color: rgb(73, 97, 96);
+    border-right-color: rgb(73, 97, 96);
+    border-bottom-color: rgb(73, 97, 96);
+    font-size: var(--pc-fs-hint);
+}
+
+.pc-btn--system:hover {
+    background-color: rgb(48, 67, 66);
+}
+
+/* ============================================================
+   텍스트 유틸
+   ============================================================ */
+
+.pc-hint {
+    color: var(--pc-mint);
+    font-size: var(--pc-fs-hint);
+    -unity-font-style: bold;
+}
+
+.pc-body {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-body);
+}
+
+.pc-dim {
+    color: var(--pc-text-dim);
+    font-size: var(--pc-fs-hint);
+}
+
+/* ============================================================
+   게이지 — HP/자원 바 (VisualElement 2겹: track > fill)
+   ============================================================ */
+
+.pc-bar-track {
+    height: 10px;
+    background-color: var(--pc-inset);
+    border-left-width: var(--pc-bevel-w-thin);
+    border-right-width: var(--pc-bevel-w-thin);
+    border-top-width: var(--pc-bevel-w-thin);
+    border-bottom-width: var(--pc-bevel-w-thin);
+    border-left-color: var(--pc-bevel-lo);
+    border-top-color: var(--pc-bevel-lo);
+    border-right-color: var(--pc-bevel-hi);
+    border-bottom-color: var(--pc-bevel-hi);
+}
+
+.pc-bar-fill {
+    height: 100%;
+    background-color: var(--pc-hp);
+}
+
+.pc-bar-fill--mana {
+    background-color: var(--pc-ice-hi);
+}
+
+/* ============================================================
+   상태이상 칩 — 화상/빙결/중독 표시
+   ============================================================ */
+
+.pc-chip {
+    flex-direction: row;
+    align-items: center;
+    padding-left: var(--pc-space-1);
+    padding-right: var(--pc-space-1);
+    padding-top: 2px;
+    padding-bottom: 2px;
+    background-color: var(--pc-inset);
+    border-left-width: var(--pc-bevel-w-thin);
+    border-right-width: var(--pc-bevel-w-thin);
+    border-top-width: var(--pc-bevel-w-thin);
+    border-bottom-width: var(--pc-bevel-w-thin);
+    font-size: var(--pc-fs-hint);
+    -unity-font-style: bold;
+}
+
+.pc-chip--burn {
+    color: var(--pc-hp);
+    border-left-color: var(--pc-hp);
+    border-top-color: var(--pc-hp);
+    border-right-color: var(--pc-bevel-lo);
+    border-bottom-color: var(--pc-bevel-lo);
+}
+
+.pc-chip--freeze {
+    color: var(--pc-ice);
+    border-left-color: var(--pc-ice-hi);
+    border-top-color: var(--pc-ice-hi);
+    border-right-color: var(--pc-bevel-lo);
+    border-bottom-color: var(--pc-bevel-lo);
+}
+
+.pc-chip--poison {
+    color: var(--pc-poison);
+    border-left-color: var(--pc-poison);
+    border-top-color: var(--pc-poison);
+    border-right-color: var(--pc-bevel-lo);
+    border-bottom-color: var(--pc-bevel-lo);
+}
+
+/* ============================================================
+   아이템 슬롯 — 인벤토리/조합 그리드 셀
+   ============================================================ */
+
+.pc-slot {
+    width: 56px;
+    height: 56px;
+    background-color: var(--pc-inset);
+    align-items: center;
+    justify-content: center;
+    border-left-width: var(--pc-bevel-w);
+    border-right-width: var(--pc-bevel-w);
+    border-top-width: var(--pc-bevel-w);
+    border-bottom-width: var(--pc-bevel-w);
+    border-left-color: var(--pc-bevel-lo);
+    border-top-color: var(--pc-bevel-lo);
+    border-right-color: var(--pc-bevel-hi);
+    border-bottom-color: var(--pc-bevel-hi);
+}
+
+/* 선택된 슬롯 — 골드 마커 (탭=선택 / 재탭=실행 1단계) */
+.pc-slot--selected {
+    border-left-color: var(--pc-gold-marker);
+    border-top-color: var(--pc-gold-marker);
+    border-right-color: var(--pc-gold-marker);
+    border-bottom-color: var(--pc-gold-marker);
+}
