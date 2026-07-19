@@ -1,0 +1,109 @@
+using System;
+
+namespace ProjectC.Core
+{
+    /// <summary>
+    /// 전투 참가자의 순수 로직 상태. 위치·HP·공격력만 소유하며 연출은 Gameplay에서 담당한다.
+    /// </summary>
+    public sealed class CombatantState
+    {
+        public string Id { get; }
+        public GridPos Position { get; private set; }
+        public int MaxHp { get; }
+        public int Hp { get; private set; }
+        public int AttackPower { get; }
+        public bool IsAlive => Hp > 0;
+
+        public CombatantState(string id, GridPos position, int maxHp, int attackPower)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("전투 참가자 ID가 필요합니다.", nameof(id));
+            if (maxHp <= 0) throw new ArgumentOutOfRangeException(nameof(maxHp));
+            if (attackPower <= 0) throw new ArgumentOutOfRangeException(nameof(attackPower));
+
+            Id = id;
+            Position = position;
+            MaxHp = maxHp;
+            Hp = maxHp;
+            AttackPower = attackPower;
+        }
+
+        public void MoveTo(GridPos position) => Position = position;
+
+        public int TakeDamage(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+
+            int previous = Hp;
+            Hp = Math.Max(0, Hp - amount);
+            return previous - Hp;
+        }
+    }
+
+    public static class CombatRules
+    {
+        public static bool AreAdjacent(CombatantState first, CombatantState second)
+        {
+            if (first == null || second == null) return false;
+            return first.Position.elevation == second.Position.elevation &&
+                   first.Position.ManhattanTo(second.Position) == 1;
+        }
+
+        public static bool TryMelee(CombatantState attacker, CombatantState target, out int damage)
+        {
+            damage = 0;
+            if (attacker == null || target == null || !attacker.IsAlive || !target.IsAlive)
+                return false;
+            if (!AreAdjacent(attacker, target))
+                return false;
+
+            damage = target.TakeDamage(attacker.AttackPower);
+            return true;
+        }
+
+        public static bool TryRanged(
+            CombatantState attacker,
+            CombatantState target,
+            GridMap map,
+            int maxRange,
+            out int damage)
+        {
+            damage = 0;
+            if (attacker == null || target == null || map == null || maxRange < 1 ||
+                !attacker.IsAlive || !target.IsAlive)
+                return false;
+            if (attacker.Position.elevation != target.Position.elevation ||
+                attacker.Position.ManhattanTo(target.Position) > maxRange ||
+                !HasLineOfSight(map, attacker.Position, target.Position))
+                return false;
+
+            damage = target.TakeDamage(attacker.AttackPower);
+            return true;
+        }
+
+        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to)
+        {
+            if (map == null || from.elevation != to.elevation) return false;
+
+            int x = from.x;
+            int y = from.y;
+            int dx = Math.Abs(to.x - from.x);
+            int dy = Math.Abs(to.y - from.y);
+            int sx = from.x < to.x ? 1 : -1;
+            int sy = from.y < to.y ? 1 : -1;
+            int error = dx - dy;
+
+            while (x != to.x || y != to.y)
+            {
+                int twiceError = error * 2;
+                if (twiceError > -dy) { error -= dy; x += sx; }
+                if (twiceError < dx) { error += dx; y += sy; }
+                if (x == to.x && y == to.y) break;
+
+                TileData tile = map.Get(new GridPos(x, y, from.elevation));
+                if (tile == null || tile.BlocksSight) return false;
+            }
+
+            return true;
+        }
+    }
+}

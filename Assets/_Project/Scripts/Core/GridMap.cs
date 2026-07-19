@@ -11,8 +11,11 @@ namespace ProjectC.Core
     public class GridMap
     {
         private readonly Dictionary<GridPos, TileData> _tiles = new Dictionary<GridPos, TileData>();
+        private readonly Dictionary<GridPos, List<GridPos>> _links =
+            new Dictionary<GridPos, List<GridPos>>();
 
         public int Count => _tiles.Count;
+        public bool HasLinks => _links.Count > 0;
 
         /// <summary>해당 좌표에 타일이 정의돼 있으면 반환, 없으면 null.</summary>
         public TileData Get(GridPos pos) => _tiles.TryGetValue(pos, out var t) ? t : null;
@@ -26,9 +29,26 @@ namespace ProjectC.Core
 
         public void Set(GridPos pos, TileKind kind) => _tiles[pos] = new TileData(kind);
 
-        public bool Remove(GridPos pos) => _tiles.Remove(pos);
+        public bool Remove(GridPos pos)
+        {
+            if (_links.TryGetValue(pos, out List<GridPos> destinations))
+            {
+                foreach (GridPos destination in destinations)
+                {
+                    if (_links.TryGetValue(destination, out List<GridPos> reverse))
+                        reverse.Remove(pos);
+                }
+                _links.Remove(pos);
+            }
 
-        public void Clear() => _tiles.Clear();
+            return _tiles.Remove(pos);
+        }
+
+        public void Clear()
+        {
+            _tiles.Clear();
+            _links.Clear();
+        }
 
         public IEnumerable<KeyValuePair<GridPos, TileData>> All() => _tiles;
 
@@ -37,6 +57,30 @@ namespace ProjectC.Core
 
         /// <summary>단단한 바닥 여부. 낙하 착지 판정에 사용.</summary>
         public bool IsSolidGround(GridPos pos) => TryGet(pos, out var t) && t.IsSolidGround;
+
+        public void Connect(GridPos from, GridPos to, bool bidirectional = true)
+        {
+            AddLink(from, to);
+            if (bidirectional) AddLink(to, from);
+        }
+
+        public IReadOnlyList<GridPos> LinksFrom(GridPos from)
+        {
+            return _links.TryGetValue(from, out List<GridPos> links)
+                ? links
+                : System.Array.Empty<GridPos>();
+        }
+
+        private void AddLink(GridPos from, GridPos to)
+        {
+            if (!_links.TryGetValue(from, out List<GridPos> links))
+            {
+                links = new List<GridPos>();
+                _links.Add(from, links);
+            }
+
+            if (!links.Contains(to)) links.Add(to);
+        }
 
         /// <summary>
         /// pos 에서 아래로 내려가며 첫 단단한 바닥의 elevation 을 찾는다. (GDD §5.3 낙하 처리)

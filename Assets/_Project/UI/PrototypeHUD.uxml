@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="PrototypeHUD.uss" />
+    <ui:VisualElement name="hud-root" class="hud-root">
+        <ui:VisualElement class="view-panel">
+            <ui:Label text="ROTATE VIEW" class="panel-title" />
+            <ui:VisualElement class="view-row">
+                <ui:Button name="rotate-left" text="◀" class="rotate-button" tooltip="왼쪽 회전 (Q)" />
+                <ui:VisualElement class="view-readout">
+                    <ui:Label name="view-label" text="VIEW 1/4" class="view-label" />
+                    <ui:Label text="Q  /  E" class="key-hint" />
+                </ui:VisualElement>
+                <ui:Button name="rotate-right" text="▶" class="rotate-button" tooltip="오른쪽 회전 (E)" />
+            </ui:VisualElement>
+            <ui:Label name="floor-label" text="▲ B1   [B2]   ▼ B3" class="floor-label" />
+            <ui:Button name="mode-button" text="MODE: PLAY FOV" class="mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환" />
+        </ui:VisualElement>
+        <ui:VisualElement class="player-panel">
+            <ui:Label text="PLAYER LOCATION" class="panel-title" />
+            <ui:Label name="location-label" text="B2 · HEIGHT 0 · (0,0)" class="location-label" />
+            <ui:Button name="combat-button" text="ATTACK: MELEE" class="combat-button" tooltip="근접 / 원거리 공격 전환" />
+            <ui:Label name="status-label" text="READY" class="status-label" />
+        </ui:VisualElement>
+        <ui:VisualElement class="vertical-panel">
+            <ui:Label text="VERTICAL ROUTES" class="vertical-title" />
+            <ui:Label name="vertical-hint-label" text="EXPLORE TO FIND VERTICAL ROUTES" class="vertical-hint-label" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

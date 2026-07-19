@@ -1,0 +1,205 @@
+.hud-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: flex-end;
+    padding-top: 30px;
+    padding-right: 18px;
+}
+
+.view-panel {
+    width: 224px;
+    padding: 8px;
+    background-color: rgba(13, 20, 24, 0.92);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(92, 108, 109);
+    border-right-color: rgb(39, 49, 53);
+    border-top-color: rgb(92, 108, 109);
+    border-bottom-color: rgb(39, 49, 53);
+}
+
+.panel-title {
+    color: rgb(209, 185, 128);
+    font-size: 10px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.view-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rotate-button {
+    width: 48px;
+    height: 44px;
+    color: rgb(235, 224, 191);
+    background-color: rgb(44, 57, 60);
+    border-left-color: rgb(102, 121, 120);
+    border-right-color: rgb(25, 31, 34);
+    border-top-color: rgb(102, 121, 120);
+    border-bottom-color: rgb(25, 31, 34);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    font-size: 18px;
+}
+
+.rotate-button:hover {
+    background-color: rgb(70, 85, 84);
+}
+
+.rotate-button:active {
+    background-color: rgb(145, 91, 43);
+}
+
+.view-readout {
+    width: 72px;
+    align-items: center;
+}
+
+.view-label {
+    color: rgb(238, 230, 204);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.key-hint {
+    color: rgb(119, 211, 195);
+    font-size: 9px;
+    margin-top: 3px;
+}
+
+.floor-label {
+    color: rgb(209, 185, 128);
+    background-color: rgb(24, 31, 34);
+    border-top-width: 1px;
+    border-top-color: rgb(73, 86, 87);
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-top: 7px;
+    padding-top: 5px;
+    padding-bottom: 4px;
+}
+
+.mode-button {
+    height: 27px;
+    color: rgb(119, 211, 195);
+    background-color: rgb(29, 42, 44);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(73, 97, 96);
+    border-right-color: rgb(73, 97, 96);
+    border-top-color: rgb(73, 97, 96);
+    border-bottom-color: rgb(73, 97, 96);
+    font-size: 9px;
+    -unity-font-style: bold;
+    margin-top: 5px;
+}
+
+.mode-button:hover {
+    background-color: rgb(48, 67, 66);
+}
+
+.player-panel {
+    position: absolute;
+    left: 18px;
+    top: 30px;
+    width: 224px;
+    padding: 8px;
+    background-color: rgba(13, 20, 24, 0.92);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(92, 108, 109);
+    border-right-color: rgb(39, 49, 53);
+    border-top-color: rgb(92, 108, 109);
+    border-bottom-color: rgb(39, 49, 53);
+}
+
+.location-label {
+    color: rgb(238, 230, 204);
+    background-color: rgb(24, 31, 34);
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.combat-button {
+    height: 31px;
+    color: rgb(255, 211, 117);
+    background-color: rgb(75, 49, 34);
+    border-left-color: rgb(148, 99, 52);
+    border-right-color: rgb(52, 33, 27);
+    border-top-color: rgb(148, 99, 52);
+    border-bottom-color: rgb(52, 33, 27);
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin-top: 6px;
+}
+
+.combat-button.ranged {
+    color: rgb(180, 252, 238);
+    background-color: rgb(24, 72, 74);
+    border-left-color: rgb(76, 177, 166);
+    border-right-color: rgb(18, 42, 45);
+    border-top-color: rgb(76, 177, 166);
+    border-bottom-color: rgb(18, 42, 45);
+}
+
+.status-label {
+    color: rgb(119, 211, 195);
+    font-size: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-top: 5px;
+}
+
+.vertical-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 26px;
+    translate: -50% 0;
+    width: 330px;
+    padding: 7px;
+    background-color: rgba(10, 18, 21, 0.94);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(69, 141, 136);
+    border-right-color: rgb(38, 66, 68);
+    border-top-color: rgb(69, 141, 136);
+    border-bottom-color: rgb(38, 66, 68);
+}
+
+.vertical-title {
+    color: rgb(209, 185, 128);
+    font-size: 8px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    letter-spacing: 1px;
+}
+
+.vertical-hint-label {
+    color: rgb(176, 242, 226);
+    font-size: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    margin-top: 3px;
+}

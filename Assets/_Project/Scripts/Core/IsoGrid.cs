@@ -28,6 +28,13 @@ namespace ProjectC.Core
         [Tooltip("정렬 시 한 elevation 층이 차지하는 sortingOrder 대역. x+y 범위보다 커야 층이 안 섞임.")]
         public int elevationSortBand = 1000;
 
+        [Tooltip("시점을 시계 방향으로 돌린 횟수. 0..3의 90도 단위.")]
+        [Range(0, 3)] public int viewQuarterTurns;
+
+        [Tooltip("시점 회전 중심이 되는 격자 좌표.")]
+        public float viewPivotX;
+        public float viewPivotY;
+
         public IsoGrid() { }
 
         public IsoGrid(float tileWidth, float tileHeight, float elevationStep)
@@ -46,8 +53,9 @@ namespace ProjectC.Core
         /// </summary>
         public Vector2 GridToWorld(GridPos pos)
         {
-            float wx = (pos.x - pos.y) * HalfW;
-            float wy = -(pos.x + pos.y) * HalfH + pos.elevation * elevationStep;
+            Vector2 view = RotateToView(pos.x, pos.y);
+            float wx = (view.x - view.y) * HalfW;
+            float wy = -(view.x + view.y) * HalfH + pos.elevation * elevationStep;
             return new Vector2(wx, wy);
         }
 
@@ -65,10 +73,11 @@ namespace ProjectC.Core
             float a = world.x / HalfW;
             float b = -wy / HalfH;
 
-            float fx = (a + b) * 0.5f;
-            float fy = (b - a) * 0.5f;
+            float viewX = (a + b) * 0.5f;
+            float viewY = (b - a) * 0.5f;
+            Vector2 grid = RotateFromView(viewX, viewY);
 
-            return new GridPos(Mathf.RoundToInt(fx), Mathf.RoundToInt(fy), elevation);
+            return new GridPos(Mathf.RoundToInt(grid.x), Mathf.RoundToInt(grid.y), elevation);
         }
 
         /// <summary>
@@ -77,7 +86,9 @@ namespace ProjectC.Core
         /// </summary>
         public int SortingOrder(GridPos pos)
         {
-            return pos.elevation * elevationSortBand + (pos.x + pos.y);
+            Vector2 view = RotateToView(pos.x, pos.y);
+            int viewDepth = Mathf.RoundToInt((view.x + view.y) * 16f);
+            return pos.elevation * elevationSortBand + viewDepth;
         }
 
         /// <summary>
@@ -87,6 +98,48 @@ namespace ProjectC.Core
         public int SortingOrder(GridPos pos, int microOffset)
         {
             return SortingOrder(pos) * 8 + microOffset; // microOffset: -3..+3 정도 권장
+        }
+
+        public void RotateView(int direction)
+        {
+            viewQuarterTurns = NormalizeQuarterTurns(viewQuarterTurns + direction);
+        }
+
+        public void SetViewRotation(int quarterTurns)
+        {
+            viewQuarterTurns = NormalizeQuarterTurns(quarterTurns);
+        }
+
+        public Vector2 RotateToView(float x, float y)
+        {
+            float dx = x - viewPivotX;
+            float dy = y - viewPivotY;
+            switch (NormalizeQuarterTurns(viewQuarterTurns))
+            {
+                case 1: return new Vector2(viewPivotX + dy, viewPivotY - dx);
+                case 2: return new Vector2(viewPivotX - dx, viewPivotY - dy);
+                case 3: return new Vector2(viewPivotX - dy, viewPivotY + dx);
+                default: return new Vector2(x, y);
+            }
+        }
+
+        public Vector2 RotateFromView(float x, float y)
+        {
+            float dx = x - viewPivotX;
+            float dy = y - viewPivotY;
+            switch (NormalizeQuarterTurns(viewQuarterTurns))
+            {
+                case 1: return new Vector2(viewPivotX - dy, viewPivotY + dx);
+                case 2: return new Vector2(viewPivotX - dx, viewPivotY - dy);
+                case 3: return new Vector2(viewPivotX + dy, viewPivotY - dx);
+                default: return new Vector2(x, y);
+            }
+        }
+
+        private static int NormalizeQuarterTurns(int value)
+        {
+            int normalized = value % 4;
+            return normalized < 0 ? normalized + 4 : normalized;
         }
     }
 }

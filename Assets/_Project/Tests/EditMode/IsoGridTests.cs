@@ -59,6 +59,57 @@ namespace ProjectC.Tests
             int front = iso.SortingOrder(new GridPos(2, 1, 0));
             Assert.Greater(front, back);
         }
+
+        [Test]
+        public void WorldToGrid_RoundTripsAtEveryViewRotation()
+        {
+            var iso = MakeGrid();
+            iso.viewPivotX = 3.5f;
+            iso.viewPivotY = 3.5f;
+
+            for (int rotation = 0; rotation < 4; rotation++)
+            {
+                iso.SetViewRotation(rotation);
+                for (int x = 0; x < 8; x++)
+                for (int y = 0; y < 8; y++)
+                {
+                    var original = new GridPos(x, y, 1);
+                    Vector2 world = iso.GridToWorld(original);
+                    Assert.AreEqual(original, iso.WorldToGrid(world, 1));
+                }
+            }
+        }
+
+        [Test]
+        public void FourViewRotations_ReturnToOriginalProjection()
+        {
+            var iso = MakeGrid();
+            iso.viewPivotX = 3.5f;
+            iso.viewPivotY = 3.5f;
+            var pos = new GridPos(1, 6, 0);
+            Vector2 original = iso.GridToWorld(pos);
+
+            for (int i = 0; i < 4; i++) iso.RotateView(1);
+
+            Assert.AreEqual(0, iso.viewQuarterTurns);
+            Assert.AreEqual(original, iso.GridToWorld(pos));
+        }
+
+        [Test]
+        public void SortingDepth_ChangesWithViewRotation()
+        {
+            var iso = MakeGrid();
+            iso.viewPivotX = 3.5f;
+            iso.viewPivotY = 3.5f;
+            var first = new GridPos(1, 1, 0);
+            var second = new GridPos(6, 1, 0);
+
+            iso.SetViewRotation(0);
+            Assert.Greater(iso.SortingOrder(second), iso.SortingOrder(first));
+
+            iso.SetViewRotation(2);
+            Assert.Less(iso.SortingOrder(second), iso.SortingOrder(first));
+        }
     }
 
     public class GridPosTests
@@ -119,6 +170,58 @@ namespace ProjectC.Tests
             Assert.IsFalse(map.IsWalkable(new GridPos(3, 0, 0))); // 없는 칸
             Assert.IsTrue(map.IsSolidGround(new GridPos(0, 0, 0)));
             Assert.IsFalse(map.IsSolidGround(new GridPos(2, 0, 0)));
+        }
+    }
+
+    public class GridPathfinderTests
+    {
+        [Test]
+        public void FindPath_RoutesAroundHole()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 4; x++)
+            for (int y = 0; y < 3; y++)
+                map.Set(new GridPos(x, y, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 1, 0), TileKind.Hole);
+
+            var path = GridPathfinder.FindPath(map, new GridPos(0, 1, 0), new GridPos(3, 1, 0));
+
+            Assert.Greater(path.Count, 0);
+            Assert.AreEqual(new GridPos(0, 1, 0), path[0]);
+            Assert.AreEqual(new GridPos(3, 1, 0), path[path.Count - 1]);
+            Assert.IsFalse(path.Contains(new GridPos(1, 1, 0)));
+        }
+
+        [Test]
+        public void FindPath_ChangesElevationOnlyThroughStairs()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(0, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 0, 0), TileKind.Stairs);
+            map.Set(new GridPos(2, 0, 1), TileKind.Floor);
+
+            var path = GridPathfinder.FindPath(map, new GridPos(0, 0, 0), new GridPos(2, 0, 1));
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    new GridPos(0, 0, 0),
+                    new GridPos(1, 0, 0),
+                    new GridPos(2, 0, 1)
+                },
+                path);
+        }
+
+        [Test]
+        public void FindPath_RejectsDirectHeightChangeWithoutStairs()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(0, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 0, 1), TileKind.Floor);
+
+            var path = GridPathfinder.FindPath(map, new GridPos(0, 0, 0), new GridPos(1, 0, 1));
+
+            Assert.AreEqual(0, path.Count);
         }
     }
 }

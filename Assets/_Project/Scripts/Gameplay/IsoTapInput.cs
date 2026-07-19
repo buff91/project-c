@@ -19,6 +19,14 @@ namespace ProjectC.Gameplay
         [Tooltip("역변환 기준 elevation 평면. (M0 데모: 0층 클릭 확인)")]
         public int targetElevation = 0;
 
+        [Header("다중 높이 선택")]
+        public bool pickHighestExisting = true;
+        public int minElevation = -3;
+        public int maxElevation = 1;
+
+        public event System.Action<GridPos, bool> TileTapped;
+        public event System.Action<int> ViewRotationRequested;
+
         private GridManager _gm;
         private Camera _cam;
 
@@ -30,13 +38,63 @@ namespace ProjectC.Gameplay
 
         private void Update()
         {
+            if (TryGetViewRotation(out int direction))
+                ViewRotationRequested?.Invoke(direction);
+
             if (TryGetTap(out Vector2 screenPoint))
             {
-                GridPos picked = _gm.ScreenToGrid(screenPoint, _cam, targetElevation);
+                GridPos picked = PickGrid(screenPoint);
                 bool exists = _gm.Map.Has(picked);
                 Debug.Log($"[Tap] 화면 {screenPoint} → 격자 {picked} (타일 있음: {exists})");
                 OnTileTapped(picked, exists);
             }
+        }
+
+        private static bool TryGetViewRotation(out int direction)
+        {
+            direction = 0;
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return false;
+            if (keyboard.qKey.wasPressedThisFrame)
+            {
+                direction = -1;
+                return true;
+            }
+            if (keyboard.eKey.wasPressedThisFrame)
+            {
+                direction = 1;
+                return true;
+            }
+            return false;
+#else
+            if (Input.GetKeyDown(KeyCode.Q))
+            {
+                direction = -1;
+                return true;
+            }
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                direction = 1;
+                return true;
+            }
+            return false;
+#endif
+        }
+
+        private GridPos PickGrid(Vector2 screenPoint)
+        {
+            if (!pickHighestExisting)
+                return _gm.ScreenToGrid(screenPoint, _cam, targetElevation);
+
+            for (int elevation = maxElevation; elevation >= minElevation; elevation--)
+            {
+                GridPos candidate = _gm.ScreenToGrid(screenPoint, _cam, elevation);
+                if (_gm.Map.Has(candidate))
+                    return candidate;
+            }
+
+            return _gm.ScreenToGrid(screenPoint, _cam, targetElevation);
         }
 
         /// <summary>이번 프레임에 '눌림'이 있었으면 스크린 좌표 반환.</summary>
@@ -67,7 +125,7 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void OnTileTapped(GridPos pos, bool tileExists)
         {
-            // TODO(M1): 빈 타일이면 이동, 적/오브젝트면 문맥 액션 분기. (GDD §4.2)
+            TileTapped?.Invoke(pos, tileExists);
         }
     }
 }
