@@ -261,7 +261,6 @@ namespace ProjectC.Gameplay
 
         private IEnumerator ApproachAndPushBarrel(IReadOnlyList<GridPos> path)
         {
-            _resolvingAction = true;
             yield return MovePlayerPath(path);
 
             if (_playerState.IsAlive && !_barrelExploded &&
@@ -303,9 +302,6 @@ namespace ProjectC.Gameplay
                     yield return ResolveEnemyPhase(); // 밀기는 행동 1회
                 }
             }
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
     }
 }

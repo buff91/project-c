@@ -466,7 +466,7 @@ namespace ProjectC.Gameplay
             }
 
             SetBombAiming(false);
-            _moveRoutine = StartCoroutine(DrinkPotion());
+            _moveRoutine = StartCoroutine(RunPlayerAction(DrinkPotion()));
         }
 
         /// <summary>폭탄 조준 모드를 켜고 끈다. 켠 상태에서 타일을 탭하면 투척한다.</summary>
@@ -563,7 +563,7 @@ namespace ProjectC.Gameplay
                 }
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ThrowBomb(target));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ThrowBomb(target)));
                 return;
             }
 
@@ -574,7 +574,7 @@ namespace ProjectC.Gameplay
                 if (dropPath.Count == 0) return;
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ApproachAndDrop(dropPath, target));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndDrop(dropPath, target)));
                 return;
             }
 
@@ -584,7 +584,7 @@ namespace ProjectC.Gameplay
                 if (doorPath.Count == 0) return;
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ApproachAndToggleDoor(doorPath, target));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndToggleDoor(doorPath, target)));
                 return;
             }
 
@@ -596,7 +596,7 @@ namespace ProjectC.Gameplay
                 if (pushPath.Count == 0) return;
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ApproachAndPushBarrel(pushPath));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndPushBarrel(pushPath)));
                 return;
             }
 
@@ -606,7 +606,7 @@ namespace ProjectC.Gameplay
                 if (combatMode == CombatActionMode.Ranged)
                 {
                     PositionSelection(target);
-                    _moveRoutine = StartCoroutine(RangedAttack(tappedEnemy));
+                    _moveRoutine = StartCoroutine(RunPlayerAction(RangedAttack(tappedEnemy)));
                     return;
                 }
 
@@ -614,7 +614,7 @@ namespace ProjectC.Gameplay
                 if (attackPath.Count == 0) return;
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ApproachAndAttack(attackPath, tappedEnemy));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndAttack(attackPath, tappedEnemy)));
                 return;
             }
 
@@ -634,13 +634,17 @@ namespace ProjectC.Gameplay
             }
 
             PositionSelection(target);
-            _moveRoutine = StartCoroutine(MoveAlong(path));
+            _moveRoutine = StartCoroutine(RunPlayerAction(MovePlayerPath(path)));
         }
 
-        private IEnumerator MoveAlong(IReadOnlyList<GridPos> path)
+        /// <summary>
+        /// 플레이어 행동 코루틴 공통 래퍼. 진행 중 입력 잠금(_resolvingAction)과
+        /// 핸들 해제를 한 곳에서 처리해, 개별 행동이 잠금 해제를 잊을 수 없게 한다.
+        /// </summary>
+        private IEnumerator RunPlayerAction(IEnumerator action)
         {
             _resolvingAction = true;
-            yield return MovePlayerPath(path);
+            yield return action;
             _resolvingAction = false;
             _moveRoutine = null;
         }
@@ -655,7 +659,6 @@ namespace ProjectC.Gameplay
 
         private IEnumerator ApproachAndAttack(IReadOnlyList<GridPos> path, EnemyAgent enemy)
         {
-            _resolvingAction = true;
             yield return MovePlayerPath(path);
 
             if (_playerState.IsAlive && enemy.State.IsAlive &&
@@ -664,14 +667,10 @@ namespace ProjectC.Gameplay
                 yield return ShowEnemyHit(enemy, damage, "Melee");
                 yield return ResolveEnemyPhase();
             }
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator RangedAttack(EnemyAgent enemy)
         {
-            _resolvingAction = true;
             if (CombatRules.TryRanged(
                     _playerState,
                     enemy.State,
@@ -692,14 +691,10 @@ namespace ProjectC.Gameplay
                 bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke(blocked ? "SHOT BLOCKED" : $"OUT OF RANGE · MAX {rangedAttackRange}");
             }
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator DrinkPotion()
         {
-            _resolvingAction = true;
             _inventory.TryUse(ItemKind.Potion);
             InventoryChanged?.Invoke();
 
@@ -710,13 +705,10 @@ namespace ProjectC.Gameplay
             yield return FlashColor(_playerRenderer, new Color32(96, 224, 128, 255));
 
             yield return ResolveEnemyPhase();
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator ThrowBomb(GridPos target)
         {
-            _resolvingAction = true;
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.Bomb);
             InventoryChanged?.Invoke();
@@ -726,9 +718,6 @@ namespace ProjectC.Gameplay
 
             if (_playerState.IsAlive)
                 yield return ResolveEnemyPhase();
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator AnimateBlast(GridPos center)
@@ -783,7 +772,6 @@ namespace ProjectC.Gameplay
 
         private IEnumerator ApproachAndToggleDoor(IReadOnlyList<GridPos> path, GridPos door)
         {
-            _resolvingAction = true;
             yield return MovePlayerPath(path);
 
             TileData tile = _grid.Map.Get(door);
@@ -798,14 +786,10 @@ namespace ProjectC.Gameplay
                 Debug.Log($"[Door] {door} {feedback}");
                 yield return ResolveEnemyPhase();
             }
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator ApproachAndDrop(IReadOnlyList<GridPos> path, GridPos hole)
         {
-            _resolvingAction = true;
             yield return MovePlayerPath(path);
 
             // 의도적 낙하도 TryFall 하나로 수렴 — 낙뎀을 감수하는 하강 수단이다. (GDD §5.3)
@@ -817,9 +801,6 @@ namespace ProjectC.Gameplay
                 if (_playerState.IsAlive)
                     yield return ResolveEnemyPhase();
             }
-
-            _resolvingAction = false;
-            _moveRoutine = null;
         }
 
         private IEnumerator AnimateHoleDrop(GridPos hole, GridPos landing)
