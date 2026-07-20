@@ -15,7 +15,18 @@ namespace ProjectC.Gameplay
         private Button _rotateRight;
         private Button _modeButton;
         private Button _combatButton;
+        private Button _settingsButton;
+        private Button _settingsClose;
+        private Button _settingsDone;
+        private Button _settingsReset;
+        private VisualElement _settingsModal;
+        private Toggle _occlusionToggle;
+        private Toggle _rearWallsToggle;
+        private Slider _occlusionAlpha;
+        private Slider _verticalAlpha;
+        private Slider _exploredAlpha;
         private Label _viewLabel;
+        private Label _depthLabel;
         private Label _floorLabel;
         private Label _locationLabel;
         private Label _statusLabel;
@@ -49,6 +60,15 @@ namespace ProjectC.Gameplay
             if (_rotateRight != null) _rotateRight.clicked -= RotateRight;
             if (_modeButton != null) _modeButton.clicked -= ToggleViewMode;
             if (_combatButton != null) _combatButton.clicked -= ToggleCombatMode;
+            if (_settingsButton != null) _settingsButton.clicked -= OpenSettings;
+            if (_settingsClose != null) _settingsClose.clicked -= CloseSettings;
+            if (_settingsDone != null) _settingsDone.clicked -= CloseSettings;
+            if (_settingsReset != null) _settingsReset.clicked -= ResetSettings;
+            if (_occlusionToggle != null) _occlusionToggle.UnregisterValueChangedCallback(HandleOcclusionToggle);
+            if (_rearWallsToggle != null) _rearWallsToggle.UnregisterValueChangedCallback(HandleRearWallsToggle);
+            if (_occlusionAlpha != null) _occlusionAlpha.UnregisterValueChangedCallback(HandleOcclusionAlpha);
+            if (_verticalAlpha != null) _verticalAlpha.UnregisterValueChangedCallback(HandleVerticalAlpha);
+            if (_exploredAlpha != null) _exploredAlpha.UnregisterValueChangedCallback(HandleExploredAlpha);
             if (demo != null)
             {
                 demo.ViewRotationChanged -= HandleViewRotationChanged;
@@ -68,6 +88,10 @@ namespace ProjectC.Gameplay
             Button nextRight = root.Q<Button>("rotate-right");
             Button nextMode = root.Q<Button>("mode-button");
             Button nextCombat = root.Q<Button>("combat-button");
+            Button nextSettings = root.Q<Button>("settings-button");
+            Button nextSettingsClose = root.Q<Button>("settings-close");
+            Button nextSettingsDone = root.Q<Button>("settings-done");
+            Button nextSettingsReset = root.Q<Button>("settings-reset");
 
             if (_rotateLeft != nextLeft)
             {
@@ -95,18 +119,97 @@ namespace ProjectC.Gameplay
                 _combatButton = nextCombat;
                 if (_combatButton != null) _combatButton.clicked += ToggleCombatMode;
             }
+            if (_settingsButton != nextSettings)
+            {
+                if (_settingsButton != null) _settingsButton.clicked -= OpenSettings;
+                _settingsButton = nextSettings;
+                if (_settingsButton != null) _settingsButton.clicked += OpenSettings;
+            }
+            if (_settingsClose != nextSettingsClose)
+            {
+                if (_settingsClose != null) _settingsClose.clicked -= CloseSettings;
+                _settingsClose = nextSettingsClose;
+                if (_settingsClose != null) _settingsClose.clicked += CloseSettings;
+            }
+            if (_settingsDone != nextSettingsDone)
+            {
+                if (_settingsDone != null) _settingsDone.clicked -= CloseSettings;
+                _settingsDone = nextSettingsDone;
+                if (_settingsDone != null) _settingsDone.clicked += CloseSettings;
+            }
+            if (_settingsReset != nextSettingsReset)
+            {
+                if (_settingsReset != null) _settingsReset.clicked -= ResetSettings;
+                _settingsReset = nextSettingsReset;
+                if (_settingsReset != null) _settingsReset.clicked += ResetSettings;
+            }
+
+            BindSettingsControls(root);
 
             _viewLabel = root.Q<Label>("view-label");
+            _depthLabel = root.Q<Label>("depth-label");
             _floorLabel = root.Q<Label>("floor-label");
             _locationLabel = root.Q<Label>("location-label");
             _statusLabel = root.Q<Label>("status-label");
             _verticalHintLabel = root.Q<Label>("vertical-hint-label");
+            _settingsModal = root.Q<VisualElement>("settings-modal");
             UpdateViewLabel();
             UpdateFloorLabel();
             UpdateModeLabel();
             UpdateCombatLabel();
             UpdateLocationLabel();
             UpdateVerticalHintLabel();
+            SyncSettingsControls();
+        }
+
+        private void BindSettingsControls(VisualElement root)
+        {
+            Toggle nextOcclusionToggle = root.Q<Toggle>("occlusion-toggle");
+            Toggle nextRearWallsToggle = root.Q<Toggle>("rear-walls-toggle");
+            Slider nextOcclusionAlpha = root.Q<Slider>("occlusion-alpha");
+            Slider nextVerticalAlpha = root.Q<Slider>("vertical-alpha");
+            Slider nextExploredAlpha = root.Q<Slider>("explored-alpha");
+
+            if (_occlusionToggle != nextOcclusionToggle)
+            {
+                if (_occlusionToggle != null)
+                    _occlusionToggle.UnregisterValueChangedCallback(HandleOcclusionToggle);
+                _occlusionToggle = nextOcclusionToggle;
+                if (_occlusionToggle != null)
+                    _occlusionToggle.RegisterValueChangedCallback(HandleOcclusionToggle);
+            }
+            if (_rearWallsToggle != nextRearWallsToggle)
+            {
+                if (_rearWallsToggle != null)
+                    _rearWallsToggle.UnregisterValueChangedCallback(HandleRearWallsToggle);
+                _rearWallsToggle = nextRearWallsToggle;
+                if (_rearWallsToggle != null)
+                    _rearWallsToggle.RegisterValueChangedCallback(HandleRearWallsToggle);
+            }
+            if (_occlusionAlpha != nextOcclusionAlpha)
+            {
+                if (_occlusionAlpha != null)
+                    _occlusionAlpha.UnregisterValueChangedCallback(HandleOcclusionAlpha);
+                _occlusionAlpha = nextOcclusionAlpha;
+                if (_occlusionAlpha != null)
+                    _occlusionAlpha.RegisterValueChangedCallback(HandleOcclusionAlpha);
+            }
+            if (_verticalAlpha != nextVerticalAlpha)
+            {
+                if (_verticalAlpha != null)
+                    _verticalAlpha.UnregisterValueChangedCallback(HandleVerticalAlpha);
+                _verticalAlpha = nextVerticalAlpha;
+                if (_verticalAlpha != null)
+                    _verticalAlpha.RegisterValueChangedCallback(HandleVerticalAlpha);
+            }
+            if (_exploredAlpha != nextExploredAlpha)
+            {
+                if (_exploredAlpha != null)
+                    _exploredAlpha.UnregisterValueChangedCallback(HandleExploredAlpha);
+                _exploredAlpha = nextExploredAlpha;
+                if (_exploredAlpha != null)
+                    _exploredAlpha.RegisterValueChangedCallback(HandleExploredAlpha);
+            }
         }
 
         private void RotateLeft()
@@ -127,6 +230,76 @@ namespace ProjectC.Gameplay
         private void ToggleCombatMode()
         {
             if (demo != null) demo.ToggleCombatMode();
+        }
+
+        private void OpenSettings()
+        {
+            SyncSettingsControls();
+            _settingsModal?.AddToClassList("is-open");
+        }
+
+        private void CloseSettings()
+        {
+            _settingsModal?.RemoveFromClassList("is-open");
+        }
+
+        private void ResetSettings()
+        {
+            if (demo == null) return;
+            demo.fadePlayerOccluders = true;
+            demo.playerOccluderAlpha = 0.3f;
+            demo.verticalPreviewAlpha = 0.54f;
+            demo.exploredAlpha = 0.16f;
+            demo.showRearWalls = true;
+            demo.ApplyVisualSettings();
+            SyncSettingsControls();
+        }
+
+        private void HandleOcclusionToggle(ChangeEvent<bool> evt)
+        {
+            if (demo == null) return;
+            demo.fadePlayerOccluders = evt.newValue;
+            demo.ApplyVisualSettings();
+            _occlusionAlpha?.SetEnabled(evt.newValue);
+        }
+
+        private void HandleRearWallsToggle(ChangeEvent<bool> evt)
+        {
+            if (demo == null) return;
+            demo.showRearWalls = evt.newValue;
+            demo.ApplyVisualSettings();
+        }
+
+        private void HandleOcclusionAlpha(ChangeEvent<float> evt)
+        {
+            if (demo == null) return;
+            demo.playerOccluderAlpha = evt.newValue;
+            demo.ApplyVisualSettings();
+        }
+
+        private void HandleVerticalAlpha(ChangeEvent<float> evt)
+        {
+            if (demo == null) return;
+            demo.verticalPreviewAlpha = evt.newValue;
+            demo.ApplyVisualSettings();
+        }
+
+        private void HandleExploredAlpha(ChangeEvent<float> evt)
+        {
+            if (demo == null) return;
+            demo.exploredAlpha = evt.newValue;
+            demo.ApplyVisualSettings();
+        }
+
+        private void SyncSettingsControls()
+        {
+            if (demo == null) return;
+            _occlusionToggle?.SetValueWithoutNotify(demo.fadePlayerOccluders);
+            _rearWallsToggle?.SetValueWithoutNotify(demo.showRearWalls);
+            _occlusionAlpha?.SetValueWithoutNotify(demo.playerOccluderAlpha);
+            _verticalAlpha?.SetValueWithoutNotify(demo.verticalPreviewAlpha);
+            _exploredAlpha?.SetValueWithoutNotify(demo.exploredAlpha);
+            _occlusionAlpha?.SetEnabled(demo.fadePlayerOccluders);
         }
 
         private void HandleViewRotationChanged(int _)
@@ -173,10 +346,12 @@ namespace ProjectC.Gameplay
 
         private void UpdateFloorLabel()
         {
-            if (_floorLabel == null) return;
-            _floorLabel.text = demo == null
-                ? "▲ --   [B1]   ▼ B2"
-                : $"▲ {demo.AboveFloorLabel}   [{demo.ActiveFloorLabel}]   ▼ {demo.BelowFloorLabel}";
+            if (_depthLabel != null)
+                _depthLabel.text = demo != null ? demo.ActiveFloorLabel : "B1";
+            if (_floorLabel != null)
+                _floorLabel.text = demo == null
+                    ? "▲ --  ·  ▼ B2"
+                    : $"▲ {demo.AboveFloorLabel}  ·  ▼ {demo.BelowFloorLabel}";
         }
 
         private void UpdateModeLabel()

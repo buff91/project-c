@@ -1,0 +1,460 @@
+<title>Project-C · UI 디자인 시안</title>
+<style>
+  :root{
+    --ink:#0f0c08;            /* dungeon obsidian ground */
+    --stone:#1c160f;          /* panel stone */
+    --stone-2:#241d14;        /* raised stone */
+    --bronze:#4a3a22;         /* aged bronze border */
+    --bronze-lit:#7a5c31;     /* lit bronze edge */
+    --parch:#e9dcc0;          /* parchment text */
+    --parch-dim:#a3937355;    /* muted rune */
+    --muted:#9d8c6d;          /* muted text */
+    --torch:#e8ad4e;          /* torch amber accent */
+    --hp:#c8493b;             /* blood */
+    --mp:#5b7fd0;             /* mana */
+    --burn:#e8632a;           /* status: burn */
+    --freeze:#67c6dd;         /* status: freeze */
+    --boom:#d7b13e;           /* status: explosion */
+    --uitk:#8fbf6b;           /* UI Toolkit badge */
+    --ugui:#d38ad0;           /* UGUI badge */
+    --mono:ui-monospace,"SF Mono",Menlo,"Cascadia Mono",monospace;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0}
+  .page{
+    min-height:100%;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #241b10 0%, var(--ink) 60%),
+      var(--ink);
+    color:var(--parch);
+    font-family:var(--body);
+    line-height:1.5;
+    padding:clamp(20px,5vw,64px) clamp(16px,4vw,48px) 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  /* ---- masthead ---- */
+  .mast{margin-bottom:clamp(28px,5vw,52px)}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--torch);margin:0 0 14px;display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--bronze-lit)}
+  h1{
+    font-family:var(--mono);font-weight:700;
+    font-size:clamp(30px,6vw,52px);line-height:1.02;margin:0;
+    letter-spacing:-.01em;text-wrap:balance;
+  }
+  h1 .thin{color:var(--muted);font-weight:400}
+  .lede{max-width:60ch;margin:18px 0 0;color:var(--muted);font-size:clamp(15px,2vw,17px)}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:22px;font-family:var(--mono);font-size:12.5px}
+  .legend span{display:inline-flex;align-items:center;gap:8px;letter-spacing:.02em}
+  .dot{width:11px;height:11px;border-radius:2px;box-shadow:0 0 0 1px #0006 inset}
+  .dot.tk{background:var(--uitk)} .dot.gu{background:var(--ugui)}
+
+  /* ---- screens grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:clamp(22px,3vw,34px);align-items:start}
+
+  .card{position:relative}
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 4px 12px}
+  .card-head h2{font-size:16px;margin:0;letter-spacing:.01em}
+  .card-head .no{font-family:var(--mono);color:var(--muted);font-size:12px}
+  .card-note{margin:12px 6px 0;color:var(--muted);font-size:13px;font-family:var(--body)}
+  .badge{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 9px;border-radius:3px;font-weight:600;white-space:nowrap;color:#0f0c08;
+  }
+  .badge.tk{background:var(--uitk)} .badge.gu{background:var(--ugui)}
+
+  /* phone frame */
+  .phone{
+    position:relative;aspect-ratio:9/16;border-radius:22px;overflow:hidden;
+    background:var(--ink);
+    border:1px solid #000;
+    box-shadow:0 0 0 2px #2a2118, 0 22px 44px -18px #000c, 0 2px 0 #46341c inset;
+    image-rendering:pixelated;
+  }
+  .safe{position:absolute;inset:0;display:flex;flex-direction:column}
+  .isocanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* --- shared pixel-panel look --- */
+  .panel{
+    background:linear-gradient(#241d14,#1a140d);
+    border:1px solid var(--bronze);
+    box-shadow:0 1px 0 #6b4f2b inset,0 -2px 6px #0007 inset;
+  }
+  .runes{font-family:var(--mono);letter-spacing:.02em}
+
+  /* ================= HUD ================= */
+  .hud{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:12px 12px 14px}
+  .hud-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .orb{display:flex;align-items:center;gap:9px}
+  .orb-globe{
+    width:44px;height:44px;border-radius:50%;flex:none;
+    background:
+      radial-gradient(circle at 38% 32%, #ff8a6e 0 8%, transparent 40%),
+      conic-gradient(from 220deg, var(--hp) 0 62%, #3a1512 62% 100%);
+    box-shadow:0 0 0 2px #120b08,0 0 0 3px #5a3a22,0 0 12px #c8493b55;
+  }
+  .orb-globe.mana{
+    background:
+      radial-gradient(circle at 38% 32%, #a9c2ff 0 8%, transparent 40%),
+      conic-gradient(from 220deg, var(--mp) 0 48%, #16203f 48% 100%);
+    box-shadow:0 0 0 2px #120b08,0 0 0 3px #5a3a22,0 0 12px #5b7fd055;
+  }
+  .orb-meta .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+  .orb-meta .val{font-family:var(--mono);font-size:14px;font-weight:700}
+  .val .hp{color:#ffb0a4}.val .mp{color:#b8caff}
+
+  .depth{
+    text-align:right;padding:7px 11px;border-radius:5px;
+  }
+  .depth .d{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--torch);line-height:1}
+  .depth .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;display:block;margin-top:3px}
+  .depth .elev{font-family:var(--mono);font-size:10px;color:#9fd6e0;margin-top:5px}
+
+  .minimap{
+    position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    width:64px;height:44px;border-radius:5px;padding:4px;
+  }
+  .mm-grid{width:100%;height:100%;
+    background-image:linear-gradient(#0000 0,#0000),
+      repeating-linear-gradient(45deg,#3c2e1a 0 2px,transparent 2px 7px);
+    position:relative;border-radius:2px;opacity:.85}
+  .mm-you{position:absolute;width:6px;height:6px;background:var(--torch);border-radius:50%;top:44%;left:40%;box-shadow:0 0 6px var(--torch)}
+
+  .hud-spacer{flex:1}
+  .status-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .chip{
+    font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 8px;border-radius:3px;
+    display:inline-flex;align-items:center;gap:5px;color:#0f0c08;
+  }
+  .chip::before{content:"";width:6px;height:6px;border-radius:50%;background:#0f0c0855}
+  .chip.burn{background:var(--burn)}.chip.freeze{background:var(--freeze)}.chip.boom{background:var(--boom)}
+
+  .hud-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+  .resources{display:flex;gap:8px}
+  .res{display:flex;align-items:center;gap:6px;padding:6px 9px;border-radius:5px;font-family:var(--mono);font-size:12px}
+  .res b{color:var(--parch);font-weight:700}
+  .res i{width:12px;height:12px;border-radius:2px;font-style:normal;display:block}
+  .res .gold{background:linear-gradient(#f4cf6a,#b7862c)}
+  .res .herb{background:linear-gradient(#89b56a,#3e6b34)}
+  .turn{
+    padding:8px 12px;border-radius:6px;font-family:var(--mono);font-weight:700;font-size:12px;
+    color:var(--torch);display:flex;align-items:center;gap:8px;
+  }
+  .turn::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--torch);box-shadow:0 0 8px var(--torch);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.turn::before{animation:none}}
+
+  /* ================= INVENTORY / CRAFT ================= */
+  .sheet{display:flex;flex-direction:column;height:100%;padding:14px 13px}
+  .sheet-title{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--torch);margin:2px 2px 12px;display:flex;justify-content:space-between}
+  .sheet-title .tab{color:var(--muted)}
+  .sheet-title .tab.on{color:var(--parch)}
+  .equip{display:flex;gap:9px;margin-bottom:14px}
+  .doll{flex:1;border-radius:6px;display:flex;flex-direction:column;gap:6px;padding:9px}
+  .doll-row{display:flex;gap:6px}
+  .slot{
+    flex:1;aspect-ratio:1;border-radius:4px;background:#120d08;
+    border:1px solid #372a19;display:flex;align-items:center;justify-content:center;
+    font-size:17px;box-shadow:0 -1px 3px #0008 inset;position:relative;
+  }
+  .slot.filled{border-color:var(--bronze-lit);background:linear-gradient(#2c2214,#191108)}
+  .slot .r{position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%}
+  .r.rare{background:var(--mp);box-shadow:0 0 5px var(--mp)}
+  .r.epic{background:var(--ugui);box-shadow:0 0 5px var(--ugui)}
+  .bag-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 2px 8px}
+  .bag{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+
+  .craft{margin-top:auto;border-radius:7px;padding:11px}
+  .craft h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--torch);margin:0 0 9px}
+  .recipe{display:flex;align-items:center;gap:8px}
+  .recipe .slot{width:38px;flex:none}
+  .op{font-family:var(--mono);color:var(--muted);font-size:16px;font-weight:700}
+  .make{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:700;color:#0f0c08;background:var(--torch);border:none;padding:8px 12px;border-radius:5px;box-shadow:0 2px 0 #8a5f22;cursor:pointer}
+
+  /* ================= MENU / META ================= */
+  .menu{display:flex;flex-direction:column;height:100%;padding:0}
+  .menu-hero{padding:30px 18px 20px;text-align:center;position:relative;overflow:hidden}
+  .menu-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 50% at 50% 0,#e8ad4e22,transparent 70%);pointer-events:none}
+  .crest{font-size:34px;filter:drop-shadow(0 0 10px #e8ad4e66)}
+  .game-title{font-family:var(--mono);font-weight:700;font-size:23px;letter-spacing:.04em;margin:8px 0 2px;color:var(--parch);text-shadow:0 2px 0 #000}
+  .game-sub{font-family:var(--mono);font-size:9.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--torch);margin:0}
+  .meta-panel{margin:4px 13px 0;border-radius:8px;padding:12px}
+  .meta-panel h3{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;justify-content:space-between}
+  .meta-panel h3 span{color:var(--torch)}
+  .nodes{display:flex;flex-direction:column;gap:8px}
+  .node{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:6px;background:#170f08;border:1px solid #2c2013}
+  .node.unlocked{border-color:var(--bronze-lit);background:linear-gradient(#221a0f,#150e07)}
+  .node .ic{width:30px;height:30px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;background:#0f0a06;border:1px solid #35271700}
+  .node.unlocked .ic{box-shadow:0 0 0 1px var(--bronze-lit),0 0 10px #e8ad4e33}
+  .node .tx{flex:1;min-width:0}
+  .node .tx b{display:block;font-size:12.5px;color:var(--parch)}
+  .node .tx small{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .node .cost{font-family:var(--mono);font-size:11px;font-weight:700}
+  .node.unlocked .cost{color:var(--uitk)}
+  .node.locked .cost{color:var(--torch)}
+  .menu-cta{margin:auto 13px 16px;display:flex;flex-direction:column;gap:9px}
+  .btn-primary{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:.04em;color:#0f0c08;background:linear-gradient(#f4cf6a,var(--torch));border:none;padding:13px;border-radius:7px;box-shadow:0 3px 0 #8a5f22;cursor:pointer}
+  .btn-ghost{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:none;border:1px solid #35271a;padding:9px;border-radius:6px;cursor:pointer}
+
+  /* ================= INTERACTION POPUP (UGUI) ================= */
+  .world{position:relative;height:100%;overflow:hidden}
+  .world canvas{position:absolute;inset:0;width:100%;height:100%}
+  .anchor{position:absolute;top:40%;left:44%}
+  .target-ring{
+    position:absolute;top:38%;left:41%;width:70px;height:36px;transform:translate(-6px,-2px);
+    border:2px dashed var(--torch);border-radius:50%;
+    box-shadow:0 0 14px #e8ad4e55;animation:spin 6s linear infinite;opacity:.9;
+  }
+  @keyframes spin{to{transform:translate(-6px,-2px) rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.target-ring{animation:none}}
+  .height-tag{
+    position:absolute;top:26%;left:47%;font-family:var(--mono);font-size:9px;font-weight:700;
+    color:#9fd6e0;background:#0f1a1eee;border:1px solid #2b4a52;padding:2px 6px;border-radius:3px;white-space:nowrap;
+  }
+  .height-tag::after{content:"";position:absolute;left:12px;top:100%;width:1px;height:26px;background:linear-gradient(#67c6dd,transparent)}
+  .popup{
+    position:absolute;top:33%;left:58%;width:118px;border-radius:8px;padding:6px;
+    background:linear-gradient(#282013f2,#17110af2);border:1px solid var(--bronze-lit);
+    box-shadow:0 10px 24px -8px #000d,0 1px 0 #7a5c31 inset;
+  }
+  .popup::before{content:"";position:absolute;left:-7px;top:26px;width:0;height:0;border:6px solid transparent;border-right-color:var(--bronze-lit)}
+  .popup .obj{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--torch);padding:3px 4px 7px;border-bottom:1px solid #33271700;margin-bottom:3px}
+  .act{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--parch);font-family:var(--body);font-size:12px;padding:7px 6px;border-radius:5px;cursor:pointer}
+  .act:hover,.act:focus-visible{background:#3a2c17;outline:none}
+  .act .k{font-size:14px;width:18px;text-align:center}
+  .act small{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted)}
+  .caption-strip{position:absolute;left:0;right:0;bottom:0;padding:8px 11px;font-family:var(--mono);font-size:10px;color:var(--muted);background:linear-gradient(transparent,#0f0c08 60%);text-align:center;letter-spacing:.03em}
+
+  /* footer note */
+  .foot{margin-top:clamp(34px,6vw,60px);border-top:1px solid #2a2015;padding-top:22px;color:var(--muted);font-size:13.5px;max-width:68ch}
+  .foot b{color:var(--parch);font-weight:600}
+  .foot code{font-family:var(--mono);font-size:12.5px;color:var(--torch);background:#1c160f;padding:1px 6px;border-radius:3px}
+  a.link{color:var(--torch);text-decoration:none;border-bottom:1px solid #e8ad4e44}
+
+  :focus-visible{outline:2px solid var(--torch);outline-offset:2px}
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    <header class="mast">
+      <p class="eyebrow">Project-C · 디자인 시안 v0.1</p>
+      <h1>던전 UI 화면 시안 <span class="thin">— 4종</span></h1>
+      <p class="lede">아이소메트릭 다층 던전 크롤러의 핵심 화면 목업. 각 화면은 어느 UI 시스템으로 구현할지 배지로 표기했다 — 화면공간 평면 패널은 <b style="color:var(--uitk)">UI Toolkit</b>, 월드 좌표를 추종하는 상호작용 UI는 <b style="color:var(--ugui)">UGUI</b>. 모바일 세로 기준.</p>
+      <div class="legend">
+        <span><i class="dot tk"></i> UI Toolkit — HTML 시안을 UXML/USS로 이식</span>
+        <span><i class="dot gu"></i> UGUI — 월드 앵커·엔티티 추종 (시안은 참고용)</span>
+      </div>
+    </header>
+
+    <div class="grid">
+
+      <!-- 1. HUD -->
+      <section class="card">
+        <div class="card-head"><h2>인게임 HUD</h2><span class="no">01 · 상시 오버레이</span></div>
+        <div class="phone">
+          <canvas class="isocanvas" data-iso="hud"></canvas>
+          <div class="safe">
+            <div class="hud">
+              <div class="hud-top">
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <div class="orb"><div class="orb-globe"></div><div class="orb-meta"><span class="lbl">체력</span><span class="val"><span class="hp">28</span>/34</span></div></div>
+                  <div class="orb"><div class="orb-globe mana"></div><div class="orb-meta"><span class="lbl">마나</span><span class="val"><span class="mp">6</span>/12</span></div></div>
+                </div>
+                <div class="minimap panel"><div class="mm-grid"><span class="mm-you"></span></div></div>
+                <div class="depth panel">
+                  <span class="d">B4</span><span class="lbl">최심층</span><span class="elev">▲ 높이 +2</span>
+                </div>
+              </div>
+              <div class="hud-spacer"></div>
+              <div class="status-row">
+                <span class="chip burn">화상 2</span>
+                <span class="chip freeze">빙결 1</span>
+              </div>
+              <div class="hud-bottom">
+                <div class="resources">
+                  <div class="res panel"><i class="gold"></i><b>142</b></div>
+                  <div class="res panel"><i class="herb"></i><b>7</b></div>
+                </div>
+                <div class="turn panel">내 턴</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-head" style="margin-top:12px"><span></span><span class="badge tk">→ UI Toolkit</span></div>
+        <p class="card-note">HP/마나 오브, 자원, 턴 인디케이터, 미니맵 프레임, 최심층·높이 표시. 데이터 바인딩 대상이라 UI Toolkit이 적합. 상태이상 칩은 반응 테이블과 연동.</p>
+      </section>
+
+      <!-- 2. INVENTORY / CRAFT -->
+      <section class="card">
+        <div class="card-head"><h2>인벤토리 + 조합</h2><span class="no">02 · 전체 패널</span></div>
+        <div class="phone">
+          <div class="safe">
+            <div class="sheet">
+              <div class="sheet-title"><span class="tab on">가방</span><span class="tab">장비</span><span class="tab">조합</span></div>
+              <div class="equip">
+                <div class="doll panel">
+                  <div class="doll-row"><div class="slot filled">🗡️<span class="r rare"></span></div><div class="slot filled">🛡️</div></div>
+                  <div class="doll-row"><div class="slot filled">🧥<span class="r epic"></span></div><div class="slot">◦</div></div>
+                </div>
+                <div style="flex:1">
+                  <p class="bag-label">소지품 · 5/15</p>
+                  <div class="bag">
+                    <div class="slot filled">🧪</div><div class="slot filled">🔥</div><div class="slot filled">🗝️</div><div class="slot filled">🍖</div><div class="slot filled">🪙</div>
+                    <div class="slot">◦</div><div class="slot">◦</div><div class="slot">◦</div><div class="slot">◦</div><div class="slot">◦</div>
+                  </div>
+                </div>
+              </div>
+              <div class="craft panel">
+                <h3>조합 · 화염병</h3>
+                <div class="recipe">
+                  <div class="slot filled">🛢️</div><span class="op">+</span><div class="slot filled">🍶</div><span class="op">=</span><div class="slot filled" style="border-color:var(--burn);box-shadow:0 0 10px #e8632a55">🔥</div>
+                  <button class="make">제작</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-head" style="margin-top:12px"><span></span><span class="badge tk">→ UI Toolkit</span></div>
+        <p class="card-note">아이템 그리드·장비 슬롯·조합 레시피(기름+병=화염병). 격자 레이아웃이라 UXML의 flex 그리드로 그대로 이식된다.</p>
+      </section>
+
+      <!-- 3. MENU / META -->
+      <section class="card">
+        <div class="card-head"><h2>메인메뉴 + 메타</h2><span class="no">03 · 진입 화면</span></div>
+        <div class="phone">
+          <div class="safe">
+            <div class="menu">
+              <div class="menu-hero">
+                <div class="crest">⚔️</div>
+                <h2 class="game-title">PROJECT-C</h2>
+                <p class="game-sub">Descent into the Deep</p>
+              </div>
+              <div class="meta-panel panel">
+                <h3>메타 프로그레션 <span>◈ 48</span></h3>
+                <div class="nodes">
+                  <div class="node unlocked"><div class="ic">📜</div><div class="tx"><b>화염병 레시피</b><small>해금됨</small></div><span class="cost">✓</span></div>
+                  <div class="node unlocked"><div class="ic">🗡️</div><div class="tx"><b>시작 단검</b><small>해금됨</small></div><span class="cost">✓</span></div>
+                  <div class="node locked"><div class="ic">🧙</div><div class="tx"><b>마법사 직업</b><small>다음 해금</small></div><span class="cost">◈ 30</span></div>
+                </div>
+              </div>
+              <div class="menu-cta">
+                <button class="btn-primary">던전 진입 ▸</button>
+                <button class="btn-ghost">설정</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-head" style="margin-top:12px"><span></span><span class="badge tk">→ UI Toolkit</span></div>
+        <p class="card-note">타이틀·해금 노드(레시피/시작장비/직업)·설정. 정적 화면공간 흐름 → UI Toolkit. 해금 상태는 저장 데이터와 바인딩.</p>
+      </section>
+
+      <!-- 4. INTERACTION POPUP (UGUI) -->
+      <section class="card">
+        <div class="card-head"><h2>상호작용 팝업</h2><span class="no">04 · 월드 앵커</span></div>
+        <div class="phone">
+          <div class="world">
+            <canvas class="isocanvas" data-iso="world"></canvas>
+            <div class="height-tag">대상 · 높이 +1</div>
+            <div class="target-ring"></div>
+            <div class="popup">
+              <div class="obj">나무 상자</div>
+              <button class="act"><span class="k">🤜</span>밀기<small>1AP</small></button>
+              <button class="act"><span class="k">🪓</span>부수기<small>1AP</small></button>
+              <button class="act"><span class="k">📦</span>열기<small>1AP</small></button>
+              <button class="act"><span class="k">✋</span>줍기<small>0AP</small></button>
+            </div>
+            <div class="caption-strip">탭한 오브젝트에 팝업이 앵커된다 · 카메라 이동 시 함께 추종</div>
+          </div>
+        </div>
+        <div class="card-head" style="margin-top:12px"><span></span><span class="badge gu">→ UGUI</span></div>
+        <p class="card-note">오브젝트 옆 문맥 버튼(밀기/부수기/열기/줍기) + 조준·높이 마커. 월드 좌표를 추종해야 하므로 UGUI(Screen Space-Camera). 시안은 배치·톤 참고용.</p>
+      </section>
+
+    </div>
+
+    <p class="foot">
+      <b>구현 방침.</b> 위 배지는 <code>docs/UI_ARCHITECTURE.md</code>의 한 줄 기준을 따른다 — <em>월드 좌표를 따라다니거나 엔티티/타일에 앵커되면 UGUI, 화면공간 평면 패널이면 UI Toolkit.</em>
+      UI Toolkit 화면(01·02·03)은 이 HTML 시안을 UXML(구조)/USS(스타일)로 거의 1:1 이식한다. UGUI 화면(04)은 톤·레이아웃만 참고하고 씬에서 Canvas·RectTransform으로 구성. 실제 Unity 코드는 M4(상호작용 버튼 UI)·M5(UI 폴리시)에서 착수.
+    </p>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  // simple isometric dungeon-floor backdrop, drawn behind HUD / world screens
+  function draw(cv){
+    var mode = cv.getAttribute('data-iso');
+    var dpr = 2; // fixed (no Date/random needed); pixel-art crispness
+    function size(){
+      var r = cv.getBoundingClientRect();
+      cv.width = Math.max(1, r.width*dpr); cv.height = Math.max(1, r.height*dpr);
+      var g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+      render(g, r.width, r.height, mode);
+    }
+    window.addEventListener('resize', size);
+    size();
+  }
+  function render(g,W,H,mode){
+    g.clearRect(0,0,W,H);
+    // ground wash
+    var bg = g.createRadialGradient(W*0.5,H*0.35,10,W*0.5,H*0.5,H*0.8);
+    bg.addColorStop(0, mode==='world' ? '#1d2622' : '#241a10');
+    bg.addColorStop(1, '#0d0a07');
+    g.fillStyle = bg; g.fillRect(0,0,W,H);
+
+    var tw=30, th=15;                 // tile half-ish
+    var ox=W*0.5, oy=mode==='world'?H*0.34:H*0.30;
+    for(var y=-2;y<7;y++){
+      for(var x=-3;x<4;x++){
+        var sx = ox + (x - y)*tw;
+        var sy = oy + (x + y)*th;
+        // diamond
+        g.beginPath();
+        g.moveTo(sx, sy-th);
+        g.lineTo(sx+tw, sy);
+        g.lineTo(sx, sy+th);
+        g.lineTo(sx-tw, sy);
+        g.closePath();
+        var lit = (x+y)%2===0;
+        g.fillStyle = mode==='world'
+          ? (lit? '#20302a':'#1a2621')
+          : (lit? '#2a2013':'#221a0f');
+        g.fill();
+        g.lineWidth=1;
+        g.strokeStyle = mode==='world' ? '#0e1512' : '#140f09';
+        g.stroke();
+      }
+    }
+    // a highlighted "target" tile on world screen
+    if(mode==='world'){
+      var tx2=0,ty2=1;
+      var sx=ox+(tx2-ty2)*tw, sy=oy+(tx2+ty2)*th;
+      g.beginPath();
+      g.moveTo(sx,sy-th);g.lineTo(sx+tw,sy);g.lineTo(sx,sy+th);g.lineTo(sx-tw,sy);g.closePath();
+      g.fillStyle='#e8ad4e22'; g.fill();
+      g.strokeStyle='#e8ad4e'; g.lineWidth=1.5; g.stroke();
+      // crate block sitting on it
+      var bx=sx,by=sy-4,bw=17,bh=15;
+      g.fillStyle='#6b4a26'; g.fillRect(bx-bw,by-bh,bw*2,bh);       // front
+      g.fillStyle='#8a6231'; g.beginPath();                          // top
+      g.moveTo(bx,by-bh-9);g.lineTo(bx+bw,by-bh);g.lineTo(bx,by-bh+9);g.lineTo(bx-bw,by-bh);g.closePath();g.fill();
+      g.strokeStyle='#3a2712';g.lineWidth=1;g.strokeRect(bx-bw,by-bh,bw*2,bh);
+    }
+    // torch glow vignette top
+    var vg=g.createLinearGradient(0,0,0,H);
+    vg.addColorStop(0, mode==='world' ? '#0d130f00':'#e8ad4e14');
+    vg.addColorStop(0.5,'#00000000');
+    vg.addColorStop(1,'#0d0a07cc');
+    g.fillStyle=vg; g.fillRect(0,0,W,H);
+  }
+  document.querySelectorAll('canvas.isocanvas').forEach(draw);
+})();
+</script>
+

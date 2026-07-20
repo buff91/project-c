@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa5f2ff1350f04556b040ab71d932274, type: 3}
+  m_Name: ProjectCEnvironmentCatalog
+  m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoVisualCatalog
+  floor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
+  raisedFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
+  lowerFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
+  stairs: {fileID: 0}
+  stairsUp: {fileID: 0}
+  stairsDown: {fileID: 0}
+  hole: {fileID: 0}
+  weakFloor: {fileID: 0}
+  doorClosed: {fileID: 0}
+  doorOpen: {fileID: 0}
+  stairsRisingRight: {fileID: 21300000, guid: 7e0ea4c194a8041358178035b4debc6d, type: 3}
+  stairsRisingLeft: {fileID: 21300000, guid: 6fdb697c888e34952810411dba6325b5, type: 3}
+  stairsUpRisingRight: {fileID: 21300000, guid: 7ee6569795e5b43f78d85b668944a3bf, type: 3}
+  stairsUpRisingLeft: {fileID: 21300000, guid: dd03cbcebcc454783b3a46db8c25d3f9, type: 3}
+  stairsDownRisingRight: {fileID: 21300000, guid: 06d82d1fafad647e1a43e6a8b4ca5f96, type: 3}
+  stairsDownRisingLeft: {fileID: 21300000, guid: 903cf373912964852951e78a50144a8e, type: 3}
+  doorClosedRisingRight: {fileID: 21300000, guid: 735aef714ec404d35a6cd35429579199, type: 3}
+  doorClosedRisingLeft: {fileID: 21300000, guid: 92640add07d7b4f098e12972127ce480, type: 3}
+  doorOpenRisingRight: {fileID: 21300000, guid: b02a26a89f8ae4e39aeb29c758c80d18, type: 3}
+  doorOpenRisingLeft: {fileID: 21300000, guid: dd845dc51149645118be70c6bb1afe95, type: 3}
+  rearWallRisingRight: {fileID: 21300000, guid: 453b6c6bfb1294abab822c6cccd74074, type: 3}
+  rearWallRisingLeft: {fileID: 21300000, guid: 698634ebef95a4f0390a33286ca14520, type: 3}
+  rearWallTorchRisingRight: {fileID: 21300000, guid: e4fee66e8f20847d0afdb8c2b9aecbcd, type: 3}
+  rearWallTorchRisingLeft: {fileID: 21300000, guid: 85c190b2bdbd4460f884c2e85b7a710b, type: 3}
+  player: {fileID: 0}
+  goblin: {fileID: 0}
+  explosiveBarrel: {fileID: 0}
+  selection: {fileID: 0}

@@ -27,6 +27,22 @@ namespace ProjectC.Tests
             Assert.AreEqual(ground.x, raised.x, 1e-4f); // elevation 은 x 에 영향 없음
         }
 
+        [TestCase(0, false)]
+        [TestCase(1, true)]
+        [TestCase(2, true)]
+        [TestCase(3, false)]
+        public void ProjectsToScreenRight_TracksRotatedHigherLanding(
+            int quarterTurns,
+            bool expected)
+        {
+            var iso = MakeGrid();
+            iso.SetViewRotation(quarterTurns);
+            var stairs = new GridPos(3, 3, 0);
+            var higherLanding = new GridPos(3, 4, 1);
+
+            Assert.That(iso.ProjectsToScreenRight(stairs, higherLanding), Is.EqualTo(expected));
+        }
+
         [Test]
         public void WorldToGrid_IsInverseOf_GridToWorld()
         {

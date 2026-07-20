@@ -22,6 +22,25 @@ namespace ProjectC.Gameplay
         public Sprite doorClosed;
         public Sprite doorOpen;
 
+        [Header("방향 타일 (화면 기준)")]
+        [Tooltip("화면에서 높은 쪽이 오른쪽인 같은 층 계단")]
+        public Sprite stairsRisingRight;
+        public Sprite stairsRisingLeft;
+        public Sprite stairsUpRisingRight;
+        public Sprite stairsUpRisingLeft;
+        public Sprite stairsDownRisingRight;
+        public Sprite stairsDownRisingLeft;
+        public Sprite doorClosedRisingRight;
+        public Sprite doorClosedRisingLeft;
+        public Sprite doorOpenRisingRight;
+        public Sprite doorOpenRisingLeft;
+
+        [Header("후면 벽 (화면 기준)")]
+        public Sprite rearWallRisingRight;
+        public Sprite rearWallRisingLeft;
+        public Sprite rearWallTorchRisingRight;
+        public Sprite rearWallTorchRisingLeft;
+
         [Header("액터와 소품")]
         public Sprite player;
         public Sprite goblin;
@@ -44,6 +63,55 @@ namespace ProjectC.Gameplay
                     if (elevation > 0) return raisedFloor;
                     return floor;
             }
+        }
+
+        public Sprite StairsFor(TileKind kind, bool risesRight)
+        {
+            Sprite directed;
+            switch (kind)
+            {
+                case TileKind.Stairs:
+                    directed = risesRight ? stairsRisingRight : stairsRisingLeft;
+                    break;
+                case TileKind.StairsUp:
+                    directed = risesRight ? stairsUpRisingRight : stairsUpRisingLeft;
+                    break;
+                case TileKind.StairsDown:
+                    directed = risesRight ? stairsDownRisingRight : stairsDownRisingLeft;
+                    break;
+                default:
+                    return null;
+            }
+
+            return directed != null ? directed : TileFor(kind, 0);
+        }
+
+        public Sprite DoorFor(TileKind kind, bool risesRight)
+        {
+            Sprite directed;
+            switch (kind)
+            {
+                case TileKind.DoorClosed:
+                    directed = risesRight ? doorClosedRisingRight : doorClosedRisingLeft;
+                    break;
+                case TileKind.DoorOpen:
+                    directed = risesRight ? doorOpenRisingRight : doorOpenRisingLeft;
+                    break;
+                default:
+                    return null;
+            }
+
+            return directed != null ? directed : TileFor(kind, 0);
+        }
+
+        public Sprite RearWallFor(bool torch, bool risesRight)
+        {
+            Sprite directed = torch
+                ? (risesRight ? rearWallTorchRisingRight : rearWallTorchRisingLeft)
+                : null;
+            if (directed != null) return directed;
+
+            return risesRight ? rearWallRisingRight : rearWallRisingLeft;
         }
     }
 }

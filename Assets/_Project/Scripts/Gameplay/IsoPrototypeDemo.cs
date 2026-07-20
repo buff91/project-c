@@ -35,6 +35,10 @@ namespace ProjectC.Gameplay
         public bool buildOnStart = true;
         public bool configureMainCamera = true;
 
+        [Header("카메라 구도")]
+        [Range(4f, 7f)] public float playCameraSize = 5.2f;
+        [Range(7f, 11f)] public float debugCameraSize = 8.8f;
+
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
         [Min(1)] public int playerAttack = 2;
@@ -59,6 +63,13 @@ namespace ProjectC.Gameplay
         [Tooltip("자동 검증용: Play 시작 후 첫 하행 계단을 타고 B2로 이동한다.")]
         public bool autoDescendOnStart;
 
+        [Header("플레이어 가림 처리")]
+        [Tooltip("플레이어와 화면상 겹치는 앞쪽 타일·벽을 자동으로 투명하게 만든다.")]
+        public bool fadePlayerOccluders = true;
+        [Range(0.12f, 0.7f)] public float playerOccluderAlpha = 0.3f;
+        [Range(2f, 16f)] public float playerOccluderFadeSpeed = 8f;
+        [Range(0f, 0.25f)] public float playerOcclusionPadding = 0.06f;
+
         [Header("4방향 시점")]
         public bool showRearWalls = true;
 
@@ -66,10 +77,11 @@ namespace ProjectC.Gameplay
         public IsoVisualCatalog visualCatalog;
 
         [Header("팔레트")]
-        public Color32 floorTop = new Color32(67, 77, 84, 255);
-        public Color32 raisedTop = new Color32(111, 94, 69, 255);
-        public Color32 lowerTop = new Color32(36, 52, 58, 255);
-        public Color32 outline = new Color32(18, 23, 27, 255);
+        public Color32 floorTop = new Color32(72, 78, 82, 255);
+        public Color32 raisedTop = new Color32(102, 88, 70, 255);
+        public Color32 lowerTop = new Color32(43, 55, 59, 255);
+        public Color32 tileSeam = new Color32(31, 38, 42, 255);
+        public Color32 outline = new Color32(12, 16, 20, 255);
         public Color32 accent = new Color32(84, 211, 197, 255);
 
         public GridPos PlayerPos => _playerPos;
@@ -126,6 +138,8 @@ namespace ProjectC.Gameplay
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
             new Dictionary<GridPos, SpriteRenderer>();
+        private readonly Dictionary<SpriteRenderer, GridPos> _rearWallRenderers =
+            new Dictionary<SpriteRenderer, GridPos>();
         private readonly Dictionary<string, Sprite> _spriteCache = new Dictionary<string, Sprite>();
         private readonly HashSet<GridPos> _visibleTiles = new HashSet<GridPos>();
         private readonly HashSet<GridPos> _exploredTiles = new HashSet<GridPos>();
@@ -241,7 +255,9 @@ namespace ProjectC.Gameplay
 
                 var renderer = tile.AddComponent<SpriteRenderer>();
                 renderer.sprite = GetTileSprite(kind, pos);
-                renderer.sortingOrder = _grid.iso.SortingOrder(pos, TileSortOffset(kind));
+                renderer.sortingOrder = _grid.iso.SortingOrder(
+                    TileVisualSortingPos(pos, kind),
+                    TileSortOffset(kind));
                 _tileRenderers.Add(pos, renderer);
             }
 
@@ -318,6 +334,8 @@ namespace ProjectC.Gameplay
                 float footprintPulse = 1f + Mathf.Sin(Time.time * 5f) * 0.04f;
                 _playerFootprint.localScale = new Vector3(footprintPulse, footprintPulse, 1f);
             }
+
+            UpdatePlayerOccluders(Time.deltaTime);
         }
 
         private GameObject CreateStandingSprite(string objectName, Sprite sprite, GridPos pos, out SpriteRenderer renderer)
@@ -365,18 +383,34 @@ namespace ProjectC.Gameplay
                 : $"RANGED: 사거리 {rangedAttackRange}, 문/벽에 차단");
         }
 
+        public void ApplyVisualSettings()
+        {
+            exploredAlpha = Mathf.Clamp(exploredAlpha, 0.05f, 0.4f);
+            verticalPreviewAlpha = Mathf.Clamp(verticalPreviewAlpha, 0.1f, 0.8f);
+            playerOccluderAlpha = Mathf.Clamp(playerOccluderAlpha, 0.12f, 0.7f);
+
+            if (_dungeon == null) return;
+            RefreshFloorVisibility();
+            UpdatePlayerOccluders(0f, instant: true);
+        }
+
         private void ApplyViewToVisuals()
         {
             foreach (var pair in _tileRenderers)
             {
                 pair.Value.transform.position = VisualPosition(pair.Key);
                 TileKind kind = _grid.Map.Get(pair.Key).kind;
-                pair.Value.sortingOrder = _grid.iso.SortingOrder(pair.Key, TileSortOffset(kind));
+                pair.Value.sortingOrder = _grid.iso.SortingOrder(
+                    TileVisualSortingPos(pair.Key, kind),
+                    TileSortOffset(kind));
                 pair.Value.sprite = GetTileSprite(kind, pair.Key);
             }
 
             if (_playerSorting != null)
+            {
                 _playerSorting.Apply();
+                ApplyPlayerVisualSorting(_playerSorting.Pos);
+            }
             if (_goblinRenderer != null)
             {
                 _goblin.transform.position = _grid.GridToWorld(_goblinState.Position);
@@ -721,7 +755,7 @@ namespace ProjectC.Gameplay
 
                 Vector3 start = _player.transform.position;
                 Vector3 end = _grid.GridToWorld(next);
-                _playerRenderer.sortingOrder = _grid.iso.SortingOrder(next, 1);
+                ApplyPlayerVisualSorting(next);
 
                 bool changesDungeonFloor = !_dungeon.Height.SameFloor(_playerState.Position, next);
                 if (changesDungeonFloor)
@@ -877,17 +911,13 @@ namespace ProjectC.Gameplay
 
             foreach (var pair in _tileRenderers)
             {
-                int floor = _dungeon.Height.FloorIndex(pair.Key.elevation);
-                bool active = floor == _activeFloorIndex;
                 bool debugVisible = viewMode == DungeonViewMode.DebugAll;
                 bool visible = _visibleTiles.Contains(pair.Key);
                 bool explored = _exploredTiles.Contains(pair.Key);
                 bool vertical = _verticalPreviewTiles.Contains(pair.Key);
                 pair.Value.sprite = GetTileSprite(_grid.Map.Get(pair.Key).kind, pair.Key);
                 pair.Value.enabled = debugVisible || visible || explored || vertical;
-                float alpha = debugVisible
-                    ? active ? 1f : debugAdjacentAlpha
-                    : visible ? 1f : vertical ? verticalPreviewAlpha : exploredAlpha;
+                float alpha = VisibilityAlpha(pair.Key);
                 pair.Value.color = new Color(1f, 1f, 1f, alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
@@ -1105,6 +1135,8 @@ namespace ProjectC.Gameplay
         {
             if (_visualRoot == null) return;
 
+            _rearWallRenderers.Clear();
+
             if (_wallRoot != null)
             {
                 if (Application.isPlaying) Destroy(_wallRoot.gameObject);
@@ -1150,10 +1182,70 @@ namespace ProjectC.Gameplay
 
             var renderer = wall.AddComponent<SpriteRenderer>();
             bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % 5 == 0;
-            renderer.sprite = GetWallSprite(torch);
-            renderer.flipX = flip;
+            Sprite mapped = visualCatalog != null
+                ? visualCatalog.RearWallFor(torch, risesRight: flip)
+                : null;
+            renderer.sprite = mapped != null ? mapped : GetWallSprite(torch);
+            renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             renderer.color = new Color(1f, 1f, 1f, VisibilityAlpha(pos));
+            _rearWallRenderers.Add(renderer, pos);
+        }
+
+        private void UpdatePlayerOccluders(float deltaTime, bool instant = false)
+        {
+            if (_playerRenderer == null || _dungeon == null) return;
+
+            Bounds playerBounds = _playerRenderer.bounds;
+            playerBounds.Expand(new Vector3(
+                playerOcclusionPadding * 2f,
+                playerOcclusionPadding * 2f,
+                0f));
+            int playerSortingOrder = _playerRenderer.sortingOrder;
+
+            foreach (var pair in _tileRenderers)
+            {
+                SpriteRenderer renderer = pair.Value;
+                float baseAlpha = VisibilityAlpha(pair.Key);
+                bool occludes = fadePlayerOccluders && renderer.enabled &&
+                                SpriteOcclusion.ShouldFade(
+                                    renderer.bounds,
+                                    playerBounds,
+                                    renderer.sortingOrder,
+                                    playerSortingOrder);
+                ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
+            }
+
+            foreach (var pair in _rearWallRenderers)
+            {
+                SpriteRenderer renderer = pair.Key;
+                if (renderer == null) continue;
+                float baseAlpha = VisibilityAlpha(pair.Value);
+                bool occludes = fadePlayerOccluders && renderer.enabled &&
+                                SpriteOcclusion.ShouldFade(
+                                    renderer.bounds,
+                                    playerBounds,
+                                    renderer.sortingOrder,
+                                    playerSortingOrder);
+                ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
+            }
+        }
+
+        private void ApplyOcclusionAlpha(
+            SpriteRenderer renderer,
+            float baseAlpha,
+            bool occludes,
+            float deltaTime,
+            bool instant)
+        {
+            float targetAlpha = occludes
+                ? Mathf.Min(baseAlpha, playerOccluderAlpha)
+                : baseAlpha;
+            Color color = renderer.color;
+            color.a = instant
+                ? targetAlpha
+                : Mathf.MoveTowards(color.a, targetAlpha, playerOccluderFadeSpeed * deltaTime);
+            renderer.color = color;
         }
 
         private bool IsFrontEdge(GridPos pos)
@@ -1239,8 +1331,28 @@ namespace ProjectC.Gameplay
             return exploredAlpha;
         }
 
-        private static int TileSortOffset(TileKind kind) =>
-            kind == TileKind.DoorClosed || kind == TileKind.DoorOpen ? 0 : -2;
+        private GridPos TileVisualSortingPos(GridPos pos, TileKind kind)
+        {
+            return kind == TileKind.Stairs &&
+                   StairTopology.TryGetHigherLanding(_grid.Map, pos, out GridPos landing)
+                ? landing
+                : pos;
+        }
+
+        private void ApplyPlayerVisualSorting(GridPos pos)
+        {
+            if (_playerRenderer == null) return;
+            GridPos sortingPos = StairTopology.TryGetHigherLanding(_grid.Map, pos, out GridPos landing)
+                ? landing
+                : pos;
+            _playerRenderer.sortingOrder = _grid.iso.SortingOrder(sortingPos, 1);
+        }
+
+        private static int TileSortOffset(TileKind kind)
+        {
+            if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen) return 0;
+            return kind == TileKind.Stairs ? -1 : -2;
+        }
 
         private static float SmoothStep(float t) => t * t * (3f - 2f * t);
 
@@ -1249,7 +1361,9 @@ namespace ProjectC.Gameplay
             if (camera == null) return;
 
             camera.orthographic = true;
-            camera.orthographicSize = viewMode == DungeonViewMode.DebugAll ? 8.8f : 6.8f;
+            camera.orthographicSize = viewMode == DungeonViewMode.DebugAll
+                ? debugCameraSize
+                : playCameraSize;
             if (viewMode == DungeonViewMode.Play && _playerState != null)
             {
                 Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
@@ -1276,53 +1390,53 @@ namespace ProjectC.Gameplay
 
         private Sprite GetTileSprite(TileKind kind, GridPos pos)
         {
-            if (visualCatalog != null)
+            if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen)
             {
-                Sprite mapped = visualCatalog.TileFor(kind, pos.elevation);
-                if (mapped != null) return mapped;
+                if (visualCatalog != null)
+                {
+                    Sprite mapped = visualCatalog.DoorFor(kind, DoorPlaneRisesRight(pos));
+                    if (mapped != null) return mapped;
+                }
+
+                return GetDoorSprite(kind, pos);
             }
 
-            if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen)
-                return GetDoorSprite(kind, pos);
+            if (kind == TileKind.Stairs ||
+                kind == TileKind.StairsUp ||
+                kind == TileKind.StairsDown)
+            {
+                if (visualCatalog != null)
+                {
+                    Sprite mapped = visualCatalog.StairsFor(kind, StairPlaneRisesRight(pos));
+                    if (mapped != null) return mapped;
+                }
+            }
 
             int floorIndex = _dungeon != null ? _dungeon.Height.FloorIndex(pos.elevation) : 0;
             int localHeight = _dungeon != null ? _dungeon.Height.LocalHeight(pos.elevation) : pos.elevation;
             bool extruded = localHeight > 0 || IsFrontEdge(pos);
             int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + floorIndex * 13) % 4;
-            string key = $"tile-{kind}-f{floorIndex}-h{localHeight}-v{variant}-x{extruded}";
-            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
-
             Color32 baseColor = localHeight > 0
                 ? raisedTop
                 : floorIndex < 0 ? Shift(lowerTop, floorIndex * 5) : floorTop;
+
+            if (visualCatalog != null)
+            {
+                Sprite mapped = visualCatalog.TileFor(kind, pos.elevation);
+                if (mapped != null)
+                    return extruded ? GetExtrudedMappedTileSprite(mapped, baseColor) : mapped;
+            }
+
+            string key = $"tile-{kind}-f{floorIndex}-h{localHeight}-v{variant}-x{extruded}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
             int textureHeight = extruded ? 48 : TilePixelHeight;
             int topOffset = extruded ? 16 : 0;
             var texture = NewTexture(TilePixelWidth, textureHeight);
             Color32 transparent = new Color32(0, 0, 0, 0);
 
             if (extruded)
-            {
-                Color32 leftFace = Shift(baseColor, -24);
-                Color32 rightFace = Shift(baseColor, -38);
-                for (int py = 0; py < 32; py++)
-                {
-                    int leftMin = py < 16 ? 32 - py * 2 : 0;
-                    int leftMax = py < 16 ? 32 : 64 - py * 2;
-                    int rightMin = py < 16 ? 32 : py * 2;
-                    int rightMax = py < 16 ? 32 + py * 2 : 63;
-
-                    for (int px = Mathf.Max(0, leftMin); px <= Mathf.Min(31, leftMax); px++)
-                    {
-                        bool mortar = py % 7 == 0 || (px + (py / 7) * 8) % 19 == 0;
-                        texture.SetPixel(px, py, mortar ? outline : leftFace);
-                    }
-                    for (int px = Mathf.Max(32, rightMin); px <= Mathf.Min(63, rightMax); px++)
-                    {
-                        bool mortar = py % 7 == 0 || (px - (py / 7) * 7) % 21 == 0;
-                        texture.SetPixel(px, py, mortar ? outline : rightFace);
-                    }
-                }
-            }
+                DrawExtrudedSides(texture, baseColor);
 
             for (int py = 0; py < TilePixelHeight; py++)
             for (int px = 0; px < TilePixelWidth; px++)
@@ -1337,7 +1451,7 @@ namespace ProjectC.Gameplay
 
                 bool border = diamond > 0.88f;
                 int noise = ((px / 7) + (py / 4) * 3 + variant) % 4;
-                Color32 color = border ? outline : Shift(baseColor, noise == 0 ? 5 : noise == 1 ? 0 : -4);
+                Color32 color = border ? tileSeam : Shift(baseColor, noise == 0 ? 5 : noise == 1 ? 0 : -4);
 
                 bool stoneJoint = diamond < 0.72f &&
                                   ((px + py * 3 + variant * 11) % 29 == 0 ||
@@ -1385,6 +1499,64 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        private Sprite GetExtrudedMappedTileSprite(Sprite topSprite, Color32 baseColor)
+        {
+            Texture2D source = topSprite.texture;
+            Rect sourceRect = topSprite.rect;
+            if (source == null || !source.isReadable ||
+                Mathf.RoundToInt(sourceRect.width) != TilePixelWidth ||
+                Mathf.RoundToInt(sourceRect.height) != TilePixelHeight)
+                return topSprite;
+
+            string key = $"mapped-extruded-{topSprite.name}-{baseColor.r}-{baseColor.g}-{baseColor.b}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, 48);
+            DrawExtrudedSides(texture, baseColor);
+
+            Color[] pixels = source.GetPixels(
+                Mathf.RoundToInt(sourceRect.x),
+                Mathf.RoundToInt(sourceRect.y),
+                TilePixelWidth,
+                TilePixelHeight);
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                Color pixel = pixels[py * TilePixelWidth + px];
+                if (pixel.a > 0f)
+                    texture.SetPixel(px, py + 16, pixel);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 32f / 48f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private void DrawExtrudedSides(Texture2D texture, Color32 baseColor)
+        {
+            Color32 leftFace = Shift(baseColor, -24);
+            Color32 rightFace = Shift(baseColor, -38);
+            for (int py = 0; py < 32; py++)
+            {
+                int leftMin = py < 16 ? 32 - py * 2 : 0;
+                int leftMax = py < 16 ? 32 : 64 - py * 2;
+                int rightMin = py < 16 ? 32 : py * 2;
+                int rightMax = py < 16 ? 32 + py * 2 : 63;
+
+                for (int px = Mathf.Max(0, leftMin); px <= Mathf.Min(31, leftMax); px++)
+                {
+                    bool mortar = py % 7 == 0 || (px + (py / 7) * 8) % 19 == 0;
+                    texture.SetPixel(px, py, mortar ? outline : leftFace);
+                }
+                for (int px = Mathf.Max(32, rightMin); px <= Mathf.Min(63, rightMax); px++)
+                {
+                    bool mortar = py % 7 == 0 || (px - (py / 7) * 7) % 21 == 0;
+                    texture.SetPixel(px, py, mortar ? outline : rightFace);
+                }
+            }
+        }
+
         private Sprite GetDoorSprite(TileKind kind, GridPos pos)
         {
             int floorIndex = _dungeon != null ? _dungeon.Height.FloorIndex(pos.elevation) : 0;
@@ -1404,7 +1576,7 @@ namespace ProjectC.Gameplay
             {
                 float diamond = Mathf.Abs((px - 31.5f) / 32f) + Mathf.Abs((py - 15.5f) / 16f);
                 if (diamond > 1f) continue;
-                texture.SetPixel(px, py, diamond > 0.88f ? outline : baseColor);
+                texture.SetPixel(px, py, diamond > 0.88f ? tileSeam : baseColor);
             }
 
             Color32 stone = new Color32(70, 76, 77, 255);
@@ -1466,8 +1638,21 @@ namespace ProjectC.Gameplay
         {
             bool passageNorthSouth = HasDoorSide(pos.North) && HasDoorSide(pos.South);
             Vector2Int planeAxis = passageNorthSouth ? Vector2Int.right : Vector2Int.up;
+            return AxisRisesRight(pos, planeAxis);
+        }
+
+        private bool StairPlaneRisesRight(GridPos pos)
+        {
+            if (StairTopology.TryGetHigherLanding(_grid.Map, pos, out GridPos landing))
+                return _grid.iso.ProjectsToScreenRight(pos, landing);
+
+            return AxisRisesRight(pos, Vector2Int.up);
+        }
+
+        private bool AxisRisesRight(GridPos pos, Vector2Int worldAxis)
+        {
             Vector3 center = _grid.GridToWorld(pos);
-            Vector3 alongPlane = _grid.GridToWorld(pos.Offset(planeAxis.x, planeAxis.y)) - center;
+            Vector3 alongPlane = _grid.GridToWorld(pos.Offset(worldAxis.x, worldAxis.y)) - center;
             return alongPlane.x * alongPlane.y >= 0f;
         }
 
@@ -1486,8 +1671,8 @@ namespace ProjectC.Gameplay
             const int height = 56;
             const int wallHeight = 40;
             var texture = NewTexture(width, height);
-            Color32 stone = new Color32(49, 57, 63, 255);
-            Color32 stoneLight = new Color32(72, 79, 82, 255);
+            Color32 stone = new Color32(46, 52, 56, 255);
+            Color32 stoneLight = new Color32(63, 68, 70, 255);
             Color32 stoneDark = new Color32(30, 36, 41, 255);
 
             // 바닥 모서리와 같은 2:1 경사를 가진 평행사변형 벽 패널.

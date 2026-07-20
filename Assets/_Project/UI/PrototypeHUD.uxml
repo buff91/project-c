@@ -2,28 +2,129 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:Style src="PrototypeHUD.uss" />
     <ui:VisualElement name="hud-root" class="hud-root">
-        <ui:VisualElement class="view-panel">
-            <ui:Label text="ROTATE VIEW" class="panel-title" />
-            <ui:VisualElement class="view-row">
-                <ui:Button name="rotate-left" text="◀" class="rotate-button" tooltip="왼쪽 회전 (Q)" />
-                <ui:VisualElement class="view-readout">
-                    <ui:Label name="view-label" text="VIEW 1/4" class="view-label" />
-                    <ui:Label text="Q  /  E" class="key-hint" />
+        <ui:VisualElement class="vitals">
+            <ui:VisualElement class="orb-row">
+                <ui:VisualElement class="orb-frame hp-orb">
+                    <ui:VisualElement class="orb-liquid hp-liquid" />
+                    <ui:VisualElement class="orb-shine" />
                 </ui:VisualElement>
+                <ui:VisualElement class="orb-copy">
+                    <ui:Label text="체력" class="orb-caption" />
+                    <ui:Label text="28/34" class="orb-value hp-value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="orb-row">
+                <ui:VisualElement class="orb-frame mana-orb">
+                    <ui:VisualElement class="orb-liquid mana-liquid" />
+                    <ui:VisualElement class="orb-shine" />
+                </ui:VisualElement>
+                <ui:VisualElement class="orb-copy">
+                    <ui:Label text="마나" class="orb-caption" />
+                    <ui:Label text="6/12" class="orb-value mana-value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="artifact-panel minimap-panel">
+            <ui:VisualElement class="minimap-header">
+                <ui:Label text="DUNGEON MAP" class="micro-caption" />
+                <ui:Button name="settings-button" text="SET" class="settings-button" tooltip="화면 설정" />
+            </ui:VisualElement>
+            <ui:VisualElement class="minimap-grid">
+                <ui:VisualElement class="map-room map-room-a" />
+                <ui:VisualElement class="map-room map-room-b" />
+                <ui:VisualElement class="map-room map-room-c" />
+                <ui:VisualElement class="map-player" />
+            </ui:VisualElement>
+            <ui:VisualElement class="view-controls">
+                <ui:Button name="rotate-left" text="◀" class="rotate-button" tooltip="왼쪽 회전 (Q)" />
+                <ui:Label name="view-label" text="VIEW 1/4" class="view-label" />
                 <ui:Button name="rotate-right" text="▶" class="rotate-button" tooltip="오른쪽 회전 (E)" />
             </ui:VisualElement>
-            <ui:Label name="floor-label" text="▲ B1   [B2]   ▼ B3" class="floor-label" />
-            <ui:Button name="mode-button" text="MODE: PLAY FOV" class="mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환" />
         </ui:VisualElement>
-        <ui:VisualElement class="player-panel">
-            <ui:Label text="PLAYER LOCATION" class="panel-title" />
-            <ui:Label name="location-label" text="B2 · HEIGHT 0 · (0,0)" class="location-label" />
-            <ui:Button name="combat-button" text="ATTACK: MELEE" class="combat-button" tooltip="근접 / 원거리 공격 전환" />
-            <ui:Label name="status-label" text="READY" class="status-label" />
+
+        <ui:VisualElement class="artifact-panel depth-panel">
+            <ui:Label name="depth-label" text="B2" class="depth-value" />
+            <ui:Label text="현재 심도" class="micro-caption depth-caption" />
+            <ui:Label name="location-label" text="HEIGHT 0 · (0,0)" class="elevation-label" />
+            <ui:Label name="floor-label" text="▲ B1 · ▼ B3" class="floor-label" />
         </ui:VisualElement>
-        <ui:VisualElement class="vertical-panel">
-            <ui:Label text="VERTICAL ROUTES" class="vertical-title" />
-            <ui:Label name="vertical-hint-label" text="EXPLORE TO FIND VERTICAL ROUTES" class="vertical-hint-label" />
+
+        <ui:VisualElement class="status-zone">
+            <ui:VisualElement class="status-chip feedback-chip">
+                <ui:VisualElement class="chip-dot feedback-dot" />
+                <ui:Label name="status-label" text="READY" class="chip-label" />
+            </ui:VisualElement>
+            <ui:VisualElement class="status-chip route-chip">
+                <ui:VisualElement class="chip-dot route-dot" />
+                <ui:Label name="vertical-hint-label" text="EXPLORE TO FIND VERTICAL ROUTES" class="chip-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="hud-bottom">
+            <ui:VisualElement class="resources">
+                <ui:VisualElement class="artifact-panel resource-pill">
+                    <ui:VisualElement class="resource-icon gold-icon" />
+                    <ui:Label text="142" class="resource-value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="artifact-panel resource-pill">
+                    <ui:VisualElement class="resource-icon herb-icon" />
+                    <ui:Label text="7" class="resource-value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="action-cluster">
+                <ui:Button name="mode-button" text="MODE: PLAY FOV" class="mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환" />
+                <ui:Button name="combat-button" text="ATTACK: MELEE" class="combat-button" tooltip="근접 / 원거리 공격 전환" />
+                <ui:VisualElement class="artifact-panel turn-pill">
+                    <ui:VisualElement class="turn-dot" />
+                    <ui:Label text="내 턴" class="turn-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="settings-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="DISPLAY SETTINGS" class="settings-title" />
+                        <ui:Label text="던전 가독성" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="settings-close" text="×" class="settings-close" tooltip="설정 닫기" />
+                </ui:VisualElement>
+
+                <ui:Toggle name="occlusion-toggle" label="플레이어 가림 자동 투명화" value="true" class="settings-toggle" />
+                <ui:VisualElement class="setting-row">
+                    <ui:VisualElement class="setting-copy">
+                        <ui:Label text="가림 오브젝트 투명도" class="setting-label" />
+                        <ui:Label text="낮을수록 플레이어가 선명하게 보입니다" class="setting-help" />
+                    </ui:VisualElement>
+                    <ui:Slider name="occlusion-alpha" low-value="0.12" high-value="0.7" value="0.3" class="setting-slider" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row">
+                    <ui:VisualElement class="setting-copy">
+                        <ui:Label text="인접 층 밝기" class="setting-label" />
+                        <ui:Label text="계단과 낙하 연결부 미리보기" class="setting-help" />
+                    </ui:VisualElement>
+                    <ui:Slider name="vertical-alpha" low-value="0.1" high-value="0.8" value="0.54" class="setting-slider" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row">
+                    <ui:VisualElement class="setting-copy">
+                        <ui:Label text="탐색 지역 밝기" class="setting-label" />
+                        <ui:Label text="현재 시야 밖의 방문한 타일" class="setting-help" />
+                    </ui:VisualElement>
+                    <ui:Slider name="explored-alpha" low-value="0.05" high-value="0.4" value="0.16" class="setting-slider" />
+                </ui:VisualElement>
+
+                <ui:Toggle name="rear-walls-toggle" label="방향별 외곽 벽 표시" value="true" class="settings-toggle" />
+
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="settings-reset" text="기본값" class="settings-reset" />
+                    <ui:Button name="settings-done" text="적용 완료" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
