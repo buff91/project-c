@@ -48,6 +48,8 @@ namespace ProjectC.Gameplay
         [Min(1)] public int playerAttack = 2;
         [Min(1)] public int goblinMaxHp = 5;
         [Min(1)] public int goblinAttack = 1;
+        [Tooltip("서로 보이는 상태에서 이 거리(체비셰프) 안이면 추격을 시작한다.")]
+        [Range(3, 10)] public int goblinAggroRange = 6;
         [Range(2, 8)] public int rangedAttackRange = 6;
         public CombatActionMode combatMode = CombatActionMode.Melee;
 
@@ -325,6 +327,8 @@ namespace ProjectC.Gameplay
                 : GetBarrelSprite();
 
             // 생성기가 배치한 스폰대로 모든 층의 적과 아이템을 만든다.
+            var goblinArchetype = new MonsterArchetype(
+                "Goblin", goblinMaxHp, goblinAttack, goblinAggroRange, patrolRadius: 2);
             foreach (DungeonFloorInfo floor in _dungeon.Floors)
             {
                 foreach (GridPos spawn in floor.EnemySpawns)
@@ -335,7 +339,9 @@ namespace ProjectC.Gameplay
                             $"Goblin {FloorLabel(floor.FloorIndex)}-{_enemies.Count + 1}",
                             spawn,
                             goblinMaxHp,
-                            goblinAttack)
+                            goblinAttack),
+                        Brain = new MonsterBrain(
+                            goblinArchetype, spawn, dungeonSeed * 31 + _enemies.Count)
                     };
                     enemy.Root = CreateStandingSprite(enemy.State.Id, goblinSprite, spawn, out SpriteRenderer renderer);
                     enemy.Renderer = renderer;
@@ -516,11 +522,7 @@ namespace ProjectC.Gameplay
                 ApplyPlayerVisualSorting(_playerSorting.Pos);
             }
             foreach (EnemyAgent enemy in _enemies)
-            {
-                if (enemy.Root == null) continue;
-                enemy.Root.transform.position = _grid.GridToWorld(enemy.State.Position);
-                enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(enemy.State.Position, 1);
-            }
+                ApplyEnemyVisuals(enemy);
             foreach (ItemAgent item in _items)
             {
                 if (item.Root == null) continue;
@@ -1037,32 +1039,6 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private IEnumerator ResolveEnemyPhase()
-        {
-            if (!_turns.TryBeginEnemyPhase()) yield break;
-
-            // 살아있는 적 전원이 한 번씩 행동한다. 이동 AI는 M2에서 붙이고, 지금은 인접 공격만.
-            foreach (EnemyAgent enemy in _enemies)
-            {
-                if (!_playerState.IsAlive) break;
-                if (!enemy.State.IsAlive) continue;
-                if (!CombatRules.TryMelee(enemy.State, _playerState, out int damage)) continue;
-
-                UpdateHealthBar(_playerHpFill, _playerState);
-                Debug.Log($"[Turn {_turns.TurnNumber}] {enemy.State.Id}가 플레이어에게 {damage} 피해. " +
-                          $"HP {_playerState.Hp}/{_playerState.MaxHp}");
-                yield return FlashDamage(_playerRenderer);
-
-                if (!_playerState.IsAlive)
-                {
-                    _playerRenderer.color = new Color32(120, 42, 42, 220);
-                    Debug.Log("[Combat] 플레이어 사망 — 프로토타입을 다시 실행해 재시작");
-                }
-            }
-
-            _turns.TryCompleteEnemyPhase();
-        }
-
         private IEnumerator AnimateFloorTransition(Vector3 destination)
         {
             Color original = _playerRenderer.color;
@@ -1217,10 +1193,11 @@ namespace ProjectC.Gameplay
             }
         }
 
-        /// <summary>적 하나의 로직 상태와 씬 오브젝트 묶음. (M2에서 AI 상태머신이 여기에 붙는다)</summary>
+        /// <summary>적 하나의 로직 상태·AI·씬 오브젝트 묶음.</summary>
         private sealed class EnemyAgent
         {
             public CombatantState State;
+            public MonsterBrain Brain;
             public GameObject Root;
             public SpriteRenderer Renderer;
             public Transform HpFill;
