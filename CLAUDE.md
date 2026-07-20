@@ -40,11 +40,15 @@
 
 ```
 Assets/_Project/
-  Scripts/Core/       # 순수 C# 로직: GridPos, TileData, GridMap, IsoGrid
-  Scripts/Gameplay/   # MonoBehaviour: GridManager, IsoTapInput, IsoGridGizmo, GridSortingObject, DOTweenBootstrap
-  Tests/EditMode/     # EditMode 테스트
+  Scripts/Core/       # 순수 C# 로직 — 격자(GridPos/TileData/GridMap/IsoGrid), 시야(GridVisibility),
+                      # 경로(GridPathfinder), 절차 생성(DungeonLayout), 전투/상태(CombatantState/StatusEffects),
+                      # 낙하·넉백(FallRules), AI(MonsterBrain/MonsterRoster/MonsterActivation), 아이템(Items)
+  Scripts/Gameplay/   # MonoBehaviour — GridManager, IsoTapInput, IsoVisualCatalog, PrototypeHudController,
+                      # IsoPrototypeDemo(partial 5개: 본체/Enemies/Falls/Visibility/Sprites)
+  Tests/EditMode/     # EditMode 테스트 (규칙별 *Tests.cs)
+  UI/                 # PrototypeHUD.uxml/.uss (UI Toolkit 검증 HUD)
   M0_SETUP.md         # 씬 연결 가이드
-docs/                 # ROADMAP, SYSTEMS (에이전트 참조 문서)
+docs/                 # ROADMAP, SYSTEMS, UI_ARCHITECTURE (에이전트 참조 문서)
 GDD.md                # 게임 기획서 (SSOT)
 ```
 

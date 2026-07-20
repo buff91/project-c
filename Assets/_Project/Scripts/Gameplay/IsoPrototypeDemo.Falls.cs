@@ -273,8 +273,7 @@ namespace ProjectC.Gameplay
         {
             yield return MovePlayerPath(path);
 
-            if (_playerState.IsAlive && !_barrelExploded &&
-                _playerPos.elevation == _barrelPos.elevation && _playerPos.ManhattanTo(_barrelPos) == 1)
+            if (_playerState.IsAlive && !_barrelExploded && IsPlayerAdjacentTo(_barrelPos))
             {
                 KnockbackOutcome outcome = KnockbackRules.Resolve(
                     _grid.Map, _playerPos, _barrelPos,

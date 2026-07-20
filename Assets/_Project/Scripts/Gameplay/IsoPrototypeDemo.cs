@@ -550,38 +550,22 @@ namespace ProjectC.Gameplay
 
             if (_bombAiming)
             {
-                if (!BombRules.CanThrow(_grid.Map, _playerPos, target, bombThrowRange))
-                {
-                    bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, target);
-                    InteractionFeedback?.Invoke(blocked
-                        ? "THROW BLOCKED"
-                        : $"OUT OF THROW RANGE · MAX {bombThrowRange}");
-                    return;
-                }
-
-                PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ThrowBomb(target, _bombAimKind)));
+                HandleBombAimTap(target);
                 return;
             }
 
             TileData targetTile = _grid.Map.Get(target);
             if (targetTile != null && targetTile.kind == TileKind.Hole)
             {
-                List<GridPos> dropPath = FindPathToAdjacent(target);
-                if (dropPath.Count == 0) return;
-
-                PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndDrop(dropPath, target)));
+                if (TryFindApproach(target, out List<GridPos> dropPath))
+                    StartPlayerAction(target, ApproachAndDrop(dropPath, target));
                 return;
             }
 
             if (targetTile != null && (targetTile.CanOpen || targetTile.CanClose))
             {
-                List<GridPos> doorPath = FindPathToAdjacent(target);
-                if (doorPath.Count == 0) return;
-
-                PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndToggleDoor(doorPath, target)));
+                if (TryFindApproach(target, out List<GridPos> doorPath))
+                    StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
                 return;
             }
 
@@ -589,11 +573,8 @@ namespace ProjectC.Gameplay
             if (!_barrelExploded && target == _barrelPos &&
                 _dungeon.Height.FloorIndex(target.elevation) == _activeFloorIndex)
             {
-                List<GridPos> pushPath = FindPathToAdjacent(_barrelPos);
-                if (pushPath.Count == 0) return;
-
-                PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndPushBarrel(pushPath)));
+                if (TryFindApproach(_barrelPos, out List<GridPos> pushPath))
+                    StartPlayerAction(target, ApproachAndPushBarrel(pushPath));
                 return;
             }
 
@@ -603,17 +584,9 @@ namespace ProjectC.Gameplay
                 (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target)))
             {
                 if (combatMode == CombatActionMode.Ranged)
-                {
-                    PositionSelection(target);
-                    _moveRoutine = StartCoroutine(RunPlayerAction(RangedAttack(tappedEnemy)));
-                    return;
-                }
-
-                List<GridPos> attackPath = FindPathToAdjacent(tappedEnemy.State.Position);
-                if (attackPath.Count == 0) return;
-
-                PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ApproachAndAttack(attackPath, tappedEnemy)));
+                    StartPlayerAction(target, RangedAttack(tappedEnemy));
+                else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
+                    StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
                 return;
             }
 
@@ -624,16 +597,41 @@ namespace ProjectC.Gameplay
             List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, target);
             if (path.Count == 0) return;
 
-            TileKind targetKind = _grid.Map.Get(target).kind;
-            if (targetKind == TileKind.StairsUp || targetKind == TileKind.StairsDown)
+            if (targetTile.kind == TileKind.StairsUp || targetTile.kind == TileKind.StairsDown)
             {
                 IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(target);
                 if (links.Count > 0)
                     path.Add(links[0]);
             }
 
+            StartPlayerAction(target, MovePlayerPath(path));
+        }
+
+        private void HandleBombAimTap(GridPos target)
+        {
+            if (!BombRules.CanThrow(_grid.Map, _playerPos, target, bombThrowRange))
+            {
+                bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, target);
+                InteractionFeedback?.Invoke(blocked
+                    ? "THROW BLOCKED"
+                    : $"OUT OF THROW RANGE · MAX {bombThrowRange}");
+                return;
+            }
+
+            StartPlayerAction(target, ThrowBomb(target, _bombAimKind));
+        }
+
+        /// <summary>선택 마커를 옮기고 행동 코루틴을 잠금 래퍼로 시작한다. (탭 분기 공통 꼬리)</summary>
+        private void StartPlayerAction(GridPos target, IEnumerator action)
+        {
             PositionSelection(target);
-            _moveRoutine = StartCoroutine(RunPlayerAction(MovePlayerPath(path)));
+            _moveRoutine = StartCoroutine(RunPlayerAction(action));
+        }
+
+        private bool TryFindApproach(GridPos target, out List<GridPos> path)
+        {
+            path = FindPathToAdjacent(target);
+            return path.Count > 0;
         }
 
         /// <summary>
@@ -776,8 +774,7 @@ namespace ProjectC.Gameplay
             yield return MovePlayerPath(path);
 
             TileData tile = _grid.Map.Get(door);
-            if (_playerPos.elevation == door.elevation && _playerPos.ManhattanTo(door) == 1 &&
-                tile != null && (tile.CanOpen || tile.CanClose))
+            if (IsPlayerAdjacentTo(door) && tile != null && (tile.CanOpen || tile.CanClose))
             {
                 TileKind nextKind = tile.CanOpen ? TileKind.DoorOpen : TileKind.DoorClosed;
                 yield return SetDoorState(door, nextKind);
@@ -795,8 +792,7 @@ namespace ProjectC.Gameplay
 
             // 의도적 낙하도 TryFall 하나로 수렴 — 낙뎀을 감수하는 하강 수단이다. (GDD §5.3)
             GridPos? landing = _grid.Map.FindLandingBelow(hole, BottomElevation);
-            if (_playerState.IsAlive && landing.HasValue &&
-                _playerPos.elevation == hole.elevation && _playerPos.ManhattanTo(hole) == 1)
+            if (_playerState.IsAlive && landing.HasValue && IsPlayerAdjacentTo(hole))
             {
                 yield return FallPlayer(hole, "DROP");
                 if (_playerState.IsAlive)
@@ -1134,6 +1130,10 @@ namespace ProjectC.Gameplay
         }
 
         private bool IsLivingEnemyAt(GridPos pos) => FindLivingEnemyAt(pos) != null;
+
+        /// <summary>접근 후 실행 직전 재검증: 같은 elevation의 상하좌우 인접인가.</summary>
+        private bool IsPlayerAdjacentTo(GridPos pos) =>
+            _playerPos.elevation == pos.elevation && _playerPos.ManhattanTo(pos) == 1;
 
         /// <summary>플레이어가 밟은 칸의 아이템을 줍는다.</summary>
         private void TryCollectItemAt(GridPos pos)
