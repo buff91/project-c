@@ -1,0 +1,253 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using ProjectC.Core;
+
+namespace ProjectC.Tests
+{
+    public class GridPathfinderOptionTests
+    {
+        [Test]
+        public void IsBlocked_RoutesAroundOccupiedTile()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 4; x++)
+            for (int y = 0; y < 2; y++)
+                map.Set(new GridPos(x, y, 0), TileKind.Floor);
+            var occupied = new GridPos(1, 0, 0);
+
+            var path = GridPathfinder.FindPath(
+                map, new GridPos(0, 0, 0), new GridPos(3, 0, 0),
+                pos => pos == occupied);
+
+            Assert.Greater(path.Count, 0);
+            Assert.IsFalse(path.Contains(occupied));
+        }
+
+        [Test]
+        public void OpenClosedDoors_AllowsPathThroughDoor()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 5; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(2, 0, 0), TileKind.DoorClosed);
+            var start = new GridPos(0, 0, 0);
+            var goal = new GridPos(4, 0, 0);
+
+            Assert.AreEqual(0, GridPathfinder.FindPath(map, start, goal).Count, "기본값은 닫힌 문 차단");
+            var path = GridPathfinder.FindPath(map, start, goal, openClosedDoors: true);
+            Assert.Greater(path.Count, 0);
+            Assert.IsTrue(path.Contains(new GridPos(2, 0, 0)));
+        }
+    }
+
+    public class MonsterActivationTests
+    {
+        private static readonly DungeonHeightModel Height = new DungeonHeightModel(4);
+
+        [Test]
+        public void Active_RequiresSameFloorAndRadius()
+        {
+            var player = new GridPos(2, 2, 0);
+
+            Assert.IsTrue(MonsterActivation.IsActive(Height, player, new GridPos(6, 2, 0), 8));
+            Assert.IsFalse(MonsterActivation.IsActive(Height, player, new GridPos(12, 2, 0), 8), "반경 밖 휴면");
+            Assert.IsFalse(MonsterActivation.IsActive(Height, player, new GridPos(2, 3, -4), 8), "다른 층 휴면");
+            Assert.IsTrue(MonsterActivation.IsActive(Height, player, new GridPos(2, 3, 1), 8), "층 내부 높이차는 같은 층");
+        }
+    }
+
+    public class MonsterBrainTests
+    {
+        private static GridMap Flat(int size)
+        {
+            var map = new GridMap();
+            for (int x = 0; x < size; x++)
+            for (int y = 0; y < size; y++)
+                map.Set(new GridPos(x, y, 0), TileKind.Floor);
+            return map;
+        }
+
+        private static MonsterArchetype Goblin() =>
+            new MonsterArchetype("Goblin", 5, 1, aggroRange: 6, patrolRadius: 2);
+
+        private static MonsterBrainContext Context(
+            GridMap map,
+            CombatantState self,
+            CombatantState player,
+            bool playerSeesMonster = true,
+            System.Func<GridPos, bool> occupied = null)
+        {
+            return new MonsterBrainContext
+            {
+                Map = map,
+                Height = new DungeonHeightModel(4),
+                Self = self,
+                Player = player,
+                SeenByPlayer = _ => playerSeesMonster,
+                IsOccupied = occupied ?? (pos => player != null && pos == player.Position)
+            };
+        }
+
+        [Test]
+        public void OutOfSight_StaysPatrol_AndKeepsPatrolRadius()
+        {
+            GridMap map = Flat(11);
+            var self = new CombatantState("g", new GridPos(8, 8, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(1, 1, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 3);
+
+            for (int i = 0; i < 20; i++)
+            {
+                MonsterAction action = brain.Decide(Context(map, self, player, playerSeesMonster: false));
+                Assert.AreEqual(MonsterMood.Patrol, brain.Mood);
+                Assert.AreNotEqual(MonsterActionKind.Attack, action.Kind);
+                Assert.AreNotEqual(MonsterActionKind.OpenDoor, action.Kind, "순찰 중 개문 금지");
+                if (action.Kind == MonsterActionKind.Step)
+                {
+                    Assert.IsTrue(map.IsWalkable(action.Target));
+                    Assert.LessOrEqual(new GridPos(8, 8, 0).ChebyshevTo(action.Target), 2, "순찰 반경 이탈");
+                    self.MoveTo(action.Target);
+                }
+            }
+        }
+
+        [Test]
+        public void SeenWithinAggro_ChasesAndClosesDistance()
+        {
+            GridMap map = Flat(11);
+            var self = new CombatantState("g", new GridPos(7, 7, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(2, 2, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            int previous = self.Position.ChebyshevTo(player.Position);
+            bool attacked = false;
+            for (int i = 0; i < 12; i++)
+            {
+                MonsterAction action = brain.Decide(Context(map, self, player));
+                if (action.Kind == MonsterActionKind.Attack)
+                {
+                    attacked = true;
+                    break;
+                }
+
+                Assert.AreEqual(MonsterActionKind.Step, action.Kind);
+                self.MoveTo(action.Target);
+                int distance = self.Position.ChebyshevTo(player.Position);
+                Assert.LessOrEqual(distance, previous, "추격 중 거리 증가");
+                previous = distance;
+            }
+
+            Assert.IsTrue(attacked, "추격이 공격까지 수렴하지 않음");
+            Assert.AreEqual(MonsterMood.Chase, brain.Mood);
+        }
+
+        [Test]
+        public void AdjacentPlayer_Attacks()
+        {
+            GridMap map = Flat(5);
+            var self = new CombatantState("g", new GridPos(2, 2, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(2, 3, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            Assert.AreEqual(MonsterActionKind.Attack, brain.Decide(Context(map, self, player)).Kind);
+        }
+
+        [Test]
+        public void PlanarAdjacent_ButDifferentElevation_DoesNotAttack()
+        {
+            // 계단 위 플레이어(elevation 1)와 평면상 인접 — AreAdjacent 가 아니므로
+            // Attack 을 반환하면 실행이 항상 실패하는 헛턴 루프가 된다.
+            GridMap map = Flat(5);
+            map.Set(new GridPos(2, 3, 0), TileKind.Stairs);
+            map.Set(new GridPos(2, 4, 1), TileKind.Floor);
+            var self = new CombatantState("g", new GridPos(2, 3, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(2, 4, 1), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreNotEqual(MonsterActionKind.Attack, action.Kind);
+        }
+
+        [Test]
+        public void ClosedDoorOnChasePath_ReturnsOpenDoor()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 7; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(3, 0, 0), TileKind.DoorClosed);
+            var self = new CombatantState("g", new GridPos(4, 0, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(0, 0, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.OpenDoor, action.Kind);
+            Assert.AreEqual(new GridPos(3, 0, 0), action.Target);
+        }
+
+        [Test]
+        public void OccupiedCorridorTile_IsNotSteppedInto()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 6; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            var blockerPos = new GridPos(3, 0, 0);
+            var self = new CombatantState("g", new GridPos(5, 0, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(0, 0, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(
+                map, self, player,
+                occupied: pos => pos == blockerPos || pos == player.Position));
+
+            // 1칸 복도가 막혔으니 그 칸으로는 못 들어간다 (Wait 또는 다른 유효 걸음만).
+            if (action.Kind == MonsterActionKind.Step)
+                Assert.AreNotEqual(blockerPos, action.Target);
+        }
+
+        [Test]
+        public void SameSeed_ProducesSameActionSequence()
+        {
+            List<string> Run()
+            {
+                GridMap map = Flat(9);
+                var self = new CombatantState("g", new GridPos(4, 4, 0), 5, 1);
+                var player = new CombatantState("p", new GridPos(0, 0, 0), 8, 2);
+                var brain = new MonsterBrain(Goblin(), self.Position, seed: 77);
+                var actions = new List<string>();
+                for (int i = 0; i < 15; i++)
+                {
+                    MonsterAction action = brain.Decide(Context(map, self, player, playerSeesMonster: false));
+                    actions.Add(action.ToString());
+                    if (action.Kind == MonsterActionKind.Step) self.MoveTo(action.Target);
+                }
+                return actions;
+            }
+
+            CollectionAssert.AreEqual(Run(), Run());
+        }
+
+        [Test]
+        public void LostSight_WalksToLastSeen_ThenReturnsToPatrol()
+        {
+            GridMap map = Flat(9);
+            var self = new CombatantState("g", new GridPos(6, 6, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(3, 6, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 5);
+
+            // 한 번 목격 → Chase. 이후 플레이어는 자리를 떠난다.
+            brain.Decide(Context(map, self, player));
+            Assert.AreEqual(MonsterMood.Chase, brain.Mood);
+            GridPos lastSeen = player.Position;
+            player.MoveTo(new GridPos(0, 6, 0));
+
+            // 시야 상실 후에도 마지막 목격 지점으로 이동하다가, 도달하면 순찰 복귀
+            for (int i = 0; i < 12 && brain.Mood == MonsterMood.Chase; i++)
+            {
+                MonsterAction action = brain.Decide(Context(map, self, player, playerSeesMonster: false));
+                if (action.Kind == MonsterActionKind.Step) self.MoveTo(action.Target);
+            }
+
+            Assert.AreEqual(MonsterMood.Patrol, brain.Mood);
+            Assert.AreEqual(lastSeen, self.Position, "마지막 목격 지점까지 이동했어야 함");
+        }
+    }
+}

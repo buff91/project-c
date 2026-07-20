@@ -17,10 +17,19 @@ namespace ProjectC.Core
             (-1, 0)
         };
 
-        public static List<GridPos> FindPath(GridMap map, GridPos start, GridPos goal)
+        /// <param name="isBlocked">true 를 반환하는 칸은 점유된 것으로 보고 우회한다(시작 칸 제외).</param>
+        /// <param name="openClosedDoors">닫힌 문을 "열고 지나갈 수 있는" 칸으로 취급한다(몬스터 추격용).</param>
+        public static List<GridPos> FindPath(
+            GridMap map,
+            GridPos start,
+            GridPos goal,
+            Func<GridPos, bool> isBlocked = null,
+            bool openClosedDoors = false)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
-            if (!map.IsWalkable(start) || !map.IsWalkable(goal))
+            if (!IsEnterable(map, start, openClosedDoors) || !IsEnterable(map, goal, openClosedDoors))
+                return new List<GridPos>();
+            if (isBlocked != null && isBlocked(goal))
                 return new List<GridPos>();
             if (start == goal)
                 return new List<GridPos> { start };
@@ -41,7 +50,7 @@ namespace ProjectC.Core
 
                 closed.Add(current);
 
-                foreach (GridPos next in EnumerateNeighbors(map, current))
+                foreach (GridPos next in EnumerateNeighbors(map, current, isBlocked, openClosedDoors))
                 {
                     if (closed.Contains(next)) continue;
 
@@ -59,7 +68,18 @@ namespace ProjectC.Core
             return new List<GridPos>();
         }
 
-        private static IEnumerable<GridPos> EnumerateNeighbors(GridMap map, GridPos current)
+        private static bool IsEnterable(GridMap map, GridPos pos, bool openClosedDoors)
+        {
+            TileData tile = map.Get(pos);
+            if (tile == null) return false;
+            return tile.IsWalkable || (openClosedDoors && tile.kind == TileKind.DoorClosed);
+        }
+
+        private static IEnumerable<GridPos> EnumerateNeighbors(
+            GridMap map,
+            GridPos current,
+            Func<GridPos, bool> isBlocked,
+            bool openClosedDoors)
         {
             TileData currentTile = map.Get(current);
 
@@ -72,10 +92,10 @@ namespace ProjectC.Core
                         current.y + direction.dy,
                         current.elevation + elevationDelta);
 
-                    TileData candidateTile = map.Get(candidate);
-                    if (candidateTile == null || !candidateTile.IsWalkable)
-                        continue;
+                    if (!IsEnterable(map, candidate, openClosedDoors)) continue;
+                    if (isBlocked != null && isBlocked(candidate)) continue;
 
+                    TileData candidateTile = map.Get(candidate);
                     bool changesHeight = elevationDelta != 0;
                     bool usesStairs = currentTile.kind == TileKind.Stairs || candidateTile.kind == TileKind.Stairs;
                     if (!changesHeight || usesStairs)
@@ -85,8 +105,9 @@ namespace ProjectC.Core
 
             foreach (GridPos linked in map.LinksFrom(current))
             {
-                if (map.IsWalkable(linked))
-                    yield return linked;
+                if (!map.IsWalkable(linked)) continue;
+                if (isBlocked != null && isBlocked(linked)) continue;
+                yield return linked;
             }
         }
 
