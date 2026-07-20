@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -56,19 +57,21 @@ namespace ProjectC.Gameplay
 
         private void OnDisable()
         {
-            if (_rotateLeft != null) _rotateLeft.clicked -= RotateLeft;
-            if (_rotateRight != null) _rotateRight.clicked -= RotateRight;
-            if (_modeButton != null) _modeButton.clicked -= ToggleViewMode;
-            if (_combatButton != null) _combatButton.clicked -= ToggleCombatMode;
-            if (_settingsButton != null) _settingsButton.clicked -= OpenSettings;
-            if (_settingsClose != null) _settingsClose.clicked -= CloseSettings;
-            if (_settingsDone != null) _settingsDone.clicked -= CloseSettings;
-            if (_settingsReset != null) _settingsReset.clicked -= ResetSettings;
-            if (_occlusionToggle != null) _occlusionToggle.UnregisterValueChangedCallback(HandleOcclusionToggle);
-            if (_rearWallsToggle != null) _rearWallsToggle.UnregisterValueChangedCallback(HandleRearWallsToggle);
-            if (_occlusionAlpha != null) _occlusionAlpha.UnregisterValueChangedCallback(HandleOcclusionAlpha);
-            if (_verticalAlpha != null) _verticalAlpha.UnregisterValueChangedCallback(HandleVerticalAlpha);
-            if (_exploredAlpha != null) _exploredAlpha.UnregisterValueChangedCallback(HandleExploredAlpha);
+            // null 로 재바인딩해 구독을 해제하고 필드를 비운다.
+            // 필드를 남겨두면 재활성화 시 BindDocument가 같은 요소로 판단해 재구독을 건너뛴다.
+            RebindButton(ref _rotateLeft, null, RotateLeft);
+            RebindButton(ref _rotateRight, null, RotateRight);
+            RebindButton(ref _modeButton, null, ToggleViewMode);
+            RebindButton(ref _combatButton, null, ToggleCombatMode);
+            RebindButton(ref _settingsButton, null, OpenSettings);
+            RebindButton(ref _settingsClose, null, CloseSettings);
+            RebindButton(ref _settingsDone, null, CloseSettings);
+            RebindButton(ref _settingsReset, null, ResetSettings);
+            RebindField<Toggle, bool>(ref _occlusionToggle, null, HandleOcclusionToggle);
+            RebindField<Toggle, bool>(ref _rearWallsToggle, null, HandleRearWallsToggle);
+            RebindField<Slider, float>(ref _occlusionAlpha, null, HandleOcclusionAlpha);
+            RebindField<Slider, float>(ref _verticalAlpha, null, HandleVerticalAlpha);
+            RebindField<Slider, float>(ref _exploredAlpha, null, HandleExploredAlpha);
             if (demo != null)
             {
                 demo.ViewRotationChanged -= HandleViewRotationChanged;
@@ -84,67 +87,24 @@ namespace ProjectC.Gameplay
         private void BindDocument()
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
-            Button nextLeft = root.Q<Button>("rotate-left");
-            Button nextRight = root.Q<Button>("rotate-right");
-            Button nextMode = root.Q<Button>("mode-button");
-            Button nextCombat = root.Q<Button>("combat-button");
-            Button nextSettings = root.Q<Button>("settings-button");
-            Button nextSettingsClose = root.Q<Button>("settings-close");
-            Button nextSettingsDone = root.Q<Button>("settings-done");
-            Button nextSettingsReset = root.Q<Button>("settings-reset");
-
-            if (_rotateLeft != nextLeft)
-            {
-                if (_rotateLeft != null) _rotateLeft.clicked -= RotateLeft;
-                _rotateLeft = nextLeft;
-                if (_rotateLeft != null) _rotateLeft.clicked += RotateLeft;
-            }
-
-            if (_rotateRight != nextRight)
-            {
-                if (_rotateRight != null) _rotateRight.clicked -= RotateRight;
-                _rotateRight = nextRight;
-                if (_rotateRight != null) _rotateRight.clicked += RotateRight;
-            }
-
-            if (_modeButton != nextMode)
-            {
-                if (_modeButton != null) _modeButton.clicked -= ToggleViewMode;
-                _modeButton = nextMode;
-                if (_modeButton != null) _modeButton.clicked += ToggleViewMode;
-            }
-            if (_combatButton != nextCombat)
-            {
-                if (_combatButton != null) _combatButton.clicked -= ToggleCombatMode;
-                _combatButton = nextCombat;
-                if (_combatButton != null) _combatButton.clicked += ToggleCombatMode;
-            }
-            if (_settingsButton != nextSettings)
-            {
-                if (_settingsButton != null) _settingsButton.clicked -= OpenSettings;
-                _settingsButton = nextSettings;
-                if (_settingsButton != null) _settingsButton.clicked += OpenSettings;
-            }
-            if (_settingsClose != nextSettingsClose)
-            {
-                if (_settingsClose != null) _settingsClose.clicked -= CloseSettings;
-                _settingsClose = nextSettingsClose;
-                if (_settingsClose != null) _settingsClose.clicked += CloseSettings;
-            }
-            if (_settingsDone != nextSettingsDone)
-            {
-                if (_settingsDone != null) _settingsDone.clicked -= CloseSettings;
-                _settingsDone = nextSettingsDone;
-                if (_settingsDone != null) _settingsDone.clicked += CloseSettings;
-            }
-            if (_settingsReset != nextSettingsReset)
-            {
-                if (_settingsReset != null) _settingsReset.clicked -= ResetSettings;
-                _settingsReset = nextSettingsReset;
-                if (_settingsReset != null) _settingsReset.clicked += ResetSettings;
-            }
-
-            BindSettingsControls(root);
+            RebindButton(ref _rotateLeft, root.Q<Button>("rotate-left"), RotateLeft);
+            RebindButton(ref _rotateRight, root.Q<Button>("rotate-right"), RotateRight);
+            RebindButton(ref _modeButton, root.Q<Button>("mode-button"), ToggleViewMode);
+            RebindButton(ref _combatButton, root.Q<Button>("combat-button"), ToggleCombatMode);
+            RebindButton(ref _settingsButton, root.Q<Button>("settings-button"), OpenSettings);
+            RebindButton(ref _settingsClose, root.Q<Button>("settings-close"), CloseSettings);
+            RebindButton(ref _settingsDone, root.Q<Button>("settings-done"), CloseSettings);
+            RebindButton(ref _settingsReset, root.Q<Button>("settings-reset"), ResetSettings);
+            RebindField<Toggle, bool>(
+                ref _occlusionToggle, root.Q<Toggle>("occlusion-toggle"), HandleOcclusionToggle);
+            RebindField<Toggle, bool>(
+                ref _rearWallsToggle, root.Q<Toggle>("rear-walls-toggle"), HandleRearWallsToggle);
+            RebindField<Slider, float>(
+                ref _occlusionAlpha, root.Q<Slider>("occlusion-alpha"), HandleOcclusionAlpha);
+            RebindField<Slider, float>(
+                ref _verticalAlpha, root.Q<Slider>("vertical-alpha"), HandleVerticalAlpha);
+            RebindField<Slider, float>(
+                ref _exploredAlpha, root.Q<Slider>("explored-alpha"), HandleExploredAlpha);
 
             _viewLabel = root.Q<Label>("view-label");
             _depthLabel = root.Q<Label>("depth-label");
@@ -162,54 +122,25 @@ namespace ProjectC.Gameplay
             SyncSettingsControls();
         }
 
-        private void BindSettingsControls(VisualElement root)
+        /// <summary>요소가 바뀐 경우에만 이전 구독을 풀고 새 요소에 다시 구독한다.</summary>
+        private static void RebindButton(ref Button field, Button next, Action onClick)
         {
-            Toggle nextOcclusionToggle = root.Q<Toggle>("occlusion-toggle");
-            Toggle nextRearWallsToggle = root.Q<Toggle>("rear-walls-toggle");
-            Slider nextOcclusionAlpha = root.Q<Slider>("occlusion-alpha");
-            Slider nextVerticalAlpha = root.Q<Slider>("vertical-alpha");
-            Slider nextExploredAlpha = root.Q<Slider>("explored-alpha");
+            if (field == next) return;
+            if (field != null) field.clicked -= onClick;
+            field = next;
+            if (field != null) field.clicked += onClick;
+        }
 
-            if (_occlusionToggle != nextOcclusionToggle)
-            {
-                if (_occlusionToggle != null)
-                    _occlusionToggle.UnregisterValueChangedCallback(HandleOcclusionToggle);
-                _occlusionToggle = nextOcclusionToggle;
-                if (_occlusionToggle != null)
-                    _occlusionToggle.RegisterValueChangedCallback(HandleOcclusionToggle);
-            }
-            if (_rearWallsToggle != nextRearWallsToggle)
-            {
-                if (_rearWallsToggle != null)
-                    _rearWallsToggle.UnregisterValueChangedCallback(HandleRearWallsToggle);
-                _rearWallsToggle = nextRearWallsToggle;
-                if (_rearWallsToggle != null)
-                    _rearWallsToggle.RegisterValueChangedCallback(HandleRearWallsToggle);
-            }
-            if (_occlusionAlpha != nextOcclusionAlpha)
-            {
-                if (_occlusionAlpha != null)
-                    _occlusionAlpha.UnregisterValueChangedCallback(HandleOcclusionAlpha);
-                _occlusionAlpha = nextOcclusionAlpha;
-                if (_occlusionAlpha != null)
-                    _occlusionAlpha.RegisterValueChangedCallback(HandleOcclusionAlpha);
-            }
-            if (_verticalAlpha != nextVerticalAlpha)
-            {
-                if (_verticalAlpha != null)
-                    _verticalAlpha.UnregisterValueChangedCallback(HandleVerticalAlpha);
-                _verticalAlpha = nextVerticalAlpha;
-                if (_verticalAlpha != null)
-                    _verticalAlpha.RegisterValueChangedCallback(HandleVerticalAlpha);
-            }
-            if (_exploredAlpha != nextExploredAlpha)
-            {
-                if (_exploredAlpha != null)
-                    _exploredAlpha.UnregisterValueChangedCallback(HandleExploredAlpha);
-                _exploredAlpha = nextExploredAlpha;
-                if (_exploredAlpha != null)
-                    _exploredAlpha.RegisterValueChangedCallback(HandleExploredAlpha);
-            }
+        private static void RebindField<TField, TValue>(
+            ref TField field,
+            TField next,
+            EventCallback<ChangeEvent<TValue>> callback)
+            where TField : VisualElement, INotifyValueChanged<TValue>
+        {
+            if (field == next) return;
+            field?.UnregisterValueChangedCallback(callback);
+            field = next;
+            field?.RegisterValueChangedCallback(callback);
         }
 
         private void RotateLeft()

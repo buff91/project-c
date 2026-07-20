@@ -46,7 +46,7 @@ namespace ProjectC.Gameplay
                 GridPos picked = PickGrid(screenPoint);
                 bool exists = _gm.Map.Has(picked);
                 Debug.Log($"[Tap] 화면 {screenPoint} → 격자 {picked} (타일 있음: {exists})");
-                OnTileTapped(picked, exists);
+                TileTapped?.Invoke(picked, exists);
             }
         }
 
@@ -117,15 +117,6 @@ namespace ProjectC.Gameplay
             }
             return false;
 #endif
-        }
-
-        /// <summary>
-        /// 실제 게임 반응은 여기에 연결. (M1: 이동/공격 라우팅)
-        /// 지금은 M0 확인용으로 비워둠 — Debug.Log 로 검증.
-        /// </summary>
-        private void OnTileTapped(GridPos pos, bool tileExists)
-        {
-            TileTapped?.Invoke(pos, tileExists);
         }
     }
 }
