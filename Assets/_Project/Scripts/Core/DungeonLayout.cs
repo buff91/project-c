@@ -59,8 +59,9 @@ namespace ProjectC.Core
     }
 
     /// <summary>
-    /// 검증용 다층 던전 생성기. 각 층을 세 방 + 두 복도 + 문으로 구성하고
-    /// 높은 단·일반 계단·구멍·층간 계단을 함께 배치한다.
+    /// 다층 던전 생성기. 방–복도–문 연결 그래프와 층간 샤프트 규칙은 유지한 채
+    /// 방 크기/위치·복도·문·내부 계단·구멍·막다른 분기 방을 seed로 변형한다.
+    /// 같은 seed 는 항상 같은 던전을 만든다.
     /// </summary>
     public static class DungeonGenerator
     {
@@ -79,109 +80,268 @@ namespace ProjectC.Core
 
             map.Clear();
             var heightModel = new DungeonHeightModel(elevationsPerFloor);
-            var floors = new List<DungeonFloorInfo>(floorCount);
             var random = new Random(seed);
 
+            // 1) 층 골격을 계획하고 새긴다. 아래층 북쪽 방은 윗층 북쪽 방과 기둥이
+            //    겹치도록 제약해 구멍 착지 후보가 항상 남게 한다.
+            var plans = new List<FloorPlan>(floorCount);
             for (int depth = 0; depth < floorCount; depth++)
             {
-                int floorIndex = -depth;
-                int baseElevation = heightModel.Elevation(floorIndex);
-                int leftMaxX = Math.Max(3, width / 3);
-                int rightMinX = width - Math.Max(4, width / 3 + 1);
-                int lowerMaxY = Math.Max(3, height / 3);
-                int upperMinY = height - Math.Max(4, height / 3 + 1);
-                int upperMinX = Math.Max(1, width / 2 - 2);
-                int upperMaxX = Math.Min(width - 2, upperMinX + 4);
-                int horizontalY = Math.Min(2, lowerMaxY - 1);
-                int verticalX = Math.Min(upperMaxX, rightMinX + 1);
-
-                void SetBase(int x, int y, TileKind kind = TileKind.Floor) =>
-                    map.Set(new GridPos(x, y, baseElevation), kind);
-
-                void CarveRect(int minX, int minY, int maxX, int maxY)
-                {
-                    for (int x = minX; x <= maxX; x++)
-                    for (int y = minY; y <= maxY; y++)
-                        SetBase(x, y);
-                }
-
-                // 입구 방, 동쪽 방, 북쪽 방.
-                CarveRect(0, 0, leftMaxX, lowerMaxY);
-                CarveRect(rightMinX, 0, width - 1, lowerMaxY + 1);
-                CarveRect(upperMinX, upperMinY, upperMaxX, height - 1);
-
-                // 1칸 폭 복도. 목에 문을 놓아 방 단위 탐험과 FOV 차단이 가능하다.
-                for (int x = leftMaxX + 1; x < rightMinX; x++) SetBase(x, horizontalY);
-                for (int y = lowerMaxY + 2; y < upperMinY; y++) SetBase(verticalX, y);
-                SetBase(verticalX, lowerMaxY + 1);
-
-                var doors = new List<GridPos>(2)
-                {
-                    new GridPos(leftMaxX + 1, horizontalY, baseElevation),
-                    new GridPos(verticalX, lowerMaxY + 1, baseElevation)
-                };
-                foreach (GridPos door in doors) map.Set(door, TileKind.DoorClosed);
-
-                // 북쪽 방의 뒤쪽을 한 단 올리고 중앙 계단으로 연결한다.
-                int raisedY = height - 2;
-                for (int x = upperMinX; x <= upperMaxX; x++)
-                for (int y = raisedY; y < height; y++)
-                {
-                    map.Remove(new GridPos(x, y, baseElevation));
-                    map.Set(new GridPos(x, y, baseElevation + 1), TileKind.Floor);
-                }
-                int internalStairX = (upperMinX + upperMaxX) / 2;
-                map.Set(new GridPos(internalStairX, raisedY - 1, baseElevation), TileKind.Stairs);
-
-                GridPos At(int x, int y)
-                {
-                    int elevation = y >= raisedY && x >= upperMinX && x <= upperMaxX
-                        ? baseElevation + 1
-                        : baseElevation;
-                    return new GridPos(x, y, elevation);
-                }
-
-                // 층간 링크는 같은 x/y의 수직 샤프트를 공유한다.
-                // 중간층에서는 좌·우 샤프트를 번갈아 써 Up/Down이 한 칸에 겹치지 않게 한다.
-                int upX = (depth - 1) % 2 == 0 ? width - 2 : 1;
-                int downX = depth % 2 == 0 ? width - 2 : 1;
-                GridPos? up = depth == 0 ? (GridPos?)null : At(upX, 1);
-                GridPos? down = depth == floorCount - 1 ? (GridPos?)null : At(downX, 1);
-                GridPos entry = up ?? At(1, 1);
-
-                if (up.HasValue) map.Set(up.Value, TileKind.StairsUp);
-                if (down.HasValue) map.Set(down.Value, TileKind.StairsDown);
-
-                GridPos? hole = null;
-                if (depth < floorCount - 1)
-                {
-                    int holeX = upperMinX + 1 + random.Next(0, Math.Max(1, upperMaxX - upperMinX - 1));
-                    int holeY = upperMinY + 1;
-                    hole = new GridPos(holeX, holeY, baseElevation);
-                    map.Set(hole.Value, TileKind.Hole);
-
-                    var weak = new GridPos(Math.Min(upperMaxX, holeX + 1), holeY, baseElevation);
-                    map.Set(weak, TileKind.WeakFloor);
-                }
-
-                floors.Add(new DungeonFloorInfo(
-                    floorIndex,
-                    entry,
-                    up,
-                    down,
-                    hole,
-                    At(upperMaxX, upperMinY + 1),
-                    doors));
+                FloorPlan previous = depth > 0 ? plans[depth - 1] : null;
+                FloorPlan plan = PlanFloor(random, width, height, depth, floorCount, heightModel, previous);
+                CarveFloor(map, plan, height);
+                plans.Add(plan);
             }
 
-            for (int i = 0; i < floors.Count - 1; i++)
+            for (int i = 0; i < plans.Count - 1; i++)
+                map.Connect(plans[i].Down.Value, plans[i + 1].Up.Value, bidirectional: true);
+
+            // 2) 구멍은 모든 층이 새겨진 뒤에야 "정확히 한 층 아래에 착지하는" 칸을 고를 수 있다.
+            int bottomElevation = heightModel.Elevation(-(floorCount - 1));
+            for (int depth = 0; depth < floorCount - 1; depth++)
             {
-                GridPos down = floors[i].DownStairs.Value;
-                GridPos up = floors[i + 1].UpStairs.Value;
-                map.Connect(down, up, bidirectional: true);
+                GridPos? holeAbove = depth > 0 ? plans[depth - 1].Hole : null;
+                PlaceHoleAndWeakFloor(map, heightModel, random, plans[depth], holeAbove, bottomElevation);
+            }
+
+            // 3) 적 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
+            foreach (FloorPlan plan in plans)
+                PickEnemySpawn(map, random, plan);
+
+            var floors = new List<DungeonFloorInfo>(floorCount);
+            foreach (FloorPlan plan in plans)
+            {
+                floors.Add(new DungeonFloorInfo(
+                    plan.FloorIndex,
+                    plan.Entry,
+                    plan.Up,
+                    plan.Down,
+                    plan.Hole,
+                    plan.EnemySpawn,
+                    plan.Doors));
             }
 
             return new DungeonLayout(heightModel, floors);
+        }
+
+        /// <summary>층 하나의 골격 치수를 seed 로 뽑는다. 방 최소 폭/간격 제약은 범위로 보장한다.</summary>
+        private static FloorPlan PlanFloor(
+            Random random,
+            int width,
+            int height,
+            int depth,
+            int floorCount,
+            DungeonHeightModel heightModel,
+            FloorPlan previous)
+        {
+            var p = new FloorPlan
+            {
+                Width = width,
+                FloorIndex = -depth
+            };
+            p.BaseElevation = heightModel.Elevation(p.FloorIndex);
+
+            // 남쪽 두 방: 입구 방(남서)과 동쪽 방(남동). 사이에 1칸 이상 복도 공간을 남긴다.
+            p.LeftMaxX = 3 + random.Next(0, Math.Max(1, width - 9));
+            p.RightMinX = random.Next(p.LeftMaxX + 2, width - 2);
+            p.LowerMaxY = 3 + random.Next(0, Math.Max(1, height - 8));
+
+            // 북쪽 방. 동쪽 방(rows 0..LowerMaxY)과 행 간격을 두어 문을 우회하는 인접을 막는다.
+            p.UpperMinY = random.Next(p.LowerMaxY + 2, height - 3);
+            int upperMinCap = Math.Min(
+                p.RightMinX - 2,
+                previous != null ? previous.UpperMaxX - 1 : int.MaxValue);
+            p.UpperMinX = random.Next(1, Math.Max(2, upperMinCap));
+            int upperMaxFloor = Math.Max(
+                Math.Max(p.UpperMinX + 3, p.RightMinX),
+                previous != null ? previous.UpperMinX + 2 : 0);
+            p.UpperMaxX = random.Next(upperMaxFloor, width - 1);
+
+            p.RaisedY = height - 2;
+            p.StairX = random.Next(p.UpperMinX, p.UpperMaxX + 1);
+            p.HorizontalY = random.Next(1, p.LowerMaxY + 1);
+            p.VerticalX = random.Next(p.RightMinX, Math.Min(p.UpperMaxX, width - 2) + 1);
+
+            p.Doors.Add(new GridPos(p.LeftMaxX + 1, p.HorizontalY, p.BaseElevation));
+            p.Doors.Add(new GridPos(p.VerticalX, p.LowerMaxY + 1, p.BaseElevation));
+
+            // 확률적 막다른 분기 방: 북서쪽 빈 공간이 충분할 때만 문 하나로 매달린다.
+            bool wantBranch = random.Next(0, 2) == 1;
+            int branchDoorCap = Math.Min(p.LeftMaxX, p.UpperMinX - 2);
+            if (wantBranch && p.UpperMinX >= 3 && branchDoorCap >= 0)
+            {
+                p.HasBranch = true;
+                p.BranchDoorX = random.Next(0, branchDoorCap + 1);
+                p.BranchMinX = Math.Max(0, p.BranchDoorX - 1);
+                p.BranchMaxX = Math.Min(p.UpperMinX - 2, p.BranchMinX + 1 + random.Next(0, 2));
+                p.BranchMinY = p.LowerMaxY + 2;
+                p.BranchMaxY = Math.Min(height - 2, p.BranchMinY + 1 + random.Next(0, 2));
+                p.Doors.Add(new GridPos(p.BranchDoorX, p.LowerMaxY + 1, p.BaseElevation));
+            }
+
+            // 층간 링크는 같은 x/y의 수직 샤프트를 공유한다.
+            // 중간층에서는 좌·우 샤프트를 번갈아 써 Up/Down이 한 칸에 겹치지 않게 한다.
+            int upX = (depth - 1) % 2 == 0 ? width - 2 : 1;
+            int downX = depth % 2 == 0 ? width - 2 : 1;
+            p.Up = depth == 0 ? (GridPos?)null : p.At(upX, 1);
+            p.Down = depth == floorCount - 1 ? (GridPos?)null : p.At(downX, 1);
+            p.Entry = p.Up ?? p.At(1, 1);
+            return p;
+        }
+
+        private static void CarveFloor(GridMap map, FloorPlan p, int height)
+        {
+            void SetBase(int x, int y, TileKind kind = TileKind.Floor) =>
+                map.Set(new GridPos(x, y, p.BaseElevation), kind);
+
+            void CarveRect(int minX, int minY, int maxX, int maxY)
+            {
+                for (int x = minX; x <= maxX; x++)
+                for (int y = minY; y <= maxY; y++)
+                    SetBase(x, y);
+            }
+
+            // 입구 방, 동쪽 방, 북쪽 방.
+            CarveRect(0, 0, p.LeftMaxX, p.LowerMaxY);
+            CarveRect(p.RightMinX, 0, p.Width - 1, p.LowerMaxY);
+            CarveRect(p.UpperMinX, p.UpperMinY, p.UpperMaxX, height - 1);
+
+            // 1칸 폭 복도. 목에 문을 놓아 방 단위 탐험과 FOV 차단이 가능하다.
+            for (int x = p.LeftMaxX + 1; x < p.RightMinX; x++) SetBase(x, p.HorizontalY);
+            for (int y = p.LowerMaxY + 2; y < p.UpperMinY; y++) SetBase(p.VerticalX, y);
+            SetBase(p.VerticalX, p.LowerMaxY + 1);
+
+            if (p.HasBranch)
+            {
+                CarveRect(p.BranchMinX, p.BranchMinY, p.BranchMaxX, p.BranchMaxY);
+                SetBase(p.BranchDoorX, p.LowerMaxY + 1);
+            }
+
+            foreach (GridPos door in p.Doors) map.Set(door, TileKind.DoorClosed);
+
+            // 북쪽 방의 뒤쪽을 한 단 올리고 계단으로 연결한다.
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.RaisedY; y < height; y++)
+            {
+                map.Remove(new GridPos(x, y, p.BaseElevation));
+                map.Set(new GridPos(x, y, p.BaseElevation + 1), TileKind.Floor);
+            }
+            map.Set(new GridPos(p.StairX, p.RaisedY - 1, p.BaseElevation), TileKind.Stairs);
+
+            if (p.Up.HasValue) map.Set(p.Up.Value, TileKind.StairsUp);
+            if (p.Down.HasValue) map.Set(p.Down.Value, TileKind.StairsDown);
+        }
+
+        private static void PlaceHoleAndWeakFloor(
+            GridMap map,
+            DungeonHeightModel heightModel,
+            Random random,
+            FloorPlan p,
+            GridPos? holeAbove,
+            int bottomElevation)
+        {
+            var candidates = new List<GridPos>();
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                var pos = new GridPos(x, y, p.BaseElevation);
+                // 윗층 구멍의 착지 칸을 다시 뚫으면 두 층을 관통하게 된다.
+                if (holeAbove.HasValue && holeAbove.Value.x == x && holeAbove.Value.y == y)
+                    continue;
+                // 복도에서 방으로 들어오는 입구 칸은 막지 않는다.
+                if (x == p.VerticalX && y == p.UpperMinY)
+                    continue;
+                if (map.Get(pos)?.kind != TileKind.Floor)
+                    continue;
+                if (!LandsOneFloorBelow(map, heightModel, pos, bottomElevation, p.FloorIndex))
+                    continue;
+                candidates.Add(pos);
+            }
+
+            if (candidates.Count == 0) return;
+
+            GridPos hole = candidates[random.Next(candidates.Count)];
+            map.Set(hole, TileKind.Hole);
+            p.Hole = hole;
+
+            // 약한 바닥: 구멍 옆에 두어 M4 붕괴 때 같은 규칙으로 아래층에 떨어지게 한다.
+            var weakOptions = new List<GridPos>();
+            foreach (GridPos n in new[] { hole.North, hole.East, hole.South, hole.West })
+            {
+                if (n.x == p.VerticalX && n.y == p.UpperMinY) continue;
+                if (map.Get(n)?.kind != TileKind.Floor) continue;
+                if (!LandsOneFloorBelow(map, heightModel, n, bottomElevation, p.FloorIndex)) continue;
+                weakOptions.Add(n);
+            }
+            if (weakOptions.Count > 0)
+                map.Set(weakOptions[random.Next(weakOptions.Count)], TileKind.WeakFloor);
+        }
+
+        private static bool LandsOneFloorBelow(
+            GridMap map,
+            DungeonHeightModel heightModel,
+            GridPos pos,
+            int bottomElevation,
+            int floorIndex)
+        {
+            GridPos? landing = map.FindLandingBelow(pos, bottomElevation);
+            return landing.HasValue &&
+                   heightModel.FloorIndex(landing.Value.elevation) == floorIndex - 1 &&
+                   map.Get(landing.Value).IsWalkable;
+        }
+
+        private static void PickEnemySpawn(GridMap map, Random random, FloorPlan p)
+        {
+            var candidates = new List<GridPos>();
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                if (x == p.VerticalX && y == p.UpperMinY) continue;
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (map.Get(pos)?.kind == TileKind.Floor)
+                    candidates.Add(pos);
+            }
+
+            // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 높은 단을 쓴다.
+            p.EnemySpawn = candidates.Count > 0
+                ? candidates[random.Next(candidates.Count)]
+                : p.At(p.StairX, p.RaisedY);
+        }
+
+        /// <summary>층 하나의 골격 치수. Carve/Hole/Spawn 단계가 공유한다.</summary>
+        private sealed class FloorPlan
+        {
+            public int Width;
+            public int FloorIndex;
+            public int BaseElevation;
+            public int LeftMaxX;
+            public int RightMinX;
+            public int LowerMaxY;
+            public int UpperMinX;
+            public int UpperMaxX;
+            public int UpperMinY;
+            public int HorizontalY;
+            public int VerticalX;
+            public int StairX;
+            public int RaisedY;
+            public bool HasBranch;
+            public int BranchDoorX;
+            public int BranchMinX;
+            public int BranchMaxX;
+            public int BranchMinY;
+            public int BranchMaxY;
+            public GridPos? Up;
+            public GridPos? Down;
+            public GridPos? Hole;
+            public GridPos Entry;
+            public GridPos EnemySpawn;
+            public readonly List<GridPos> Doors = new List<GridPos>();
+
+            public GridPos At(int x, int y)
+            {
+                bool raised = y >= RaisedY && x >= UpperMinX && x <= UpperMaxX;
+                return new GridPos(x, y, raised ? BaseElevation + 1 : BaseElevation);
+            }
         }
     }
 }

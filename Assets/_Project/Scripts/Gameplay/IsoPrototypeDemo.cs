@@ -54,6 +54,8 @@ namespace ProjectC.Gameplay
         [Header("M3 다층 던전")]
         [Range(2, 5)] public int floorCount = 3;
         [Range(3, 6)] public int elevationsPerFloor = 4;
+        [Tooltip("절차 생성 seed. 같은 값이면 같은 던전이 재현된다.")]
+        public int dungeonSeed = 1977;
         [Tooltip("검증 장면에서 시작할 깊이. 1이면 B2에서 시작한다.")]
         [Range(0, 2)] public int previewStartDepth = 1;
         public DungeonViewMode viewMode = DungeonViewMode.Play;
@@ -235,7 +237,8 @@ namespace ProjectC.Gameplay
                 roomSize,
                 roomSize,
                 floorCount,
-                elevationsPerFloor);
+                elevationsPerFloor,
+                dungeonSeed);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             UpdateInputFloorRange();

@@ -49,7 +49,8 @@ namespace ProjectC.Tests
 
                 CollectionAssert.Contains(localHeights, 0);
                 CollectionAssert.Contains(localHeights, 1);
-                Assert.AreEqual(2, floor.Doors.Count);
+                // 기본 복도 문 2개 + 확률적 분기 방 문. (seed 변형 생성)
+                Assert.GreaterOrEqual(floor.Doors.Count, 2);
                 Assert.IsTrue(floor.Doors.All(door => map.Get(door).kind == TileKind.DoorClosed));
             }
         }
