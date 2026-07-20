@@ -648,17 +648,7 @@ namespace ProjectC.Gameplay
             if (_playerState.IsAlive && enemy.State.IsAlive &&
                 CombatRules.TryMelee(_playerState, enemy.State, out int damage))
             {
-                UpdateHealthBar(enemy.HpFill, enemy.State);
-                Debug.Log($"[Turn {_turns.TurnNumber}] 플레이어가 {enemy.State.Id}에게 {damage} 피해. " +
-                          $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
-                yield return FlashDamage(enemy.Renderer);
-
-                if (!enemy.State.IsAlive)
-                {
-                    enemy.Renderer.color = new Color32(60, 64, 66, 180);
-                    Debug.Log($"[Combat] {enemy.State.Id} 처치");
-                }
-
+                yield return ShowEnemyHit(enemy, damage, "Melee");
                 yield return ResolveEnemyPhase();
             }
 
@@ -677,16 +667,10 @@ namespace ProjectC.Gameplay
                     out int damage))
             {
                 yield return AnimateProjectile(_playerPos, enemy.State.Position);
-                UpdateHealthBar(enemy.HpFill, enemy.State);
                 InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
-                Debug.Log($"[Ranged] {enemy.State.Id}에게 {damage} 피해. HP {enemy.State.Hp}/{enemy.State.MaxHp}");
-                yield return FlashDamage(enemy.Renderer);
-
+                yield return ShowEnemyHit(enemy, damage, "Ranged");
                 if (!enemy.State.IsAlive)
-                {
-                    enemy.Renderer.color = new Color32(60, 64, 66, 180);
-                    InteractionFeedback?.Invoke("GOBLIN DEFEATED");
-                }
+                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
 
                 yield return ResolveEnemyPhase();
             }
@@ -740,26 +724,14 @@ namespace ProjectC.Gameplay
             {
                 if (damaged == _playerState)
                 {
-                    UpdateHealthBar(_playerHpFill, _playerState);
-                    yield return FlashDamage(_playerRenderer);
-                    if (!_playerState.IsAlive)
-                    {
-                        _playerRenderer.color = new Color32(120, 42, 42, 220);
-                        Debug.Log("[Combat] 플레이어가 자기 폭탄에 사망 — 프로토타입을 다시 실행해 재시작");
-                    }
+                    yield return ShowPlayerHit(bombDamage, "Bomb");
                     continue;
                 }
 
                 foreach (EnemyAgent enemy in _enemies)
                 {
                     if (enemy.State != damaged) continue;
-                    UpdateHealthBar(enemy.HpFill, enemy.State);
-                    yield return FlashDamage(enemy.Renderer);
-                    if (!enemy.State.IsAlive)
-                    {
-                        enemy.Renderer.color = new Color32(60, 64, 66, 180);
-                        Debug.Log($"[Combat] {enemy.State.Id} 폭사");
-                    }
+                    yield return ShowEnemyHit(enemy, bombDamage, "Bomb");
                     break;
                 }
             }
@@ -836,12 +808,7 @@ namespace ProjectC.Gameplay
                 tile != null && (tile.CanOpen || tile.CanClose))
             {
                 TileKind nextKind = tile.CanOpen ? TileKind.DoorOpen : TileKind.DoorClosed;
-                if (_tileRenderers.TryGetValue(door, out SpriteRenderer renderer))
-                {
-                    yield return AnimateDoorTransition(renderer, door, nextKind);
-                }
-                else
-                    _grid.Map.Set(door, nextKind);
+                yield return SetDoorState(door, nextKind);
                 RefreshFloorVisibility();
                 string feedback = nextKind == TileKind.DoorOpen ? "DOOR OPENED" : "DOOR CLOSED";
                 InteractionFeedback?.Invoke(feedback);
@@ -1051,6 +1018,45 @@ namespace ProjectC.Gameplay
 
         private IEnumerator FlashDamage(SpriteRenderer renderer) =>
             FlashColor(renderer, new Color32(255, 92, 72, 255));
+
+        /// <summary>적 피격 공통 연출: HP바 → 플래시 → 사망 시 회색 처리.</summary>
+        private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
+        {
+            UpdateHealthBar(enemy.HpFill, enemy.State);
+            Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
+                      $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
+            yield return FlashDamage(enemy.Renderer);
+
+            if (!enemy.State.IsAlive)
+            {
+                enemy.Renderer.color = new Color32(60, 64, 66, 180);
+                Debug.Log($"[Combat] {enemy.State.Id} 처치");
+            }
+        }
+
+        /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
+        private IEnumerator ShowPlayerHit(int damage, string source)
+        {
+            UpdateHealthBar(_playerHpFill, _playerState);
+            Debug.Log($"[{source}] 플레이어가 {damage} 피해. " +
+                      $"HP {_playerState.Hp}/{_playerState.MaxHp}");
+            yield return FlashDamage(_playerRenderer);
+
+            if (!_playerState.IsAlive)
+            {
+                _playerRenderer.color = new Color32(120, 42, 42, 220);
+                Debug.Log("[Combat] 플레이어 사망 — 프로토타입을 다시 실행해 재시작");
+            }
+        }
+
+        /// <summary>문 상태 전환 공통 경로: 렌더러가 있으면 연출과 함께, 없으면 데이터만.</summary>
+        private IEnumerator SetDoorState(GridPos door, TileKind nextKind)
+        {
+            if (_tileRenderers.TryGetValue(door, out SpriteRenderer renderer))
+                yield return AnimateDoorTransition(renderer, door, nextKind);
+            else
+                _grid.Map.Set(door, nextKind);
+        }
 
         private IEnumerator FlashColor(SpriteRenderer renderer, Color32 flash)
         {

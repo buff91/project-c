@@ -87,18 +87,7 @@ namespace ProjectC.Gameplay
             {
                 case MonsterActionKind.Attack:
                     if (CombatRules.TryMelee(enemy.State, _playerState, out int damage))
-                    {
-                        UpdateHealthBar(_playerHpFill, _playerState);
-                        Debug.Log($"[Turn {_turns.TurnNumber}] {enemy.State.Id}가 플레이어에게 {damage} 피해. " +
-                                  $"HP {_playerState.Hp}/{_playerState.MaxHp}");
-                        yield return FlashDamage(_playerRenderer);
-
-                        if (!_playerState.IsAlive)
-                        {
-                            _playerRenderer.color = new Color32(120, 42, 42, 220);
-                            Debug.Log("[Combat] 플레이어 사망 — 프로토타입을 다시 실행해 재시작");
-                        }
-                    }
+                        yield return ShowPlayerHit(damage, enemy.State.Id);
                     break;
 
                 case MonsterActionKind.Step:
@@ -109,10 +98,7 @@ namespace ProjectC.Gameplay
                     TileData door = _grid.Map.Get(action.Target);
                     if (door != null && door.CanOpen)
                     {
-                        if (_tileRenderers.TryGetValue(action.Target, out SpriteRenderer renderer))
-                            yield return AnimateDoorTransition(renderer, action.Target, TileKind.DoorOpen);
-                        else
-                            _grid.Map.Set(action.Target, TileKind.DoorOpen);
+                        yield return SetDoorState(action.Target, TileKind.DoorOpen);
                         _enemyOpenedDoor = true;
                         InteractionFeedback?.Invoke($"{enemy.State.Id} OPENED A DOOR!");
                         Debug.Log($"[Door] {enemy.State.Id} 가 {action.Target} 문을 열었다");
