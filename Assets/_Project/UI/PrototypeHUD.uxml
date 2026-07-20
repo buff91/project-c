@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="DesignSystem.uss" />
     <ui:Style src="PrototypeHUD.uss" />
     <ui:VisualElement name="hud-root" class="hud-root">
         <ui:VisualElement class="view-panel">
