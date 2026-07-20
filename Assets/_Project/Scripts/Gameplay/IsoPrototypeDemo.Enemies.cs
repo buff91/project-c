@@ -12,8 +12,13 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
+        private const int TrickleSpawnIntervalTurns = 12;
+        private const int ActiveFloorMonsterCap = 4;
+
         private readonly List<EnemyAgent> _enemyTurnOrder = new List<EnemyAgent>();
         private bool _enemyPhaseMapChanged;
+        private System.Random _spawnRng;
+        private int _lastTrickleSpawnTurn;
 
         /// <summary>활성 반경: 시야보다 약간 넓게 잡아 시야 밖에서도 접근을 준비한다. (GDD §5.7 컬링)</summary>
         private int MonsterActiveRadius => fieldOfViewRadius + 2;
@@ -78,7 +83,70 @@ namespace ProjectC.Gameplay
             if (_enemyPhaseMapChanged)
                 RefreshFloorVisibility();
 
+            TrySpawnReinforcement();
             _turns.TryCompleteEnemyPhase();
+        }
+
+        /// <summary>몬스터 한 마리를 만들어 씬과 목록에 붙인다. 초기 배치와 런타임 스폰이 공유.</summary>
+        private EnemyAgent SpawnEnemy(MonsterArchetype archetype, GridPos spawn, int floorIndex)
+        {
+            var enemy = new EnemyAgent
+            {
+                Archetype = archetype,
+                State = new CombatantState(
+                    $"{archetype.Id} {FloorLabel(floorIndex)}-{_enemies.Count + 1}",
+                    spawn,
+                    archetype.MaxHp,
+                    archetype.AttackPower),
+                Brain = new MonsterBrain(archetype, spawn, dungeonSeed * 31 + _enemies.Count)
+            };
+            enemy.Root = CreateStandingSprite(
+                enemy.State.Id, MonsterSpriteFor(archetype), spawn, out SpriteRenderer renderer);
+            enemy.Renderer = renderer;
+            enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
+            UpdateHealthBar(enemy.HpFill, enemy.State);
+            _enemies.Add(enemy);
+            ApplyEnemyVisuals(enemy);
+            return enemy;
+        }
+
+        private Sprite MonsterSpriteFor(MonsterArchetype archetype)
+        {
+            Sprite mapped = visualCatalog != null ? visualCatalog.MonsterFor(archetype.Id) : null;
+            return mapped != null ? mapped : GetMonsterSprite(archetype.Id);
+        }
+
+        /// <summary>
+        /// 진행 중 추가 스폰: 일정 턴 간격으로, 활성 층의 몬스터가 적으면
+        /// 플레이어 시야 밖 스폰 지점에 하나 보충한다. (GDD §5.7 난이도·깊이 연동)
+        /// </summary>
+        private void TrySpawnReinforcement()
+        {
+            if (_turns.TurnNumber - _lastTrickleSpawnTurn < TrickleSpawnIntervalTurns) return;
+            if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor)) return;
+
+            int living = 0;
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.State.IsAlive &&
+                    _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex)
+                    living++;
+            }
+            if (living >= ActiveFloorMonsterCap) return;
+
+            foreach (GridPos spawn in floor.EnemySpawns)
+            {
+                if (_visibleTiles.Contains(spawn)) continue;   // 눈앞 스폰 금지
+                if (!_grid.Map.IsWalkable(spawn)) continue;    // 붕괴로 구멍이 됐을 수 있다
+                if (IsPositionOccupiedExcept(spawn, null)) continue;
+
+                _lastTrickleSpawnTurn = _turns.TurnNumber;
+                EnemyAgent reinforcement = SpawnEnemy(
+                    MonsterRoster.PickForDepth(-_activeFloorIndex, _spawnRng), spawn, _activeFloorIndex);
+                InteractionFeedback?.Invoke("SOMETHING STIRS IN THE DARK...");
+                Debug.Log($"[Spawn] 추가 스폰: {reinforcement.State.Id} @ {spawn}");
+                return;
+            }
         }
 
         private MonsterBrainContext BuildBrainContext(EnemyAgent self)

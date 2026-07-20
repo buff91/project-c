@@ -654,6 +654,74 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        private Sprite GetMonsterSprite(string archetypeId)
+        {
+            switch (archetypeId)
+            {
+                case "Skeleton": return GetSkeletonSprite();
+                case "Slime": return GetSlimeSprite();
+                default: return GetCharacterSprite(true);
+            }
+        }
+
+        private Sprite GetSkeletonSprite()
+        {
+            const string key = "skeleton";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(32, 48);
+            Color32 bone = new Color32(222, 216, 196, 255);
+            Color32 boneShade = new Color32(168, 160, 138, 255);
+            Color32 dark = new Color32(20, 25, 28, 255);
+
+            FillRect(texture, 10, 27, 12, 12, dark);      // 두개골 외곽
+            FillRect(texture, 11, 28, 10, 10, bone);
+            FillRect(texture, 12, 31, 3, 3, dark);        // 눈
+            FillRect(texture, 18, 31, 3, 3, dark);
+            FillRect(texture, 13, 28, 6, 2, boneShade);   // 턱
+            FillRect(texture, 14, 24, 4, 3, boneShade);   // 목
+            FillRect(texture, 9, 14, 14, 10, dark);       // 흉곽 외곽
+            FillRect(texture, 10, 15, 12, 8, bone);
+            FillRect(texture, 10, 17, 12, 1, boneShade);  // 갈비 골
+            FillRect(texture, 10, 20, 12, 1, boneShade);
+            FillRect(texture, 6, 13, 3, 10, bone);        // 팔
+            FillRect(texture, 23, 13, 3, 10, bone);
+            FillRect(texture, 11, 4, 4, 10, bone);        // 다리
+            FillRect(texture, 17, 4, 4, 10, bone);
+            FillRect(texture, 24, 6, 2, 18, boneShade);   // 낡은 검
+            FillRect(texture, 22, 22, 6, 2, dark);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetSlimeSprite()
+        {
+            const string key = "slime";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(26, 20);
+            Color32 body = new Color32(96, 176, 88, 255);
+            Color32 shade = new Color32(64, 128, 62, 255);
+            Color32 shine = new Color32(178, 232, 164, 255);
+            Color32 dark = new Color32(24, 44, 26, 255);
+
+            FillRect(texture, 4, 2, 18, 10, shade);       // 몸통 아래
+            FillRect(texture, 5, 6, 16, 8, body);         // 몸통 위
+            FillRect(texture, 7, 12, 12, 3, body);        // 둥근 머리
+            FillRect(texture, 8, 10, 3, 3, shine);        // 하이라이트
+            FillRect(texture, 9, 6, 2, 3, dark);          // 눈
+            FillRect(texture, 15, 6, 2, 3, dark);
+            FillRect(texture, 4, 2, 18, 1, dark);         // 바닥선
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetBarrelSprite()
         {
             const string key = "barrel";

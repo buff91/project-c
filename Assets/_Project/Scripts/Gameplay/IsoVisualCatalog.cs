@@ -44,8 +44,20 @@ namespace ProjectC.Gameplay
         [Header("액터와 소품")]
         public Sprite player;
         public Sprite goblin;
+        public Sprite skeleton;
+        public Sprite slime;
         public Sprite explosiveBarrel;
         public Sprite selection;
+
+        public Sprite MonsterFor(string archetypeId)
+        {
+            switch (archetypeId)
+            {
+                case "Skeleton": return skeleton;
+                case "Slime": return slime;
+                default: return goblin;
+            }
+        }
 
         [Header("아이템")]
         public Sprite potion;

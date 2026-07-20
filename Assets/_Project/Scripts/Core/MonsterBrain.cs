@@ -56,7 +56,8 @@ namespace ProjectC.Core
     public enum MonsterMood
     {
         Patrol = 0,
-        Chase = 1
+        Chase = 1,
+        Flee = 2
     }
 
     /// <summary>
@@ -90,9 +91,21 @@ namespace ProjectC.Core
             bool seesPlayer = PerceivesPlayer(context);
             if (seesPlayer)
             {
-                Mood = MonsterMood.Chase;
+                // HP가 도주 임계 미만이면 추격 대신 도주. (GDD §5.7 순찰→추격→공격→도주)
+                bool shouldFlee = _archetype.FleeThreshold > 0f &&
+                                  context.Self.Hp < context.Self.MaxHp * _archetype.FleeThreshold;
+                Mood = shouldFlee ? MonsterMood.Flee : MonsterMood.Chase;
                 LastSeenPlayerAt = context.Player.Position;
             }
+            else if (Mood == MonsterMood.Flee)
+            {
+                // 시야에서 벗어나면 진정하고 순찰로 복귀.
+                Mood = MonsterMood.Patrol;
+                LastSeenPlayerAt = null;
+            }
+
+            if (Mood == MonsterMood.Flee)
+                return DecideFlee(context);
 
             if (Mood == MonsterMood.Chase)
             {
@@ -168,6 +181,34 @@ namespace ProjectC.Core
                 goal,
                 pos => pos != self && context.IsOccupied != null && context.IsOccupied(pos),
                 openClosedDoors: true);
+        }
+
+        /// <summary>플레이어와의 거리(체비셰프)를 가장 크게 벌리는 이웃 칸으로 물러난다.</summary>
+        private MonsterAction DecideFlee(MonsterBrainContext context)
+        {
+            GridPos self = context.Self.Position;
+            GridPos player = context.Player.Position;
+            GridPos best = self;
+            int bestDistance = self.ChebyshevTo(player);
+
+            foreach (GridPos candidate in new[] { self.North, self.East, self.South, self.West })
+            {
+                if (!context.Map.IsWalkable(candidate)) continue;
+                if (context.IsOccupied != null && context.IsOccupied(candidate)) continue;
+                int distance = candidate.ChebyshevTo(player);
+                if (distance > bestDistance)
+                {
+                    best = candidate;
+                    bestDistance = distance;
+                }
+            }
+
+            if (best != self) return MonsterAction.Step(best);
+
+            // 궁지에 몰리면 몸부림 — 인접해 있으면 문다.
+            return CombatRules.AreAdjacent(context.Self, context.Player)
+                ? MonsterAction.Attack()
+                : MonsterAction.Wait();
         }
 
         private MonsterAction DecidePatrol(MonsterBrainContext context)

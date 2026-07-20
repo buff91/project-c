@@ -55,6 +55,30 @@ namespace ProjectC.Tests
         }
     }
 
+    public class MonsterRosterTests
+    {
+        [Test]
+        public void PickForDepth_IsDeterministic_AndDepthShiftsMix()
+        {
+            CollectionAssert.AreEqual(Pick(30, 0, seed: 5), Pick(30, 0, seed: 5));
+
+            List<string> shallow = Pick(60, 0, seed: 3);
+            CollectionAssert.DoesNotContain(shallow, "Skeleton", "최상층(B1)엔 해골이 없다");
+
+            List<string> deep = Pick(60, 3, seed: 3);
+            CollectionAssert.Contains(deep, "Skeleton", "깊은 층엔 해골이 섞인다");
+        }
+
+        private static List<string> Pick(int count, int depth, int seed)
+        {
+            var random = new System.Random(seed);
+            var picks = new List<string>(count);
+            for (int i = 0; i < count; i++)
+                picks.Add(MonsterRoster.PickForDepth(depth, random).Id);
+            return picks;
+        }
+    }
+
     public class MonsterBrainTests
     {
         private static GridMap Flat(int size)
@@ -223,6 +247,43 @@ namespace ProjectC.Tests
             }
 
             CollectionAssert.AreEqual(Run(), Run());
+        }
+
+        [Test]
+        public void LowHp_WithFleeThreshold_StepsAwayFromPlayer()
+        {
+            GridMap map = Flat(9);
+            var coward = new MonsterArchetype("Coward", 5, 1, aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.5f);
+            var self = new CombatantState("c", new GridPos(4, 4, 0), 5, 1);
+            self.TakeDamage(4); // HP 1 < 2.5 → 도주
+            var player = new CombatantState("p", new GridPos(2, 4, 0), 8, 2);
+            var brain = new MonsterBrain(coward, self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterMood.Flee, brain.Mood);
+            Assert.AreEqual(MonsterActionKind.Step, action.Kind);
+            Assert.Greater(
+                action.Target.ChebyshevTo(player.Position),
+                self.Position.ChebyshevTo(player.Position),
+                "도주 걸음은 거리를 벌려야 한다");
+        }
+
+        [Test]
+        public void CorneredWhileFleeing_AdjacentPlayer_BitesBack()
+        {
+            // 두 칸짜리 골방 — 물러날 곳이 없고 플레이어가 인접해 있으면 문다.
+            var map = new GridMap();
+            map.Set(new GridPos(0, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 0, 0), TileKind.Floor);
+            var coward = new MonsterArchetype("Coward", 5, 1, aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.5f);
+            var self = new CombatantState("c", new GridPos(0, 0, 0), 5, 1);
+            self.TakeDamage(4);
+            var player = new CombatantState("p", new GridPos(1, 0, 0), 8, 2);
+            var brain = new MonsterBrain(coward, self.Position, seed: 1);
+
+            Assert.AreEqual(MonsterActionKind.Attack, brain.Decide(Context(map, self, player)).Kind);
+            Assert.AreEqual(MonsterMood.Flee, brain.Mood);
         }
 
         [Test]

@@ -46,10 +46,6 @@ namespace ProjectC.Gameplay
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
         [Min(1)] public int playerAttack = 2;
-        [Min(1)] public int goblinMaxHp = 5;
-        [Min(1)] public int goblinAttack = 1;
-        [Tooltip("서로 보이는 상태에서 이 거리(체비셰프) 안이면 추격을 시작한다.")]
-        [Range(3, 10)] public int goblinAggroRange = 6;
         [Range(2, 8)] public int rangedAttackRange = 6;
         public CombatActionMode combatMode = CombatActionMode.Melee;
 
@@ -223,6 +219,7 @@ namespace ProjectC.Gameplay
             _inventory.Clear();
             _bombAiming = false;
             _barrelExploded = false;
+            _lastTrickleSpawnTurn = 0;
 
             _grid.buildDemoOnStart = false;
             _grid.iso.tileWidth = 1f;
@@ -320,36 +317,20 @@ namespace ProjectC.Gameplay
             footprintRenderer.sortingOrder = 29990;
             _playerFootprint = footprint.transform;
 
-            Sprite goblinSprite = visualCatalog != null && visualCatalog.goblin != null
-                ? visualCatalog.goblin
-                : GetCharacterSprite(true);
             Sprite barrelSprite = visualCatalog != null && visualCatalog.explosiveBarrel != null
                 ? visualCatalog.explosiveBarrel
                 : GetBarrelSprite();
 
             // 생성기가 배치한 스폰대로 모든 층의 적과 아이템을 만든다.
-            var goblinArchetype = new MonsterArchetype(
-                "Goblin", goblinMaxHp, goblinAttack, goblinAggroRange, patrolRadius: 2);
+            // 몬스터 종류는 깊이 비례 혼합 — 스탯·혼합표는 MonsterRoster 한 곳에서. (M5)
+            _spawnRng = new System.Random(dungeonSeed * 17);
             foreach (DungeonFloorInfo floor in _dungeon.Floors)
             {
                 foreach (GridPos spawn in floor.EnemySpawns)
-                {
-                    var enemy = new EnemyAgent
-                    {
-                        State = new CombatantState(
-                            $"Goblin {FloorLabel(floor.FloorIndex)}-{_enemies.Count + 1}",
-                            spawn,
-                            goblinMaxHp,
-                            goblinAttack),
-                        Brain = new MonsterBrain(
-                            goblinArchetype, spawn, dungeonSeed * 31 + _enemies.Count)
-                    };
-                    enemy.Root = CreateStandingSprite(enemy.State.Id, goblinSprite, spawn, out SpriteRenderer renderer);
-                    enemy.Renderer = renderer;
-                    enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
-                    UpdateHealthBar(enemy.HpFill, enemy.State);
-                    _enemies.Add(enemy);
-                }
+                    SpawnEnemy(
+                        MonsterRoster.PickForDepth(-floor.FloorIndex, _spawnRng),
+                        spawn,
+                        floor.FloorIndex);
 
                 foreach (ItemSpawn itemSpawn in floor.Items)
                 {
@@ -1158,6 +1139,7 @@ namespace ProjectC.Gameplay
         /// <summary>적 하나의 로직 상태·AI·씬 오브젝트 묶음.</summary>
         private sealed class EnemyAgent
         {
+            public MonsterArchetype Archetype;
             public CombatantState State;
             public MonsterBrain Brain;
             public GameObject Root;
