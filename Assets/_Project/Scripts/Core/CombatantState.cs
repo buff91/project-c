@@ -74,12 +74,17 @@ namespace ProjectC.Core
             return true;
         }
 
+        /// <param name="attackPower">
+        /// 원거리 전용 공격력. 생략하면 근접과 같은 AttackPower.
+        /// (밸런스: 무비용 원거리가 근접과 같은 피해면 카이팅으로 접근전이 성립하지 않는다)
+        /// </param>
         public static bool TryRanged(
             CombatantState attacker,
             CombatantState target,
             GridMap map,
             int maxRange,
-            out int damage)
+            out int damage,
+            int? attackPower = null)
         {
             damage = 0;
             if (attacker == null || target == null || map == null || maxRange < 1 ||
@@ -90,7 +95,7 @@ namespace ProjectC.Core
                 !HasLineOfSight(map, attacker.Position, target.Position))
                 return false;
 
-            damage = target.TakeDamage(attacker.AttackPower);
+            damage = target.TakeDamage(attackPower ?? attacker.AttackPower);
             return true;
         }
 

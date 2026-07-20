@@ -46,11 +46,13 @@ namespace ProjectC.Gameplay
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
         [Min(1)] public int playerAttack = 2;
-        [Range(2, 8)] public int rangedAttackRange = 6;
+        [Tooltip("원거리는 근접보다 약하다 — 같은 피해면 카이팅으로 접근전이 성립하지 않는다.")]
+        [Min(1)] public int rangedAttackDamage = 1;
+        [Range(2, 8)] public int rangedAttackRange = 4;
         public CombatActionMode combatMode = CombatActionMode.Melee;
 
         [Header("M1 아이템")]
-        [Min(1)] public int potionHealAmount = 4;
+        [Min(1)] public int potionHealAmount = 5;
         [Min(1)] public int bombDamage = 3;
         [Min(0)] public int frostBombDamage = 1;
         [Range(2, 8)] public int bombThrowRange = 4;
@@ -673,7 +675,8 @@ namespace ProjectC.Gameplay
                     enemy.State,
                     _grid.Map,
                     rangedAttackRange,
-                    out int damage))
+                    out int damage,
+                    rangedAttackDamage))
             {
                 yield return AnimateProjectile(_playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");

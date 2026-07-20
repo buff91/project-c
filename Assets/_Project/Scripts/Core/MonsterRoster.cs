@@ -8,9 +8,9 @@ namespace ProjectC.Core
     /// </summary>
     public static class MonsterRoster
     {
-        /// <summary>고블린: 기준 몬스터. 겁이 많아 빈사가 되면 도망친다.</summary>
+        /// <summary>고블린: 기준 몬스터. 아프게 물지만 겁이 많아 빈사가 되면 도망친다.</summary>
         public static readonly MonsterArchetype Goblin =
-            new MonsterArchetype("Goblin", maxHp: 5, attackPower: 1,
+            new MonsterArchetype("Goblin", maxHp: 5, attackPower: 2,
                 aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f);
 
         /// <summary>해골: 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.</summary>

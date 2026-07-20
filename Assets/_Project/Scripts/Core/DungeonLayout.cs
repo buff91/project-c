@@ -323,6 +323,30 @@ namespace ProjectC.Core
             int desired = 1 + random.Next(0, 2) + depth / 2;
             p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
 
+            // 하행 계단 경비병: 완주 동선(남쪽 방→하행 계단)이 전투를 완전히
+            // 우회하지 못하게 한다. 계단 인접(체비셰프 3)에 배치해 카이팅 거리를 줄이고,
+            // 수는 1+depth 로 깊을수록 무거운 관문. 샤프트 교대 규칙상 하행 방은 도착
+            // 방과 항상 다르고 입구에서 수평 문 뒤라 "문 열기 전 차단" 불변식 유지.
+            // (밸런스 시뮬 600판 근거 — 직행 정책 완주율 94%)
+            if (p.Down.HasValue)
+            {
+                bool eastRoom = p.Down.Value.x != 1;
+                int guardMinX = eastRoom ? p.RightMinX : 0;
+                int guardMaxX = eastRoom ? p.Width - 1 : p.LeftMaxX;
+                var guardPool = new List<GridPos>();
+                for (int x = guardMinX; x <= guardMaxX; x++)
+                for (int y = 0; y <= p.LowerMaxY; y++)
+                {
+                    var pos = new GridPos(x, y, p.BaseElevation);
+                    if (pos == p.Entry) continue;
+                    if (pos.ChebyshevTo(p.Down.Value) > 3) continue;
+                    if (map.Get(pos)?.kind != TileKind.Floor) continue;
+                    if (p.EnemySpawns.Contains(pos)) continue;
+                    guardPool.Add(pos);
+                }
+                p.EnemySpawns.AddRange(TakeRandom(guardPool, 1 + depth, random));
+            }
+
             // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 높은 단을 쓴다.
             if (p.EnemySpawns.Count == 0)
                 p.EnemySpawns.Add(p.At(p.StairX, p.RaisedY));
