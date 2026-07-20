@@ -154,6 +154,8 @@ MonoBehaviour:
   secondsPerStep: 0.09
   buildOnStart: 1
   configureMainCamera: 1
+  playCameraSize: 5.2
+  debugCameraSize: 8.8
   playerMaxHp: 8
   playerAttack: 2
   goblinMaxHp: 5
@@ -173,19 +175,22 @@ MonoBehaviour:
   debugAdjacentAlpha: 0.48
   autoDescendOnStart: 0
   showRearWalls: 1
-  visualCatalog: {fileID: 0}
+  visualCatalog: {fileID: 11400000, guid: e80f08e8904cc4a17834530b29b7cb3e, type: 2}
   floorTop:
     serializedVersion: 2
-    rgba: 4283714883
+    rgba: 4283584072
   raisedTop:
     serializedVersion: 2
-    rgba: 4282736239
+    rgba: 4282800230
   lowerTop:
     serializedVersion: 2
-    rgba: 4282004516
+    rgba: 4282070827
+  tileSeam:
+    serializedVersion: 2
+    rgba: 4280952351
   outline:
     serializedVersion: 2
-    rgba: 4279965458
+    rgba: 4279504908
   accent:
     serializedVersion: 2
     rgba: 4291154772
@@ -294,7 +299,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 6.8
+  orthographic size: 5.2
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2

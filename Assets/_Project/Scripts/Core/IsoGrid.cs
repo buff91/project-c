@@ -60,6 +60,15 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// target이 origin보다 화면 오른쪽에 투영되는지 반환한다.
+        /// 방향성 스프라이트는 월드 축이 아니라 현재 회전된 화면 좌우를 기준으로 고른다.
+        /// </summary>
+        public bool ProjectsToScreenRight(GridPos origin, GridPos target)
+        {
+            return GridToWorld(target).x > GridToWorld(origin).x;
+        }
+
+        /// <summary>
         /// 월드 좌표 → 격자. 어느 elevation 평면을 클릭했는지 알아야 하므로 elevation 을 인자로 받는다.
         /// (탭→격자 역변환의 핵심. 여러 높이 후보는 호출부에서 위→아래로 시도.)
         /// </summary>

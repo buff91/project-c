@@ -1,5 +1,17 @@
-/* PrototypeHUD — 레이아웃 전용. 색·폰트·프레임은 DesignSystem.uss(v1.2) 토큰.
-   UXML에서 DesignSystem.uss가 먼저 로드된다는 전제. */
+:root {
+    --ink: rgb(15, 12, 8);
+    --stone: rgba(28, 22, 15, 0.94);
+    --stone-raised: rgba(36, 29, 20, 0.96);
+    --bronze: rgb(74, 58, 34);
+    --bronze-lit: rgb(122, 92, 49);
+    --parchment: rgb(233, 220, 192);
+    --muted: rgb(157, 140, 109);
+    --torch: rgb(232, 173, 78);
+    --blood: rgb(200, 73, 59);
+    --mana: rgb(91, 127, 208);
+    --freeze: rgb(103, 198, 221);
+    --herb: rgb(104, 143, 77);
+}
 
 .hud-root {
     position: absolute;
@@ -7,201 +19,668 @@
     right: 0;
     top: 0;
     bottom: 0;
-    align-items: flex-end;
-    padding-top: 30px;
-    padding-right: 18px;
+    padding: 12px;
 }
 
-.view-panel {
-    width: 224px;
-    padding: var(--pc-space-2);
-    background-color: var(--pc-panel);
+.artifact-panel {
+    background-color: var(--stone);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--bronze);
+    border-right-color: var(--bronze);
+    border-bottom-color: rgb(47, 34, 19);
+    border-top-color: var(--bronze-lit);
+    border-radius: 5px;
+}
+
+.micro-caption {
+    color: var(--muted);
+    font-size: 8px;
+    -unity-font-style: bold;
+    letter-spacing: 1.4px;
+}
+
+.centered {
+    -unity-text-align: middle-center;
+}
+
+.vitals {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 180px;
+}
+
+.orb-row {
+    height: 50px;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 7px;
+}
+
+.orb-frame {
+    position: relative;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: 23px;
+    padding: 4px;
+    background-color: rgb(18, 11, 8);
     border-left-width: 2px;
     border-right-width: 2px;
     border-top-width: 2px;
     border-bottom-width: 2px;
-    border-left-color: var(--pc-stone);
-    border-top-color: var(--pc-stone);
-    border-right-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
+    border-left-color: var(--bronze-lit);
+    border-top-color: rgb(139, 97, 53);
+    border-right-color: rgb(52, 35, 21);
+    border-bottom-color: rgb(52, 35, 21);
+    justify-content: flex-end;
+    overflow: hidden;
 }
 
-.panel-title {
-    color: var(--pc-gold);
-    font-size: var(--pc-fs-1);
-    letter-spacing: 1px;
-    margin-bottom: 5px;
+.hp-orb {
+    background-color: rgb(58, 21, 18);
 }
 
-.view-row {
+.mana-orb {
+    background-color: rgb(22, 32, 63);
+}
+
+.orb-liquid {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    border-radius: 18px;
+}
+
+.hp-liquid {
+    height: 62%;
+    background-color: var(--blood);
+}
+
+.mana-liquid {
+    height: 48%;
+    background-color: var(--mana);
+}
+
+.orb-shine {
+    position: absolute;
+    left: 11px;
+    top: 9px;
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+    background-color: rgba(255, 235, 217, 0.78);
+}
+
+.orb-copy {
+    margin-left: 9px;
+    justify-content: center;
+}
+
+.orb-caption {
+    color: var(--muted);
+    font-size: 9px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+}
+
+.orb-value {
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-top: 1px;
+}
+
+.hp-value {
+    color: rgb(255, 176, 164);
+}
+
+.mana-value {
+    color: rgb(184, 202, 255);
+}
+
+.minimap-panel {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 174px;
+    padding: 7px;
+}
+
+.minimap-header {
+    height: 22px;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
 }
 
-.rotate-button {
-    width: 48px;
-    height: 44px;
-    color: var(--pc-text);
-    background-color: var(--pc-btn-bg);
-    border-left-color: var(--pc-stone-dim);
-    border-right-color: var(--pc-stone-dim);
-    border-top-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    font-size: var(--pc-fs-2);
-}
-
-.rotate-button:hover {
-    background-color: var(--pc-btn-bg-hover);
-}
-
-.rotate-button:active {
-    background-color: var(--pc-gold-deep);
-}
-
-.view-readout {
-    width: 72px;
-    align-items: center;
-}
-
-.view-label {
-    color: var(--pc-text);
-    font-size: var(--pc-fs-2);
-}
-
-.key-hint {
-    color: var(--pc-teal);
-    font-size: var(--pc-fs-1);
-    margin-top: 3px;
-}
-
-.floor-label {
-    color: var(--pc-gold);
-    background-color: var(--pc-inset);
-    border-top-width: 1px;
-    border-top-color: var(--pc-stone-dim);
-    font-size: var(--pc-fs-1);
-    -unity-text-align: middle-center;
-    margin-top: 7px;
-    padding-top: 5px;
-    padding-bottom: 4px;
-}
-
-.mode-button {
-    height: 27px;
-    color: var(--pc-teal);
-    background-color: var(--pc-btn-bg);
+.settings-button {
+    width: 35px;
+    height: 21px;
+    padding: 0;
+    color: var(--torch);
+    background-color: rgb(31, 24, 16);
     border-left-width: 1px;
     border-right-width: 1px;
     border-top-width: 1px;
     border-bottom-width: 1px;
-    border-left-color: var(--pc-stone-dim);
-    border-right-color: var(--pc-stone-dim);
-    border-top-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
-    font-size: var(--pc-fs-1);
+    border-left-color: var(--bronze-lit);
+    border-top-color: var(--bronze-lit);
+    border-right-color: rgb(42, 29, 17);
+    border-bottom-color: rgb(42, 29, 17);
+    border-radius: 3px;
+    font-size: 7px;
+    -unity-font-style: bold;
+}
+
+.minimap-grid {
+    position: relative;
+    height: 48px;
     margin-top: 5px;
+    background-color: rgba(11, 9, 6, 0.84);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(50, 38, 22);
+    border-right-color: rgb(50, 38, 22);
+    border-top-color: rgb(50, 38, 22);
+    border-bottom-color: rgb(50, 38, 22);
+    border-radius: 2px;
 }
 
-.mode-button:hover {
-    background-color: var(--pc-btn-bg-hover);
-}
-
-.player-panel {
+.map-room {
     position: absolute;
+    background-color: rgb(60, 46, 26);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(98, 73, 39);
+    border-right-color: rgb(98, 73, 39);
+    border-top-color: rgb(98, 73, 39);
+    border-bottom-color: rgb(98, 73, 39);
+}
+
+.map-room-a {
     left: 18px;
-    top: 30px;
-    width: 224px;
-    padding: var(--pc-space-2);
-    background-color: var(--pc-panel);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: var(--pc-stone);
-    border-top-color: var(--pc-stone);
-    border-right-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
+    top: 11px;
+    width: 39px;
+    height: 22px;
 }
 
-.location-label {
-    color: var(--pc-text);
-    background-color: var(--pc-inset);
-    font-size: var(--pc-fs-1);
-    -unity-text-align: middle-center;
-    padding-top: 5px;
-    padding-bottom: 5px;
+.map-room-b {
+    left: 58px;
+    top: 18px;
+    width: 38px;
+    height: 9px;
 }
 
-.combat-button {
-    height: 31px;
-    color: var(--pc-gold);
-    background-color: var(--pc-action-bg);
-    border-left-color: var(--pc-gold-deep);
-    border-right-color: var(--pc-gold-deep);
-    border-top-color: var(--pc-gold-deep);
-    border-bottom-color: var(--pc-gold-deep);
-    font-size: var(--pc-fs-1);
-    margin-top: 6px;
+.map-room-c {
+    right: 15px;
+    top: 8px;
+    width: 31px;
+    height: 29px;
 }
 
-.combat-button:hover {
-    background-color: var(--pc-action-bg-hover);
+.map-player {
+    position: absolute;
+    left: 81px;
+    top: 20px;
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+    background-color: var(--torch);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(255, 220, 139);
+    border-right-color: rgb(255, 220, 139);
+    border-top-color: rgb(255, 220, 139);
+    border-bottom-color: rgb(255, 220, 139);
 }
 
-.combat-button.ranged {
-    color: var(--pc-ice);
-    background-color: var(--pc-teal-bg);
-    border-left-color: var(--pc-teal);
-    border-right-color: var(--pc-teal);
-    border-top-color: var(--pc-teal);
-    border-bottom-color: var(--pc-teal);
-}
-
-.combat-button.ranged:hover {
-    background-color: var(--pc-teal-bg-hover);
-}
-
-.status-label {
-    color: var(--pc-teal);
-    font-size: var(--pc-fs-1);
-    -unity-text-align: middle-center;
+.view-controls {
+    height: 28px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 5px;
 }
 
-.vertical-panel {
-    position: absolute;
-    left: 50%;
-    bottom: 26px;
-    translate: -50% 0;
-    width: 330px;
-    padding: 7px;
-    background-color: var(--pc-panel);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: var(--pc-teal);
-    border-top-color: var(--pc-teal);
-    border-right-color: var(--pc-teal-bg);
-    border-bottom-color: var(--pc-teal-bg);
+.rotate-button {
+    width: 35px;
+    height: 26px;
+    padding: 0;
+    color: var(--parchment);
+    background-color: rgb(31, 24, 16);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--bronze-lit);
+    border-top-color: var(--bronze-lit);
+    border-right-color: rgb(42, 29, 17);
+    border-bottom-color: rgb(42, 29, 17);
+    border-radius: 3px;
+    font-size: 10px;
 }
 
-.vertical-title {
-    color: var(--pc-gold);
-    font-size: var(--pc-fs-1);
-    -unity-text-align: middle-center;
+.rotate-button:hover {
+    color: var(--ink);
+    background-color: var(--torch);
+}
+
+.view-label {
+    color: var(--parchment);
+    font-size: 10px;
+    -unity-font-style: bold;
     letter-spacing: 1px;
 }
 
-.vertical-hint-label {
-    color: var(--pc-ice);
-    font-size: var(--pc-fs-1);
-    -unity-text-align: middle-center;
+.depth-panel {
+    position: absolute;
+    right: 198px;
+    top: 12px;
+    width: 190px;
+    padding: 9px 11px;
+    align-items: flex-end;
+}
+
+.depth-value {
+    color: var(--torch);
+    font-size: 24px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-right;
+}
+
+.depth-caption {
+    margin-top: -2px;
+}
+
+.elevation-label {
+    color: rgb(159, 214, 224);
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin-top: 5px;
+    -unity-text-align: middle-right;
+}
+
+.floor-label {
+    color: var(--muted);
+    font-size: 8px;
+    -unity-font-style: bold;
+    margin-top: 4px;
+    -unity-text-align: middle-right;
+}
+
+.status-zone {
+    position: absolute;
+    left: 50%;
+    bottom: 66px;
+    translate: -50% 0;
+    align-items: center;
+}
+
+.status-chip {
+    min-height: 25px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 3px;
+    padding: 4px 9px;
+    margin-top: 5px;
+}
+
+.feedback-chip {
+    min-width: 88px;
+    background-color: rgb(232, 99, 42);
+}
+
+.route-chip {
+    max-width: 420px;
+    background-color: rgba(30, 66, 70, 0.96);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(64, 126, 132);
+    border-right-color: rgb(24, 47, 49);
+    border-top-color: rgb(64, 126, 132);
+    border-bottom-color: rgb(24, 47, 49);
+}
+
+.chip-dot {
+    width: 6px;
+    height: 6px;
+    min-width: 6px;
+    border-radius: 3px;
+    margin-right: 6px;
+}
+
+.feedback-dot {
+    background-color: rgba(15, 12, 8, 0.5);
+}
+
+.route-dot {
+    background-color: var(--freeze);
+}
+
+.chip-label {
+    color: var(--ink);
+    font-size: 9px;
+    -unity-font-style: bold;
+    letter-spacing: 0.5px;
     white-space: normal;
+}
+
+.route-chip .chip-label {
+    color: rgb(207, 242, 239);
+}
+
+.feedback-chip .chip-label {
+    white-space: nowrap;
+}
+
+.hud-bottom {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    height: 46px;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.resources {
+    flex-direction: row;
+}
+
+.resource-pill {
+    height: 38px;
+    min-width: 72px;
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 9px;
+    margin-right: 7px;
+}
+
+.resource-icon {
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    margin-right: 7px;
+}
+
+.gold-icon {
+    background-color: rgb(214, 171, 54);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(244, 207, 106);
+    border-top-color: rgb(244, 207, 106);
+    border-right-color: rgb(133, 93, 35);
+    border-bottom-color: rgb(133, 93, 35);
+}
+
+.herb-icon {
+    background-color: var(--herb);
+    border-radius: 7px 2px 7px 2px;
+}
+
+.resource-value {
+    color: var(--parchment);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.action-cluster {
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.mode-button,
+.combat-button {
+    height: 36px;
+    margin-right: 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    -unity-font-style: bold;
+    letter-spacing: 0.5px;
+}
+
+.mode-button {
+    width: 122px;
+    color: rgb(159, 214, 224);
+    background-color: rgba(26, 43, 45, 0.96);
+    border-left-color: rgb(64, 104, 108);
+    border-top-color: rgb(64, 104, 108);
+    border-right-color: rgb(20, 34, 36);
+    border-bottom-color: rgb(20, 34, 36);
+}
+
+.combat-button {
+    width: 150px;
+    color: rgb(255, 224, 158);
+    background-color: rgb(92, 52, 25);
+    border-left-color: rgb(166, 101, 48);
+    border-top-color: rgb(166, 101, 48);
+    border-right-color: rgb(48, 27, 22);
+    border-bottom-color: rgb(48, 27, 22);
+}
+
+.mode-button:hover,
+.combat-button:hover {
+    color: var(--ink);
+    background-color: var(--torch);
+}
+
+.combat-button.ranged {
+    color: rgb(180, 252, 238);
+    background-color: rgb(25, 67, 68);
+    border-left-color: rgb(76, 177, 166);
+    border-top-color: rgb(76, 177, 166);
+    border-right-color: rgb(18, 42, 45);
+    border-bottom-color: rgb(18, 42, 45);
+}
+
+.turn-pill {
+    height: 38px;
+    min-width: 76px;
+    flex-direction: row;
+    align-items: center;
+    padding: 7px 10px;
+}
+
+.turn-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 5px;
+    background-color: var(--torch);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(255, 221, 150);
+    border-right-color: rgb(255, 221, 150);
+    border-top-color: rgb(255, 221, 150);
+    border-bottom-color: rgb(255, 221, 150);
+    margin-right: 7px;
+}
+
+.turn-label {
+    color: var(--torch);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.settings-modal {
+    display: none;
+    position: absolute;
+    left: -12px;
+    right: -12px;
+    top: -12px;
+    bottom: -12px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(4, 3, 2, 0.78);
+}
+
+.settings-modal.is-open {
+    display: flex;
+}
+
+.settings-card {
+    width: 430px;
+    padding: 18px;
+    background-color: rgba(28, 22, 15, 0.99);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--bronze-lit);
+    border-top-color: var(--bronze-lit);
+    border-right-color: rgb(49, 35, 20);
+    border-bottom-color: rgb(49, 35, 20);
+    border-radius: 8px;
+}
+
+.settings-header {
+    height: 49px;
+    flex-direction: row;
+    justify-content: space-between;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--bronze);
+    margin-bottom: 9px;
+}
+
+.settings-title {
+    color: var(--torch);
+    font-size: 15px;
+    -unity-font-style: bold;
+    letter-spacing: 1.4px;
+}
+
+.settings-subtitle {
+    color: var(--muted);
+    font-size: 9px;
     margin-top: 3px;
+}
+
+.settings-close {
+    width: 34px;
+    height: 32px;
+    padding: 0;
+    color: var(--parchment);
+    background-color: rgb(24, 18, 12);
+    border-left-color: var(--bronze);
+    border-right-color: var(--bronze);
+    border-top-color: var(--bronze);
+    border-bottom-color: var(--bronze);
+    border-radius: 4px;
+    font-size: 18px;
+}
+
+.settings-toggle {
+    height: 34px;
+    color: var(--parchment);
+    font-size: 11px;
+    -unity-font-style: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.setting-row {
+    min-height: 62px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-top-width: 1px;
+    border-top-color: rgb(57, 43, 25);
+}
+
+.setting-copy {
+    width: 220px;
+}
+
+.setting-label {
+    color: var(--parchment);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.setting-help {
+    color: var(--muted);
+    font-size: 8px;
+    margin-top: 3px;
+    white-space: normal;
+}
+
+.setting-slider {
+    width: 165px;
+    height: 28px;
+}
+
+.setting-slider .unity-base-slider__tracker {
+    height: 5px;
+    background-color: rgb(17, 13, 8);
+    border-left-color: var(--bronze);
+    border-right-color: var(--bronze);
+    border-top-color: var(--bronze);
+    border-bottom-color: var(--bronze);
+}
+
+.setting-slider .unity-base-slider__dragger {
+    width: 14px;
+    height: 14px;
+    background-color: var(--torch);
+    border-left-color: rgb(255, 220, 140);
+    border-right-color: rgb(139, 91, 30);
+    border-top-color: rgb(255, 220, 140);
+    border-bottom-color: rgb(139, 91, 30);
+    border-radius: 7px;
+}
+
+.settings-actions {
+    height: 42px;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.settings-reset,
+.settings-done {
+    height: 38px;
+    border-radius: 4px;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.settings-reset {
+    width: 92px;
+    color: var(--muted);
+    background-color: rgb(23, 17, 11);
+    border-left-color: var(--bronze);
+    border-right-color: var(--bronze);
+    border-top-color: var(--bronze);
+    border-bottom-color: var(--bronze);
+    margin-right: 8px;
+}
+
+.settings-done {
+    width: 112px;
+    color: var(--ink);
+    background-color: var(--torch);
+    border-left-color: rgb(255, 215, 132);
+    border-top-color: rgb(255, 215, 132);
+    border-right-color: rgb(139, 91, 30);
+    border-bottom-color: rgb(139, 91, 30);
 }
