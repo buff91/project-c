@@ -58,16 +58,7 @@ namespace ProjectC.Gameplay
             InteractionFeedback?.Invoke($"{cause} → {FloorLabel(destinationFloor)}");
             yield return AnimateHoleDrop(from, fall.FinalPosition);
 
-            _playerPos = fall.FinalPosition;
-            _playerSorting.Pos = fall.FinalPosition;
-            ApplyPlayerVisualSorting(fall.FinalPosition);
-            _activeFloorIndex = destinationFloor;
-            UpdateInputFloorRange();
-            RefreshFloorVisibility();
-            PositionSelection(fall.FinalPosition);
-            ConfigureCamera(Camera.main);
-            ActiveFloorChanged?.Invoke(_activeFloorIndex);
-            PlayerPositionChanged?.Invoke();
+            SyncPlayerView(fall.FinalPosition, floorChanged: true);
             InteractionFeedback?.Invoke($"LANDED · {LocationLabel}");
 
             if (fall.Damage > 0)
@@ -94,9 +85,6 @@ namespace ProjectC.Gameplay
         {
             Vector3 start = _player.transform.position;
             _playerState.MoveTo(destination);
-            _playerPos = destination;
-            _playerSorting.Pos = destination;
-            ApplyPlayerVisualSorting(destination);
 
             Vector3 end = _grid.GridToWorld(destination);
             float elapsed = 0f;
@@ -109,11 +97,26 @@ namespace ProjectC.Gameplay
             }
             _player.transform.position = end;
 
-            RefreshFloorVisibility();
-            PositionSelection(destination);
-            ConfigureCamera(Camera.main);
-            PlayerPositionChanged?.Invoke();
+            SyncPlayerView(destination, floorChanged: false);
             TryCollectItemAt(destination);
+        }
+
+        /// <summary>이동류 처리 뒤 플레이어 관련 뷰 상태(정렬·시야·선택·카메라·이벤트)를 한 번에 동기화.</summary>
+        private void SyncPlayerView(GridPos position, bool floorChanged)
+        {
+            _playerPos = position;
+            _playerSorting.Pos = position;
+            ApplyPlayerVisualSorting(position);
+            if (floorChanged)
+            {
+                _activeFloorIndex = _dungeon.Height.FloorIndex(position.elevation);
+                UpdateInputFloorRange();
+            }
+            RefreshFloorVisibility();
+            PositionSelection(position);
+            ConfigureCamera(Camera.main);
+            if (floorChanged) ActiveFloorChanged?.Invoke(_activeFloorIndex);
+            PlayerPositionChanged?.Invoke();
         }
 
         // ── 몬스터 낙하 ──────────────────────────────────────────
