@@ -124,20 +124,19 @@ namespace ProjectC.Gameplay
         private Transform _playerLocator;
         private Transform _playerFootprint;
         private GridPos _playerPos;
-        private GameObject _goblin;
-        private SpriteRenderer _goblinRenderer;
         private GameObject _barrel;
         private SpriteRenderer _barrelRenderer;
         private GridPos _barrelPos;
+        private readonly List<EnemyAgent> _enemies = new List<EnemyAgent>();
+        private readonly List<ItemAgent> _items = new List<ItemAgent>();
+        private readonly Dictionary<ItemKind, int> _itemCounts = new Dictionary<ItemKind, int>();
         private GameObject _selection;
         private GridPos _selectionPos;
         private Transform _wallRoot;
         private Transform _shaftRoot;
         private Coroutine _moveRoutine;
         private Transform _playerHpFill;
-        private Transform _goblinHpFill;
         private CombatantState _playerState;
-        private CombatantState _goblinState;
         private readonly TurnManager _turns = new TurnManager();
         private bool _resolvingAction;
         private DungeonLayout _dungeon;
@@ -206,6 +205,9 @@ namespace ProjectC.Gameplay
             _visibleTiles.Clear();
             _exploredTiles.Clear();
             _verticalPreviewTiles.Clear();
+            _enemies.Clear();
+            _items.Clear();
+            _itemCounts.Clear();
 
             _grid.buildDemoOnStart = false;
             _grid.iso.tileWidth = 1f;
@@ -307,17 +309,47 @@ namespace ProjectC.Gameplay
             Sprite barrelSprite = visualCatalog != null && visualCatalog.explosiveBarrel != null
                 ? visualCatalog.explosiveBarrel
                 : GetBarrelSprite();
-            var goblinPos = activeFloor.EnemySpawn;
-            _goblinState = new CombatantState("Goblin", goblinPos, goblinMaxHp, goblinAttack);
-            _goblin = CreateStandingSprite("Goblin", goblinSprite, goblinPos, out _goblinRenderer);
+
+            // 생성기가 배치한 스폰대로 모든 층의 적과 아이템을 만든다.
+            foreach (DungeonFloorInfo floor in _dungeon.Floors)
+            {
+                foreach (GridPos spawn in floor.EnemySpawns)
+                {
+                    var enemy = new EnemyAgent
+                    {
+                        State = new CombatantState(
+                            $"Goblin {FloorLabel(floor.FloorIndex)}-{_enemies.Count + 1}",
+                            spawn,
+                            goblinMaxHp,
+                            goblinAttack)
+                    };
+                    enemy.Root = CreateStandingSprite(enemy.State.Id, goblinSprite, spawn, out SpriteRenderer renderer);
+                    enemy.Renderer = renderer;
+                    enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
+                    UpdateHealthBar(enemy.HpFill, enemy.State);
+                    _enemies.Add(enemy);
+                }
+
+                foreach (ItemSpawn itemSpawn in floor.Items)
+                {
+                    Sprite mapped = visualCatalog != null ? visualCatalog.ItemFor(itemSpawn.Kind) : null;
+                    var item = new ItemAgent { Spawn = itemSpawn };
+                    item.Root = CreateStandingSprite(
+                        $"Item {itemSpawn.Kind} {itemSpawn.Position}",
+                        mapped != null ? mapped : GetItemSprite(itemSpawn.Kind),
+                        itemSpawn.Position,
+                        out SpriteRenderer itemRenderer,
+                        microOffset: 0);
+                    item.Renderer = itemRenderer;
+                    _items.Add(item);
+                }
+            }
 
             _barrelPos = FindPreviewPropPosition();
             _barrel = CreateStandingSprite("Explosive Barrel", barrelSprite, _barrelPos, out _barrelRenderer);
 
             _playerHpFill = CreateHealthBar(_player, "Player HP");
-            _goblinHpFill = CreateHealthBar(_goblin, "Goblin HP");
             UpdateHealthBar(_playerHpFill, _playerState);
-            UpdateHealthBar(_goblinHpFill, _goblinState);
 
             _selection = new GameObject("Selection Marker");
             _selection.transform.SetParent(_visualRoot, false);
@@ -345,14 +377,19 @@ namespace ProjectC.Gameplay
             UpdatePlayerOccluders(Time.deltaTime);
         }
 
-        private GameObject CreateStandingSprite(string objectName, Sprite sprite, GridPos pos, out SpriteRenderer renderer)
+        private GameObject CreateStandingSprite(
+            string objectName,
+            Sprite sprite,
+            GridPos pos,
+            out SpriteRenderer renderer,
+            int microOffset = 1)
         {
             var instance = new GameObject(objectName);
             instance.transform.SetParent(_visualRoot, false);
             instance.transform.position = _grid.GridToWorld(pos);
             renderer = instance.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
-            renderer.sortingOrder = _grid.iso.SortingOrder(pos, 1);
+            renderer.sortingOrder = _grid.iso.SortingOrder(pos, microOffset);
             return instance;
         }
 
@@ -418,10 +455,17 @@ namespace ProjectC.Gameplay
                 _playerSorting.Apply();
                 ApplyPlayerVisualSorting(_playerSorting.Pos);
             }
-            if (_goblinRenderer != null)
+            foreach (EnemyAgent enemy in _enemies)
             {
-                _goblin.transform.position = _grid.GridToWorld(_goblinState.Position);
-                _goblinRenderer.sortingOrder = _grid.iso.SortingOrder(_goblinState.Position, 1);
+                if (enemy.Root == null) continue;
+                enemy.Root.transform.position = _grid.GridToWorld(enemy.State.Position);
+                enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(enemy.State.Position, 1);
+            }
+            foreach (ItemAgent item in _items)
+            {
+                if (item.Root == null) continue;
+                item.Root.transform.position = _grid.GridToWorld(item.Spawn.Position);
+                item.Renderer.sortingOrder = _grid.iso.SortingOrder(item.Spawn.Position, 0);
             }
             if (_barrelRenderer != null)
             {
@@ -465,20 +509,21 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            if (_goblinState != null && _goblinState.IsAlive && target == _goblinState.Position)
+            EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
+            if (tappedEnemy != null)
             {
                 if (combatMode == CombatActionMode.Ranged)
                 {
                     PositionSelection(target);
-                    _moveRoutine = StartCoroutine(RangedAttack());
+                    _moveRoutine = StartCoroutine(RangedAttack(tappedEnemy));
                     return;
                 }
 
-                List<GridPos> attackPath = FindPathToAdjacent(_goblinState.Position);
+                List<GridPos> attackPath = FindPathToAdjacent(tappedEnemy.State.Position);
                 if (attackPath.Count == 0) return;
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(ApproachAndAttack(attackPath));
+                _moveRoutine = StartCoroutine(ApproachAndAttack(attackPath, tappedEnemy));
                 return;
             }
 
@@ -517,23 +562,23 @@ namespace ProjectC.Gameplay
                 HandleTileTapped(floor.DownStairs.Value, tileExists: true);
         }
 
-        private IEnumerator ApproachAndAttack(IReadOnlyList<GridPos> path)
+        private IEnumerator ApproachAndAttack(IReadOnlyList<GridPos> path, EnemyAgent enemy)
         {
             _resolvingAction = true;
             yield return MovePlayerPath(path);
 
-            if (_playerState.IsAlive && _goblinState.IsAlive &&
-                CombatRules.TryMelee(_playerState, _goblinState, out int damage))
+            if (_playerState.IsAlive && enemy.State.IsAlive &&
+                CombatRules.TryMelee(_playerState, enemy.State, out int damage))
             {
-                UpdateHealthBar(_goblinHpFill, _goblinState);
-                Debug.Log($"[Turn {_turns.TurnNumber}] 플레이어가 고블린에게 {damage} 피해. " +
-                          $"HP {_goblinState.Hp}/{_goblinState.MaxHp}");
-                yield return FlashDamage(_goblinRenderer);
+                UpdateHealthBar(enemy.HpFill, enemy.State);
+                Debug.Log($"[Turn {_turns.TurnNumber}] 플레이어가 {enemy.State.Id}에게 {damage} 피해. " +
+                          $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
+                yield return FlashDamage(enemy.Renderer);
 
-                if (!_goblinState.IsAlive)
+                if (!enemy.State.IsAlive)
                 {
-                    _goblinRenderer.color = new Color32(60, 64, 66, 180);
-                    Debug.Log("[Combat] 고블린 처치");
+                    enemy.Renderer.color = new Color32(60, 64, 66, 180);
+                    Debug.Log($"[Combat] {enemy.State.Id} 처치");
                 }
 
                 yield return ResolveEnemyPhase();
@@ -543,25 +588,25 @@ namespace ProjectC.Gameplay
             _moveRoutine = null;
         }
 
-        private IEnumerator RangedAttack()
+        private IEnumerator RangedAttack(EnemyAgent enemy)
         {
             _resolvingAction = true;
             if (CombatRules.TryRanged(
                     _playerState,
-                    _goblinState,
+                    enemy.State,
                     _grid.Map,
                     rangedAttackRange,
                     out int damage))
             {
-                yield return AnimateProjectile(_playerPos, _goblinState.Position);
-                UpdateHealthBar(_goblinHpFill, _goblinState);
+                yield return AnimateProjectile(_playerPos, enemy.State.Position);
+                UpdateHealthBar(enemy.HpFill, enemy.State);
                 InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
-                Debug.Log($"[Ranged] 고블린에게 {damage} 피해. HP {_goblinState.Hp}/{_goblinState.MaxHp}");
-                yield return FlashDamage(_goblinRenderer);
+                Debug.Log($"[Ranged] {enemy.State.Id}에게 {damage} 피해. HP {enemy.State.Hp}/{enemy.State.MaxHp}");
+                yield return FlashDamage(enemy.Renderer);
 
-                if (!_goblinState.IsAlive)
+                if (!enemy.State.IsAlive)
                 {
-                    _goblinRenderer.color = new Color32(60, 64, 66, 180);
+                    enemy.Renderer.color = new Color32(60, 64, 66, 180);
                     InteractionFeedback?.Invoke("GOBLIN DEFEATED");
                 }
 
@@ -569,7 +614,7 @@ namespace ProjectC.Gameplay
             }
             else
             {
-                bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, _goblinState.Position);
+                bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke(blocked ? "SHOT BLOCKED" : $"OUT OF RANGE · MAX {rangedAttackRange}");
             }
 
@@ -656,6 +701,7 @@ namespace ProjectC.Gameplay
                 ActiveFloorChanged?.Invoke(_activeFloorIndex);
                 PlayerPositionChanged?.Invoke();
                 InteractionFeedback?.Invoke($"LANDED · {LocationLabel}");
+                TryCollectItemAt(landing.Value);
                 yield return ResolveEnemyPhase();
             }
 
@@ -757,7 +803,7 @@ namespace ProjectC.Gameplay
             for (int i = 1; i < path.Count; i++)
             {
                 GridPos next = path[i];
-                if (_goblinState.IsAlive && next == _goblinState.Position)
+                if (IsLivingEnemyAt(next))
                     yield break;
 
                 Vector3 start = _player.transform.position;
@@ -789,6 +835,7 @@ namespace ProjectC.Gameplay
                 _playerSorting.elevation = next.elevation;
                 _player.transform.position = end;
                 ConfigureCamera(Camera.main);
+                TryCollectItemAt(next);
 
                 int nextFloor = _dungeon.Height.FloorIndex(next.elevation);
                 if (nextFloor != _activeFloorIndex)
@@ -816,10 +863,15 @@ namespace ProjectC.Gameplay
         {
             if (!_turns.TryBeginEnemyPhase()) yield break;
 
-            if (_goblinState.IsAlive && CombatRules.TryMelee(_goblinState, _playerState, out int damage))
+            // 살아있는 적 전원이 한 번씩 행동한다. 이동 AI는 M2에서 붙이고, 지금은 인접 공격만.
+            foreach (EnemyAgent enemy in _enemies)
             {
+                if (!_playerState.IsAlive) break;
+                if (!enemy.State.IsAlive) continue;
+                if (!CombatRules.TryMelee(enemy.State, _playerState, out int damage)) continue;
+
                 UpdateHealthBar(_playerHpFill, _playerState);
-                Debug.Log($"[Turn {_turns.TurnNumber}] 고블린이 플레이어에게 {damage} 피해. " +
+                Debug.Log($"[Turn {_turns.TurnNumber}] {enemy.State.Id}가 플레이어에게 {damage} 피해. " +
                           $"HP {_playerState.Hp}/{_playerState.MaxHp}");
                 yield return FlashDamage(_playerRenderer);
 
@@ -863,12 +915,11 @@ namespace ProjectC.Gameplay
             {
                 if (candidate.elevation != target.elevation || !_grid.Map.IsWalkable(candidate))
                     continue;
-                if (_goblinState != null && _goblinState.IsAlive && candidate == _goblinState.Position)
+                if (IsLivingEnemyAt(candidate))
                     continue;
 
                 List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, candidate);
-                if (_goblinState != null && _goblinState.IsAlive &&
-                    path.Exists(step => step == _goblinState.Position))
+                if (path.Exists(step => IsLivingEnemyAt(step)))
                     continue;
                 if (path.Count > 0 && (best == null || path.Count < best.Count))
                     best = path;
@@ -952,6 +1003,55 @@ namespace ProjectC.Gameplay
                 Destroy(previous.gameObject);
             else
                 DestroyImmediate(previous.gameObject);
+        }
+
+        private EnemyAgent FindLivingEnemyAt(GridPos pos)
+        {
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.State != null && enemy.State.IsAlive && enemy.State.Position == pos)
+                    return enemy;
+            }
+            return null;
+        }
+
+        private bool IsLivingEnemyAt(GridPos pos) => FindLivingEnemyAt(pos) != null;
+
+        /// <summary>플레이어가 밟은 칸의 아이템을 줍는다. 인벤토리 UI 전까지는 개수만 센다.</summary>
+        private void TryCollectItemAt(GridPos pos)
+        {
+            foreach (ItemAgent item in _items)
+            {
+                if (item.Collected || item.Spawn.Position != pos) continue;
+
+                item.Collected = true;
+                if (item.Root != null) item.Root.SetActive(false);
+                _itemCounts.TryGetValue(item.Spawn.Kind, out int count);
+                _itemCounts[item.Spawn.Kind] = count + 1;
+
+                string label = item.Spawn.Kind == ItemKind.Potion ? "POTION" : "BOMB";
+                InteractionFeedback?.Invoke($"{label} 획득 ×{count + 1}");
+                Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count + 1})");
+                return;
+            }
+        }
+
+        /// <summary>적 하나의 로직 상태와 씬 오브젝트 묶음. (M2에서 AI 상태머신이 여기에 붙는다)</summary>
+        private sealed class EnemyAgent
+        {
+            public CombatantState State;
+            public GameObject Root;
+            public SpriteRenderer Renderer;
+            public Transform HpFill;
+        }
+
+        /// <summary>바닥에 놓인 아이템 프롭. 밟으면 Collected 로 바뀌고 숨겨진다.</summary>
+        private sealed class ItemAgent
+        {
+            public ItemSpawn Spawn;
+            public GameObject Root;
+            public SpriteRenderer Renderer;
+            public bool Collected;
         }
     }
 }

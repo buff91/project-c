@@ -591,6 +591,42 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        private Sprite GetItemSprite(ItemKind kind)
+        {
+            string key = $"item-{kind}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(20, 24);
+            if (kind == ItemKind.Potion)
+            {
+                Color32 glass = new Color32(158, 200, 214, 255);
+                Color32 liquid = new Color32(214, 62, 74, 255);
+                Color32 liquidLight = new Color32(240, 116, 112, 255);
+                Color32 cork = new Color32(150, 106, 58, 255);
+                FillRect(texture, 6, 2, 8, 11, glass);      // 몸통
+                FillRect(texture, 7, 3, 6, 7, liquid);
+                FillRect(texture, 8, 7, 2, 3, liquidLight); // 하이라이트
+                FillRect(texture, 8, 13, 4, 4, glass);      // 목
+                FillRect(texture, 8, 17, 4, 3, cork);
+            }
+            else
+            {
+                Color32 shell = new Color32(43, 47, 52, 255);
+                Color32 shine = new Color32(92, 100, 108, 255);
+                Color32 fuse = new Color32(150, 106, 58, 255);
+                Color32 spark = new Color32(255, 202, 72, 255);
+                FillRect(texture, 5, 2, 10, 10, shell);     // 몸통
+                FillRect(texture, 7, 8, 3, 3, shine);       // 하이라이트
+                FillRect(texture, 9, 12, 2, 4, fuse);       // 심지
+                FillRect(texture, 10, 16, 3, 3, spark);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.02f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetBarrelSprite()
         {
             const string key = "barrel";

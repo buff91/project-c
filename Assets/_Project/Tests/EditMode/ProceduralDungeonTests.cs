@@ -55,11 +55,53 @@ namespace ProjectC.Tests
             DungeonLayout dungeon = DungeonGenerator.Generate(map, 11, 11, 3, 4, seed);
 
             foreach (DungeonFloorInfo floor in dungeon.Floors)
+            foreach (GridPos spawn in floor.EnemySpawns)
             {
                 Assert.AreEqual(
                     0,
-                    GridPathfinder.FindPath(map, floor.Entry, floor.EnemySpawn).Count,
-                    $"seed {seed}: {floor.FloorIndex}층 북쪽 방이 문 없이 열려 있습니다.");
+                    GridPathfinder.FindPath(map, floor.Entry, spawn).Count,
+                    $"seed {seed}: {floor.FloorIndex}층 적 스폰 {spawn} 이 문 없이 열려 있습니다.");
+            }
+        }
+
+        [Test]
+        public void AnySeed_EnemyAndItemSpawnsAreValid([Range(1, 30)] int seed)
+        {
+            var map = new GridMap();
+            DungeonLayout dungeon = DungeonGenerator.Generate(map, 11, 11, 3, 4, seed);
+
+            foreach (DungeonFloorInfo floor in dungeon.Floors)
+            {
+                Assert.GreaterOrEqual(floor.EnemySpawns.Count, 1, $"seed {seed}: 적 스폰이 없습니다.");
+                Assert.AreEqual(
+                    floor.EnemySpawns.Count,
+                    floor.EnemySpawns.Distinct().Count(),
+                    $"seed {seed}: 적 스폰이 겹칩니다.");
+                foreach (GridPos spawn in floor.EnemySpawns)
+                    Assert.IsTrue(map.IsWalkable(spawn), $"seed {seed}: 적 스폰 {spawn} 이 걷기 불가입니다.");
+
+                Assert.GreaterOrEqual(floor.Items.Count, 1, $"seed {seed}: 아이템이 없습니다.");
+                var itemPositions = floor.Items.Select(item => item.Position).ToList();
+                Assert.AreEqual(
+                    itemPositions.Count,
+                    itemPositions.Distinct().Count(),
+                    $"seed {seed}: 아이템 스폰이 겹칩니다.");
+                foreach (ItemSpawn item in floor.Items)
+                {
+                    Assert.AreEqual(
+                        TileKind.Floor,
+                        map.Get(item.Position).kind,
+                        $"seed {seed}: 아이템 {item} 이 일반 바닥 위가 아닙니다.");
+                    CollectionAssert.DoesNotContain(
+                        floor.EnemySpawns.ToList(),
+                        item.Position,
+                        $"seed {seed}: 아이템 {item} 이 적 스폰과 겹칩니다.");
+                    Assert.AreNotEqual(floor.Entry, item.Position, $"seed {seed}: 아이템이 입구 칸에 있습니다.");
+                }
+
+                // 막다른 분기 방(문 3개)이 있으면 보상 아이템이 하나 더 보장된다.
+                if (floor.Doors.Count >= 3)
+                    Assert.GreaterOrEqual(floor.Items.Count, 2, $"seed {seed}: 분기 방 보상이 없습니다.");
             }
         }
 

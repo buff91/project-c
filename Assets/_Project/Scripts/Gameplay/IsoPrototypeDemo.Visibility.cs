@@ -30,11 +30,23 @@ namespace ProjectC.Gameplay
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
-            if (_goblin != null)
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.Root == null) continue;
                 SetSpriteHierarchyVisible(
-                    _goblin,
-                    _dungeon.Height.FloorIndex(_goblinState.Position.elevation) == _activeFloorIndex &&
-                    (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(_goblinState.Position)));
+                    enemy.Root,
+                    _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex &&
+                    (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(enemy.State.Position)));
+            }
+
+            foreach (ItemAgent item in _items)
+            {
+                if (item.Root == null || item.Collected) continue;
+                SetSpriteHierarchyVisible(
+                    item.Root,
+                    _dungeon.Height.FloorIndex(item.Spawn.Position.elevation) == _activeFloorIndex &&
+                    (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
+            }
 
             if (_barrelRenderer != null)
             {

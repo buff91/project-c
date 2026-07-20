@@ -47,6 +47,12 @@ namespace ProjectC.Gameplay
         public Sprite explosiveBarrel;
         public Sprite selection;
 
+        [Header("아이템")]
+        public Sprite potion;
+        public Sprite bomb;
+
+        public Sprite ItemFor(ItemKind kind) => kind == ItemKind.Potion ? potion : bomb;
+
         public Sprite TileFor(TileKind kind, int elevation)
         {
             switch (kind)

@@ -10,8 +10,12 @@ namespace ProjectC.Core
         public GridPos? UpStairs { get; }
         public GridPos? DownStairs { get; }
         public GridPos? Hole { get; }
-        public GridPos EnemySpawn { get; }
+        public IReadOnlyList<GridPos> EnemySpawns { get; }
+        public IReadOnlyList<ItemSpawn> Items { get; }
         public IReadOnlyList<GridPos> Doors { get; }
+
+        /// <summary>첫 번째 적 스폰. (단일 적을 쓰던 호출부 호환용 축약)</summary>
+        public GridPos EnemySpawn => EnemySpawns[0];
 
         public DungeonFloorInfo(
             int floorIndex,
@@ -19,15 +23,20 @@ namespace ProjectC.Core
             GridPos? upStairs,
             GridPos? downStairs,
             GridPos? hole,
-            GridPos enemySpawn,
+            IReadOnlyList<GridPos> enemySpawns,
+            IReadOnlyList<ItemSpawn> items,
             IReadOnlyList<GridPos> doors)
         {
+            if (enemySpawns == null || enemySpawns.Count == 0)
+                throw new ArgumentException("층마다 적 스폰이 하나 이상 필요합니다.", nameof(enemySpawns));
+
             FloorIndex = floorIndex;
             Entry = entry;
             UpStairs = upStairs;
             DownStairs = downStairs;
             Hole = hole;
-            EnemySpawn = enemySpawn;
+            EnemySpawns = enemySpawns;
+            Items = items ?? Array.Empty<ItemSpawn>();
             Doors = doors ?? Array.Empty<GridPos>();
         }
     }
@@ -104,9 +113,12 @@ namespace ProjectC.Core
                 PlaceHoleAndWeakFloor(map, heightModel, random, plans[depth], holeAbove, bottomElevation);
             }
 
-            // 3) 적 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
+            // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
             foreach (FloorPlan plan in plans)
-                PickEnemySpawn(map, random, plan);
+            {
+                PickEnemySpawns(map, random, plan);
+                PlaceItems(map, random, plan);
+            }
 
             var floors = new List<DungeonFloorInfo>(floorCount);
             foreach (FloorPlan plan in plans)
@@ -117,7 +129,8 @@ namespace ProjectC.Core
                     plan.Up,
                     plan.Down,
                     plan.Hole,
-                    plan.EnemySpawn,
+                    plan.EnemySpawns,
+                    plan.Items,
                     plan.Doors));
             }
 
@@ -290,7 +303,11 @@ namespace ProjectC.Core
                    map.Get(landing.Value).IsWalkable;
         }
 
-        private static void PickEnemySpawn(GridMap map, Random random, FloorPlan p)
+        /// <summary>
+        /// 적 스폰은 문 뒤(북쪽 방)에만 둔다 — 입구·동쪽 방에 두면 층 진입 즉시 인접 전투가
+        /// 강제되고, "문을 열기 전에는 차단" 불변식도 깨진다. 수는 깊이에 따라 1~4.
+        /// </summary>
+        private static void PickEnemySpawns(GridMap map, Random random, FloorPlan p)
         {
             var candidates = new List<GridPos>();
             for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
@@ -302,10 +319,72 @@ namespace ProjectC.Core
                     candidates.Add(pos);
             }
 
+            int depth = -p.FloorIndex;
+            int desired = 1 + random.Next(0, 2) + depth / 2;
+            p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
+
             // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 높은 단을 쓴다.
-            p.EnemySpawn = candidates.Count > 0
-                ? candidates[random.Next(candidates.Count)]
-                : p.At(p.StairX, p.RaisedY);
+            if (p.EnemySpawns.Count == 0)
+                p.EnemySpawns.Add(p.At(p.StairX, p.RaisedY));
+        }
+
+        /// <summary>
+        /// 아이템 스폰. 막다른 분기 방이 있으면 보상 아이템 하나를 보장하고,
+        /// 나머지는 북쪽·동쪽 방의 빈 바닥에 1~2개 흩뿌린다. 적 스폰과는 겹치지 않는다.
+        /// </summary>
+        private static void PlaceItems(GridMap map, Random random, FloorPlan p)
+        {
+            ItemKind RollKind() => random.Next(0, 2) == 0 ? ItemKind.Potion : ItemKind.Bomb;
+
+            bool IsFree(GridPos pos) =>
+                map.Get(pos)?.kind == TileKind.Floor &&
+                pos != p.Entry &&
+                !p.EnemySpawns.Contains(pos);
+
+            if (p.HasBranch)
+            {
+                var branchTiles = new List<GridPos>();
+                for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
+                for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
+                {
+                    var pos = new GridPos(x, y, p.BaseElevation);
+                    if (IsFree(pos)) branchTiles.Add(pos);
+                }
+                foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
+                    p.Items.Add(new ItemSpawn(pos, RollKind()));
+            }
+
+            var scatter = new List<GridPos>();
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                if (x == p.VerticalX && y == p.UpperMinY) continue;
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (IsFree(pos)) scatter.Add(pos);
+            }
+            for (int x = p.RightMinX; x < p.Width; x++)
+            for (int y = 0; y <= p.LowerMaxY; y++)
+            {
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (IsFree(pos)) scatter.Add(pos);
+            }
+
+            int scatterCount = 1 + random.Next(0, 2);
+            foreach (GridPos pos in TakeRandom(scatter, scatterCount, random))
+                p.Items.Add(new ItemSpawn(pos, RollKind()));
+        }
+
+        /// <summary>후보 목록에서 서로 다른 위치를 최대 count개 뽑는다. 목록은 소모된다.</summary>
+        private static List<GridPos> TakeRandom(List<GridPos> pool, int count, Random random)
+        {
+            var result = new List<GridPos>(Math.Min(count, pool.Count));
+            for (int i = 0; i < count && pool.Count > 0; i++)
+            {
+                int index = random.Next(pool.Count);
+                result.Add(pool[index]);
+                pool.RemoveAt(index);
+            }
+            return result;
         }
 
         /// <summary>층 하나의 골격 치수. Carve/Hole/Spawn 단계가 공유한다.</summary>
@@ -334,7 +413,8 @@ namespace ProjectC.Core
             public GridPos? Down;
             public GridPos? Hole;
             public GridPos Entry;
-            public GridPos EnemySpawn;
+            public readonly List<GridPos> EnemySpawns = new List<GridPos>();
+            public readonly List<ItemSpawn> Items = new List<ItemSpawn>();
             public readonly List<GridPos> Doors = new List<GridPos>();
 
             public GridPos At(int x, int y)
