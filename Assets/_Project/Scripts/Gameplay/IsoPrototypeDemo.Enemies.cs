@@ -73,6 +73,7 @@ namespace ProjectC.Gameplay
                     yield return ShowEnemyHit(enemy, tick.BurnDamage, "Burn");
                     if (!enemy.State.IsAlive) continue;
                 }
+                ApplyEnemyVisuals(enemy); // 틱으로 상태가 풀렸으면 틴트 원복
                 if (tick.Frozen) continue; // 빙결: 이번 턴 행동 불가
 
                 MonsterAction action = enemy.Brain.Decide(BuildBrainContext(enemy));
@@ -236,17 +237,27 @@ namespace ProjectC.Gameplay
             }
         }
 
-        /// <summary>몬스터 한 마리의 위치·정렬·가시성만 갱신하는 가벼운 경로. (전체 리빌드 금지)</summary>
+        /// <summary>몬스터 한 마리의 위치·정렬·틴트·가시성만 갱신하는 가벼운 경로. (전체 리빌드 금지)</summary>
         private void ApplyEnemyVisuals(EnemyAgent enemy)
         {
             if (enemy.Root == null) return;
             GridPos pos = enemy.State.Position;
             enemy.Root.transform.position = _grid.GridToWorld(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
+            enemy.Renderer.color = EnemyTint(enemy.State);
             SetSpriteHierarchyVisible(
                 enemy.Root,
                 _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex &&
                 (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(pos)));
+        }
+
+        /// <summary>몬스터 틴트의 단일 출처: 사망 회색 > 빙결 하늘색 > 화상 주황 > 기본.</summary>
+        private static Color EnemyTint(CombatantState state)
+        {
+            if (!state.IsAlive) return new Color32(60, 64, 66, 180);
+            if (state.Statuses.Has(StatusKind.Freeze)) return new Color32(140, 210, 235, 255);
+            if (state.Statuses.Has(StatusKind.Burn)) return new Color32(255, 168, 112, 255);
+            return Color.white;
         }
     }
 }

@@ -68,7 +68,7 @@ namespace ProjectC.Core
     public sealed class MonsterBrain
     {
         private readonly MonsterArchetype _archetype;
-        private readonly GridPos _home;
+        private GridPos _home;
         private readonly Random _random;
 
         public MonsterMood Mood { get; private set; } = MonsterMood.Patrol;
@@ -80,6 +80,12 @@ namespace ProjectC.Core
             _home = home;
             _random = new Random(seed);
         }
+
+        /// <summary>
+        /// 순찰 기준점을 옮긴다. 낙하 등으로 다른 층에 강제 이동한 몬스터가
+        /// 옛 홈 반경 밖에 갇혀 영구 정지하지 않게 한다.
+        /// </summary>
+        public void Rehome(GridPos home) => _home = home;
 
         public MonsterAction Decide(MonsterBrainContext context)
         {

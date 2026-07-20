@@ -250,6 +250,31 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Rehome_MovesPatrolAnchor_ToNewPosition()
+        {
+            // 낙하로 강제 이동한 몬스터가 옛 홈 반경 밖에 갇혀 영구 정지하지 않아야 한다.
+            GridMap map = Flat(12);
+            var self = new CombatantState("g", new GridPos(2, 2, 0), 5, 1);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 4);
+
+            self.MoveTo(new GridPos(9, 9, 0)); // 낙하로 먼 곳에 착지했다고 가정
+            brain.Rehome(self.Position);
+
+            bool stepped = false;
+            for (int i = 0; i < 20; i++)
+            {
+                MonsterAction action = brain.Decide(Context(map, self, null, playerSeesMonster: false));
+                if (action.Kind != MonsterActionKind.Step) continue;
+                stepped = true;
+                Assert.LessOrEqual(
+                    new GridPos(9, 9, 0).ChebyshevTo(action.Target), 2, "새 홈 반경에서 순찰해야 한다");
+                self.MoveTo(action.Target);
+            }
+
+            Assert.IsTrue(stepped, "재홈 후에도 순찰 걸음이 나와야 한다");
+        }
+
+        [Test]
         public void LowHp_WithFleeThreshold_StepsAwayFromPlayer()
         {
             GridMap map = Flat(9);

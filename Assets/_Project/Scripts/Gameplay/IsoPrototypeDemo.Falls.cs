@@ -129,6 +129,7 @@ namespace ProjectC.Gameplay
 
             InteractionFeedback?.Invoke($"{enemy.State.Id} FELL!");
             Debug.Log($"[Fall] {enemy.State.Id} {cause} 낙하 → {fall.FinalPosition} (-{fall.Damage} HP)");
+            enemy.Brain?.Rehome(fall.FinalPosition); // 새 층에서 순찰하도록 홈 이동
             yield return ShowEnemyHit(enemy, fall.Damage, "Fall");
             ApplyEnemyVisuals(enemy); // 대개 다른 층으로 사라진다
             yield return ShowFallImpact(fall);
@@ -200,6 +201,8 @@ namespace ProjectC.Gameplay
                 if (!survivor.IsAlive) continue;
                 survivor.Statuses.Apply(fiery ? StatusKind.Burn : StatusKind.Freeze, StatusTurnsApplied);
                 anyAffected = true;
+                EnemyAgent affectedAgent = FindAgentByState(survivor);
+                if (affectedAgent != null) ApplyEnemyVisuals(affectedAgent); // 틴트 즉시 반영
             }
             if (anyAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
 
@@ -208,10 +211,11 @@ namespace ProjectC.Gameplay
             {
                 if (!survivor.IsAlive) continue;
                 yield return KnockbackCombatant(center, survivor);
-                if (!_playerState.IsAlive) yield break; // 넉백 낙하로 사망 시 중단
+                if (!_playerState.IsAlive) break; // 사망 — 남은 넉백만 생략, 지형 갱신은 계속
             }
 
-            if (fiery && !_barrelExploded && _barrel != null && BombRules.InBlast(center, _barrelPos))
+            if (_playerState.IsAlive &&
+                fiery && !_barrelExploded && _barrel != null && BombRules.InBlast(center, _barrelPos))
             {
                 _barrelExploded = true;
                 SetSpriteHierarchyVisible(_barrel, false);

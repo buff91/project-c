@@ -595,8 +595,10 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            // 시야 밖(explored 기억)의 적은 공격 대상이 아니다 — 이동 탭으로만 취급.
             EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
-            if (tappedEnemy != null)
+            if (tappedEnemy != null &&
+                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target)))
             {
                 if (combatMode == CombatActionMode.Ranged)
                 {
@@ -971,19 +973,17 @@ namespace ProjectC.Gameplay
         private IEnumerator FlashDamage(SpriteRenderer renderer) =>
             FlashColor(renderer, new Color32(255, 92, 72, 255));
 
-        /// <summary>적 피격 공통 연출: HP바 → 플래시 → 사망 시 회색 처리.</summary>
+        /// <summary>적 피격 공통 연출: HP바 → 플래시 → 상태/사망 틴트 재적용(단일 경로).</summary>
         private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
         {
             UpdateHealthBar(enemy.HpFill, enemy.State);
             Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
             yield return FlashDamage(enemy.Renderer);
+            ApplyEnemyVisuals(enemy);
 
             if (!enemy.State.IsAlive)
-            {
-                enemy.Renderer.color = new Color32(60, 64, 66, 180);
                 Debug.Log($"[Combat] {enemy.State.Id} 처치");
-            }
         }
 
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
