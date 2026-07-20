@@ -51,6 +51,11 @@ namespace ProjectC.Gameplay
         [Range(2, 8)] public int rangedAttackRange = 6;
         public CombatActionMode combatMode = CombatActionMode.Melee;
 
+        [Header("M1 아이템")]
+        [Min(1)] public int potionHealAmount = 4;
+        [Min(1)] public int bombDamage = 3;
+        [Range(2, 8)] public int bombThrowRange = 4;
+
         [Header("M3 다층 던전")]
         [Range(2, 5)] public int floorCount = 3;
         [Range(3, 6)] public int elevationsPerFloor = 4;
@@ -107,6 +112,9 @@ namespace ProjectC.Gameplay
         public string BelowFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex - 1, out _)
             ? FloorLabel(_activeFloorIndex - 1)
             : "--";
+        public int PotionCount => _inventory.Count(ItemKind.Potion);
+        public int BombCount => _inventory.Count(ItemKind.Bomb);
+        public bool BombAiming => _bombAiming;
         public event System.Action<int> ViewRotationChanged;
         public event System.Action<int> ActiveFloorChanged;
         public event System.Action<DungeonViewMode> ViewModeChanged;
@@ -114,6 +122,8 @@ namespace ProjectC.Gameplay
         public event System.Action<string> InteractionFeedback;
         public event System.Action PlayerPositionChanged;
         public event System.Action VerticalContextChanged;
+        public event System.Action InventoryChanged;
+        public event System.Action<bool> BombAimingChanged;
 
         private GridManager _grid;
         private IsoTapInput _input;
@@ -129,7 +139,8 @@ namespace ProjectC.Gameplay
         private GridPos _barrelPos;
         private readonly List<EnemyAgent> _enemies = new List<EnemyAgent>();
         private readonly List<ItemAgent> _items = new List<ItemAgent>();
-        private readonly Dictionary<ItemKind, int> _itemCounts = new Dictionary<ItemKind, int>();
+        private readonly Inventory _inventory = new Inventory();
+        private bool _bombAiming;
         private GameObject _selection;
         private GridPos _selectionPos;
         private Transform _wallRoot;
@@ -207,7 +218,8 @@ namespace ProjectC.Gameplay
             _verticalPreviewTiles.Clear();
             _enemies.Clear();
             _items.Clear();
-            _itemCounts.Clear();
+            _inventory.Clear();
+            _bombAiming = false;
 
             _grid.buildDemoOnStart = false;
             _grid.iso.tileWidth = 1f;
@@ -230,6 +242,8 @@ namespace ProjectC.Gameplay
             ViewModeChanged?.Invoke(viewMode);
             CombatModeChanged?.Invoke(combatMode);
             PlayerPositionChanged?.Invoke();
+            InventoryChanged?.Invoke();
+            BombAimingChanged?.Invoke(false);
         }
 
         private void BuildRoomData()
@@ -427,6 +441,52 @@ namespace ProjectC.Gameplay
                 : $"RANGED: 사거리 {rangedAttackRange}, 문/벽에 차단");
         }
 
+        /// <summary>물약을 마셔 HP를 회복한다. 행동 1회를 소비한다.</summary>
+        public void UsePotion()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (PotionCount <= 0)
+            {
+                InteractionFeedback?.Invoke("NO POTIONS");
+                return;
+            }
+            if (_playerState.Hp >= _playerState.MaxHp)
+            {
+                InteractionFeedback?.Invoke("HP FULL");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(DrinkPotion());
+        }
+
+        /// <summary>폭탄 조준 모드를 켜고 끈다. 켠 상태에서 타일을 탭하면 투척한다.</summary>
+        public void ToggleBombAim()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (!_bombAiming && BombCount <= 0)
+            {
+                InteractionFeedback?.Invoke("NO BOMBS");
+                return;
+            }
+
+            SetBombAiming(!_bombAiming);
+            InteractionFeedback?.Invoke(_bombAiming
+                ? $"BOMB: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3 폭발"
+                : "BOMB AIM CANCELED");
+        }
+
+        private void SetBombAiming(bool aiming)
+        {
+            if (_bombAiming == aiming) return;
+            _bombAiming = aiming;
+            BombAimingChanged?.Invoke(aiming);
+        }
+
         public void ApplyVisualSettings()
         {
             exploredAlpha = Mathf.Clamp(exploredAlpha, 0.05f, 0.4f);
@@ -487,6 +547,22 @@ namespace ProjectC.Gameplay
                 !_visibleTiles.Contains(target) &&
                 !_exploredTiles.Contains(target))
                 return;
+
+            if (_bombAiming)
+            {
+                if (!BombRules.CanThrow(_grid.Map, _playerPos, target, bombThrowRange))
+                {
+                    bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, target);
+                    InteractionFeedback?.Invoke(blocked
+                        ? "THROW BLOCKED"
+                        : $"OUT OF THROW RANGE · MAX {bombThrowRange}");
+                    return;
+                }
+
+                PositionSelection(target);
+                _moveRoutine = StartCoroutine(ThrowBomb(target));
+                return;
+            }
 
             TileData targetTile = _grid.Map.Get(target);
             if (targetTile != null && targetTile.kind == TileKind.Hole)
@@ -620,6 +696,108 @@ namespace ProjectC.Gameplay
 
             _resolvingAction = false;
             _moveRoutine = null;
+        }
+
+        private IEnumerator DrinkPotion()
+        {
+            _resolvingAction = true;
+            _inventory.TryUse(ItemKind.Potion);
+            InventoryChanged?.Invoke();
+
+            int healed = _playerState.Heal(potionHealAmount);
+            UpdateHealthBar(_playerHpFill, _playerState);
+            InteractionFeedback?.Invoke($"POTION +{healed} HP");
+            Debug.Log($"[Item] 물약 사용: +{healed} HP → {_playerState.Hp}/{_playerState.MaxHp}");
+            yield return FlashColor(_playerRenderer, new Color32(96, 224, 128, 255));
+
+            yield return ResolveEnemyPhase();
+            _resolvingAction = false;
+            _moveRoutine = null;
+        }
+
+        private IEnumerator ThrowBomb(GridPos target)
+        {
+            _resolvingAction = true;
+            SetBombAiming(false);
+            _inventory.TryUse(ItemKind.Bomb);
+            InventoryChanged?.Invoke();
+
+            yield return AnimateProjectile(_playerPos, target);
+            yield return AnimateBlast(target);
+
+            var combatants = new List<CombatantState>(_enemies.Count + 1) { _playerState };
+            foreach (EnemyAgent enemy in _enemies)
+                combatants.Add(enemy.State);
+
+            BombResult result = BombRules.Detonate(_grid.Map, target, combatants, bombDamage);
+            InteractionFeedback?.Invoke($"BOMB · {result.Damaged.Count} HIT");
+            Debug.Log($"[Bomb] {target} 폭발: {result.Damaged.Count}명 피해, " +
+                      $"약한 바닥 {result.CollapsedWeakFloors.Count}칸 붕괴");
+
+            foreach (CombatantState damaged in result.Damaged)
+            {
+                if (damaged == _playerState)
+                {
+                    UpdateHealthBar(_playerHpFill, _playerState);
+                    yield return FlashDamage(_playerRenderer);
+                    if (!_playerState.IsAlive)
+                    {
+                        _playerRenderer.color = new Color32(120, 42, 42, 220);
+                        Debug.Log("[Combat] 플레이어가 자기 폭탄에 사망 — 프로토타입을 다시 실행해 재시작");
+                    }
+                    continue;
+                }
+
+                foreach (EnemyAgent enemy in _enemies)
+                {
+                    if (enemy.State != damaged) continue;
+                    UpdateHealthBar(enemy.HpFill, enemy.State);
+                    yield return FlashDamage(enemy.Renderer);
+                    if (!enemy.State.IsAlive)
+                    {
+                        enemy.Renderer.color = new Color32(60, 64, 66, 180);
+                        Debug.Log($"[Combat] {enemy.State.Id} 폭사");
+                    }
+                    break;
+                }
+            }
+
+            // 붕괴한 약한 바닥은 RefreshFloorVisibility 가 최신 타일 종류로 스프라이트를 다시 그린다.
+            if (result.CollapsedWeakFloors.Count > 0)
+                InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
+            RefreshFloorVisibility();
+
+            if (_playerState.IsAlive)
+                yield return ResolveEnemyPhase();
+
+            _resolvingAction = false;
+            _moveRoutine = null;
+        }
+
+        private IEnumerator AnimateBlast(GridPos center)
+        {
+            var blast = new GameObject("Bomb Blast");
+            blast.transform.SetParent(_visualRoot, false);
+            blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
+            var renderer = blast.AddComponent<SpriteRenderer>();
+            renderer.sprite = GetBlastSprite();
+            renderer.sortingOrder = 31001;
+
+            float elapsed = 0f;
+            const float duration = 0.24f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float scale = Mathf.Lerp(0.5f, 2.6f, SmoothStep(t));
+                blast.transform.localScale = new Vector3(scale, scale, 1f);
+                Color color = renderer.color;
+                color.a = 1f - t * t;
+                renderer.color = color;
+                yield return null;
+            }
+
+            Destroy(blast);
         }
 
         private IEnumerator AnimateProjectile(GridPos from, GridPos to)
@@ -895,12 +1073,15 @@ namespace ProjectC.Gameplay
             yield return new WaitForSeconds(0.12f);
         }
 
-        private IEnumerator FlashDamage(SpriteRenderer renderer)
+        private IEnumerator FlashDamage(SpriteRenderer renderer) =>
+            FlashColor(renderer, new Color32(255, 92, 72, 255));
+
+        private IEnumerator FlashColor(SpriteRenderer renderer, Color32 flash)
         {
             if (renderer == null) yield break;
 
             Color original = renderer.color;
-            renderer.color = new Color32(255, 92, 72, 255);
+            renderer.color = flash;
             yield return new WaitForSeconds(0.08f);
             if (renderer != null)
                 renderer.color = original;
@@ -1017,7 +1198,7 @@ namespace ProjectC.Gameplay
 
         private bool IsLivingEnemyAt(GridPos pos) => FindLivingEnemyAt(pos) != null;
 
-        /// <summary>플레이어가 밟은 칸의 아이템을 줍는다. 인벤토리 UI 전까지는 개수만 센다.</summary>
+        /// <summary>플레이어가 밟은 칸의 아이템을 줍는다.</summary>
         private void TryCollectItemAt(GridPos pos)
         {
             foreach (ItemAgent item in _items)
@@ -1026,12 +1207,12 @@ namespace ProjectC.Gameplay
 
                 item.Collected = true;
                 if (item.Root != null) item.Root.SetActive(false);
-                _itemCounts.TryGetValue(item.Spawn.Kind, out int count);
-                _itemCounts[item.Spawn.Kind] = count + 1;
+                int count = _inventory.Add(item.Spawn.Kind);
+                InventoryChanged?.Invoke();
 
                 string label = item.Spawn.Kind == ItemKind.Potion ? "POTION" : "BOMB";
-                InteractionFeedback?.Invoke($"{label} 획득 ×{count + 1}");
-                Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count + 1})");
+                InteractionFeedback?.Invoke($"{label} 획득 ×{count}");
+                Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
                 return;
             }
         }

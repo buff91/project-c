@@ -64,14 +64,14 @@
 
         <ui:VisualElement class="hud-bottom">
             <ui:VisualElement class="resources">
-                <ui:VisualElement class="artifact-panel resource-pill">
-                    <ui:VisualElement class="resource-icon gold-icon" />
-                    <ui:Label text="142" class="resource-value" />
-                </ui:VisualElement>
-                <ui:VisualElement class="artifact-panel resource-pill">
-                    <ui:VisualElement class="resource-icon herb-icon" />
-                    <ui:Label text="7" class="resource-value" />
-                </ui:VisualElement>
+                <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="물약 사용 — HP 회복, 행동 1회 소비">
+                    <ui:VisualElement class="resource-icon potion-icon" />
+                    <ui:Label name="potion-count" text="POTION ×0" class="resource-value" />
+                </ui:Button>
+                <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발">
+                    <ui:VisualElement class="resource-icon bomb-icon" />
+                    <ui:Label name="bomb-count" text="BOMB ×0" class="resource-value" />
+                </ui:Button>
             </ui:VisualElement>
 
             <ui:VisualElement class="action-cluster">

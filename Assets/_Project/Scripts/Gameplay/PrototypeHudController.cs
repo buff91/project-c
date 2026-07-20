@@ -16,6 +16,10 @@ namespace ProjectC.Gameplay
         private Button _rotateRight;
         private Button _modeButton;
         private Button _combatButton;
+        private Button _potionButton;
+        private Button _bombButton;
+        private Label _potionCountLabel;
+        private Label _bombCountLabel;
         private Button _settingsButton;
         private Button _settingsClose;
         private Button _settingsDone;
@@ -45,6 +49,8 @@ namespace ProjectC.Gameplay
                 demo.InteractionFeedback += HandleInteractionFeedback;
                 demo.PlayerPositionChanged += HandlePlayerPositionChanged;
                 demo.VerticalContextChanged += HandleVerticalContextChanged;
+                demo.InventoryChanged += HandleInventoryChanged;
+                demo.BombAimingChanged += HandleBombAimingChanged;
             }
         }
 
@@ -63,6 +69,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _rotateRight, null, RotateRight);
             RebindButton(ref _modeButton, null, ToggleViewMode);
             RebindButton(ref _combatButton, null, ToggleCombatMode);
+            RebindButton(ref _potionButton, null, UsePotion);
+            RebindButton(ref _bombButton, null, ToggleBombAim);
             RebindButton(ref _settingsButton, null, OpenSettings);
             RebindButton(ref _settingsClose, null, CloseSettings);
             RebindButton(ref _settingsDone, null, CloseSettings);
@@ -81,6 +89,8 @@ namespace ProjectC.Gameplay
                 demo.InteractionFeedback -= HandleInteractionFeedback;
                 demo.PlayerPositionChanged -= HandlePlayerPositionChanged;
                 demo.VerticalContextChanged -= HandleVerticalContextChanged;
+                demo.InventoryChanged -= HandleInventoryChanged;
+                demo.BombAimingChanged -= HandleBombAimingChanged;
             }
         }
 
@@ -91,6 +101,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _rotateRight, root.Q<Button>("rotate-right"), RotateRight);
             RebindButton(ref _modeButton, root.Q<Button>("mode-button"), ToggleViewMode);
             RebindButton(ref _combatButton, root.Q<Button>("combat-button"), ToggleCombatMode);
+            RebindButton(ref _potionButton, root.Q<Button>("potion-button"), UsePotion);
+            RebindButton(ref _bombButton, root.Q<Button>("bomb-button"), ToggleBombAim);
             RebindButton(ref _settingsButton, root.Q<Button>("settings-button"), OpenSettings);
             RebindButton(ref _settingsClose, root.Q<Button>("settings-close"), CloseSettings);
             RebindButton(ref _settingsDone, root.Q<Button>("settings-done"), CloseSettings);
@@ -112,6 +124,8 @@ namespace ProjectC.Gameplay
             _locationLabel = root.Q<Label>("location-label");
             _statusLabel = root.Q<Label>("status-label");
             _verticalHintLabel = root.Q<Label>("vertical-hint-label");
+            _potionCountLabel = root.Q<Label>("potion-count");
+            _bombCountLabel = root.Q<Label>("bomb-count");
             _settingsModal = root.Q<VisualElement>("settings-modal");
             UpdateViewLabel();
             UpdateFloorLabel();
@@ -119,6 +133,7 @@ namespace ProjectC.Gameplay
             UpdateCombatLabel();
             UpdateLocationLabel();
             UpdateVerticalHintLabel();
+            UpdateItemLabels();
             SyncSettingsControls();
         }
 
@@ -161,6 +176,16 @@ namespace ProjectC.Gameplay
         private void ToggleCombatMode()
         {
             if (demo != null) demo.ToggleCombatMode();
+        }
+
+        private void UsePotion()
+        {
+            if (demo != null) demo.UsePotion();
+        }
+
+        private void ToggleBombAim()
+        {
+            if (demo != null) demo.ToggleBombAim();
         }
 
         private void OpenSettings()
@@ -267,6 +292,25 @@ namespace ProjectC.Gameplay
         private void HandleVerticalContextChanged()
         {
             UpdateVerticalHintLabel();
+        }
+
+        private void HandleInventoryChanged()
+        {
+            UpdateItemLabels();
+        }
+
+        private void HandleBombAimingChanged(bool aiming)
+        {
+            _bombButton?.EnableInClassList("aiming", aiming);
+        }
+
+        private void UpdateItemLabels()
+        {
+            if (_potionCountLabel != null)
+                _potionCountLabel.text = $"POTION ×{(demo != null ? demo.PotionCount : 0)}";
+            if (_bombCountLabel != null)
+                _bombCountLabel.text = $"BOMB ×{(demo != null ? demo.BombCount : 0)}";
+            _bombButton?.EnableInClassList("aiming", demo != null && demo.BombAiming);
         }
 
         private void UpdateViewLabel()

@@ -591,6 +591,33 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        private Sprite GetBlastSprite()
+        {
+            const string key = "bomb-blast";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(48, 48);
+            Color32 outer = new Color32(232, 99, 42, 235);
+            Color32 mid = new Color32(255, 170, 64, 255);
+            Color32 core = new Color32(255, 240, 178, 255);
+            for (int py = 0; py < 48; py++)
+            for (int px = 0; px < 48; px++)
+            {
+                float dx = (px - 23.5f) / 24f;
+                float dy = (py - 23.5f) / 24f;
+                float dist = dx * dx + dy * dy;
+                bool spike = ((px + py * 2) % 9 < 2 || (px * 2 - py + 48) % 11 < 2);
+                if (dist < 0.16f) texture.SetPixel(px, py, core);
+                else if (dist < 0.5f) texture.SetPixel(px, py, spike ? core : mid);
+                else if (dist < 0.95f && spike) texture.SetPixel(px, py, outer);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetItemSprite(ItemKind kind)
         {
             string key = $"item-{kind}";

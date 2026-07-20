@@ -416,21 +416,49 @@
     margin-right: 7px;
 }
 
-.gold-icon {
-    background-color: rgb(214, 171, 54);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: rgb(244, 207, 106);
-    border-top-color: rgb(244, 207, 106);
-    border-right-color: rgb(133, 93, 35);
-    border-bottom-color: rgb(133, 93, 35);
+.item-button {
+    margin-top: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 9px;
+    padding-right: 9px;
+    -unity-font-style: bold;
 }
 
-.herb-icon {
-    background-color: var(--herb);
-    border-radius: 7px 2px 7px 2px;
+.item-button:hover {
+    background-color: var(--stone-raised);
+    border-left-color: var(--torch);
+    border-top-color: var(--torch);
+}
+
+.item-button.aiming {
+    background-color: rgb(92, 52, 25);
+    border-left-color: var(--torch);
+    border-right-color: var(--torch);
+    border-top-color: var(--torch);
+    border-bottom-color: var(--torch);
+}
+
+.potion-icon {
+    background-color: var(--blood);
+    border-radius: 3px 3px 6px 6px;
+    border-top-width: 2px;
+    border-top-color: rgb(255, 176, 164);
+}
+
+.bomb-icon {
+    background-color: rgb(34, 38, 43);
+    border-radius: 7px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--torch);
+    border-top-color: var(--torch);
+    border-right-color: rgb(20, 22, 25);
+    border-bottom-color: rgb(20, 22, 25);
 }
 
 .resource-value {

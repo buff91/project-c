@@ -37,6 +37,17 @@ namespace ProjectC.Core
             Hp = Math.Max(0, Hp - amount);
             return previous - Hp;
         }
+
+        /// <summary>MaxHp 를 넘지 않게 회복하고 실제 회복량을 반환한다. 죽은 대상은 회복 불가.</summary>
+        public int Heal(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            if (!IsAlive) return 0;
+
+            int previous = Hp;
+            Hp = Math.Min(MaxHp, Hp + amount);
+            return Hp - previous;
+        }
     }
 
     public static class CombatRules
