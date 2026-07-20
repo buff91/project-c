@@ -1,88 +1,90 @@
-# UI 디자인 시스템 "Torchstone" v1
+# UI 디자인 시스템 "Torchstone" v1.2
 
-> 화면공간 UI(UI Toolkit)의 시각 언어 SSOT. 아키텍처 판단(UI Toolkit vs UGUI)은 `docs/UI_ARCHITECTURE.md`, 톤의 근거는 `docs/art-direction/project-c-artstyle-concept-v1.png`.
-> 실체 파일: `Assets/_Project/UI/DesignSystem.uss` (토큰 + 공통 컴포넌트 클래스).
+> 화면공간 UI(UI Toolkit)의 시각 언어 SSOT. 아키텍처 판단(UI Toolkit vs UGUI)은 `docs/UI_ARCHITECTURE.md`.
+> 근거: `docs/art-direction/project-c-artstyle-concept-v1.png` **픽셀 실측**.
+> 실체 파일: `Assets/_Project/UI/DesignSystem.uss` (토큰+컴포넌트) · `DesignSystemGallery.uxml` (검증 갤러리) · `UI/Fonts/Galmuri9.ttf` (OFL).
 
 ## 콘셉트
 
-**토치스톤(Torchstone)** — 던전의 두 재료인 *돌*과 *횃불빛*.
-어두운 청록빛 돌 바탕 위에, 정보 위계를 색 온도로 나눈다:
+**토치스톤(Torchstone)** — 씬의 공식을 UI에 그대로 적용한다:
 
-- **골드(따뜻함)** = 제목·강조·현재 위치 → 횃불이 비추는 곳
-- **민트(차가움)** = 시스템 정보·힌트·마법 → 던전의 물/얼음/마력
-- **엠버(뜨거움)** = 행동(공격·확정) → 불씨
-- **양피지** = 기본 텍스트
+> **차가운 청흑 바탕 + 횃불에 데워진 돌 프레임 + 토치 골드 포인트.**
 
-시그니처는 **2px 픽셀 베벨**: 밝은색 상·좌 / 어두운색 하·우. 라운딩 금지(픽셀아트 톤), 그림자 대신 베벨로 깊이 표현.
+- 바탕은 씬의 어둠과 같은 **청흑**(웜 브라운 금지 — 씬과 온도가 충돌한다)
+- 프레임·구조물은 **횃불빛 받은 돌**(웜 그레이·토프)
+- **골드**는 "현재·선택" 단 한 곳에만 (현재 층, 선택 슬롯, 선택 액션)
+- **틸/아이스**는 시스템·물·얼음·마법, **하트 레드**는 HP
 
-## 컬러 토큰
+### HUD 이원화 (v1.2의 핵심 규칙)
 
-| 토큰 | 값 | 용도 |
-|------|-----|------|
-| `--pc-void` | `#0A1215` | 던전 배경(풀스크린 화면 바탕) |
-| `--pc-panel` | `rgba(13,20,24,0.92)` | 패널 바탕 (게임 위 오버레이라 반투명) |
-| `--pc-inset` | `#181F22` | 패널 안 음각 스트립(수치 리드아웃) |
-| `--pc-bevel-hi` / `--pc-bevel-lo` | `#5C6C6D` / `#273135` | 스톤 베벨 밝은쪽/어두운쪽 |
-| `--pc-text` | `#EEE6CC` | 양피지 — 기본 텍스트 |
-| `--pc-text-title` | `#D1B980` | 토치골드 — 패널 제목·강조 |
-| `--pc-text-dim` | `#969E94` | 보조 텍스트 |
-| `--pc-mint` | `#77D3C3` | 시스템/정보/힌트 |
-| `--pc-ember` / `--pc-ember-bg` | `#FFD375` / `#4B3122` | 액션(공격) 텍스트/바탕 |
-| `--pc-ice` / `--pc-ice-bg` | `#B4FCEE` / `#18484A` | 원거리/빙결/마법 |
-| `--pc-hp` | `#E0524A` | HP·화상 |
-| `--pc-poison` | `#8BC34A` | 중독 |
-| `--pc-gold-marker` | `#DDB25C` | 현재 층 마커·선택 표시·재화 |
+| 구분 | 스타일 | 대상 |
+|------|--------|------|
+| **인게임 상시 HUD** | 프레임 없는 플로팅 (하드 섀도로만 분리) | 하트 HP, 다이아 층 레일, 다이아 액션 버튼, 위치/힌트 텍스트 |
+| **메뉴·팝업** | 창 크롬 (`pc-window`) | 인벤토리, 조합, 설정, 상호작용 팝업, 결과 화면 |
 
-> 값의 출처: 프로토타입 HUD(`PrototypeHUD.uss`)에서 실사용 중인 색 + 아트 컨셉 이미지. 새 화면은 **리터럴 금지, 토큰만** 사용.
+컨셉 아트가 이미 그려둔 UI 어휘(하트·다이아)를 시스템으로 승격한 것. **씬이 주인공** — 인게임에 창을 띄우지 않는다.
 
-## 타이포그래피
+## 컬러 토큰 (씬 실측)
 
-| 토큰 | 크기 | 용도 |
-|------|------|------|
-| `--pc-fs-hint` | 9px | 힌트·캡션·칩 |
-| `--pc-fs-label` | 10px | 패널 제목·버튼·리드아웃 |
-| `--pc-fs-body` | 12px | 본문·일반 수치 |
-| `--pc-fs-strong` | 14px | 강조 수치 |
-| `--pc-fs-display` | 18px | 큰 수치·아이콘 글리프 |
+| 토큰 | 값 | 용도 | 출처 |
+|------|-----|------|------|
+| `--pc-void` | `#05070C` | 던전 배경 (청흑) | 씬 어둠 #000206~#11141A |
+| `--pc-panel` | `#0A0D13` 92% | 창 바탕 | 〃 |
+| `--pc-inset` | `#07090E` | 음각·슬롯 바닥 | 〃 |
+| `--pc-stone` / `-lit` / `-dim` | `#98866F` / `#CFC0AE` / `#4A4038` | 돌 프레임 | 다이아 버튼 #B0A59A |
+| `--pc-gold` | `#FFD554` | 현재 층·선택 | 층 마커 #FFEA5C |
+| `--pc-torch` | `#FFBD41` | 횃불·화상 | 횃불 실측 |
+| `--pc-gold-deep` | `#9A6B22` | 액션 버튼 프레임 | 파생 |
+| `--pc-text` / `--pc-dim` | `#EADFC8` / `#97907E` | 본문 / 보조 | 파생 |
+| `--pc-hp` / `-empty` | `#D8452A` / `#45100B` | 하트·HP 게이지 | 하트 실측 |
+| `--pc-teal` / `--pc-ice` / `--pc-teal-bg` | `#4FA7A0` / `#9ADFE8` / `#14343A` | 시스템·물·얼음 | 물 #1C4347 |
+| `--pc-xp` | `#7FB241` | 경험치·중독 | 파생 |
+| `--pc-btn-bg`(-hover), `--pc-action-bg`(-hover) | USS 참조 | 버튼 바탕 | 파생 |
 
-- 제목/레이블은 **대문자 + `letter-spacing: 1px` + bold** (영문 기준. 한국어는 자간 없이 bold만).
-- 폰트 에셋: 픽셀 폰트로 통일 예정 — 한국어 지원 픽셀 폰트(예: Galmuri, DungGeunMo) 후보. Point filter·정수 배율 프리셋은 `docs/SYSTEMS.md` §12 크로스플랫폼 규칙을 따른다. **디자인 시안(HTML)에서는 모노스페이스로 대체 표현.**
+새 색이 필요하면 **씬에서 실측 → 토큰 추가 → 사용**. 화면 USS에 리터럴 금지.
 
-## 간격 & 형태
+## 타이포그래피 — Galmuri9, 정수 배율
 
-- **4px 그리드**: `--pc-space-1(4)` `-2(8)` `-3(12)` `-4(16)` `-6(24)`.
-- **베벨**: 기본 `2px`(`--pc-bevel-w`), 보조 요소 `1px`. 볼록(패널·버튼) = hi 상·좌 / 오목(리드아웃·슬롯) = lo 상·좌 — 빛은 항상 좌상단에서.
-- **라운딩·그림자 금지.** 깊이는 베벨과 음각색으로만.
-- **터치 타깃 최소 44px** (모바일 하한선).
+- 폰트: **Galmuri9** (`UI/Fonts/Galmuri9.ttf`, SIL OFL 1.1 — 라이선스 동봉). `DesignSystem.uss`의 `:root`에서 전역 지정.
+- **크기는 9의 정수 배율만**: `--pc-fs-1`(9) 캡션·레이블·버튼 / `--pc-fs-2`(18) 주요 수치 / `--pc-fs-3`(27) 데미지·타이틀 / `--pc-fs-6`(54) 층 전환 연출. 배율이 어긋나면 도트가 깨진다.
+- PanelSettings 기준 해상도 540×960(Scale With Screen Size) 전제 — 9px ≈ 기기 18px.
+- 선명도가 부족하면 에디터에서 Galmuri9로 Font Asset을 만들어(Raster 모드) `-unity-font-definition`에 연결한다.
 
 ## 컴포넌트 클래스 (DesignSystem.uss)
 
-| 클래스 | 요소 | 설명 |
-|--------|------|------|
-| `.pc-panel` (+`--system`) | VisualElement | 스톤 베벨 패널. system 변형은 민트 베벨 |
-| `.pc-title` | Label | 패널 제목 (토치골드) |
-| `.pc-readout` | Label | 음각 수치 스트립 |
-| `.pc-btn` | Button | 기본 스톤 버튼 |
-| `.pc-btn--action` | Button | 공격/확정 (엠버) |
-| `.pc-btn--ranged` | Button | 원거리/마법 (아이스) |
-| `.pc-btn--system` | Button | 모드 토글 등 (민트, 얇은 보더) |
-| `.pc-hint` / `.pc-body` / `.pc-dim` | Label | 텍스트 유틸 |
-| `.pc-bar-track` + `.pc-bar-fill`(`--mana`) | VisualElement | HP/자원 게이지 (fill 너비는 코드에서 %) |
-| `.pc-chip--burn/freeze/poison` | VisualElement | 상태이상 칩 |
-| `.pc-slot` (+`--selected`) | VisualElement | 인벤토리/조합 슬롯. 선택 = 골드 보더 |
+| 클래스 | 용도 |
+|--------|------|
+| `.pc-window` (+`--teal`), `.pc-window-title` | 창 크롬 — 메뉴·팝업 전용 |
+| `.pc-float-text` (+`--hint`) | 플로팅 HUD 텍스트 (하드 섀도) |
+| `.pc-dia` (+`--current`), `.pc-dia-label`, `.pc-rail-link` | 다이아 층 레일 — 현재 층 골드 |
+| `.pc-dbtn` (+`--selected`) | 다이아 액션 버튼 — 탭=선택(골드)/재탭=실행 |
+| `.pc-heart` | HP 하트 자리 (도트 스프라이트 지정) |
+| `.pc-btn` (+`--action` 골드 / `--ranged` 아이스 / `--system` 틸) | 창 안 사각 버튼 |
+| `.pc-readout` | 음각 수치 스트립 |
+| `.pc-bar-track`/`.pc-bar-fill` (+`--xp`) | 게이지 (fill 너비는 코드에서 %) |
+| `.pc-chip--burn/freeze/poison` + `.pc-chip-swatch` | 상태이상 칩 |
+| `.pc-slot` (+`--selected`), `.pc-slot-qty` | 아이템 슬롯 |
+
+검증: `DesignSystemGallery.uxml`을 UIDocument에 연결하면 전체 컴포넌트를 에디터에서 바로 확인할 수 있다.
 
 ## 사용 규칙
 
-1. UXML에서 `DesignSystem.uss`를 **화면별 USS보다 먼저** 로드:
-   ```xml
-   <ui:Style src="DesignSystem.uss" />
-   <ui:Style src="InventoryScreen.uss" />
-   ```
-2. 화면별 USS는 **레이아웃(배치·크기)만** 담당. 색·폰트·베벨은 `pc-*` 클래스와 `var(--pc-*)` 토큰으로.
-3. 새 색이 필요하면 이 문서와 `DesignSystem.uss`에 토큰부터 추가 — 화면 USS에 리터럴을 넣지 않는다.
-4. UGUI(월드 앵커 UI: 상호작용 팝업, 데미지 숫자, 타겟 마커)도 **같은 팔레트/베벨 규칙**을 따르되, 구현은 씬에서 직접. 시안은 참고용.
-5. `PrototypeHUD.uss`는 이 시스템보다 먼저 작성됨 — 값은 이미 일치하며, 다음 UI 작업 때 `pc-*` 클래스로 점진 이관.
+1. UXML에서 `DesignSystem.uss`를 **화면별 USS보다 먼저** 로드.
+2. 화면별 USS는 **레이아웃만**. 색·폰트·프레임은 `pc-*` 클래스와 `var(--pc-*)`.
+3. **골드 글로우/강조는 화면에 한 곳만** (현재 층 또는 선택 대상).
+4. UGUI(월드 앵커: 적 HP바, 데미지 숫자, 상호작용 팝업)도 같은 팔레트. 데미지 숫자는 `--pc-fs-3` + 하드 섀도.
+5. `PrototypeHUD.uss`는 v1.2 토큰으로 이관 완료 (레이아웃 유지, 색만 교체).
 
-## 디자인 시안 워크플로 (UI_ARCHITECTURE.md §Claude 디자인 워크플로)
+## 스프라이트 승격 예정 (USS 한계)
 
-Claude가 만드는 HTML 시안은 이 토큰을 CSS 변수로 그대로 사용한다(이름 동일). 확정 후 UXML/USS 이식 시 매핑이 1:1이 되도록 유지한다.
+USS에는 box-shadow가 없어 아래는 임시로 단순 보더이며, 아트 파이프라인(GDD §6)에서 도트 스프라이트로 승격한다:
+
+- 창 크롬의 **깎인 모서리** → 9-slice 스프라이트 1장
+- 다이아 현재층/선택의 **골드 글로우** → 스프라이트
+- 게이지 **세그먼트 눈금** → 오버레이 스프라이트
+- 하트·검·물약·폭탄 아이콘 → 도트 스프라이트 (`.pc-heart`, 슬롯 내용물)
+- 다이아는 최종적으로 `rotate` 대신 스프라이트로 (픽셀 그리드 보존)
+
+## 디자인 시안 워크플로
+
+Claude의 HTML 시안(아티팩트)은 이 토큰과 같은 이름을 쓴다. 시안 확정 → USS/UXML 이식 → `DesignSystemGallery.uxml`로 대조.
