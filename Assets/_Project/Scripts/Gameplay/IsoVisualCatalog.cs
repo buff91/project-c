@@ -62,8 +62,10 @@ namespace ProjectC.Gameplay
         [Header("아이템")]
         public Sprite potion;
         public Sprite bomb;
+        public Sprite frostBomb;
 
-        public Sprite ItemFor(ItemKind kind) => kind == ItemKind.Potion ? potion : bomb;
+        public Sprite ItemFor(ItemKind kind) =>
+            kind == ItemKind.Potion ? potion : kind == ItemKind.FrostBomb ? frostBomb : bomb;
 
         public Sprite TileFor(TileKind kind, int elevation)
         {

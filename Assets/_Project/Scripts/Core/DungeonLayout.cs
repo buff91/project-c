@@ -334,7 +334,13 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceItems(GridMap map, Random random, FloorPlan p)
         {
-            ItemKind RollKind() => random.Next(0, 2) == 0 ? ItemKind.Potion : ItemKind.Bomb;
+            ItemKind RollKind()
+            {
+                int roll = random.Next(0, 10);
+                if (roll < 4) return ItemKind.Potion;
+                if (roll < 8) return ItemKind.Bomb;
+                return ItemKind.FrostBomb;
+            }
 
             bool IsFree(GridPos pos) =>
                 map.Get(pos)?.kind == TileKind.Floor &&

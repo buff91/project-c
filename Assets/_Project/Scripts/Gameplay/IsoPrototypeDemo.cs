@@ -52,6 +52,7 @@ namespace ProjectC.Gameplay
         [Header("M1 아이템")]
         [Min(1)] public int potionHealAmount = 4;
         [Min(1)] public int bombDamage = 3;
+        [Min(0)] public int frostBombDamage = 1;
         [Range(2, 8)] public int bombThrowRange = 4;
 
         [Header("M3 다층 던전")]
@@ -112,7 +113,9 @@ namespace ProjectC.Gameplay
             : "--";
         public int PotionCount => _inventory.Count(ItemKind.Potion);
         public int BombCount => _inventory.Count(ItemKind.Bomb);
+        public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);
         public bool BombAiming => _bombAiming;
+        public ItemKind AimedBombKind => _bombAimKind;
         public event System.Action<int> ViewRotationChanged;
         public event System.Action<int> ActiveFloorChanged;
         public event System.Action<DungeonViewMode> ViewModeChanged;
@@ -139,6 +142,7 @@ namespace ProjectC.Gameplay
         private readonly List<ItemAgent> _items = new List<ItemAgent>();
         private readonly Inventory _inventory = new Inventory();
         private bool _bombAiming;
+        private ItemKind _bombAimKind = ItemKind.Bomb;
         private GameObject _selection;
         private GridPos _selectionPos;
         private Transform _wallRoot;
@@ -450,30 +454,40 @@ namespace ProjectC.Gameplay
             _moveRoutine = StartCoroutine(RunPlayerAction(DrinkPotion()));
         }
 
-        /// <summary>폭탄 조준 모드를 켜고 끈다. 켠 상태에서 타일을 탭하면 투척한다.</summary>
-        public void ToggleBombAim()
+        /// <summary>폭탄/냉기 폭탄 조준 모드. 켠 상태에서 타일을 탭하면 투척한다.</summary>
+        public void ToggleBombAim() => ToggleThrowAim(ItemKind.Bomb);
+
+        public void ToggleFrostBombAim() => ToggleThrowAim(ItemKind.FrostBomb);
+
+        private void ToggleThrowAim(ItemKind kind)
         {
             if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
-            if (!_bombAiming && BombCount <= 0)
+
+            bool alreadyAimingThis = _bombAiming && _bombAimKind == kind;
+            if (!alreadyAimingThis && _inventory.Count(kind) <= 0)
             {
-                InteractionFeedback?.Invoke("NO BOMBS");
+                InteractionFeedback?.Invoke($"NO {ItemLabel(kind)}S");
                 return;
             }
 
-            SetBombAiming(!_bombAiming);
+            _bombAimKind = kind;
+            SetBombAiming(!alreadyAimingThis);
             InteractionFeedback?.Invoke(_bombAiming
-                ? $"BOMB: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3 폭발"
-                : "BOMB AIM CANCELED");
+                ? $"{ItemLabel(kind)}: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3"
+                : "AIM CANCELED");
         }
 
         private void SetBombAiming(bool aiming)
         {
-            if (_bombAiming == aiming) return;
             _bombAiming = aiming;
+            // 조준 종류 전환도 HUD 하이라이트에 반영돼야 하므로 상태가 같아도 알린다.
             BombAimingChanged?.Invoke(aiming);
         }
+
+        private static string ItemLabel(ItemKind kind) =>
+            kind == ItemKind.Potion ? "POTION" : kind == ItemKind.Bomb ? "BOMB" : "FROST";
 
         public void ApplyVisualSettings()
         {
@@ -544,7 +558,7 @@ namespace ProjectC.Gameplay
                 }
 
                 PositionSelection(target);
-                _moveRoutine = StartCoroutine(RunPlayerAction(ThrowBomb(target)));
+                _moveRoutine = StartCoroutine(RunPlayerAction(ThrowBomb(target, _bombAimKind)));
                 return;
             }
 
@@ -688,26 +702,27 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator ThrowBomb(GridPos target)
+        private IEnumerator ThrowBomb(GridPos target, ItemKind kind)
         {
             SetBombAiming(false);
-            _inventory.TryUse(ItemKind.Bomb);
+            _inventory.TryUse(kind);
             InventoryChanged?.Invoke();
 
+            bool fiery = kind != ItemKind.FrostBomb;
             yield return AnimateProjectile(_playerPos, target);
-            yield return ResolveExplosion(target, bombDamage);
+            yield return ResolveExplosion(target, fiery ? bombDamage : frostBombDamage, fiery);
 
             if (_playerState.IsAlive)
                 yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator AnimateBlast(GridPos center)
+        private IEnumerator AnimateBlast(GridPos center, bool fiery = true)
         {
             var blast = new GameObject("Bomb Blast");
             blast.transform.SetParent(_visualRoot, false);
             blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
             var renderer = blast.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetBlastSprite();
+            renderer.sprite = GetBlastSprite(fiery);
             renderer.sortingOrder = 31001;
 
             float elapsed = 0f;
@@ -1129,8 +1144,7 @@ namespace ProjectC.Gameplay
                 int count = _inventory.Add(item.Spawn.Kind);
                 InventoryChanged?.Invoke();
 
-                string label = item.Spawn.Kind == ItemKind.Potion ? "POTION" : "BOMB";
-                InteractionFeedback?.Invoke($"{label} 획득 ×{count}");
+                InteractionFeedback?.Invoke($"{ItemLabel(item.Spawn.Kind)} 획득 ×{count}");
                 Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
                 return;
             }

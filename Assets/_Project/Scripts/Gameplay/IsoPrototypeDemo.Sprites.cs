@@ -591,15 +591,15 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetBlastSprite()
+        private Sprite GetBlastSprite(bool fiery = true)
         {
-            const string key = "bomb-blast";
+            string key = fiery ? "bomb-blast" : "frost-blast";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             var texture = NewTexture(48, 48);
-            Color32 outer = new Color32(232, 99, 42, 235);
-            Color32 mid = new Color32(255, 170, 64, 255);
-            Color32 core = new Color32(255, 240, 178, 255);
+            Color32 outer = fiery ? new Color32(232, 99, 42, 235) : new Color32(74, 156, 214, 235);
+            Color32 mid = fiery ? new Color32(255, 170, 64, 255) : new Color32(126, 214, 236, 255);
+            Color32 core = fiery ? new Color32(255, 240, 178, 255) : new Color32(226, 250, 255, 255);
             for (int py = 0; py < 48; py++)
             for (int px = 0; px < 48; px++)
             {
@@ -635,6 +635,17 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 8, 7, 2, 3, liquidLight); // 하이라이트
                 FillRect(texture, 8, 13, 4, 4, glass);      // 목
                 FillRect(texture, 8, 17, 4, 3, cork);
+            }
+            else if (kind == ItemKind.FrostBomb)
+            {
+                Color32 shell = new Color32(46, 84, 110, 255);
+                Color32 ice = new Color32(126, 214, 236, 255);
+                Color32 shine = new Color32(226, 250, 255, 255);
+                FillRect(texture, 5, 2, 10, 10, shell);     // 몸통
+                FillRect(texture, 7, 4, 6, 6, ice);         // 얼음 결정
+                FillRect(texture, 9, 6, 2, 4, shine);
+                FillRect(texture, 9, 12, 2, 4, ice);        // 심지 대신 서리 기둥
+                FillRect(texture, 8, 16, 4, 2, shine);
             }
             else
             {

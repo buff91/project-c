@@ -461,6 +461,24 @@
     border-bottom-color: rgb(20, 22, 25);
 }
 
+.frost-icon {
+    background-color: rgb(38, 62, 78);
+    border-radius: 7px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--freeze);
+    border-top-color: var(--freeze);
+    border-right-color: rgb(20, 30, 36);
+    border-bottom-color: rgb(20, 30, 36);
+}
+
+.item-button.aiming .frost-icon,
+.item-button.aiming .bomb-icon {
+    background-color: var(--torch);
+}
+
 .resource-value {
     color: var(--parchment);
     font-size: 12px;

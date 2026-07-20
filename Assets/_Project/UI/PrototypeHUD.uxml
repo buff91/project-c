@@ -68,9 +68,13 @@
                     <ui:VisualElement class="resource-icon potion-icon" />
                     <ui:Label name="potion-count" text="POTION ×0" class="resource-value" />
                 </ui:Button>
-                <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발">
+                <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발+화상+넉백">
                     <ui:VisualElement class="resource-icon bomb-icon" />
                     <ui:Label name="bomb-count" text="BOMB ×0" class="resource-value" />
+                </ui:Button>
+                <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉기 폭탄 투척 — 낮은 피해 + 빙결">
+                    <ui:VisualElement class="resource-icon frost-icon" />
+                    <ui:Label name="frost-count" text="FROST ×0" class="resource-value" />
                 </ui:Button>
             </ui:VisualElement>
 

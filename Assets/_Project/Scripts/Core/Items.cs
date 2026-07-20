@@ -8,8 +8,9 @@ namespace ProjectC.Core
     /// </summary>
     public enum ItemKind
     {
-        Potion = 0,  // 회복 물약
-        Bomb = 1     // 폭탄. M4에서 연쇄 폭발/낙하 트리거와 통합.
+        Potion = 0,    // 회복 물약
+        Bomb = 1,      // 폭탄: 3×3 피해 + 화상 + 넉백, 약한 바닥 붕괴·폭발통 유폭.
+        FrostBomb = 2  // 냉기 폭탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
     }
 
     /// <summary>던전 생성기가 배치하는 아이템 스폰 지점. 타일이 아니라 타일 위의 오브젝트다.</summary>

@@ -160,13 +160,16 @@ namespace ProjectC.Gameplay
 
         // ── 폭발: 피해 → 넉백 → 폭발통 연쇄 ───────────────────────
 
+        private const int StatusTurnsApplied = 2; // 폭발이 부여하는 화상/빙결 지속 턴
+
         /// <summary>
         /// 폭발 한 번의 전체 처리. 넉백으로 구멍/허공에 밀리면 TryFall 로 이어지고,
-        /// 반경 안의 폭발통은 유폭해 재귀적으로 폭발한다(요소 반응: 폭발+폭발통=연쇄).
+        /// 불 폭발(fiery)은 화상을 부여하며 반경 안의 폭발통을 유폭시킨다.
+        /// 냉기 폭발은 빙결을 부여하고 폭발통은 건드리지 않는다.
         /// </summary>
-        private IEnumerator ResolveExplosion(GridPos center, int damage)
+        private IEnumerator ResolveExplosion(GridPos center, int damage, bool fiery = true)
         {
-            yield return AnimateBlast(center);
+            yield return AnimateBlast(center, fiery);
 
             BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
             InteractionFeedback?.Invoke($"BOOM · {result.Damaged.Count} HIT");
@@ -187,15 +190,15 @@ namespace ProjectC.Gameplay
             if (result.CollapsedWeakFloors.Count > 0)
                 InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
 
-            // 화상 부여: 폭발에 맞고 살아남으면 불이 붙는다. (GDD §5.5 — 화상 2턴)
-            bool anyBurning = false;
+            // 상태 부여: 불 폭발은 화상, 냉기 폭발은 빙결. (GDD §5.5)
+            bool anyAffected = false;
             foreach (CombatantState survivor in result.Damaged)
             {
                 if (!survivor.IsAlive) continue;
-                survivor.Statuses.Apply(StatusKind.Burn, 2);
-                anyBurning = true;
+                survivor.Statuses.Apply(fiery ? StatusKind.Burn : StatusKind.Freeze, StatusTurnsApplied);
+                anyAffected = true;
             }
-            if (anyBurning) InteractionFeedback?.Invoke("BURNING!");
+            if (anyAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
 
             // 넉백: 맞고 살아남은 전원을 중심 반대쪽으로 민다. 플레이어도 예외 없음. (GDD §5.3)
             foreach (CombatantState survivor in result.Damaged)
@@ -205,13 +208,13 @@ namespace ProjectC.Gameplay
                 if (!_playerState.IsAlive) yield break; // 넉백 낙하로 사망 시 중단
             }
 
-            if (!_barrelExploded && _barrel != null && BombRules.InBlast(center, _barrelPos))
+            if (fiery && !_barrelExploded && _barrel != null && BombRules.InBlast(center, _barrelPos))
             {
                 _barrelExploded = true;
                 SetSpriteHierarchyVisible(_barrel, false);
                 InteractionFeedback?.Invoke("BARREL CHAIN EXPLOSION!");
                 Debug.Log($"[Bomb] 폭발통 유폭 {_barrelPos}");
-                yield return ResolveExplosion(_barrelPos, damage);
+                yield return ResolveExplosion(_barrelPos, bombDamage, fiery: true);
             }
 
             RefreshFloorVisibility();
