@@ -23,6 +23,21 @@ namespace ProjectC.Gameplay
             if (!_turns.TryBeginEnemyPhase()) yield break;
             _enemyPhaseMapChanged = false;
 
+            // 플레이어 턴이 끝난 시점의 상태이상 틱.
+            // (플레이어 빙결은 아직 소스가 없다 — 소스가 생기면 행동 차단으로 확장)
+            StatusTick playerTick = _playerState.Statuses.Tick();
+            if (playerTick.BurnDamage > 0)
+            {
+                _playerState.TakeDamage(playerTick.BurnDamage);
+                InteractionFeedback?.Invoke($"BURNING -{playerTick.BurnDamage} HP");
+                yield return ShowPlayerHit(playerTick.BurnDamage, "Burn");
+                if (!_playerState.IsAlive)
+                {
+                    _turns.TryCompleteEnemyPhase();
+                    yield break;
+                }
+            }
+
             // 플레이어와 가까운 순으로 순차 decide→execute.
             // 앞 몬스터의 이동이 뒤 몬스터의 점유 판정에 반영돼 겹침/콩가라인 잼이 없다.
             _enemyTurnOrder.Clear();
@@ -37,13 +52,23 @@ namespace ProjectC.Gameplay
                 if (!_playerState.IsAlive) break;
                 if (!enemy.State.IsAlive || enemy.Brain == null) continue;
 
-                // 활성화/컬링: 반경 밖·다른 층은 사고 자체를 건너뛴다(휴면).
+                // 활성화/컬링: 반경 밖·다른 층은 사고 자체를 건너뛴다(휴면 — 시간도 멈춘다).
                 if (!MonsterActivation.IsActive(
                         _dungeon.Height,
                         _playerState.Position,
                         enemy.State.Position,
                         MonsterActiveRadius))
                     continue;
+
+                // 상태이상 틱: 파이프라인 = 활성화 → 틱 → Decide → 실행. (GDD §5.5)
+                StatusTick tick = enemy.State.Statuses.Tick();
+                if (tick.BurnDamage > 0)
+                {
+                    enemy.State.TakeDamage(tick.BurnDamage);
+                    yield return ShowEnemyHit(enemy, tick.BurnDamage, "Burn");
+                    if (!enemy.State.IsAlive) continue;
+                }
+                if (tick.Frozen) continue; // 빙결: 이번 턴 행동 불가
 
                 MonsterAction action = enemy.Brain.Decide(BuildBrainContext(enemy));
                 yield return ExecuteEnemyAction(enemy, action);

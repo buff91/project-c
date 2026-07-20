@@ -14,6 +14,9 @@ namespace ProjectC.Core
         public int AttackPower { get; }
         public bool IsAlive => Hp > 0;
 
+        /// <summary>상태이상 집합 (화상/빙결). 턴 틱은 행동 파이프라인이 돌린다. (GDD §5.5)</summary>
+        public StatusEffects Statuses { get; } = new StatusEffects();
+
         public CombatantState(string id, GridPos position, int maxHp, int attackPower)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("전투 참가자 ID가 필요합니다.", nameof(id));

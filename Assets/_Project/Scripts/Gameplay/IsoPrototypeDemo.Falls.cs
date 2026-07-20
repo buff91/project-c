@@ -187,6 +187,16 @@ namespace ProjectC.Gameplay
             if (result.CollapsedWeakFloors.Count > 0)
                 InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
 
+            // 화상 부여: 폭발에 맞고 살아남으면 불이 붙는다. (GDD §5.5 — 화상 2턴)
+            bool anyBurning = false;
+            foreach (CombatantState survivor in result.Damaged)
+            {
+                if (!survivor.IsAlive) continue;
+                survivor.Statuses.Apply(StatusKind.Burn, 2);
+                anyBurning = true;
+            }
+            if (anyBurning) InteractionFeedback?.Invoke("BURNING!");
+
             // 넉백: 맞고 살아남은 전원을 중심 반대쪽으로 민다. 플레이어도 예외 없음. (GDD §5.3)
             foreach (CombatantState survivor in result.Damaged)
             {
