@@ -13,7 +13,7 @@ namespace ProjectC.Gameplay
     public partial class IsoPrototypeDemo
     {
         private readonly List<EnemyAgent> _enemyTurnOrder = new List<EnemyAgent>();
-        private bool _enemyOpenedDoor;
+        private bool _enemyPhaseMapChanged;
 
         /// <summary>활성 반경: 시야보다 약간 넓게 잡아 시야 밖에서도 접근을 준비한다. (GDD §5.7 컬링)</summary>
         private int MonsterActiveRadius => fieldOfViewRadius + 2;
@@ -21,7 +21,7 @@ namespace ProjectC.Gameplay
         private IEnumerator ResolveEnemyPhase()
         {
             if (!_turns.TryBeginEnemyPhase()) yield break;
-            _enemyOpenedDoor = false;
+            _enemyPhaseMapChanged = false;
 
             // 플레이어와 가까운 순으로 순차 decide→execute.
             // 앞 몬스터의 이동이 뒤 몬스터의 점유 판정에 반영돼 겹침/콩가라인 잼이 없다.
@@ -49,8 +49,8 @@ namespace ProjectC.Gameplay
                 yield return ExecuteEnemyAction(enemy, action);
             }
 
-            // 몬스터가 문을 열었으면 플레이어 시야도 변한다 — 이때만 전체 갱신.
-            if (_enemyOpenedDoor)
+            // 문 개방·바닥 붕괴로 맵이 변했으면 플레이어 시야도 변한다 — 이때만 전체 갱신.
+            if (_enemyPhaseMapChanged)
                 RefreshFloorVisibility();
 
             _turns.TryCompleteEnemyPhase();
@@ -99,7 +99,7 @@ namespace ProjectC.Gameplay
                     if (door != null && door.CanOpen)
                     {
                         yield return SetDoorState(action.Target, TileKind.DoorOpen);
-                        _enemyOpenedDoor = true;
+                        _enemyPhaseMapChanged = true;
                         InteractionFeedback?.Invoke($"{enemy.State.Id} OPENED A DOOR!");
                         Debug.Log($"[Door] {enemy.State.Id} 가 {action.Target} 문을 열었다");
                     }
@@ -120,19 +120,27 @@ namespace ProjectC.Gameplay
 
             // 플레이어 시야 밖 이동은 연출 없이 즉시 배치 — 걸음마다 도는 적 페이즈가
             // 활성 몬스터 수만큼 느려지지 않게 한다.
-            if (!animate || enemy.Root == null) yield break;
-
-            Vector3 end = enemy.Root.transform.position;
-            float duration = secondsPerStep * 0.75f;
-            float elapsed = 0f;
-            while (elapsed < duration)
+            if (animate && enemy.Root != null)
             {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                enemy.Root.transform.position = Vector3.Lerp(start, end, SmoothStep(t));
-                yield return null;
+                Vector3 end = enemy.Root.transform.position;
+                float duration = secondsPerStep * 0.75f;
+                float elapsed = 0f;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / duration);
+                    enemy.Root.transform.position = Vector3.Lerp(start, end, SmoothStep(t));
+                    yield return null;
+                }
+                enemy.Root.transform.position = end;
             }
-            enemy.Root.transform.position = end;
+
+            // 약한 바닥은 몬스터가 밟아도 무너진다 — 플레이어와 동일 규칙. (GDD §5.3)
+            if (_grid.Map.Get(next)?.kind == TileKind.WeakFloor)
+            {
+                _enemyPhaseMapChanged = true;
+                yield return CollapseUnderEnemy(enemy, next);
+            }
         }
 
         /// <summary>몬스터 한 마리의 위치·정렬·가시성만 갱신하는 가벼운 경로. (전체 리빌드 금지)</summary>

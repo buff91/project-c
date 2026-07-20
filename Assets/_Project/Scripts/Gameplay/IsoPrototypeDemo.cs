@@ -222,6 +222,7 @@ namespace ProjectC.Gameplay
             _items.Clear();
             _inventory.Clear();
             _bombAiming = false;
+            _barrelExploded = false;
 
             _grid.buildDemoOnStart = false;
             _grid.iso.tileWidth = 1f;
@@ -587,6 +588,18 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            // 폭발통 밀기 (오브젝트 상호작용). 인접까지 접근한 뒤 민다.
+            if (!_barrelExploded && target == _barrelPos &&
+                _dungeon.Height.FloorIndex(target.elevation) == _activeFloorIndex)
+            {
+                List<GridPos> pushPath = FindPathToAdjacent(_barrelPos);
+                if (pushPath.Count == 0) return;
+
+                PositionSelection(target);
+                _moveRoutine = StartCoroutine(ApproachAndPushBarrel(pushPath));
+                return;
+            }
+
             EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
             if (tappedEnemy != null)
             {
@@ -709,37 +722,7 @@ namespace ProjectC.Gameplay
             InventoryChanged?.Invoke();
 
             yield return AnimateProjectile(_playerPos, target);
-            yield return AnimateBlast(target);
-
-            var combatants = new List<CombatantState>(_enemies.Count + 1) { _playerState };
-            foreach (EnemyAgent enemy in _enemies)
-                combatants.Add(enemy.State);
-
-            BombResult result = BombRules.Detonate(_grid.Map, target, combatants, bombDamage);
-            InteractionFeedback?.Invoke($"BOMB · {result.Damaged.Count} HIT");
-            Debug.Log($"[Bomb] {target} 폭발: {result.Damaged.Count}명 피해, " +
-                      $"약한 바닥 {result.CollapsedWeakFloors.Count}칸 붕괴");
-
-            foreach (CombatantState damaged in result.Damaged)
-            {
-                if (damaged == _playerState)
-                {
-                    yield return ShowPlayerHit(bombDamage, "Bomb");
-                    continue;
-                }
-
-                foreach (EnemyAgent enemy in _enemies)
-                {
-                    if (enemy.State != damaged) continue;
-                    yield return ShowEnemyHit(enemy, bombDamage, "Bomb");
-                    break;
-                }
-            }
-
-            // 붕괴한 약한 바닥은 RefreshFloorVisibility 가 최신 타일 종류로 스프라이트를 다시 그린다.
-            if (result.CollapsedWeakFloors.Count > 0)
-                InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
-            RefreshFloorVisibility();
+            yield return ResolveExplosion(target, bombDamage);
 
             if (_playerState.IsAlive)
                 yield return ResolveEnemyPhase();
@@ -825,31 +808,14 @@ namespace ProjectC.Gameplay
             _resolvingAction = true;
             yield return MovePlayerPath(path);
 
-            int minElevation = _dungeon.Height.Elevation(_dungeon.BottomFloorIndex);
-            GridPos? landing = _grid.Map.FindLandingBelow(hole, minElevation);
+            // 의도적 낙하도 TryFall 하나로 수렴 — 낙뎀을 감수하는 하강 수단이다. (GDD §5.3)
+            GridPos? landing = _grid.Map.FindLandingBelow(hole, BottomElevation);
             if (_playerState.IsAlive && landing.HasValue &&
                 _playerPos.elevation == hole.elevation && _playerPos.ManhattanTo(hole) == 1)
             {
-                int destinationFloor = _dungeon.Height.FloorIndex(landing.Value.elevation);
-                InteractionFeedback?.Invoke($"DROP → {FloorLabel(destinationFloor)}");
-                yield return AnimateHoleDrop(hole, landing.Value);
-
-                _playerPos = landing.Value;
-                _playerState.MoveTo(landing.Value);
-                _playerSorting.x = landing.Value.x;
-                _playerSorting.y = landing.Value.y;
-                _playerSorting.elevation = landing.Value.elevation;
-                _playerSorting.Apply();
-                _activeFloorIndex = destinationFloor;
-                UpdateInputFloorRange();
-                RefreshFloorVisibility();
-                PositionSelection(landing.Value);
-                ConfigureCamera(Camera.main);
-                ActiveFloorChanged?.Invoke(_activeFloorIndex);
-                PlayerPositionChanged?.Invoke();
-                InteractionFeedback?.Invoke($"LANDED · {LocationLabel}");
-                TryCollectItemAt(landing.Value);
-                yield return ResolveEnemyPhase();
+                yield return FallPlayer(hole, "DROP");
+                if (_playerState.IsAlive)
+                    yield return ResolveEnemyPhase();
             }
 
             _resolvingAction = false;
@@ -983,6 +949,15 @@ namespace ProjectC.Gameplay
                 _player.transform.position = end;
                 ConfigureCamera(Camera.main);
                 TryCollectItemAt(next);
+
+                // 약한 바닥은 밟는 순간 무너진다 — 낙하로 경로가 무효화된다. (GDD §5.3)
+                if (_grid.Map.Get(next)?.kind == TileKind.WeakFloor)
+                {
+                    yield return CollapseUnderPlayer(next);
+                    if (_playerState.IsAlive)
+                        yield return ResolveEnemyPhase();
+                    yield break;
+                }
 
                 int nextFloor = _dungeon.Height.FloorIndex(next.elevation);
                 if (nextFloor != _activeFloorIndex)

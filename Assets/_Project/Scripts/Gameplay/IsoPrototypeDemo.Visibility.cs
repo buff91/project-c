@@ -48,7 +48,11 @@ namespace ProjectC.Gameplay
                     (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
             }
 
-            if (_barrelRenderer != null)
+            if (_barrelRenderer != null && _barrelExploded)
+            {
+                SetSpriteHierarchyVisible(_barrel, false);
+            }
+            else if (_barrelRenderer != null)
             {
                 bool active = _dungeon.Height.FloorIndex(_barrelPos.elevation) == _activeFloorIndex;
                 bool visible = _visibleTiles.Contains(_barrelPos) || _verticalPreviewTiles.Contains(_barrelPos);
