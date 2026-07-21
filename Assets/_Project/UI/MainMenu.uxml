@@ -8,6 +8,9 @@
             <ui:Label text="다층 던전 크롤러 프로토타입" class="menu-subtitle" />
             <ui:Label text="영웅 선택" class="menu-caption" />
             <ui:VisualElement name="hero-list" class="hero-list" />
+            <ui:Label text="상점 — 구매품은 창고에 들어가 새 판에 반입된다" class="menu-caption" />
+            <ui:VisualElement name="shop-list" class="shop-list" />
+            <ui:Label name="menu-feedback" text="" class="menu-feedback" />
             <ui:Button name="start-button" text="새로 시작" class="menu-start-button" />
             <ui:Button name="continue-button" text="이어하기" class="menu-start-button menu-continue-button" />
             <ui:Label name="stash-label" text="" class="menu-hint" />

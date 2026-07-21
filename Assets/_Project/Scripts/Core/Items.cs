@@ -44,6 +44,21 @@ namespace ProjectC.Core
         /// <summary>전리품(환금 전용) 여부. 던전 안에서는 사용 불가.</summary>
         public static bool IsTreasure(ItemKind kind) => GoldValue(kind) > 0;
 
+        /// <summary>상점 구매가. 0 이면 비매품(전리품은 팔지 않는다 — 파밍으로만).</summary>
+        public static int ShopPrice(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion: return 15;
+                case ItemKind.Bomb: return 20;
+                case ItemKind.FrostBomb: return 15;
+                case ItemKind.OilFlask: return 10;
+                case ItemKind.ThrowingKnife: return 10;
+                case ItemKind.RecallScroll: return 25;
+                default: return 0;
+            }
+        }
+
         public static string DisplayName(ItemKind kind)
         {
             switch (kind)

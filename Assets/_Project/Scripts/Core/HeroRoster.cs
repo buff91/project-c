@@ -15,6 +15,9 @@ namespace ProjectC.Core
         public int StartBombs { get; }
         public int StartFrostBombs { get; }
 
+        /// <summary>메타 해금 비용. 0 = 처음부터 사용 가능.</summary>
+        public int UnlockCost { get; }
+
         public HeroArchetype(
             string id,
             string displayName,
@@ -24,7 +27,8 @@ namespace ProjectC.Core
             int rangedDamage,
             int startPotions = 0,
             int startBombs = 0,
-            int startFrostBombs = 0)
+            int startFrostBombs = 0,
+            int unlockCost = 0)
         {
             Id = id;
             DisplayName = displayName;
@@ -35,6 +39,7 @@ namespace ProjectC.Core
             StartPotions = startPotions;
             StartBombs = startBombs;
             StartFrostBombs = startFrostBombs;
+            UnlockCost = unlockCost;
         }
     }
 
@@ -50,10 +55,11 @@ namespace ProjectC.Core
             // 사냥꾼 HP 7→8, 연금 ATK 2→3 (근접이 해골 4방이면 체인 완주 불가).
             new HeroArchetype(
                 "ranger", "사냥꾼", "원거리가 강한 대신 여림",
-                maxHp: 8, attack: 2, rangedDamage: 2),
+                maxHp: 8, attack: 2, rangedDamage: 2, unlockCost: 80),
             new HeroArchetype(
                 "alchemist", "연금술사", "폭탄과 냉기로 판을 짠다",
-                maxHp: 8, attack: 3, rangedDamage: 1, startBombs: 2, startFrostBombs: 1)
+                maxHp: 8, attack: 3, rangedDamage: 1, startBombs: 2, startFrostBombs: 1,
+                unlockCost: 120)
         };
 
         /// <summary>id 미지정/미상은 첫 영웅(기사)으로 폴백한다.</summary>

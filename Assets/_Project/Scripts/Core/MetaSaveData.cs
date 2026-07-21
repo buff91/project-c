@@ -11,6 +11,7 @@ namespace ProjectC.Core
     public class MetaSaveData
     {
         public int gold;
+        public string[] unlockedHeroes = { "knight" };
         public int potions;
         public int bombs;
         public int frostBombs;
@@ -48,6 +49,32 @@ namespace ProjectC.Core
         public void ClearItems()
         {
             potions = bombs = frostBombs = oilFlasks = knives = scrolls = 0;
+        }
+
+        /// <summary>골드가 충분하면 차감하고 true. 상점 구매/해금 공통 경로.</summary>
+        public bool TrySpend(int cost)
+        {
+            if (cost < 0) throw new ArgumentOutOfRangeException(nameof(cost));
+            if (gold < cost) return false;
+            gold -= cost;
+            return true;
+        }
+
+        public bool IsHeroUnlocked(string heroId)
+        {
+            if (unlockedHeroes == null) return false;
+            foreach (string id in unlockedHeroes)
+                if (id == heroId) return true;
+            return false;
+        }
+
+        public void UnlockHero(string heroId)
+        {
+            if (IsHeroUnlocked(heroId)) return;
+            var next = new string[(unlockedHeroes?.Length ?? 0) + 1];
+            unlockedHeroes?.CopyTo(next, 0);
+            next[next.Length - 1] = heroId;
+            unlockedHeroes = next;
         }
     }
 }

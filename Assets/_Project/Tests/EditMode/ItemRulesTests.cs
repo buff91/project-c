@@ -227,6 +227,36 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void ShopPrice_SellsConsumablesOnly_NeverTreasures()
+        {
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                if (ItemCatalog.IsTreasure(kind))
+                    Assert.AreEqual(0, ItemCatalog.ShopPrice(kind), $"{kind}: 전리품은 파밍 전용");
+                else
+                    Assert.Greater(ItemCatalog.ShopPrice(kind), 0, kind.ToString());
+            }
+        }
+
+        [Test]
+        public void MetaSaveData_TrySpend_And_HeroUnlock()
+        {
+            var meta = new MetaSaveData { gold = 100 };
+
+            Assert.IsFalse(meta.TrySpend(150), "잔액 부족이면 차감하지 않는다");
+            Assert.AreEqual(100, meta.gold);
+            Assert.IsTrue(meta.TrySpend(80));
+            Assert.AreEqual(20, meta.gold);
+
+            Assert.IsTrue(meta.IsHeroUnlocked("knight"), "기사는 기본 해금");
+            Assert.IsFalse(meta.IsHeroUnlocked("ranger"));
+            meta.UnlockHero("ranger");
+            meta.UnlockHero("ranger"); // 중복 해금은 무해
+            Assert.IsTrue(meta.IsHeroUnlocked("ranger"));
+            Assert.AreEqual(2, meta.unlockedHeroes.Length);
+        }
+
+        [Test]
         public void AllKinds_CoverEveryEnumValue_WithNameAndDescription()
         {
             var enumValues = System.Enum.GetValues(typeof(ItemKind));
