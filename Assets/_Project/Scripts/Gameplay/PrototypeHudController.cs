@@ -18,6 +18,7 @@ namespace ProjectC.Gameplay
         private Button _rotateRight;
         private Button _modeButton;
         private Button _combatButton;
+        private Button _interactButton;
         private Button _potionButton;
         private Button _bombButton;
         private Button _frostButton;
@@ -97,6 +98,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _rotateRight, null, RotateRight);
             RebindButton(ref _modeButton, null, ToggleViewMode);
             RebindButton(ref _combatButton, null, ToggleCombatMode);
+            RebindButton(ref _interactButton, null, PerformInteraction);
             RebindButton(ref _potionButton, null, UsePotion);
             RebindButton(ref _bombButton, null, ToggleBombAim);
             RebindButton(ref _frostButton, null, ToggleFrostBombAim);
@@ -170,6 +172,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _rotateRight, root.Q<Button>("rotate-right"), RotateRight);
             RebindButton(ref _modeButton, root.Q<Button>("mode-button"), ToggleViewMode);
             RebindButton(ref _combatButton, root.Q<Button>("combat-button"), ToggleCombatMode);
+            RebindButton(ref _interactButton, root.Q<Button>("interact-button"), PerformInteraction);
             RebindButton(ref _potionButton, root.Q<Button>("potion-button"), UsePotion);
             RebindButton(ref _bombButton, root.Q<Button>("bomb-button"), ToggleBombAim);
             RebindButton(ref _frostButton, root.Q<Button>("frost-button"), ToggleFrostBombAim);
@@ -493,6 +496,25 @@ namespace ProjectC.Gameplay
         private void GoToMainMenu()
         {
             SceneManager.LoadScene("MainMenu");
+        }
+
+        // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.
+        private void Update()
+        {
+            UpdateInteractButton();
+        }
+
+        private void UpdateInteractButton()
+        {
+            if (_interactButton == null) return;
+            string label = demo != null ? demo.ContextInteractionLabel : null;
+            _interactButton.EnableInClassList("is-available", label != null);
+            if (label != null) _interactButton.text = label;
+        }
+
+        private void PerformInteraction()
+        {
+            if (demo != null) demo.PerformContextInteraction();
         }
 
         private void UpdateItemLabels()

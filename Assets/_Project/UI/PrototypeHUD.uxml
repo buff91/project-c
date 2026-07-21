@@ -81,6 +81,7 @@
             <ui:VisualElement class="action-cluster">
                 <ui:Button name="mode-button" text="MODE: PLAY FOV" class="mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환" />
                 <ui:Button name="combat-button" text="ATTACK: MELEE" class="combat-button" tooltip="근접 / 원거리 공격 전환" />
+                <ui:Button name="interact-button" text="OPEN" class="interact-button" tooltip="인접한 문 열기/닫기 · 폭발통 밀기" />
                 <ui:VisualElement class="artifact-panel turn-pill">
                     <ui:VisualElement class="turn-dot" />
                     <ui:Label text="내 턴" class="turn-label" />

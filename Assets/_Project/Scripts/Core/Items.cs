@@ -138,6 +138,7 @@ namespace ProjectC.Core
                 GridPos pos = center.Offset(dx, dy);
                 TileData tile = map.Get(pos);
                 if (tile == null || !tile.IsWalkable || tile.kind == TileKind.Hole) continue;
+                if (tile.wet) continue; // 젖은 바닥에는 기름이 붙지 않는다 (GDD §5.5)
                 if (!tile.oiled)
                 {
                     tile.oiled = true;

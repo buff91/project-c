@@ -28,6 +28,9 @@ namespace ProjectC.Core
         /// <summary>기름이 뿌려진 상태. 불 폭발과 겹치면 발화한다. (GDD §5.5 요소 반응)</summary>
         public bool oiled;
 
+        /// <summary>물에 젖은 상태(웅덩이). 냉기가 닿으면 연결된 웅덩이 전체가 결빙된다. (GDD §5.5)</summary>
+        public bool wet;
+
         public TileData(TileKind kind = TileKind.Empty)
         {
             this.kind = kind;

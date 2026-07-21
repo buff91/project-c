@@ -722,6 +722,67 @@ namespace ProjectC.Gameplay
             _moveRoutine = StartCoroutine(RunPlayerAction(DrinkPotion()));
         }
 
+        /// <summary>
+        /// 컨텍스트 상호작용 버튼 라벨 (M4~M5 이월분). 인접한 문/폭발통이 있으면
+        /// "OPEN"/"CLOSE"/"PUSH", 없으면 null — HUD 가 매 프레임 폴링해 버튼을 숨긴다.
+        /// </summary>
+        public string ContextInteractionLabel =>
+            !Application.isPlaying || _resolvingAction ||
+            _playerState == null || !_playerState.IsAlive || _runSummary.Ended
+                ? null
+                : FindContextInteraction(out _, out string label) ? label : null;
+
+        /// <summary>상호작용 버튼 실행 — 탭과 같은 경로(StartPlayerAction)를 태운다.</summary>
+        public void PerformContextInteraction()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
+                return;
+            if (!FindContextInteraction(out GridPos target, out _)) return;
+
+            TileData tile = _grid.Map.Get(target);
+            if (tile != null && (tile.CanOpen || tile.CanClose))
+            {
+                if (TryFindApproach(target, out List<GridPos> doorPath))
+                    StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
+            }
+            else if (TryFindApproach(target, out List<GridPos> pushPath))
+            {
+                StartPlayerAction(target, ApproachAndPushBarrel(pushPath));
+            }
+        }
+
+        /// <summary>플레이어 상하좌우에서 상호작용 대상 하나를 찾는다. 문이 폭발통보다 우선.</summary>
+        private bool FindContextInteraction(out GridPos target, out string label)
+        {
+            GridPos barrel = default;
+            bool barrelFound = false;
+            foreach (GridPos pos in new[]
+                     {
+                         _playerPos.Offset(1, 0), _playerPos.Offset(-1, 0),
+                         _playerPos.Offset(0, 1), _playerPos.Offset(0, -1)
+                     })
+            {
+                TileData tile = _grid.Map.Get(pos);
+                if (tile != null && (tile.CanOpen || tile.CanClose))
+                {
+                    target = pos;
+                    label = tile.CanOpen ? "OPEN" : "CLOSE";
+                    return true;
+                }
+                if (!barrelFound && !_barrelExploded && pos == _barrelPos &&
+                    _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex)
+                {
+                    barrel = pos;
+                    barrelFound = true;
+                }
+            }
+
+            target = barrel;
+            label = barrelFound ? "PUSH" : null;
+            return barrelFound;
+        }
+
         /// <summary>폭탄/냉기 폭탄 조준 모드. 켠 상태에서 타일을 탭하면 투척한다.</summary>
         public void ToggleBombAim() => ToggleThrowAim(ItemKind.Bomb);
 

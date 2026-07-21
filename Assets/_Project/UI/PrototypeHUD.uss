@@ -492,7 +492,8 @@
 }
 
 .mode-button,
-.combat-button {
+.combat-button,
+.interact-button {
     height: 36px;
     margin-right: 7px;
     border-radius: 4px;
@@ -521,8 +522,25 @@
     border-bottom-color: rgb(48, 27, 22);
 }
 
+/* 컨텍스트 상호작용 — 대상이 있을 때만 HUD 가 표시한다. */
+.interact-button {
+    width: 96px;
+    display: none;
+    color: rgb(214, 244, 188);
+    background-color: rgb(43, 66, 30);
+    border-left-color: rgb(104, 148, 66);
+    border-top-color: rgb(104, 148, 66);
+    border-right-color: rgb(24, 38, 18);
+    border-bottom-color: rgb(24, 38, 18);
+}
+
+.interact-button.is-available {
+    display: flex;
+}
+
 .mode-button:hover,
-.combat-button:hover {
+.combat-button:hover,
+.interact-button:hover {
     color: var(--ink);
     background-color: var(--torch);
 }

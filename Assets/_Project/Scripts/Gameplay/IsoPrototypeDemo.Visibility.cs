@@ -27,10 +27,12 @@ namespace ProjectC.Gameplay
                 pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
                 pair.Value.enabled = debugVisible || visible || explored || vertical;
                 float alpha = VisibilityAlpha(pair.Key);
-                // 기름 타일은 갈색조로 물들여 인화성을 보여준다.
+                // 기름 타일은 갈색조, 젖은 타일은 청색조로 물들여 원소를 보여준다.
                 pair.Value.color = tileData.oiled
                     ? new Color(0.74f, 0.64f, 0.36f, alpha)
-                    : new Color(1f, 1f, 1f, alpha);
+                    : tileData.wet
+                        ? new Color(0.55f, 0.72f, 0.95f, alpha)
+                        : new Color(1f, 1f, 1f, alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 

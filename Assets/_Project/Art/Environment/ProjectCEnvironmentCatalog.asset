@@ -36,7 +36,12 @@ MonoBehaviour:
   rearWallRisingLeft: {fileID: 21300000, guid: 698634ebef95a4f0390a33286ca14520, type: 3}
   rearWallTorchRisingRight: {fileID: 21300000, guid: e4fee66e8f20847d0afdb8c2b9aecbcd, type: 3}
   rearWallTorchRisingLeft: {fileID: 21300000, guid: 85c190b2bdbd4460f884c2e85b7a710b, type: 3}
-  player: {fileID: 0}
-  goblin: {fileID: 0}
+  player: {fileID: -76136354250151179, guid: 9a7db6f28932244c08569ee866a6c93f, type: 3}
+  goblin: {fileID: -6600559419891483580, guid: 346f1350629ea42648029759789b6f9e, type: 3}
+  skeleton: {fileID: 0}
+  slime: {fileID: 0}
   explosiveBarrel: {fileID: 0}
   selection: {fileID: 0}
+  potion: {fileID: -5122039910520194202, guid: e81b3efca0d5d40ad9e7b03f3d37cb8e, type: 3}
+  bomb: {fileID: 0}
+  frostBomb: {fileID: 0}

@@ -116,6 +116,7 @@ namespace ProjectC.Core
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
             foreach (FloorPlan plan in plans)
             {
+                PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan);
                 PlaceItems(map, random, plan);
             }
@@ -356,6 +357,43 @@ namespace ProjectC.Core
             // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 높은 단을 쓴다.
             if (p.EnemySpawns.Count == 0)
                 p.EnemySpawns.Add(p.At(p.StairX, p.RaisedY));
+        }
+
+        /// <summary>
+        /// 물 웅덩이 배치 (GDD §5.5 — 물+빙결 광역 결빙의 무대).
+        /// 층마다 절반 확률로 남쪽 방 평지에 2~4칸짜리 이어진 웅덩이 하나를 만든다.
+        /// 입구·계단·특수 타일은 피하고 순수 Floor 만 적신다.
+        /// </summary>
+        private static void PlacePuddle(GridMap map, Random random, FloorPlan p)
+        {
+            if (random.Next(0, 2) == 0) return;
+
+            var seeds = new List<GridPos>();
+            for (int x = 0; x <= p.LeftMaxX; x++)
+            for (int y = 0; y <= p.LowerMaxY; y++)
+            {
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (pos != p.Entry && map.Get(pos)?.kind == TileKind.Floor)
+                    seeds.Add(pos);
+            }
+            if (seeds.Count == 0) return;
+
+            GridPos current = seeds[random.Next(seeds.Count)];
+            int size = 2 + random.Next(0, 3);
+            for (int i = 0; i < size; i++)
+            {
+                map.Get(current).wet = true;
+                var neighbors = new List<GridPos>();
+                foreach (GridPos next in new[]
+                         { current.Offset(1, 0), current.Offset(-1, 0), current.Offset(0, 1), current.Offset(0, -1) })
+                {
+                    TileData tile = map.Get(next);
+                    if (next != p.Entry && tile != null && tile.kind == TileKind.Floor && !tile.wet)
+                        neighbors.Add(next);
+                }
+                if (neighbors.Count == 0) break;
+                current = neighbors[random.Next(neighbors.Count)];
+            }
         }
 
         /// <summary>

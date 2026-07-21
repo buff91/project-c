@@ -227,6 +227,26 @@ namespace ProjectC.Gameplay
                         if (burning != null) ApplyEnemyVisuals(burning);
                     }
                 }
+
+                List<GridPos> dried = WaterRules.Evaporate(_grid.Map, center);
+                if (dried.Count > 0) Debug.Log($"[Water] 증발 {center}: {dried.Count}칸");
+            }
+            else
+            {
+                // 요소 반응: 냉기가 웅덩이에 닿으면 이어진 웅덩이 전체로 결빙 전파. (GDD §5.5)
+                List<GridPos> frozenTiles = WaterRules.ChainFreeze(_grid.Map, center);
+                if (frozenTiles.Count > 0)
+                {
+                    InteractionFeedback?.Invoke($"PUDDLE FROZEN ×{frozenTiles.Count}!");
+                    Debug.Log($"[Water] 웅덩이 결빙 {center}: {frozenTiles.Count}칸");
+                    foreach (CombatantState combatant in AllCombatants())
+                    {
+                        if (!combatant.IsAlive || !frozenTiles.Contains(combatant.Position)) continue;
+                        combatant.Statuses.Apply(StatusKind.Freeze, StatusTurnsApplied);
+                        EnemyAgent chilled = FindAgentByState(combatant);
+                        if (chilled != null) ApplyEnemyVisuals(chilled);
+                    }
+                }
             }
 
             // 넉백: 맞고 살아남은 전원을 중심 반대쪽으로 민다. 플레이어도 예외 없음. (GDD §5.3)
