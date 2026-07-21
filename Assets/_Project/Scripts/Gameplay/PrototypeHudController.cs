@@ -53,11 +53,15 @@ namespace ProjectC.Gameplay
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
 
+        private IsoTapInput _tapInput;
+
         private void OnEnable()
         {
             BindDocument();
             if (demo != null)
             {
+                _tapInput = demo.GetComponent<IsoTapInput>();
+                if (_tapInput != null) _tapInput.UiBlocker = IsPointerOverHud;
                 demo.ViewRotationChanged += HandleViewRotationChanged;
                 demo.ActiveFloorChanged += HandleActiveFloorChanged;
                 demo.ViewModeChanged += HandleViewModeChanged;
@@ -115,6 +119,39 @@ namespace ProjectC.Gameplay
                 demo.PlayerHpChanged -= HandlePlayerHpChanged;
                 demo.RunEnded -= HandleRunEnded;
             }
+            if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
+                _tapInput.UiBlocker = null;
+            _tapInput = null;
+        }
+
+        /// <summary>
+        /// 탭 스크린 좌표가 HUD의 "실질" 요소 위인지. hud-root 는 풀스크린 컨테이너라
+        /// 픽 결과의 조상 체인에서 컨트롤/패널류가 나올 때만 차단한다.
+        /// </summary>
+        private bool IsPointerOverHud(Vector2 screenPoint)
+        {
+            IPanel panel = GetComponent<UIDocument>().rootVisualElement?.panel;
+            if (panel == null) return false;
+
+            Vector2 panelPoint = RuntimePanelUtils.ScreenToPanel(
+                panel, new Vector2(screenPoint.x, Screen.height - screenPoint.y));
+            VisualElement picked = panel.Pick(panelPoint);
+
+            for (VisualElement element = picked; element != null; element = element.parent)
+            {
+                if (element is Button || element is Slider || element is Toggle ||
+                    element is ScrollView)
+                    return true;
+                if (element.ClassListContains("artifact-panel") ||
+                    element.ClassListContains("settings-modal") ||
+                    element.ClassListContains("gameover-overlay") ||
+                    element.ClassListContains("status-chip") ||
+                    element.ClassListContains("orb-row") ||
+                    element.ClassListContains("debug-panel"))
+                    return true;
+            }
+
+            return false;
         }
 
         private void BindDocument()

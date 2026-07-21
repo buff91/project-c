@@ -41,6 +41,9 @@ namespace ProjectC.Core
             return previous - Hp;
         }
 
+        /// <summary>디버그 전용 HP 강제 설정. 사망 상태(0)에서도 되살릴 수 있다 — 게임 규칙에서 쓰지 말 것.</summary>
+        public void OverrideHpForDebug(int hp) => Hp = Math.Clamp(hp, 0, MaxHp);
+
         /// <summary>MaxHp 를 넘지 않게 회복하고 실제 회복량을 반환한다. 죽은 대상은 회복 불가.</summary>
         public int Heal(int amount)
         {

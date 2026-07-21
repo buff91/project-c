@@ -159,6 +159,7 @@ namespace ProjectC.Gameplay
         private readonly TurnManager _turns = new TurnManager();
         private bool _resolvingAction;
         private bool _travelCancelRequested;
+        private bool _godMode;
         private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
         private FloatingTextSpawner _floatingText;
@@ -186,6 +187,7 @@ namespace ProjectC.Gameplay
             if (_input == null) _input = GetComponent<IsoTapInput>();
             _input.TileTapped += HandleTileTapped;
             _input.ViewRotationRequested += RotateView;
+            _input.ActorPicker = PickEnemyTileAt;
 
             // 생성된 임시 스프라이트는 씬에 저장하지 않는다. 대신 씬을 열 때마다
             // 편집 모드 미리보기를 다시 만들어 Game 뷰가 비어 보이지 않게 한다.
@@ -211,6 +213,8 @@ namespace ProjectC.Gameplay
             {
                 _input.TileTapped -= HandleTileTapped;
                 _input.ViewRotationRequested -= RotateView;
+                if (_input.ActorPicker == PickEnemyTileAt)
+                    _input.ActorPicker = null;
             }
         }
 
@@ -295,6 +299,98 @@ namespace ProjectC.Gameplay
             InventoryChanged?.Invoke();
             BombAimingChanged?.Invoke(false);
             PlayerHpChanged?.Invoke();
+        }
+
+        // ── 디버그 창 전용 API (에디터/개발빌드에서 DebugPanelController 가 호출) ──
+
+        public bool DebugGodMode => _godMode;
+        public int DebugSeed => dungeonSeed;
+        public int DebugTurnNumber => _turns.TurnNumber;
+
+        public int DebugLivingEnemiesOnFloor()
+        {
+            int count = 0;
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.State.IsAlive &&
+                    _dungeon != null &&
+                    _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex)
+                    count++;
+            }
+            return count;
+        }
+
+        public void DebugToggleGodMode()
+        {
+            if (!Application.isPlaying) return;
+            _godMode = !_godMode;
+            InteractionFeedback?.Invoke(_godMode ? "CHEAT: GOD MODE ON" : "CHEAT: GOD MODE OFF");
+        }
+
+        public void DebugHealFull()
+        {
+            if (!Application.isPlaying || _playerState == null) return;
+            _playerState.OverrideHpForDebug(_playerState.MaxHp);
+            UpdateHealthBar(_playerHpFill, _playerState);
+            PlayerHpChanged?.Invoke();
+            InteractionFeedback?.Invoke("CHEAT: HP FULL");
+        }
+
+        public void DebugDamageSelf(int amount)
+        {
+            if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive) return;
+            int dealt = _playerState.TakeDamage(amount);
+            StartCoroutine(ShowPlayerHit(dealt, "Debug"));
+        }
+
+        public void DebugGiveItem(ItemKind kind)
+        {
+            if (!Application.isPlaying) return;
+            int count = _inventory.Add(kind);
+            InventoryChanged?.Invoke();
+            InteractionFeedback?.Invoke($"CHEAT: {ItemLabel(kind)} +1 (×{count})");
+        }
+
+        public void DebugKillAllOnFloor()
+        {
+            if (!Application.isPlaying || _dungeon == null) return;
+            int killed = 0;
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (!enemy.State.IsAlive ||
+                    _dungeon.Height.FloorIndex(enemy.State.Position.elevation) != _activeFloorIndex)
+                    continue;
+                enemy.State.TakeDamage(9999);
+                UpdateHealthBar(enemy.HpFill, enemy.State);
+                ApplyEnemyVisuals(enemy);
+                killed++;
+            }
+            InteractionFeedback?.Invoke($"CHEAT: 몬스터 {killed}마리 제거");
+        }
+
+        public void DebugJumpFloor(int delta)
+        {
+            if (!Application.isPlaying || _dungeon == null || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (!_dungeon.TryGetFloor(_activeFloorIndex + delta, out DungeonFloorInfo floor))
+            {
+                InteractionFeedback?.Invoke("CHEAT: 그 방향에 층이 없다");
+                return;
+            }
+
+            _playerState.MoveTo(floor.Entry);
+            _player.transform.position = _grid.GridToWorld(floor.Entry);
+            SyncPlayerView(floor.Entry, floorChanged: true);
+            _runSummary.RecordFloor(_activeFloorIndex);
+            InteractionFeedback?.Invoke($"CHEAT: {FloorLabel(_activeFloorIndex)} 로 점프");
+        }
+
+        public void DebugClearSave()
+        {
+            if (!Application.isPlaying) return;
+            RunSaveStore.Clear();
+            InteractionFeedback?.Invoke("CHEAT: 세이브 삭제");
         }
 
         /// <summary>이어하기 데이터의 HP·인벤토리·전적을 새로 만든 판에 덧입힌다.</summary>
@@ -639,6 +735,33 @@ namespace ProjectC.Gameplay
                 PositionSelection(_selectionPos);
 
             RefreshFloorVisibility();
+        }
+
+        /// <summary>
+        /// 탭 지점이 살아있는 적 스프라이트 안이면 그 적의 발밑 타일을 반환한다.
+        /// 아이소 몸통은 타일보다 화면상 위에 그려져, 평면 역변환만 쓰면
+        /// 몸통 탭이 뒤 타일 이동으로 새는 문제의 보정이다. 겹치면 앞(정렬 위) 적 우선.
+        /// </summary>
+        private GridPos? PickEnemyTileAt(Vector2 screenPoint)
+        {
+            if (!Application.isPlaying || _playerState == null || Camera.main == null)
+                return null;
+
+            Vector3 world = Camera.main.ScreenToWorldPoint(screenPoint);
+            EnemyAgent best = null;
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (!enemy.State.IsAlive || enemy.Renderer == null || !enemy.Renderer.enabled)
+                    continue;
+                Bounds bounds = enemy.Renderer.bounds;
+                if (world.x < bounds.min.x || world.x > bounds.max.x ||
+                    world.y < bounds.min.y || world.y > bounds.max.y)
+                    continue;
+                if (best == null || enemy.Renderer.sortingOrder > best.Renderer.sortingOrder)
+                    best = enemy;
+            }
+
+            return best?.State.Position;
         }
 
         private void HandleTileTapped(GridPos target, bool tileExists)
@@ -1260,6 +1383,16 @@ namespace ProjectC.Gameplay
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
         private IEnumerator ShowPlayerHit(int damage, string source)
         {
+            // 무적(디버그): 이미 깎인 피해를 되돌린다 — 모든 플레이어 피해가 이 경로를 지난다.
+            if (_godMode && damage > 0)
+            {
+                _playerState.OverrideHpForDebug(_playerState.Hp + damage);
+                UpdateHealthBar(_playerHpFill, _playerState);
+                PlayerHpChanged?.Invoke();
+                InteractionFeedback?.Invoke($"CHEAT: GOD — {source} 피해 {damage} 무시");
+                yield break;
+            }
+
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
             FloatingText?.ShowDamage(

@@ -158,12 +158,16 @@ MonoBehaviour:
   debugCameraSize: 8.8
   playerMaxHp: 8
   playerAttack: 2
-  goblinMaxHp: 5
-  goblinAttack: 1
+  rangedAttackDamage: 1
   rangedAttackRange: 6
   combatMode: 0
+  potionHealAmount: 5
+  bombDamage: 3
+  frostBombDamage: 1
+  bombThrowRange: 4
   floorCount: 3
   elevationsPerFloor: 4
+  dungeonSeed: 1977
   previewStartDepth: 1
   viewMode: 0
   fieldOfViewRadius: 6
@@ -174,6 +178,10 @@ MonoBehaviour:
   debugFloorSeparation: 1.6
   debugAdjacentAlpha: 0.48
   autoDescendOnStart: 0
+  fadePlayerOccluders: 1
+  playerOccluderAlpha: 0.3
+  playerOccluderFadeSpeed: 8
+  playerOcclusionPadding: 0.06
   showRearWalls: 1
   visualCatalog: {fileID: 11400000, guid: e80f08e8904cc4a17834530b29b7cb3e, type: 2}
   floorTop:
@@ -341,6 +349,7 @@ GameObject:
   - component: {fileID: 2135347025}
   - component: {fileID: 2135347024}
   - component: {fileID: 2135347023}
+  - component: {fileID: 2135347026}
   m_Layer: 0
   m_Name: Prototype HUD
   m_TagString: Untagged
@@ -399,6 +408,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2135347026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2135347022}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a665577fe857b4a6892dde698fdf5642, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.DebugPanelController
+  demo: {fileID: 291117079}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

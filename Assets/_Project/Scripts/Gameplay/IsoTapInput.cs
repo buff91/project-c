@@ -27,6 +27,19 @@ namespace ProjectC.Gameplay
         public event System.Action<GridPos, bool> TileTapped;
         public event System.Action<int> ViewRotationRequested;
 
+        /// <summary>
+        /// 화면 좌표에서 액터(몬스터 등)를 우선 집는 선택자. 게임 로직이 주입한다.
+        /// 아이소 스프라이트는 발밑 타일보다 화면상 위에 그려져서, 평면 역변환만으로는
+        /// 몸통 탭이 뒤쪽 타일로 새기 때문에 스프라이트 기준 보정이 필요하다.
+        /// </summary>
+        public System.Func<Vector2, GridPos?> ActorPicker;
+
+        /// <summary>
+        /// 탭 지점이 화면 UI 위인지 판정하는 훅 (HUD가 주입).
+        /// true 면 이번 탭을 무시한다 — 버튼 클릭이 월드 이동으로 관통하는 것을 막는다.
+        /// </summary>
+        public System.Func<Vector2, bool> UiBlocker;
+
         private GridManager _gm;
         private Camera _cam;
 
@@ -43,7 +56,11 @@ namespace ProjectC.Gameplay
 
             if (TryGetTap(out Vector2 screenPoint))
             {
-                GridPos picked = PickGrid(screenPoint);
+                if (UiBlocker != null && UiBlocker(screenPoint))
+                    return;
+
+                GridPos? actor = ActorPicker?.Invoke(screenPoint);
+                GridPos picked = actor ?? PickGrid(screenPoint);
                 bool exists = _gm.Map.Has(picked);
                 Debug.Log($"[Tap] 화면 {screenPoint} → 격자 {picked} (타일 있음: {exists})");
                 TileTapped?.Invoke(picked, exists);

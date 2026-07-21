@@ -129,6 +129,13 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="debug-panel" class="debug-panel">
+            <ui:Label text="DEBUG (⌘D / Ctrl+D / F1)" class="debug-title" />
+            <ui:Label name="debug-status" text="--" class="debug-status" />
+            <ui:VisualElement name="debug-commands" class="debug-commands" />
+            <ui:ScrollView name="debug-log" class="debug-log" />
+        </ui:VisualElement>
+
         <ui:VisualElement name="gameover-overlay" class="settings-modal gameover-overlay">
             <ui:VisualElement class="artifact-panel settings-card gameover-card">
                 <ui:Label name="gameover-title" text="당신은 죽었습니다" class="gameover-title" />
