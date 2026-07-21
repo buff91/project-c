@@ -12,6 +12,8 @@ namespace ProjectC.Core
         public string CauseOfDeath { get; private set; }
         public int Kills { get; private set; }
         public bool Victory { get; private set; }
+        public bool Extracted { get; private set; }
+        public int GoldBanked { get; private set; }
         public bool Ended { get; private set; }
 
         public RunSummary(int startFloorIndex = 0, int kills = 0)
@@ -34,11 +36,21 @@ namespace ProjectC.Core
             CauseOfDeath = string.IsNullOrWhiteSpace(cause) ? "UNKNOWN" : cause;
         }
 
-        public void EndInVictory()
+        public void EndInVictory(int goldBanked = 0)
         {
             if (Ended) return;
             Ended = true;
             Victory = true;
+            GoldBanked = goldBanked;
+        }
+
+        /// <summary>생환(extraction): 승리는 아니지만 전리품을 챙겨 살아 나갔다.</summary>
+        public void EndInExtraction(int goldBanked)
+        {
+            if (Ended) return;
+            Ended = true;
+            Extracted = true;
+            GoldBanked = goldBanked;
         }
 
         /// <summary>영문 사인 소스("Goblin B2-1", "Burn" …)를 표시용 한글 문구로 바꾼다.</summary>

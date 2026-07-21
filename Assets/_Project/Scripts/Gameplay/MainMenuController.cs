@@ -28,6 +28,20 @@ namespace ProjectC.Gameplay
                 _continueButton.EnableInClassList("is-available", RunSaveStore.HasSave);
             }
             BuildHeroCards(root.Q<VisualElement>("hero-list"));
+            UpdateStashLabel(root.Q<Label>("stash-label"));
+        }
+
+        /// <summary>창고(메타) 현황: 골드 + 보관 소모품 수. 생환해야만 쌓인다.</summary>
+        private static void UpdateStashLabel(Label label)
+        {
+            if (label == null) return;
+            MetaSaveData meta = MetaStore.LoadOrNew();
+            int items = 0;
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+                items += meta.GetCount(kind);
+            label.text = meta.gold > 0 || items > 0
+                ? $"창고: {meta.gold}G · 보관 물품 {items}개 (새 판에 반입)"
+                : "창고가 비어 있다 — 생환해야 전리품이 쌓인다";
         }
 
         /// <summary>HeroRoster 를 그대로 카드로 펼친다 — 영웅 추가 시 UXML 수정 불필요.</summary>

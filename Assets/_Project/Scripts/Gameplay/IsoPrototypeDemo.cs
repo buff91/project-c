@@ -124,6 +124,15 @@ namespace ProjectC.Gameplay
         public int BombCount => _inventory.Count(ItemKind.Bomb);
         public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);
         public int ItemCount(ItemKind kind) => _inventory.Count(kind);
+
+        /// <summary>지금 들고 있는 전리품의 골드 환산 가치 (출구 선택지 표시용).</summary>
+        public int CarriedTreasureGold()
+        {
+            int gold = 0;
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+                gold += ItemCatalog.GoldValue(kind) * _inventory.Count(kind);
+            return gold;
+        }
         public int StageIndex => _stageIndex;
         public string StageLabel => $"던전 {_stageIndex}/{stageCount}";
         public bool BombAiming => _bombAiming;
@@ -141,6 +150,8 @@ namespace ProjectC.Gameplay
         public event System.Action<bool> BombAimingChanged;
         public event System.Action PlayerHpChanged;
         public event System.Action<RunSummary> RunEnded;
+        /// <summary>던전 출구 도착 — HUD 가 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
+        public event System.Action ExitChoiceRequested;
 
         private GridManager _grid;
         private IsoTapInput _input;
@@ -298,7 +309,28 @@ namespace ProjectC.Gameplay
                 if (_hero.StartPotions > 0) _inventory.Add(ItemKind.Potion, _hero.StartPotions);
                 if (_hero.StartBombs > 0) _inventory.Add(ItemKind.Bomb, _hero.StartBombs);
                 if (_hero.StartFrostBombs > 0) _inventory.Add(ItemKind.FrostBomb, _hero.StartFrostBombs);
-                InteractionFeedback?.Invoke($"{_hero.DisplayName} — 던전 진입");
+
+                // 창고 반입 (extraction 규칙): 보관한 소모품을 전량 들고 들어간다.
+                // 들고 들어간 이상 죽으면 잃는다 — 창고에서는 비운다.
+                MetaSaveData meta = MetaStore.LoadOrNew();
+                int carried = 0;
+                foreach (ItemKind kind in ItemCatalog.AllKinds)
+                {
+                    int stored = meta.GetCount(kind);
+                    if (stored <= 0) continue;
+                    _inventory.Add(kind, stored);
+                    carried += stored;
+                }
+                if (carried > 0)
+                {
+                    meta.ClearItems();
+                    MetaStore.Save(meta);
+                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 창고 물품 {carried}개 반입");
+                }
+                else
+                {
+                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 던전 진입");
+                }
             }
 
             if (configureMainCamera)
@@ -429,6 +461,9 @@ namespace ProjectC.Gameplay
             if (data.oilFlasks > 0) _inventory.Add(ItemKind.OilFlask, data.oilFlasks);
             if (data.knives > 0) _inventory.Add(ItemKind.ThrowingKnife, data.knives);
             if (data.scrolls > 0) _inventory.Add(ItemKind.RecallScroll, data.scrolls);
+            if (data.coinPouches > 0) _inventory.Add(ItemKind.CoinPouch, data.coinPouches);
+            if (data.gemstones > 0) _inventory.Add(ItemKind.Gemstone, data.gemstones);
+            if (data.relics > 0) _inventory.Add(ItemKind.Relic, data.relics);
             InventoryChanged?.Invoke();
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
@@ -459,6 +494,9 @@ namespace ProjectC.Gameplay
                 oilFlasks = ItemCount(ItemKind.OilFlask),
                 knives = ItemCount(ItemKind.ThrowingKnife),
                 scrolls = ItemCount(ItemKind.RecallScroll),
+                coinPouches = ItemCount(ItemKind.CoinPouch),
+                gemstones = ItemCount(ItemKind.Gemstone),
+                relics = ItemCount(ItemKind.Relic),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex
             });
@@ -735,6 +773,9 @@ namespace ProjectC.Gameplay
                 case ItemKind.OilFlask: return "OIL";
                 case ItemKind.ThrowingKnife: return "KNIFE";
                 case ItemKind.RecallScroll: return "SCROLL";
+                case ItemKind.CoinPouch: return "COIN";
+                case ItemKind.Gemstone: return "GEM";
+                case ItemKind.Relic: return "RELIC";
                 default: return kind.ToString();
             }
         }
@@ -1598,19 +1639,66 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            _runSummary.EndInVictory();
+            int victoryGold = BankInventoryToStash();
+            _runSummary.EndInVictory(victoryGold);
             RunSaveStore.Clear();
             InteractionFeedback?.Invoke("DEEPEST FLOOR REACHED!");
             Debug.Log($"[Run] 최심층 {FloorLabel(GlobalFloorIndex(_activeFloorIndex))} 도달 — 승리");
             RunEnded?.Invoke(_runSummary);
         }
 
-        /// <summary>출구 계단까지 걸어간 뒤 다음 던전으로 넘어간다.</summary>
+        /// <summary>출구 계단까지 걸어간 뒤 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
         private IEnumerator MoveAndAdvanceStage(IReadOnlyList<GridPos> path, GridPos exit)
         {
             yield return MovePlayerPath(path);
             if (_playerState.IsAlive && _playerPos == exit)
-                AdvanceToNextStage(); // BuildPrototype 이 이 코루틴을 정리한다 — 마지막 문장이어야 한다
+                ExitChoiceRequested?.Invoke();
+        }
+
+        /// <summary>출구 선택지 — 다음 던전으로. (HUD 버튼이 호출)</summary>
+        public void ConfirmAdvanceStage()
+        {
+            if (!Application.isPlaying || _resolvingAction || _runSummary.Ended ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            AdvanceToNextStage();
+        }
+
+        /// <summary>출구 선택지 — 생환. 전리품 환산 + 소모품 창고 보관 후 판 종료.</summary>
+        public void ExtractRun()
+        {
+            if (!Application.isPlaying || _resolvingAction || _runSummary.Ended ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+
+            int gold = BankInventoryToStash();
+            RunSaveStore.Clear();
+            _runSummary.EndInExtraction(gold);
+            InteractionFeedback?.Invoke($"생환 — +{gold}G 적립");
+            Debug.Log($"[Run] 생환: +{gold}G, 최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
+            RunEnded?.Invoke(_runSummary);
+        }
+
+        /// <summary>
+        /// 정산: 전리품은 골드로 환산, 소모품은 창고에 보관한다.
+        /// 살아 나갈 때(생환/승리)만 불린다 — 사망은 전부 소실. (extraction 규칙)
+        /// </summary>
+        private int BankInventoryToStash()
+        {
+            MetaSaveData meta = MetaStore.LoadOrNew();
+            int gold = 0;
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                int count = _inventory.Count(kind);
+                if (count <= 0) continue;
+                if (ItemCatalog.IsTreasure(kind)) gold += ItemCatalog.GoldValue(kind) * count;
+                else meta.AddCount(kind, count);
+            }
+            meta.gold += gold;
+            MetaStore.Save(meta);
+            _inventory.Clear();
+            InventoryChanged?.Invoke();
+            return gold;
         }
 
         /// <summary>
@@ -1619,16 +1707,25 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void AdvanceToNextStage()
         {
+            // 모닥불: 던전 사이에서 잃은 HP의 절반을 회복한다.
+            // (밸런스 시뮬: 회복 0%면 완주 18%, 50%면 49% — 체인 소모전 보정)
+            int restedHp = Mathf.Min(
+                _playerState.MaxHp,
+                _playerState.Hp + Mathf.CeilToInt((_playerState.MaxHp - _playerState.Hp) * 0.5f));
+
             var carry = new RunSaveData
             {
                 heroId = _hero != null ? _hero.Id : null,
-                hp = _playerState.Hp,
+                hp = restedHp,
                 potions = PotionCount,
                 bombs = BombCount,
                 frostBombs = FrostBombCount,
                 oilFlasks = ItemCount(ItemKind.OilFlask),
                 knives = ItemCount(ItemKind.ThrowingKnife),
                 scrolls = ItemCount(ItemKind.RecallScroll),
+                coinPouches = ItemCount(ItemKind.CoinPouch),
+                gemstones = ItemCount(ItemKind.Gemstone),
+                relics = ItemCount(ItemKind.Relic),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex
             };
@@ -1639,7 +1736,7 @@ namespace ProjectC.Gameplay
             Debug.Log($"[Stage] {StageLabel} 진입 (seed {dungeonSeed})");
 
             BuildPrototype();
-            ApplyCarriedState(carry, $"{StageLabel} 진입!");
+            ApplyCarriedState(carry, $"{StageLabel} 진입 — 모닥불에서 상처를 돌봤다");
             SaveCheckpoint();
         }
 

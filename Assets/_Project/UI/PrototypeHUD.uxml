@@ -152,6 +152,18 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="exit-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+                <ui:Label text="던전 출구" class="gameover-title" />
+                <ui:Label name="exit-desc" text="" class="gameover-detail" />
+                <ui:Label text="죽으면 전부 잃는다 — 생환만이 전리품을 지킨다" class="gameover-detail" />
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="exit-extract" text="생환하기" class="settings-reset" />
+                    <ui:Button name="exit-advance" text="더 깊이" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <ui:VisualElement name="debug-panel" class="debug-panel">
             <ui:Label text="DEBUG (⌘D / Ctrl+D / F1)" class="debug-title" />
             <ui:Label name="debug-status" text="--" class="debug-status" />

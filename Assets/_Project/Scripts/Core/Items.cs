@@ -13,7 +13,10 @@ namespace ProjectC.Core
         FrostBomb = 2,     // 냉기 폭탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
         OilFlask = 3,      // 기름 병: 3×3 기름 살포. 불 폭발과 겹치면 발화 → 화상.
         ThrowingKnife = 4, // 투척 단검: 소모형 단일 대상 원거리 피해.
-        RecallScroll = 5   // 귀환 두루마리: 현재 층 입구로 순간이동.
+        RecallScroll = 5,  // 귀환 두루마리: 현재 층 입구로 순간이동.
+        CoinPouch = 6,     // 전리품: 생환 시 골드로 환산. 던전 안에서는 쓸 수 없다.
+        Gemstone = 7,      // 전리품(중): 생환 시 골드로 환산.
+        Relic = 8          // 전리품(대): 희귀. 생환 시 골드로 환산.
     }
 
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
@@ -22,8 +25,24 @@ namespace ProjectC.Core
         public static readonly ItemKind[] AllKinds =
         {
             ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
-            ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll
+            ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
+            ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic
         };
+
+        /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
+        public static int GoldValue(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.CoinPouch: return 10;
+                case ItemKind.Gemstone: return 25;
+                case ItemKind.Relic: return 60;
+                default: return 0;
+            }
+        }
+
+        /// <summary>전리품(환금 전용) 여부. 던전 안에서는 사용 불가.</summary>
+        public static bool IsTreasure(ItemKind kind) => GoldValue(kind) > 0;
 
         public static string DisplayName(ItemKind kind)
         {
@@ -35,6 +54,9 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: return "기름 병";
                 case ItemKind.ThrowingKnife: return "투척 단검";
                 case ItemKind.RecallScroll: return "귀환 두루마리";
+                case ItemKind.CoinPouch: return "동전 주머니";
+                case ItemKind.Gemstone: return "보석";
+                case ItemKind.Relic: return "고대 유물";
                 default: return kind.ToString();
             }
         }
@@ -55,6 +77,12 @@ namespace ProjectC.Core
                     return "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.";
                 case ItemKind.RecallScroll:
                     return "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.";
+                case ItemKind.CoinPouch:
+                    return "생환하면 10골드로 환산된다. 죽으면 잃는다.";
+                case ItemKind.Gemstone:
+                    return "생환하면 25골드로 환산된다. 죽으면 잃는다.";
+                case ItemKind.Relic:
+                    return "깊은 층의 희귀한 유물. 생환하면 60골드로 환산된다.";
                 default: return "";
             }
         }

@@ -366,14 +366,18 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
-                // 분배: 물약 3 · 폭탄 3 · 냉기 1 · 기름 1 · 단검 1 · 두루마리 1 (/10)
-                int roll = random.Next(0, 10);
+                // 분배(/14): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등)
+                int roll = random.Next(0, 14);
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;
                 if (roll < 8) return ItemKind.OilFlask;
                 if (roll < 9) return ItemKind.ThrowingKnife;
-                return ItemKind.RecallScroll;
+                if (roll < 10) return ItemKind.RecallScroll;
+                if (roll < 12) return ItemKind.CoinPouch;
+                if (roll < 13) return ItemKind.Gemstone;
+                return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
             }
 
             bool IsFree(GridPos pos) =>

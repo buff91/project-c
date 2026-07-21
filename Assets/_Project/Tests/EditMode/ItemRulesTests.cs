@@ -198,6 +198,35 @@ namespace ProjectC.Tests
     public class ItemCatalogTests
     {
         [Test]
+        public void GoldValue_PositiveOnlyForTreasures()
+        {
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                if (ItemCatalog.IsTreasure(kind))
+                    Assert.Greater(ItemCatalog.GoldValue(kind), 0, kind.ToString());
+                else
+                    Assert.AreEqual(0, ItemCatalog.GoldValue(kind), kind.ToString());
+            }
+            Assert.IsTrue(ItemCatalog.IsTreasure(ItemKind.CoinPouch));
+            Assert.IsTrue(ItemCatalog.IsTreasure(ItemKind.Relic));
+            Assert.IsFalse(ItemCatalog.IsTreasure(ItemKind.Potion));
+        }
+
+        [Test]
+        public void MetaSaveData_StoresConsumables_ButNeverTreasures()
+        {
+            var meta = new MetaSaveData();
+            meta.AddCount(ItemKind.Potion, 2);
+            meta.AddCount(ItemKind.CoinPouch, 5); // 전리품은 무시된다 — 항상 골드로 환산
+
+            Assert.AreEqual(2, meta.GetCount(ItemKind.Potion));
+            Assert.AreEqual(0, meta.GetCount(ItemKind.CoinPouch));
+
+            meta.ClearItems();
+            Assert.AreEqual(0, meta.GetCount(ItemKind.Potion));
+        }
+
+        [Test]
         public void AllKinds_CoverEveryEnumValue_WithNameAndDescription()
         {
             var enumValues = System.Enum.GetValues(typeof(ItemKind));

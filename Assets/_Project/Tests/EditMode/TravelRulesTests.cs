@@ -146,6 +146,21 @@ namespace ProjectC.Tests
             Assert.IsFalse(summary.Ended);
         }
 
+        [Test]
+        public void EndInExtraction_MarksExtracted_NotVictory_AndKeepsGold()
+        {
+            var summary = new RunSummary(-2, kills: 3);
+            summary.EndInExtraction(85);
+
+            Assert.IsTrue(summary.Ended);
+            Assert.IsTrue(summary.Extracted);
+            Assert.IsFalse(summary.Victory);
+            Assert.AreEqual(85, summary.GoldBanked);
+
+            summary.EndInDefeat("Fall"); // 이미 끝난 판은 덮어쓰지 못한다
+            Assert.IsTrue(summary.Extracted);
+        }
+
         [TestCase("Goblin B2-1", "고블린")]
         [TestCase("Skeleton B3-2", "해골")]
         [TestCase("Slime B1-1", "슬라임")]

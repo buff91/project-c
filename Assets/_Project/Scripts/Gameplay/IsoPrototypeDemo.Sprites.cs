@@ -680,6 +680,37 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 9, 6, 2, 2, rune);        // 귀환 문양
                 FillRect(texture, 9, 14, 2, 2, rune);
             }
+            else if (kind == ItemKind.CoinPouch)
+            {
+                Color32 pouch = new Color32(120, 92, 44, 255);
+                Color32 tie = new Color32(84, 58, 20, 255);
+                Color32 coin = new Color32(255, 213, 84, 255);
+                FillRect(texture, 5, 2, 10, 10, pouch);     // 주머니
+                FillRect(texture, 8, 12, 4, 3, tie);        // 묶은 목
+                FillRect(texture, 7, 5, 2, 2, coin);        // 비치는 동전
+                FillRect(texture, 11, 7, 2, 2, coin);
+            }
+            else if (kind == ItemKind.Gemstone)
+            {
+                Color32 gem = new Color32(64, 170, 190, 255);
+                Color32 lightFacet = new Color32(180, 240, 250, 255);
+                Color32 darkFacet = new Color32(32, 108, 126, 255);
+                FillRect(texture, 6, 4, 8, 8, gem);         // 몸체
+                FillRect(texture, 8, 12, 4, 3, gem);        // 상단 꼭짓점
+                FillRect(texture, 7, 8, 3, 3, lightFacet);  // 반짝임
+                FillRect(texture, 11, 5, 2, 3, darkFacet);
+            }
+            else if (kind == ItemKind.Relic)
+            {
+                Color32 gold = new Color32(200, 156, 60, 255);
+                Color32 goldLit = new Color32(255, 213, 84, 255);
+                Color32 baseStone = new Color32(84, 58, 20, 255);
+                Color32 eye = new Color32(84, 211, 197, 255);
+                FillRect(texture, 6, 2, 8, 3, baseStone);   // 받침
+                FillRect(texture, 7, 5, 6, 10, gold);       // 우상 몸체
+                FillRect(texture, 8, 15, 4, 3, goldLit);    // 머리
+                FillRect(texture, 9, 10, 2, 2, eye);        // 눈
+            }
             else
             {
                 Color32 shell = new Color32(43, 47, 52, 255);

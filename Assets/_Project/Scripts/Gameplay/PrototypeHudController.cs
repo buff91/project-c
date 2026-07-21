@@ -50,6 +50,10 @@ namespace ProjectC.Gameplay
         private Label _gameoverKills;
         private Button _restartButton;
         private Button _menuButton;
+        private VisualElement _exitModal;
+        private Label _exitDesc;
+        private Button _exitAdvance;
+        private Button _exitExtract;
         private VisualElement _minimapView;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
@@ -74,6 +78,7 @@ namespace ProjectC.Gameplay
                 demo.BombAimingChanged += HandleBombAimingChanged;
                 demo.PlayerHpChanged += HandlePlayerHpChanged;
                 demo.RunEnded += HandleRunEnded;
+                demo.ExitChoiceRequested += HandleExitChoiceRequested;
             }
         }
 
@@ -119,7 +124,10 @@ namespace ProjectC.Gameplay
                 demo.BombAimingChanged -= HandleBombAimingChanged;
                 demo.PlayerHpChanged -= HandlePlayerHpChanged;
                 demo.RunEnded -= HandleRunEnded;
+                demo.ExitChoiceRequested -= HandleExitChoiceRequested;
             }
+            RebindButton(ref _exitAdvance, null, HandleExitAdvance);
+            RebindButton(ref _exitExtract, null, HandleExitExtract);
             if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
                 _tapInput.UiBlocker = null;
             _tapInput = null;
@@ -201,6 +209,10 @@ namespace ProjectC.Gameplay
             _gameoverFloor = root.Q<Label>("gameover-floor");
             _gameoverKills = root.Q<Label>("gameover-kills");
             _minimapView = root.Q<VisualElement>("minimap-view");
+            _exitModal = root.Q<VisualElement>("exit-modal");
+            _exitDesc = root.Q<Label>("exit-desc");
+            RebindButton(ref _exitAdvance, root.Q<Button>("exit-advance"), HandleExitAdvance);
+            RebindButton(ref _exitExtract, root.Q<Button>("exit-extract"), HandleExitExtract);
             UpdateMinimap();
             UpdateHpDisplay();
             UpdateViewLabel();
@@ -424,19 +436,46 @@ namespace ProjectC.Gameplay
                 _hpLiquid.style.height = Length.Percent(100f * state.Hp / state.MaxHp);
         }
 
+        private void HandleExitChoiceRequested()
+        {
+            if (_exitModal == null || demo == null) return;
+            if (_exitDesc != null)
+            {
+                int gold = demo.CarriedTreasureGold();
+                _exitDesc.text = $"들고 있는 전리품 가치: {gold}G · 다음은 던전 {demo.StageIndex + 1}";
+            }
+            _exitModal.AddToClassList("is-open");
+        }
+
+        private void HandleExitAdvance()
+        {
+            _exitModal?.RemoveFromClassList("is-open");
+            demo?.ConfirmAdvanceStage();
+        }
+
+        private void HandleExitExtract()
+        {
+            _exitModal?.RemoveFromClassList("is-open");
+            demo?.ExtractRun();
+        }
+
         private void HandleRunEnded(RunSummary summary)
         {
             if (_gameoverOverlay == null) return;
 
-            bool victory = summary.Victory;
-            _gameoverOverlay.EnableInClassList("is-victory", victory);
+            bool survived = summary.Victory || summary.Extracted;
+            _gameoverOverlay.EnableInClassList("is-victory", survived);
             if (_gameoverTitle != null)
-                _gameoverTitle.text = victory ? "최심층 정복!" : "당신은 죽었습니다";
+                _gameoverTitle.text = summary.Victory ? "최심층 정복!"
+                    : summary.Extracted ? "생환 성공!"
+                    : "당신은 죽었습니다";
             if (_gameoverCause != null)
             {
-                _gameoverCause.text = victory
-                    ? "던전의 끝에 도달했다"
-                    : $"사인: {RunSummary.FormatCause(summary.CauseOfDeath)}";
+                _gameoverCause.text = survived
+                    ? (summary.GoldBanked > 0
+                        ? $"+{summary.GoldBanked}G 창고 적립 · 소지품 보관 완료"
+                        : "소지품을 창고에 보관했다")
+                    : $"사인: {RunSummary.FormatCause(summary.CauseOfDeath)} — 소지품을 모두 잃었다";
                 _gameoverCause.style.display = DisplayStyle.Flex;
             }
             if (_gameoverFloor != null)

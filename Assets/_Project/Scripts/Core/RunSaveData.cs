@@ -24,6 +24,9 @@ namespace ProjectC.Core
         public int oilFlasks;
         public int knives;
         public int scrolls;
+        public int coinPouches;
+        public int gemstones;
+        public int relics;
         public int kills;
         public int deepestFloorIndex;
     }

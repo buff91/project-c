@@ -95,6 +95,9 @@ namespace ProjectC.Gameplay
                 case ItemKind.OilFlask: return "oil-icon";
                 case ItemKind.ThrowingKnife: return "knife-icon";
                 case ItemKind.RecallScroll: return "scroll-icon";
+                case ItemKind.CoinPouch: return "coin-icon";
+                case ItemKind.Gemstone: return "gem-icon";
+                case ItemKind.Relic: return "relic-icon";
                 default: return "potion-icon";
             }
         }
@@ -121,8 +124,10 @@ namespace ProjectC.Gameplay
                 _detailDesc.text = ItemCatalog.Description(kind);
             if (_useButton != null)
             {
-                _useButton.SetEnabled(count > 0);
-                _useButton.text = kind == ItemKind.Potion ? "마시기"
+                bool treasure = ItemCatalog.IsTreasure(kind);
+                _useButton.SetEnabled(count > 0 && !treasure);
+                _useButton.text = treasure ? "생환 시 환금"
+                    : kind == ItemKind.Potion ? "마시기"
                     : kind == ItemKind.RecallScroll ? "사용하기"
                     : "조준하기";
             }
@@ -131,6 +136,8 @@ namespace ProjectC.Gameplay
         private void UseSelected()
         {
             if (demo == null || CountOf(_selected) <= 0) return;
+
+            if (ItemCatalog.IsTreasure(_selected)) return;
 
             Close();
             switch (_selected)
