@@ -17,6 +17,7 @@ namespace ProjectC.Gameplay
 
         private VisualElement _modal;
         private VisualElement _grid;
+        private VisualElement _craftList;
         private Label _detailName;
         private Label _detailDesc;
         private Button _useButton;
@@ -31,6 +32,7 @@ namespace ProjectC.Gameplay
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
             _modal = root.Q<VisualElement>("inventory-modal");
             _grid = root.Q<VisualElement>("inventory-grid");
+            _craftList = root.Q<VisualElement>("craft-list");
             _detailName = root.Q<Label>("inventory-detail-name");
             _detailDesc = root.Q<Label>("inventory-detail-desc");
             _useButton = root.Q<Button>("inventory-use");
@@ -98,6 +100,9 @@ namespace ProjectC.Gameplay
                 case ItemKind.CoinPouch: return "coin-icon";
                 case ItemKind.Gemstone: return "gem-icon";
                 case ItemKind.Relic: return "relic-icon";
+                case ItemKind.Herb: return "herb-icon";
+                case ItemKind.BlastPowder: return "powder-icon";
+                case ItemKind.FrostShard: return "shard-icon";
                 default: return "potion-icon";
             }
         }
@@ -125,8 +130,10 @@ namespace ProjectC.Gameplay
             if (_useButton != null)
             {
                 bool treasure = ItemCatalog.IsTreasure(kind);
-                _useButton.SetEnabled(count > 0 && !treasure);
+                bool material = ItemCatalog.IsMaterial(kind);
+                _useButton.SetEnabled(count > 0 && !treasure && !material);
                 _useButton.text = treasure ? "생환 시 환금"
+                    : material ? "조합 재료"
                     : kind == ItemKind.Potion ? "마시기"
                     : kind == ItemKind.RecallScroll ? "사용하기"
                     : "조준하기";
@@ -137,7 +144,7 @@ namespace ProjectC.Gameplay
         {
             if (demo == null || CountOf(_selected) <= 0) return;
 
-            if (ItemCatalog.IsTreasure(_selected)) return;
+            if (ItemCatalog.IsTreasure(_selected) || ItemCatalog.IsMaterial(_selected)) return;
 
             Close();
             switch (_selected)
@@ -164,8 +171,52 @@ namespace ProjectC.Gameplay
                 pair.Value.text = $"×{count}";
                 _slots[pair.Key].EnableInClassList("empty", count == 0);
             }
+            RefreshCraftList();
             if (_modal != null && _modal.ClassListContains("is-open"))
                 Select(_selected);
+        }
+
+        /// <summary>레시피 3종을 항상 보여주고, 재료가 갖춰진 것만 조합 버튼을 활성화한다.</summary>
+        private void RefreshCraftList()
+        {
+            if (_craftList == null || demo == null) return;
+            _craftList.Clear();
+
+            for (int i = 0; i < CraftingRules.Recipes.Length; i++)
+            {
+                Recipe recipe = CraftingRules.Recipes[i];
+                var row = new VisualElement();
+                row.AddToClassList("craft-row");
+
+                string ingredients = recipe.IsPair
+                    ? $"{ItemCatalog.DisplayName(recipe.IngredientA)} ×2"
+                    : $"{ItemCatalog.DisplayName(recipe.IngredientA)} + {ItemCatalog.DisplayName(recipe.IngredientB)}";
+                var label = new Label($"{ingredients} → {ItemCatalog.DisplayName(recipe.Output)}");
+                label.AddToClassList("craft-row-label");
+                row.Add(label);
+
+                bool craftable = HasIngredients(recipe);
+                row.EnableInClassList("uncraftable", !craftable);
+
+                int recipeIndex = i;
+                var button = new Button(() =>
+                {
+                    Close(); // 조합은 행동 1회 — 적 턴이 돌므로 닫는다
+                    demo.CraftRecipe(recipeIndex);
+                }) { text = "조합" };
+                button.AddToClassList("craft-button");
+                button.SetEnabled(craftable);
+                row.Add(button);
+
+                _craftList.Add(row);
+            }
+        }
+
+        private bool HasIngredients(Recipe recipe)
+        {
+            return recipe.IsPair
+                ? CountOf(recipe.IngredientA) >= 2
+                : CountOf(recipe.IngredientA) >= 1 && CountOf(recipe.IngredientB) >= 1;
         }
     }
 }

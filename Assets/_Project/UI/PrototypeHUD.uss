@@ -857,7 +857,11 @@
 /* ── 인벤토리 화면 ───────────────────────────────────── */
 
 .inventory-card {
-    width: 380px;
+    width: 470px;
+}
+
+.inventory-card > * {
+    flex-shrink: 0;
 }
 
 .inventory-grid {
@@ -867,10 +871,10 @@
 }
 
 .inventory-slot {
-    width: 76px;
-    height: 84px;
-    margin: 4px;
-    padding: 6px 2px;
+    width: 64px;
+    height: 62px;
+    margin: 3px;
+    padding: 4px 2px;
     align-items: center;
     justify-content: center;
     background-color: rgba(14, 11, 8, 0.9);
@@ -893,7 +897,7 @@
 }
 
 .inventory-slot .resource-icon {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
 }
 
 .inventory-slot-count {
@@ -902,8 +906,8 @@
 }
 
 .inventory-detail {
-    min-height: 56px;
-    padding: 8px;
+    min-height: 44px;
+    padding: 6px 8px;
     background-color: rgba(10, 8, 5, 0.75);
     border-radius: 6px;
     margin-bottom: 10px;
@@ -974,4 +978,75 @@
     border-top-color: rgb(255, 213, 84);
     border-bottom-width: 2px;
     border-bottom-color: rgb(84, 58, 20);
+}
+
+/* ── 조합 재료 아이콘 + 조합 섹션 ────────────────────── */
+
+.herb-icon {
+    background-color: rgb(104, 143, 77);
+    border-radius: 2px 7px 2px 7px;
+    border-top-width: 1px;
+    border-top-color: rgb(150, 196, 110);
+}
+
+.powder-icon {
+    background-color: rgb(96, 84, 64);
+    border-radius: 6px 6px 3px 3px;
+    border-top-width: 2px;
+    border-top-color: rgb(255, 202, 72);
+}
+
+.shard-icon {
+    background-color: rgb(126, 214, 236);
+    border-radius: 7px 2px 7px 2px;
+    border-left-width: 1px;
+    border-left-color: rgb(226, 250, 255);
+}
+
+.craft-caption {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.craft-list {
+    margin-bottom: 8px;
+}
+
+.craft-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    margin-bottom: 3px;
+    background-color: rgba(14, 11, 8, 0.85);
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: var(--bronze);
+}
+
+.craft-row-label {
+    color: var(--parchment);
+    font-size: 10px;
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.craft-row.uncraftable .craft-row-label {
+    color: var(--muted);
+}
+
+.craft-button {
+    padding: 4px 12px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgb(24, 16, 10);
+    background-color: rgb(196, 150, 90);
+    border-radius: 4px;
+    border-width: 0;
+}
+
+.craft-button:disabled {
+    opacity: 0.35;
 }

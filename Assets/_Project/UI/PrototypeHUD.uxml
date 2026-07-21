@@ -143,6 +143,8 @@
                     <ui:Button name="inventory-close" text="×" class="settings-close" tooltip="인벤토리 닫기" />
                 </ui:VisualElement>
                 <ui:VisualElement name="inventory-grid" class="inventory-grid" />
+                <ui:Label text="조합 — 재료를 모아 현장에서 만든다 (행동 1회)" class="craft-caption" />
+                <ui:VisualElement name="craft-list" class="craft-list" />
                 <ui:VisualElement class="inventory-detail">
                     <ui:Label name="inventory-detail-name" text="아이템을 선택하세요" class="inventory-detail-name" />
                     <ui:Label name="inventory-detail-desc" text="" class="inventory-detail-desc" />

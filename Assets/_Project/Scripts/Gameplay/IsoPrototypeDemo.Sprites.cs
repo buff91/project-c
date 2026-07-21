@@ -711,6 +711,35 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 8, 15, 4, 3, goldLit);    // 머리
                 FillRect(texture, 9, 10, 2, 2, eye);        // 눈
             }
+            else if (kind == ItemKind.Herb)
+            {
+                Color32 stem = new Color32(74, 110, 52, 255);
+                Color32 leaf = new Color32(104, 143, 77, 255);
+                Color32 leafLit = new Color32(150, 196, 110, 255);
+                FillRect(texture, 9, 2, 2, 12, stem);       // 줄기
+                FillRect(texture, 5, 8, 4, 5, leaf);        // 왼 잎
+                FillRect(texture, 11, 10, 4, 5, leaf);      // 오른 잎
+                FillRect(texture, 8, 14, 4, 4, leafLit);    // 새순
+            }
+            else if (kind == ItemKind.BlastPowder)
+            {
+                Color32 sack = new Color32(120, 100, 74, 255);
+                Color32 powder = new Color32(60, 56, 52, 255);
+                Color32 spark2 = new Color32(255, 202, 72, 255);
+                FillRect(texture, 6, 2, 8, 8, sack);        // 자루
+                FillRect(texture, 7, 10, 6, 3, powder);     // 넘치는 화약
+                FillRect(texture, 9, 14, 2, 2, spark2);
+            }
+            else if (kind == ItemKind.FrostShard)
+            {
+                Color32 shard = new Color32(126, 214, 236, 255);
+                Color32 core = new Color32(226, 250, 255, 255);
+                Color32 deep = new Color32(70, 140, 170, 255);
+                FillRect(texture, 8, 2, 4, 14, shard);      // 기둥 결정
+                FillRect(texture, 9, 6, 2, 6, core);
+                FillRect(texture, 6, 4, 2, 6, deep);        // 곁가지
+                FillRect(texture, 12, 8, 2, 5, deep);
+            }
             else
             {
                 Color32 shell = new Color32(43, 47, 52, 255);

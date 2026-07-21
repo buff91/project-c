@@ -876,6 +876,9 @@ namespace ProjectC.Gameplay
                 case ItemKind.CoinPouch: return "COIN";
                 case ItemKind.Gemstone: return "GEM";
                 case ItemKind.Relic: return "RELIC";
+                case ItemKind.Herb: return "HERB";
+                case ItemKind.BlastPowder: return "POWDER";
+                case ItemKind.FrostShard: return "SHARD";
                 default: return kind.ToString();
             }
         }
@@ -1253,6 +1256,37 @@ namespace ProjectC.Gameplay
                 bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke(blocked ? "KNIFE BLOCKED" : $"OUT OF RANGE · MAX {rangedAttackRange}");
             }
+
+            yield return ResolveEnemyPhase();
+        }
+
+        /// <summary>조합 실행 (인벤토리 화면이 호출). 행동 1회를 소비한다.</summary>
+        public void CraftRecipe(int recipeIndex)
+        {
+            if (!Application.isPlaying || hubMode || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (recipeIndex < 0 || recipeIndex >= CraftingRules.Recipes.Length) return;
+
+            Recipe recipe = CraftingRules.Recipes[recipeIndex];
+            if (!CraftingRules.CanCraft(_inventory, recipe))
+            {
+                InteractionFeedback?.Invoke("재료가 모자라다");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(RunPlayerAction(CraftAction(recipe)));
+        }
+
+        private IEnumerator CraftAction(Recipe recipe)
+        {
+            CraftingRules.TryCraft(_inventory, recipe);
+            InventoryChanged?.Invoke();
+            InteractionFeedback?.Invoke(
+                $"조합: {ItemCatalog.DisplayName(recipe.Output)} 완성!");
+            Debug.Log($"[Craft] {recipe} 조합 완료");
+            yield return FlashColor(_playerRenderer, new Color32(196, 150, 90, 255));
 
             yield return ResolveEnemyPhase();
         }
