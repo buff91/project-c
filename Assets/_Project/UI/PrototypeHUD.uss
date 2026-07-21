@@ -730,3 +730,36 @@
     border-right-color: rgb(139, 91, 30);
     border-bottom-color: rgb(139, 91, 30);
 }
+
+/* ── 게임오버/승리 오버레이 ───────────────────────────── */
+
+.gameover-card {
+    width: 360px;
+    align-items: center;
+}
+
+.gameover-title {
+    color: rgb(236, 210, 170);
+    font-size: 26px;
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+
+.gameover-overlay.is-victory .gameover-title {
+    color: rgb(140, 220, 170);
+}
+
+.gameover-detail {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+/* ── 실데이터 미니맵 ─────────────────────────────────── */
+
+.minimap-view {
+    flex-grow: 1;
+    margin: 2px;
+    -unity-background-scale-mode: scale-to-fit;
+}

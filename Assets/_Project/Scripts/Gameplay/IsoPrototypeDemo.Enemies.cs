@@ -77,6 +77,7 @@ namespace ProjectC.Gameplay
                 if (tick.Frozen) continue; // 빙결: 이번 턴 행동 불가
 
                 MonsterAction action = enemy.Brain.Decide(BuildBrainContext(enemy));
+                NotifyMoodTransition(enemy);
                 yield return ExecuteEnemyAction(enemy, action);
             }
 
@@ -106,6 +107,8 @@ namespace ProjectC.Gameplay
             enemy.Renderer = renderer;
             enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
             UpdateHealthBar(enemy.HpFill, enemy.State);
+            enemy.MoodIcon = CreateMoodIcon(enemy.Root);
+            enemy.LastMood = enemy.Brain.Mood;
             _enemies.Add(enemy);
             ApplyEnemyVisuals(enemy);
             return enemy;
@@ -245,11 +248,95 @@ namespace ProjectC.Gameplay
             enemy.Root.transform.position = _grid.GridToWorld(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
             enemy.Renderer.color = EnemyTint(enemy.State);
-            SetSpriteHierarchyVisible(
-                enemy.Root,
+            bool visibleToPlayer =
                 _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex &&
-                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(pos)));
+                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(pos));
+            SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
+            UpdateMoodIcon(enemy, visibleToPlayer);
         }
+
+        /// <summary>머리 위 인지 상태 아이콘 (SPD 관례): 추격 "!", 도주 "…", 순찰은 없음.</summary>
+        private static TextMesh CreateMoodIcon(GameObject owner)
+        {
+            var icon = new GameObject("Mood Icon");
+            icon.transform.SetParent(owner.transform, false);
+            icon.transform.localPosition = new Vector3(0.24f, 1.02f, 0f);
+
+            var text = icon.AddComponent<TextMesh>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = 44;
+            text.characterSize = 0.05f;
+            text.fontStyle = FontStyle.Bold;
+            text.anchor = TextAnchor.LowerCenter;
+            text.alignment = TextAlignment.Center;
+
+            var renderer = icon.GetComponent<MeshRenderer>();
+            renderer.material = text.font.material;
+            renderer.sortingOrder = 30003;
+            icon.SetActive(false);
+            return text;
+        }
+
+        private void UpdateMoodIcon(EnemyAgent enemy, bool visibleToPlayer)
+        {
+            if (enemy.MoodIcon == null) return;
+
+            MonsterMood mood = enemy.Brain != null ? enemy.Brain.Mood : MonsterMood.Patrol;
+            bool show = visibleToPlayer && enemy.State.IsAlive && mood != MonsterMood.Patrol;
+            enemy.MoodIcon.gameObject.SetActive(show);
+            if (!show) return;
+
+            if (mood == MonsterMood.Chase)
+            {
+                enemy.MoodIcon.text = "!";
+                enemy.MoodIcon.color = new Color32(255, 96, 80, 255);
+            }
+            else // Flee
+            {
+                enemy.MoodIcon.text = "…";
+                enemy.MoodIcon.color = new Color32(160, 208, 255, 255);
+            }
+        }
+
+        /// <summary>인지 상태 전환 연출: 발견 "!" 팝업 + 상태칩, 수색 포기 "?", 도주 시작 안내.</summary>
+        private void NotifyMoodTransition(EnemyAgent enemy)
+        {
+            MonsterMood mood = enemy.Brain.Mood;
+            if (mood == enemy.LastMood)
+            {
+                UpdateMoodIcon(enemy, IsEnemyVisibleToPlayer(enemy));
+                return;
+            }
+
+            enemy.LastMood = mood;
+            bool visible = IsEnemyVisibleToPlayer(enemy);
+            UpdateMoodIcon(enemy, visible);
+            if (!visible) return;
+
+            Vector3 popupPos = enemy.Root != null
+                ? enemy.Root.transform.position
+                : _grid.GridToWorld(enemy.State.Position);
+            string name = RunSummary.FormatCause(enemy.State.Id);
+
+            switch (mood)
+            {
+                case MonsterMood.Chase:
+                    FloatingText?.Show(popupPos, "!", FloatingTextKind.Alert);
+                    InteractionFeedback?.Invoke($"{name}이(가) 당신을 발견했다!");
+                    break;
+                case MonsterMood.Flee:
+                    FloatingText?.Show(popupPos, "…", FloatingTextKind.Alert);
+                    InteractionFeedback?.Invoke($"{name}이(가) 달아난다!");
+                    break;
+                default: // 추격 → 순찰: 수색 포기
+                    FloatingText?.Show(popupPos, "?", FloatingTextKind.Alert);
+                    break;
+            }
+        }
+
+        private bool IsEnemyVisibleToPlayer(EnemyAgent enemy) =>
+            _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex &&
+            (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(enemy.State.Position));
 
         /// <summary>몬스터 틴트의 단일 출처: 사망 회색 > 빙결 하늘색 > 화상 주황 > 기본.</summary>
         private static Color EnemyTint(CombatantState state)

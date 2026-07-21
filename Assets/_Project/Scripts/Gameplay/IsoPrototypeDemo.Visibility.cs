@@ -229,6 +229,93 @@ namespace ProjectC.Gameplay
             }
         }
 
+        public int MinimapSize => roomSize;
+
+        /// <summary>
+        /// HUD 미니맵용 픽셀 채우기: 활성 층의 안개 상태(시야/탐색)를 그대로 반영한다.
+        /// 좌표 회전은 적용하지 않는다(맵은 항상 북쪽 고정). true = 그릴 데이터 있음.
+        /// </summary>
+        public bool FillMinimap(Color32[] pixels, int width, int height)
+        {
+            if (_dungeon == null || _grid == null || pixels == null || pixels.Length < width * height)
+                return false;
+
+            var empty = new Color32(0, 0, 0, 0);
+            for (int i = 0; i < width * height; i++)
+                pixels[i] = empty;
+
+            bool debug = viewMode == DungeonViewMode.DebugAll;
+            foreach (var pair in _grid.Map.All())
+            {
+                GridPos pos = pair.Key;
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
+                if (pos.x < 0 || pos.x >= width || pos.y < 0 || pos.y >= height) continue;
+
+                bool visible = debug || _visibleTiles.Contains(pos);
+                if (!visible && !_exploredTiles.Contains(pos)) continue;
+
+                pixels[pos.y * width + pos.x] = MinimapTileColor(pair.Value.kind, visible);
+            }
+
+            foreach (ItemAgent item in _items)
+            {
+                GridPos pos = item.Spawn.Position;
+                if (item.Collected || !_visibleTiles.Contains(pos) && !debug) continue;
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
+                if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
+                    pixels[pos.y * width + pos.x] = new Color32(104, 200, 110, 255);
+            }
+
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                GridPos pos = enemy.State.Position;
+                if (!enemy.State.IsAlive || !_visibleTiles.Contains(pos) && !debug) continue;
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
+                if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
+                    pixels[pos.y * width + pos.x] = new Color32(224, 74, 58, 255);
+            }
+
+            if (_playerPos.x >= 0 && _playerPos.x < width && _playerPos.y >= 0 && _playerPos.y < height)
+                pixels[_playerPos.y * width + _playerPos.x] = new Color32(255, 213, 84, 255);
+
+            return true;
+        }
+
+        private static Color32 MinimapTileColor(TileKind kind, bool visible)
+        {
+            Color32 bright;
+            switch (kind)
+            {
+                case TileKind.StairsUp:
+                case TileKind.StairsDown:
+                    bright = new Color32(232, 160, 64, 255);
+                    break;
+                case TileKind.Stairs:
+                    bright = new Color32(190, 168, 128, 255);
+                    break;
+                case TileKind.Hole:
+                    bright = new Color32(64, 170, 190, 255);
+                    break;
+                case TileKind.DoorClosed:
+                case TileKind.DoorOpen:
+                    bright = new Color32(158, 108, 56, 255);
+                    break;
+                case TileKind.WeakFloor:
+                    bright = new Color32(140, 128, 92, 255);
+                    break;
+                case TileKind.Wall:
+                    bright = new Color32(54, 44, 34, 255);
+                    break;
+                default:
+                    bright = new Color32(150, 140, 120, 255);
+                    break;
+            }
+
+            if (visible) return bright;
+            return new Color32(
+                (byte)(bright.r * 0.42f), (byte)(bright.g * 0.42f), (byte)(bright.b * 0.42f), 255);
+        }
+
         private GridPos FindPreviewPropPosition()
         {
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo active);

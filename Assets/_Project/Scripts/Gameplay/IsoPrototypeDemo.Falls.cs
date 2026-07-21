@@ -69,6 +69,9 @@ namespace ProjectC.Gameplay
             yield return ShowFallImpact(fall);
             if (_playerState.IsAlive)
                 TryCollectItemAt(fall.FinalPosition);
+
+            // 낙하로 최심층에 닿아도 승리 — 단, 낙뎀 사망이 먼저면 패배가 유지된다.
+            TryDeclareVictory();
         }
 
         /// <summary>밟거나 충격을 받은 약한 바닥이 무너지고 플레이어가 떨어진다. 턴 진행은 호출부가.</summary>
@@ -110,7 +113,9 @@ namespace ProjectC.Gameplay
             if (floorChanged)
             {
                 _activeFloorIndex = _dungeon.Height.FloorIndex(position.elevation);
+                _runSummary.RecordFloor(_activeFloorIndex);
                 UpdateInputFloorRange();
+                SaveCheckpoint();
             }
             RefreshFloorVisibility();
             PositionSelection(position);

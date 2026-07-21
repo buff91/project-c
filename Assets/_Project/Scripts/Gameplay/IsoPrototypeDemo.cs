@@ -118,6 +118,8 @@ namespace ProjectC.Gameplay
         public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);
         public bool BombAiming => _bombAiming;
         public ItemKind AimedBombKind => _bombAimKind;
+        public CombatantState PlayerState => _playerState;
+        public RunSummary RunSummary => _runSummary;
         public event System.Action<int> ViewRotationChanged;
         public event System.Action<int> ActiveFloorChanged;
         public event System.Action<DungeonViewMode> ViewModeChanged;
@@ -127,6 +129,8 @@ namespace ProjectC.Gameplay
         public event System.Action VerticalContextChanged;
         public event System.Action InventoryChanged;
         public event System.Action<bool> BombAimingChanged;
+        public event System.Action PlayerHpChanged;
+        public event System.Action<RunSummary> RunEnded;
 
         private GridManager _grid;
         private IsoTapInput _input;
@@ -154,6 +158,12 @@ namespace ProjectC.Gameplay
         private CombatantState _playerState;
         private readonly TurnManager _turns = new TurnManager();
         private bool _resolvingAction;
+        private bool _travelCancelRequested;
+        private HeroArchetype _hero;
+        private RunSummary _runSummary = new RunSummary();
+        private FloatingTextSpawner _floatingText;
+        private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
+        private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -212,10 +222,35 @@ namespace ProjectC.Gameplay
             // 이전 8×8 프로토타입 씬을 열어도 세 방 레이아웃의 최소 규격으로 자동 이행한다.
             roomSize = Mathf.Max(9, roomSize);
 
+            // 이어하기: 저장된 seed/규격으로 같은 던전을 재생성하고 해당 층 입구에서 시작한다.
+            RunSaveData continueData = null;
+            if (Application.isPlaying && RunSaveStore.ContinueRequested)
+            {
+                RunSaveStore.ContinueRequested = false;
+                if (RunSaveStore.TryLoad(out continueData))
+                {
+                    dungeonSeed = continueData.seed;
+                    roomSize = Mathf.Max(9, continueData.roomSize);
+                    floorCount = continueData.floorCount;
+                    elevationsPerFloor = continueData.elevationsPerFloor;
+                    previewStartDepth = -continueData.currentFloorIndex;
+                }
+            }
+
+            // 영웅 프리셋: 새 판은 메뉴 선택, 이어하기는 저장된 영웅. 편집 모드 미리보기는 인스펙터 값 유지.
+            if (Application.isPlaying)
+            {
+                _hero = HeroRoster.ById(continueData != null ? continueData.heroId : HeroSelection.SelectedId);
+                playerMaxHp = _hero.MaxHp;
+                playerAttack = _hero.Attack;
+                rangedAttackDamage = _hero.RangedDamage;
+            }
+
             if (Application.isPlaying && _moveRoutine != null)
                 StopCoroutine(_moveRoutine);
             _moveRoutine = null;
             _resolvingAction = false;
+            _travelCancelRequested = false;
             _turns.Reset();
             _visibleTiles.Clear();
             _exploredTiles.Clear();
@@ -239,6 +274,15 @@ namespace ProjectC.Gameplay
             BuildRoomData();
             CreateRoomVisuals();
             CreateActorsAndProps();
+            if (continueData != null)
+                ApplyContinueData(continueData);
+            else if (Application.isPlaying && _hero != null)
+            {
+                if (_hero.StartPotions > 0) _inventory.Add(ItemKind.Potion, _hero.StartPotions);
+                if (_hero.StartBombs > 0) _inventory.Add(ItemKind.Bomb, _hero.StartBombs);
+                if (_hero.StartFrostBombs > 0) _inventory.Add(ItemKind.FrostBomb, _hero.StartFrostBombs);
+                InteractionFeedback?.Invoke($"{_hero.DisplayName} — 던전 진입");
+            }
 
             if (configureMainCamera)
                 ConfigureCamera(Camera.main);
@@ -250,6 +294,64 @@ namespace ProjectC.Gameplay
             PlayerPositionChanged?.Invoke();
             InventoryChanged?.Invoke();
             BombAimingChanged?.Invoke(false);
+            PlayerHpChanged?.Invoke();
+        }
+
+        /// <summary>이어하기 데이터의 HP·인벤토리·전적을 새로 만든 판에 덧입힌다.</summary>
+        private void ApplyContinueData(RunSaveData data)
+        {
+            int hp = Mathf.Clamp(data.hp, 1, _playerState.MaxHp);
+            if (hp < _playerState.MaxHp)
+                _playerState.TakeDamage(_playerState.MaxHp - hp);
+            UpdateHealthBar(_playerHpFill, _playerState);
+
+            if (data.potions > 0) _inventory.Add(ItemKind.Potion, data.potions);
+            if (data.bombs > 0) _inventory.Add(ItemKind.Bomb, data.bombs);
+            if (data.frostBombs > 0) _inventory.Add(ItemKind.FrostBomb, data.frostBombs);
+
+            _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
+            _runSummary.RecordFloor(_activeFloorIndex);
+            InteractionFeedback?.Invoke($"이어하기 — {FloorLabel(_activeFloorIndex)} 입구에서 재개");
+            Debug.Log($"[Save] 이어하기: {FloorLabel(_activeFloorIndex)}, HP {hp}, 처치 {data.kills}");
+        }
+
+        /// <summary>층 도착 시점의 체크포인트 저장. 판이 끝났으면 저장하지 않는다.</summary>
+        private void SaveCheckpoint()
+        {
+            if (!Application.isPlaying || _runSummary.Ended ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+
+            RunSaveStore.Save(new RunSaveData
+            {
+                heroId = _hero != null ? _hero.Id : null,
+                seed = dungeonSeed,
+                roomSize = roomSize,
+                floorCount = floorCount,
+                elevationsPerFloor = elevationsPerFloor,
+                currentFloorIndex = _activeFloorIndex,
+                hp = _playerState.Hp,
+                potions = PotionCount,
+                bombs = BombCount,
+                frostBombs = FrostBombCount,
+                kills = _runSummary.Kills,
+                deepestFloorIndex = _runSummary.DeepestFloorIndex
+            });
+        }
+
+        /// <summary>플로팅 텍스트 스포너를 지연 생성한다. 편집 모드 미리보기에는 만들지 않는다.</summary>
+        private FloatingTextSpawner FloatingText
+        {
+            get
+            {
+                if (_floatingText == null && Application.isPlaying)
+                {
+                    var host = new GameObject("Floating Text");
+                    host.transform.SetParent(transform, false);
+                    _floatingText = host.AddComponent<FloatingTextSpawner>();
+                }
+                return _floatingText;
+            }
         }
 
         private void BuildRoomData()
@@ -263,6 +365,7 @@ namespace ProjectC.Gameplay
                 dungeonSeed);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
+            _runSummary = new RunSummary(_activeFloorIndex);
             UpdateInputFloorRange();
         }
 
@@ -540,17 +643,41 @@ namespace ProjectC.Gameplay
 
         private void HandleTileTapped(GridPos target, bool tileExists)
         {
-            if (!Application.isPlaying || _resolvingAction || _playerState == null || !_playerState.IsAlive)
+            if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive ||
+                _runSummary.Ended)
                 return;
+
+            // 자동 이동 중 재탭 = 취소 요청. 다음 스텝 경계에서 멈춘다.
+            if (_resolvingAction)
+            {
+                _travelCancelRequested = true;
+                return;
+            }
 
             if (viewMode == DungeonViewMode.Play &&
                 !_visibleTiles.Contains(target) &&
                 !_exploredTiles.Contains(target))
+            {
+                TryTravelTowardUnexplored(target);
                 return;
+            }
 
             if (_bombAiming)
             {
                 HandleBombAimTap(target);
+                return;
+            }
+
+            // 적 판정을 문/구멍보다 먼저: 열린 문 위에 선 적을 탭하면 공격이지
+            // 문 토글이 아니다. 시야 밖(explored 기억)의 적은 이동 탭으로만 취급.
+            EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
+            if (tappedEnemy != null &&
+                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target)))
+            {
+                if (combatMode == CombatActionMode.Ranged)
+                    StartPlayerAction(target, RangedAttack(tappedEnemy));
+                else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
+                    StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
                 return;
             }
 
@@ -578,18 +705,6 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            // 시야 밖(explored 기억)의 적은 공격 대상이 아니다 — 이동 탭으로만 취급.
-            EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
-            if (tappedEnemy != null &&
-                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target)))
-            {
-                if (combatMode == CombatActionMode.Ranged)
-                    StartPlayerAction(target, RangedAttack(tappedEnemy));
-                else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
-                    StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
-                return;
-            }
-
             if (!tileExists || !_grid.Map.IsWalkable(target) ||
                 _dungeon.Height.FloorIndex(target.elevation) != _activeFloorIndex)
                 return;
@@ -597,7 +712,14 @@ namespace ProjectC.Gameplay
             List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, target);
             if (path.Count == 0) return;
 
-            if (targetTile.kind == TileKind.StairsUp || targetTile.kind == TileKind.StairsDown)
+            // 적이 시야에 있는 동안엔 탭당 1스텝만 — 카이팅/오토무브 남용 방지. (SPD 관례)
+            int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
+            if (allowedSteps < path.Count - 1)
+                path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
+
+            // 계단 링크는 경로가 실제로 계단까지 닿을 때만 잇는다(절단되면 생략).
+            if ((targetTile.kind == TileKind.StairsUp || targetTile.kind == TileKind.StairsDown) &&
+                path[path.Count - 1] == target)
             {
                 IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(target);
                 if (links.Count > 0)
@@ -641,6 +763,7 @@ namespace ProjectC.Gameplay
         private IEnumerator RunPlayerAction(IEnumerator action)
         {
             _resolvingAction = true;
+            _travelCancelRequested = false;
             yield return action;
             _resolvingAction = false;
             _moveRoutine = null;
@@ -698,6 +821,8 @@ namespace ProjectC.Gameplay
 
             int healed = _playerState.Heal(potionHealAmount);
             UpdateHealthBar(_playerHpFill, _playerState);
+            PlayerHpChanged?.Invoke();
+            FloatingText?.ShowDamage(_player.transform.position, healed, FloatingTextKind.Heal);
             InteractionFeedback?.Invoke($"POTION +{healed} HP");
             Debug.Log($"[Item] 물약 사용: +{healed} HP → {_playerState.Hp}/{_playerState.MaxHp}");
             yield return FlashColor(_playerRenderer, new Color32(96, 224, 128, 255));
@@ -777,6 +902,11 @@ namespace ProjectC.Gameplay
             if (IsPlayerAdjacentTo(door) && tile != null && (tile.CanOpen || tile.CanClose))
             {
                 TileKind nextKind = tile.CanOpen ? TileKind.DoorOpen : TileKind.DoorClosed;
+                if (nextKind == TileKind.DoorClosed && IsLivingEnemyAt(door))
+                {
+                    InteractionFeedback?.Invoke("무언가 문을 막고 있다!");
+                    yield break;
+                }
                 yield return SetDoorState(door, nextKind);
                 RefreshFloorVisibility();
                 string feedback = nextKind == TileKind.DoorOpen ? "DOOR OPENED" : "DOOR CLOSED";
@@ -897,6 +1027,10 @@ namespace ProjectC.Gameplay
                 if (IsLivingEnemyAt(next))
                     yield break;
 
+                // 스텝 전 스냅샷 — 이 스텝(내 이동+적 턴)으로 "새로" 보이게 된 것만 인터럽트한다.
+                SnapshotTravelSight();
+                int hpBeforeStep = _playerState.Hp;
+
                 Vector3 start = _player.transform.position;
                 Vector3 end = _grid.GridToWorld(next);
                 ApplyPlayerVisualSorting(next);
@@ -947,6 +1081,10 @@ namespace ProjectC.Gameplay
                     ActiveFloorChanged?.Invoke(_activeFloorIndex);
                     Debug.Log($"[Dungeon] 층 이동: {FloorLabel(_activeFloorIndex)} / " +
                               $"층 내부 높이 {_dungeon.Height.LocalHeight(next.elevation)}");
+                    _runSummary.RecordFloor(_activeFloorIndex);
+                    TryDeclareVictory();
+                    if (_runSummary.Ended) yield break;
+                    SaveCheckpoint();
                 }
                 else
                 {
@@ -956,7 +1094,134 @@ namespace ProjectC.Gameplay
                 yield return ResolveEnemyPhase();
                 if (!_playerState.IsAlive)
                     yield break;
+
+                if (i >= path.Count - 1) continue; // 마지막 스텝 뒤엔 멈출 이동이 없다
+
+                if (_travelCancelRequested)
+                {
+                    InteractionFeedback?.Invoke("MOVE CANCELED");
+                    yield break;
+                }
+
+                TravelInterrupt interrupt = TravelRules.Evaluate(
+                    _travelVisibleEnemyIds,
+                    EnemySightStates(),
+                    AnyNewVisibleItem(),
+                    _playerState.Hp < hpBeforeStep);
+                if (interrupt != TravelInterrupt.None)
+                {
+                    FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
+                    InteractionFeedback?.Invoke(interrupt switch
+                    {
+                        TravelInterrupt.PlayerDamaged => "INTERRUPTED — 피해를 입어 멈췄다",
+                        TravelInterrupt.EnemySighted => "ENEMY SIGHTED — 적 발견!",
+                        _ => "ITEM SIGHTED — 무언가 보인다"
+                    });
+                    yield break;
+                }
             }
+        }
+
+        /// <summary>스텝 시작 전 시야 스냅샷: 보이는 살아있는 적 ID + 보이는 미수집 아이템 칸.</summary>
+        private void SnapshotTravelSight()
+        {
+            _travelVisibleEnemyIds.Clear();
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.State.IsAlive && _visibleTiles.Contains(enemy.State.Position))
+                    _travelVisibleEnemyIds.Add(enemy.State.Id);
+            }
+
+            _travelVisibleItemTiles.Clear();
+            foreach (ItemAgent item in _items)
+            {
+                if (!item.Collected && _visibleTiles.Contains(item.Spawn.Position))
+                    _travelVisibleItemTiles.Add(item.Spawn.Position);
+            }
+        }
+
+        private IEnumerable<(string, bool, bool)> EnemySightStates()
+        {
+            foreach (EnemyAgent enemy in _enemies)
+                yield return (
+                    enemy.State.Id,
+                    _visibleTiles.Contains(enemy.State.Position),
+                    enemy.State.IsAlive);
+        }
+
+        private bool AnyEnemyVisible()
+        {
+            foreach (EnemyAgent enemy in _enemies)
+            {
+                if (enemy.State.IsAlive && _visibleTiles.Contains(enemy.State.Position))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 미탐색 칸 탭: 아는(탐색된) 타일 중 목표에 평면 거리로 가장 가까운 칸까지
+        /// 아는 타일만 밟아 이동한다. (SPD의 미탐색 탭 관례)
+        /// </summary>
+        private void TryTravelTowardUnexplored(GridPos target)
+        {
+            static int PlanarDistance(GridPos a, GridPos b) =>
+                Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+
+            var candidates = new List<GridPos>();
+            foreach (GridPos pos in _exploredTiles)
+            {
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
+                if (!_grid.Map.IsWalkable(pos) || pos == _playerPos) continue;
+                if (IsLivingEnemyAt(pos)) continue;
+                if (PlanarDistance(pos, target) >= PlanarDistance(_playerPos, target)) continue;
+                candidates.Add(pos);
+            }
+
+            if (candidates.Count == 0)
+            {
+                InteractionFeedback?.Invoke("UNEXPLORED — 아는 길이 없다");
+                return;
+            }
+
+            candidates.Sort((a, b) =>
+            {
+                int byTarget = PlanarDistance(a, target).CompareTo(PlanarDistance(b, target));
+                return byTarget != 0
+                    ? byTarget
+                    : PlanarDistance(a, _playerPos).CompareTo(PlanarDistance(b, _playerPos));
+            });
+
+            // 최상위 후보 몇 개만 경로 검증 — 후보 전수 탐색은 탭마다 너무 비싸다.
+            bool Unknown(GridPos pos) => !_exploredTiles.Contains(pos) && !_visibleTiles.Contains(pos);
+            int attempts = Mathf.Min(8, candidates.Count);
+            for (int i = 0; i < attempts; i++)
+            {
+                List<GridPos> path = GridPathfinder.FindPath(
+                    _grid.Map, _playerPos, candidates[i], pos => Unknown(pos));
+                if (path.Count < 2) continue;
+
+                int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
+                if (allowedSteps < path.Count - 1)
+                    path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
+                InteractionFeedback?.Invoke("미탐색 방향으로 이동…");
+                StartPlayerAction(candidates[i], MovePlayerPath(path));
+                return;
+            }
+
+            InteractionFeedback?.Invoke("UNEXPLORED — 아는 길이 없다");
+        }
+
+        private bool AnyNewVisibleItem()
+        {
+            foreach (ItemAgent item in _items)
+            {
+                if (!item.Collected &&
+                    _visibleTiles.Contains(item.Spawn.Position) &&
+                    !_travelVisibleItemTiles.Contains(item.Spawn.Position))
+                    return true;
+            }
+            return false;
         }
 
         private IEnumerator AnimateFloorTransition(Vector3 destination)
@@ -976,19 +1241,29 @@ namespace ProjectC.Gameplay
         private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
         {
             UpdateHealthBar(enemy.HpFill, enemy.State);
+            FloatingText?.ShowDamage(
+                enemy.Root != null ? enemy.Root.transform.position : _grid.GridToWorld(enemy.State.Position),
+                damage,
+                FloatingTextKind.EnemyDamage);
             Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
             yield return FlashDamage(enemy.Renderer);
             ApplyEnemyVisuals(enemy);
 
             if (!enemy.State.IsAlive)
+            {
+                _runSummary.RecordKill();
                 Debug.Log($"[Combat] {enemy.State.Id} 처치");
+            }
         }
 
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
         private IEnumerator ShowPlayerHit(int damage, string source)
         {
             UpdateHealthBar(_playerHpFill, _playerState);
+            PlayerHpChanged?.Invoke();
+            FloatingText?.ShowDamage(
+                _player.transform.position, damage, FloatingTextKind.PlayerDamage);
             Debug.Log($"[{source}] 플레이어가 {damage} 피해. " +
                       $"HP {_playerState.Hp}/{_playerState.MaxHp}");
             yield return FlashDamage(_playerRenderer);
@@ -996,8 +1271,25 @@ namespace ProjectC.Gameplay
             if (!_playerState.IsAlive)
             {
                 _playerRenderer.color = new Color32(120, 42, 42, 220);
-                Debug.Log("[Combat] 플레이어 사망 — 프로토타입을 다시 실행해 재시작");
+                _runSummary.EndInDefeat(source);
+                RunSaveStore.Clear();
+                Debug.Log($"[Combat] 플레이어 사망 — 사인 {source}, " +
+                          $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
+                RunEnded?.Invoke(_runSummary);
             }
+        }
+
+        /// <summary>최심층에 살아서 도달했으면 승리로 판을 끝낸다. (GDD: 한 판 목표 = 최심층 도달)</summary>
+        private void TryDeclareVictory()
+        {
+            if (_runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
+            if (_activeFloorIndex != _dungeon.BottomFloorIndex) return;
+
+            _runSummary.EndInVictory();
+            RunSaveStore.Clear();
+            InteractionFeedback?.Invoke("DEEPEST FLOOR REACHED!");
+            Debug.Log($"[Run] 최심층 {FloorLabel(_activeFloorIndex)} 도달 — 승리");
+            RunEnded?.Invoke(_runSummary);
         }
 
         /// <summary>문 상태 전환 공통 경로: 렌더러가 있으면 연출과 함께, 없으면 데이터만.</summary>
@@ -1075,7 +1367,7 @@ namespace ProjectC.Gameplay
             _input.targetElevation = _input.minElevation;
         }
 
-        private static string FloorLabel(int floorIndex) =>
+        public static string FloorLabel(int floorIndex) =>
             floorIndex <= 0 ? $"B{1 - floorIndex}" : $"F{floorIndex + 1}";
 
         private void PositionSelection(GridPos pos)
@@ -1162,6 +1454,8 @@ namespace ProjectC.Gameplay
             public GameObject Root;
             public SpriteRenderer Renderer;
             public Transform HpFill;
+            public MonsterMood LastMood;
+            public TextMesh MoodIcon;
         }
 
         /// <summary>바닥에 놓인 아이템 프롭. 밟으면 Collected 로 바뀌고 숨겨진다.</summary>

@@ -282,6 +282,10 @@ namespace ProjectC.Core
             foreach (GridPos n in new[] { hole.North, hole.East, hole.South, hole.West })
             {
                 if (n.x == p.VerticalX && n.y == p.UpperMinY) continue;
+                // 윗층 구멍의 착지 칸을 약한 바닥으로 바꾸면 낙하가 그 층을 뚫고
+                // 두 층을 관통한다(약한 바닥은 IsSolidGround 가 아니다).
+                if (holeAbove.HasValue && holeAbove.Value.x == n.x && holeAbove.Value.y == n.y)
+                    continue;
                 if (map.Get(n)?.kind != TileKind.Floor) continue;
                 if (!LandsOneFloorBelow(map, heightModel, n, bottomElevation, p.FloorIndex)) continue;
                 weakOptions.Add(n);

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="DesignSystem.uss" />
+    <ui:Style src="MainMenu.uss" />
+    <ui:VisualElement name="menu-root" class="menu-root">
+        <ui:VisualElement class="menu-card">
+            <ui:Label text="PROJECT-C" class="menu-title" />
+            <ui:Label text="다층 던전 크롤러 프로토타입" class="menu-subtitle" />
+            <ui:Label text="영웅 선택" class="menu-caption" />
+            <ui:VisualElement name="hero-list" class="hero-list" />
+            <ui:Button name="start-button" text="새로 시작" class="menu-start-button" />
+            <ui:Button name="continue-button" text="이어하기" class="menu-start-button menu-continue-button" />
+            <ui:Label text="설정은 게임 안 SET 버튼에서" class="menu-hint" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

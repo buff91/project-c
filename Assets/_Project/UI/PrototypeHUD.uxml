@@ -6,12 +6,12 @@
         <ui:VisualElement class="vitals">
             <ui:VisualElement class="orb-row">
                 <ui:VisualElement class="orb-frame hp-orb">
-                    <ui:VisualElement class="orb-liquid hp-liquid" />
+                    <ui:VisualElement name="hp-liquid" class="orb-liquid hp-liquid" />
                     <ui:VisualElement class="orb-shine" />
                 </ui:VisualElement>
                 <ui:VisualElement class="orb-copy">
                     <ui:Label text="체력" class="orb-caption" />
-                    <ui:Label text="28/34" class="orb-value hp-value" />
+                    <ui:Label name="hp-value" text="--/--" class="orb-value hp-value" />
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="orb-row">
@@ -32,10 +32,7 @@
                 <ui:Button name="settings-button" text="SET" class="settings-button" tooltip="화면 설정" />
             </ui:VisualElement>
             <ui:VisualElement class="minimap-grid">
-                <ui:VisualElement class="map-room map-room-a" />
-                <ui:VisualElement class="map-room map-room-b" />
-                <ui:VisualElement class="map-room map-room-c" />
-                <ui:VisualElement class="map-player" />
+                <ui:VisualElement name="minimap-view" class="minimap-view" />
             </ui:VisualElement>
             <ui:VisualElement class="view-controls">
                 <ui:Button name="rotate-left" text="◀" class="rotate-button" tooltip="왼쪽 회전 (Q)" />
@@ -128,6 +125,19 @@
                 <ui:VisualElement class="settings-actions">
                     <ui:Button name="settings-reset" text="기본값" class="settings-reset" />
                     <ui:Button name="settings-done" text="적용 완료" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="gameover-overlay" class="settings-modal gameover-overlay">
+            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+                <ui:Label name="gameover-title" text="당신은 죽었습니다" class="gameover-title" />
+                <ui:Label name="gameover-cause" text="사인: --" class="gameover-detail" />
+                <ui:Label name="gameover-floor" text="도달 층: --" class="gameover-detail" />
+                <ui:Label name="gameover-kills" text="처치: 0" class="gameover-detail" />
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="menu-button" text="메뉴로" class="settings-reset" />
+                    <ui:Button name="restart-button" text="다시 도전" class="settings-done" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

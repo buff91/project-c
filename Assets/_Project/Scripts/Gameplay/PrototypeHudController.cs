@@ -1,6 +1,7 @@
 using System;
 using ProjectC.Core;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 namespace ProjectC.Gameplay
@@ -39,6 +40,18 @@ namespace ProjectC.Gameplay
         private Label _locationLabel;
         private Label _statusLabel;
         private Label _verticalHintLabel;
+        private Label _hpValueLabel;
+        private VisualElement _hpLiquid;
+        private VisualElement _gameoverOverlay;
+        private Label _gameoverTitle;
+        private Label _gameoverCause;
+        private Label _gameoverFloor;
+        private Label _gameoverKills;
+        private Button _restartButton;
+        private Button _menuButton;
+        private VisualElement _minimapView;
+        private Texture2D _minimapTexture;
+        private Color32[] _minimapPixels;
 
         private void OnEnable()
         {
@@ -54,6 +67,8 @@ namespace ProjectC.Gameplay
                 demo.VerticalContextChanged += HandleVerticalContextChanged;
                 demo.InventoryChanged += HandleInventoryChanged;
                 demo.BombAimingChanged += HandleBombAimingChanged;
+                demo.PlayerHpChanged += HandlePlayerHpChanged;
+                demo.RunEnded += HandleRunEnded;
             }
         }
 
@@ -79,6 +94,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _settingsClose, null, CloseSettings);
             RebindButton(ref _settingsDone, null, CloseSettings);
             RebindButton(ref _settingsReset, null, ResetSettings);
+            RebindButton(ref _restartButton, null, RestartRun);
+            RebindButton(ref _menuButton, null, GoToMainMenu);
             RebindField<Toggle, bool>(ref _occlusionToggle, null, HandleOcclusionToggle);
             RebindField<Toggle, bool>(ref _rearWallsToggle, null, HandleRearWallsToggle);
             RebindField<Slider, float>(ref _occlusionAlpha, null, HandleOcclusionAlpha);
@@ -95,6 +112,8 @@ namespace ProjectC.Gameplay
                 demo.VerticalContextChanged -= HandleVerticalContextChanged;
                 demo.InventoryChanged -= HandleInventoryChanged;
                 demo.BombAimingChanged -= HandleBombAimingChanged;
+                demo.PlayerHpChanged -= HandlePlayerHpChanged;
+                demo.RunEnded -= HandleRunEnded;
             }
         }
 
@@ -112,6 +131,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _settingsClose, root.Q<Button>("settings-close"), CloseSettings);
             RebindButton(ref _settingsDone, root.Q<Button>("settings-done"), CloseSettings);
             RebindButton(ref _settingsReset, root.Q<Button>("settings-reset"), ResetSettings);
+            RebindButton(ref _restartButton, root.Q<Button>("restart-button"), RestartRun);
+            RebindButton(ref _menuButton, root.Q<Button>("menu-button"), GoToMainMenu);
             RebindField<Toggle, bool>(
                 ref _occlusionToggle, root.Q<Toggle>("occlusion-toggle"), HandleOcclusionToggle);
             RebindField<Toggle, bool>(
@@ -133,6 +154,16 @@ namespace ProjectC.Gameplay
             _bombCountLabel = root.Q<Label>("bomb-count");
             _frostCountLabel = root.Q<Label>("frost-count");
             _settingsModal = root.Q<VisualElement>("settings-modal");
+            _hpValueLabel = root.Q<Label>("hp-value");
+            _hpLiquid = root.Q<VisualElement>("hp-liquid");
+            _gameoverOverlay = root.Q<VisualElement>("gameover-overlay");
+            _gameoverTitle = root.Q<Label>("gameover-title");
+            _gameoverCause = root.Q<Label>("gameover-cause");
+            _gameoverFloor = root.Q<Label>("gameover-floor");
+            _gameoverKills = root.Q<Label>("gameover-kills");
+            _minimapView = root.Q<VisualElement>("minimap-view");
+            UpdateMinimap();
+            UpdateHpDisplay();
             UpdateViewLabel();
             UpdateFloorLabel();
             UpdateModeLabel();
@@ -277,6 +308,7 @@ namespace ProjectC.Gameplay
         private void HandleActiveFloorChanged(int _)
         {
             UpdateFloorLabel();
+            UpdateMinimap();
         }
 
         private void HandleViewModeChanged(DungeonViewMode _)
@@ -298,11 +330,35 @@ namespace ProjectC.Gameplay
         {
             UpdateLocationLabel();
             UpdateVerticalHintLabel();
+            UpdateMinimap();
         }
 
         private void HandleVerticalContextChanged()
         {
             UpdateVerticalHintLabel();
+            // 시야 갱신마다 호출된다 — 미니맵 안개 상태의 단일 갱신 지점.
+            UpdateMinimap();
+        }
+
+        private void UpdateMinimap()
+        {
+            if (_minimapView == null || demo == null) return;
+
+            int size = demo.MinimapSize;
+            if (size <= 0) return;
+            if (_minimapTexture == null || _minimapTexture.width != size)
+            {
+                _minimapTexture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Point
+                };
+                _minimapPixels = new Color32[size * size];
+                _minimapView.style.backgroundImage = new StyleBackground(_minimapTexture);
+            }
+
+            if (!demo.FillMinimap(_minimapPixels, size, size)) return;
+            _minimapTexture.SetPixels32(_minimapPixels);
+            _minimapTexture.Apply(false);
         }
 
         private void HandleInventoryChanged()
@@ -313,6 +369,52 @@ namespace ProjectC.Gameplay
         private void HandleBombAimingChanged(bool _)
         {
             UpdateAimHighlights();
+        }
+
+        private void HandlePlayerHpChanged()
+        {
+            UpdateHpDisplay();
+        }
+
+        private void UpdateHpDisplay()
+        {
+            CombatantState state = demo != null ? demo.PlayerState : null;
+            if (_hpValueLabel != null)
+                _hpValueLabel.text = state != null ? $"{state.Hp}/{state.MaxHp}" : "--/--";
+            if (_hpLiquid != null && state != null)
+                _hpLiquid.style.height = Length.Percent(100f * state.Hp / state.MaxHp);
+        }
+
+        private void HandleRunEnded(RunSummary summary)
+        {
+            if (_gameoverOverlay == null) return;
+
+            bool victory = summary.Victory;
+            _gameoverOverlay.EnableInClassList("is-victory", victory);
+            if (_gameoverTitle != null)
+                _gameoverTitle.text = victory ? "최심층 정복!" : "당신은 죽었습니다";
+            if (_gameoverCause != null)
+            {
+                _gameoverCause.text = victory
+                    ? "던전의 끝에 도달했다"
+                    : $"사인: {RunSummary.FormatCause(summary.CauseOfDeath)}";
+                _gameoverCause.style.display = DisplayStyle.Flex;
+            }
+            if (_gameoverFloor != null)
+                _gameoverFloor.text = $"도달 층: {IsoPrototypeDemo.FloorLabel(summary.DeepestFloorIndex)}";
+            if (_gameoverKills != null)
+                _gameoverKills.text = $"처치: {summary.Kills}";
+            _gameoverOverlay.AddToClassList("is-open");
+        }
+
+        private void RestartRun()
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private void GoToMainMenu()
+        {
+            SceneManager.LoadScene("MainMenu");
         }
 
         private void UpdateItemLabels()

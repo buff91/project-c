@@ -35,7 +35,7 @@ namespace ProjectC.Tests
             var state = new CombatantState("hero", new GridPos(0, 0, 0), maxHp: 8, attackPower: 1);
             state.TakeDamage(5);
 
-            Assert.AreEqual(5, state.Heal(3));
+            Assert.AreEqual(3, state.Heal(3));
             Assert.AreEqual(6, state.Hp);
             Assert.AreEqual(2, state.Heal(99));
             Assert.AreEqual(state.MaxHp, state.Hp);

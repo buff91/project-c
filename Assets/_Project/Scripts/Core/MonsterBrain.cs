@@ -119,8 +119,11 @@ namespace ProjectC.Core
                 if (action.Kind != MonsterActionKind.Wait || seesPlayer)
                     return action;
                 // 마지막 목격 지점까지 갔거나 길이 없으면 순찰로 복귀.
+                // 복귀 전환 턴은 관망한다 — 같은 턴에 순찰 걸음까지 하면
+                // 수색 종착지에서 한 칸 벗어나 "지점 도달" 계약이 깨진다.
                 Mood = MonsterMood.Patrol;
                 LastSeenPlayerAt = null;
+                return MonsterAction.Wait();
             }
 
             return DecidePatrol(context);
