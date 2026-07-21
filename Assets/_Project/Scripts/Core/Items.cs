@@ -16,7 +16,10 @@ namespace ProjectC.Core
         RecallScroll = 5,  // 귀환 두루마리: 현재 층 입구로 순간이동.
         CoinPouch = 6,     // 전리품: 생환 시 골드로 환산. 던전 안에서는 쓸 수 없다.
         Gemstone = 7,      // 전리품(중): 생환 시 골드로 환산.
-        Relic = 8          // 전리품(대): 희귀. 생환 시 골드로 환산.
+        Relic = 8,         // 전리품(대): 희귀. 생환 시 골드로 환산.
+        Herb = 9,          // 조합 재료: 약초. 2개로 회복 물약을 만든다.
+        BlastPowder = 10,  // 조합 재료: 화약. 2개로 폭탄을 만든다.
+        FrostShard = 11    // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
     }
 
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
@@ -26,7 +29,8 @@ namespace ProjectC.Core
         {
             ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
             ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
-            ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic
+            ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic,
+            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard
         };
 
         /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
@@ -59,6 +63,10 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>조합 재료 여부. 사용 불가 — 조합 화면에서만 소비된다.</summary>
+        public static bool IsMaterial(ItemKind kind) =>
+            kind == ItemKind.Herb || kind == ItemKind.BlastPowder || kind == ItemKind.FrostShard;
+
         public static string DisplayName(ItemKind kind)
         {
             switch (kind)
@@ -72,6 +80,9 @@ namespace ProjectC.Core
                 case ItemKind.CoinPouch: return "동전 주머니";
                 case ItemKind.Gemstone: return "보석";
                 case ItemKind.Relic: return "고대 유물";
+                case ItemKind.Herb: return "약초";
+                case ItemKind.BlastPowder: return "화약";
+                case ItemKind.FrostShard: return "서리 수정";
                 default: return kind.ToString();
             }
         }
@@ -98,6 +109,12 @@ namespace ProjectC.Core
                     return "생환하면 25골드로 환산된다. 죽으면 잃는다.";
                 case ItemKind.Relic:
                     return "깊은 층의 희귀한 유물. 생환하면 60골드로 환산된다.";
+                case ItemKind.Herb:
+                    return "조합 재료. 2개를 빻으면 회복 물약이 된다.";
+                case ItemKind.BlastPowder:
+                    return "조합 재료. 2개를 뭉치면 폭탄이 된다.";
+                case ItemKind.FrostShard:
+                    return "조합 재료. 폭탄에 섞으면 냉기 폭탄이 된다.";
                 default: return "";
             }
         }

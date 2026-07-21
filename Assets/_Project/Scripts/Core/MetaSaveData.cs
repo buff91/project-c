@@ -18,6 +18,9 @@ namespace ProjectC.Core
         public int oilFlasks;
         public int knives;
         public int scrolls;
+        public int herbs;
+        public int powders;
+        public int frostShards;
 
         public int GetCount(ItemKind kind)
         {
@@ -29,6 +32,9 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: return oilFlasks;
                 case ItemKind.ThrowingKnife: return knives;
                 case ItemKind.RecallScroll: return scrolls;
+                case ItemKind.Herb: return herbs;
+                case ItemKind.BlastPowder: return powders;
+                case ItemKind.FrostShard: return frostShards;
                 default: return 0; // 전리품은 보관하지 않는다 — 항상 골드로 환산
             }
         }
@@ -43,12 +49,16 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: oilFlasks += amount; break;
                 case ItemKind.ThrowingKnife: knives += amount; break;
                 case ItemKind.RecallScroll: scrolls += amount; break;
+                case ItemKind.Herb: herbs += amount; break;
+                case ItemKind.BlastPowder: powders += amount; break;
+                case ItemKind.FrostShard: frostShards += amount; break;
             }
         }
 
         public void ClearItems()
         {
             potions = bombs = frostBombs = oilFlasks = knives = scrolls = 0;
+            herbs = powders = frostShards = 0;
         }
 
         /// <summary>골드가 충분하면 차감하고 true. 상점 구매/해금 공통 경로.</summary>

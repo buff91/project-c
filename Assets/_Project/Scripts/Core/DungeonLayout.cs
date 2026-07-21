@@ -366,9 +366,10 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
-                // 분배(/14): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
-                // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등)
-                int roll = random.Next(0, 14);
+                // 분배(/18): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
+                // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
+                int roll = random.Next(0, 18);
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;
@@ -377,7 +378,10 @@ namespace ProjectC.Core
                 if (roll < 10) return ItemKind.RecallScroll;
                 if (roll < 12) return ItemKind.CoinPouch;
                 if (roll < 13) return ItemKind.Gemstone;
-                return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 14) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 16) return ItemKind.Herb;
+                if (roll < 17) return ItemKind.BlastPowder;
+                return ItemKind.FrostShard;
             }
 
             bool IsFree(GridPos pos) =>
