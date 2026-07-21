@@ -56,6 +56,12 @@ namespace ProjectC.Gameplay
         [Min(1)] public int bombDamage = 3;
         [Min(0)] public int frostBombDamage = 1;
         [Range(2, 8)] public int bombThrowRange = 4;
+        [Tooltip("투척 단검 피해. 소모품이므로 상시 원거리보다 강하다.")]
+        [Min(1)] public int knifeDamage = 3;
+
+        [Header("던전 체인")]
+        [Tooltip("한 판에 완주해야 하는 던전 수. 각 던전의 최심층 출구가 다음 던전으로 이어진다.")]
+        [Range(1, 5)] public int stageCount = 3;
 
         [Header("M3 다층 던전")]
         [Range(2, 5)] public int floorCount = 3;
@@ -116,6 +122,9 @@ namespace ProjectC.Gameplay
         public int PotionCount => _inventory.Count(ItemKind.Potion);
         public int BombCount => _inventory.Count(ItemKind.Bomb);
         public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);
+        public int ItemCount(ItemKind kind) => _inventory.Count(kind);
+        public int StageIndex => _stageIndex;
+        public string StageLabel => $"던전 {_stageIndex}/{stageCount}";
         public bool BombAiming => _bombAiming;
         public ItemKind AimedBombKind => _bombAimKind;
         public CombatantState PlayerState => _playerState;
@@ -160,6 +169,7 @@ namespace ProjectC.Gameplay
         private bool _resolvingAction;
         private bool _travelCancelRequested;
         private bool _godMode;
+        private int _stageIndex = 1;
         private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
         private FloatingTextSpawner _floatingText;
@@ -238,6 +248,7 @@ namespace ProjectC.Gameplay
                     floorCount = continueData.floorCount;
                     elevationsPerFloor = continueData.elevationsPerFloor;
                     previewStartDepth = -continueData.currentFloorIndex;
+                    _stageIndex = Mathf.Max(1, continueData.stageIndex);
                 }
             }
 
@@ -280,8 +291,9 @@ namespace ProjectC.Gameplay
             CreateActorsAndProps();
             if (continueData != null)
                 ApplyContinueData(continueData);
-            else if (Application.isPlaying && _hero != null)
+            else if (Application.isPlaying && _hero != null && _stageIndex == 1)
             {
+                // 시작 키트는 첫 던전에서만 — 던전 전환은 ApplyCarriedState 가 이월한다.
                 if (_hero.StartPotions > 0) _inventory.Add(ItemKind.Potion, _hero.StartPotions);
                 if (_hero.StartBombs > 0) _inventory.Add(ItemKind.Bomb, _hero.StartBombs);
                 if (_hero.StartFrostBombs > 0) _inventory.Add(ItemKind.FrostBomb, _hero.StartFrostBombs);
@@ -382,7 +394,7 @@ namespace ProjectC.Gameplay
             _playerState.MoveTo(floor.Entry);
             _player.transform.position = _grid.GridToWorld(floor.Entry);
             SyncPlayerView(floor.Entry, floorChanged: true);
-            _runSummary.RecordFloor(_activeFloorIndex);
+            _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
             InteractionFeedback?.Invoke($"CHEAT: {FloorLabel(_activeFloorIndex)} 로 점프");
         }
 
@@ -396,19 +408,31 @@ namespace ProjectC.Gameplay
         /// <summary>이어하기 데이터의 HP·인벤토리·전적을 새로 만든 판에 덧입힌다.</summary>
         private void ApplyContinueData(RunSaveData data)
         {
+            ApplyCarriedState(data, $"이어하기 — {FloorLabel(_activeFloorIndex)} 입구에서 재개");
+            Debug.Log($"[Save] 이어하기: {StageLabel} {FloorLabel(_activeFloorIndex)}, " +
+                      $"HP {_playerState.Hp}, 처치 {data.kills}");
+        }
+
+        /// <summary>이어하기와 던전 전환이 공유하는 상태 이월(HP·인벤토리·전적).</summary>
+        private void ApplyCarriedState(RunSaveData data, string feedback)
+        {
             int hp = Mathf.Clamp(data.hp, 1, _playerState.MaxHp);
             if (hp < _playerState.MaxHp)
                 _playerState.TakeDamage(_playerState.MaxHp - hp);
             UpdateHealthBar(_playerHpFill, _playerState);
+            PlayerHpChanged?.Invoke();
 
             if (data.potions > 0) _inventory.Add(ItemKind.Potion, data.potions);
             if (data.bombs > 0) _inventory.Add(ItemKind.Bomb, data.bombs);
             if (data.frostBombs > 0) _inventory.Add(ItemKind.FrostBomb, data.frostBombs);
+            if (data.oilFlasks > 0) _inventory.Add(ItemKind.OilFlask, data.oilFlasks);
+            if (data.knives > 0) _inventory.Add(ItemKind.ThrowingKnife, data.knives);
+            if (data.scrolls > 0) _inventory.Add(ItemKind.RecallScroll, data.scrolls);
+            InventoryChanged?.Invoke();
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
-            _runSummary.RecordFloor(_activeFloorIndex);
-            InteractionFeedback?.Invoke($"이어하기 — {FloorLabel(_activeFloorIndex)} 입구에서 재개");
-            Debug.Log($"[Save] 이어하기: {FloorLabel(_activeFloorIndex)}, HP {hp}, 처치 {data.kills}");
+            _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+            InteractionFeedback?.Invoke(feedback);
         }
 
         /// <summary>층 도착 시점의 체크포인트 저장. 판이 끝났으면 저장하지 않는다.</summary>
@@ -425,11 +449,15 @@ namespace ProjectC.Gameplay
                 roomSize = roomSize,
                 floorCount = floorCount,
                 elevationsPerFloor = elevationsPerFloor,
+                stageIndex = _stageIndex,
                 currentFloorIndex = _activeFloorIndex,
                 hp = _playerState.Hp,
                 potions = PotionCount,
                 bombs = BombCount,
                 frostBombs = FrostBombCount,
+                oilFlasks = ItemCount(ItemKind.OilFlask),
+                knives = ItemCount(ItemKind.ThrowingKnife),
+                scrolls = ItemCount(ItemKind.RecallScroll),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex
             });
@@ -461,7 +489,7 @@ namespace ProjectC.Gameplay
                 dungeonSeed);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
-            _runSummary = new RunSummary(_activeFloorIndex);
+            _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));
             UpdateInputFloorRange();
         }
 
@@ -533,7 +561,7 @@ namespace ProjectC.Gameplay
             {
                 foreach (GridPos spawn in floor.EnemySpawns)
                     SpawnEnemy(
-                        MonsterRoster.PickForDepth(-floor.FloorIndex, _spawnRng),
+                        MonsterRoster.PickForDepth(GlobalDepth(floor.FloorIndex), _spawnRng),
                         spawn,
                         floor.FloorIndex);
 
@@ -660,6 +688,14 @@ namespace ProjectC.Gameplay
 
         public void ToggleFrostBombAim() => ToggleThrowAim(ItemKind.FrostBomb);
 
+        /// <summary>투척류 아이템 공통 조준 진입점 (인벤토리 화면이 호출).</summary>
+        public void ToggleAim(ItemKind kind)
+        {
+            if (kind == ItemKind.Bomb || kind == ItemKind.FrostBomb ||
+                kind == ItemKind.OilFlask || kind == ItemKind.ThrowingKnife)
+                ToggleThrowAim(kind);
+        }
+
         private void ToggleThrowAim(ItemKind kind)
         {
             if (!Application.isPlaying || _resolvingAction ||
@@ -675,9 +711,10 @@ namespace ProjectC.Gameplay
 
             _bombAimKind = kind;
             SetBombAiming(!alreadyAimingThis);
-            InteractionFeedback?.Invoke(_bombAiming
-                ? $"{ItemLabel(kind)}: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3"
-                : "AIM CANCELED");
+            string aimHint = kind == ItemKind.ThrowingKnife
+                ? $"KNIFE: 적을 탭 · 사거리 {rangedAttackRange} · 피해 {knifeDamage}"
+                : $"{ItemLabel(kind)}: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3";
+            InteractionFeedback?.Invoke(_bombAiming ? aimHint : "AIM CANCELED");
         }
 
         private void SetBombAiming(bool aiming)
@@ -687,8 +724,19 @@ namespace ProjectC.Gameplay
             BombAimingChanged?.Invoke(aiming);
         }
 
-        private static string ItemLabel(ItemKind kind) =>
-            kind == ItemKind.Potion ? "POTION" : kind == ItemKind.Bomb ? "BOMB" : "FROST";
+        private static string ItemLabel(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion: return "POTION";
+                case ItemKind.Bomb: return "BOMB";
+                case ItemKind.FrostBomb: return "FROST";
+                case ItemKind.OilFlask: return "OIL";
+                case ItemKind.ThrowingKnife: return "KNIFE";
+                case ItemKind.RecallScroll: return "SCROLL";
+                default: return kind.ToString();
+            }
+        }
 
         public void ApplyVisualSettings()
         {
@@ -846,7 +894,17 @@ namespace ProjectC.Gameplay
             {
                 IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(target);
                 if (links.Count > 0)
+                {
                     path.Add(links[0]);
+                }
+                else if (targetTile.kind == TileKind.StairsDown &&
+                         _activeFloorIndex == _dungeon.BottomFloorIndex &&
+                         _stageIndex < stageCount)
+                {
+                    // 링크 없는 최심층 하행 계단 = 다음 던전 출구.
+                    StartPlayerAction(target, MoveAndAdvanceStage(path, target));
+                    return;
+                }
             }
 
             StartPlayerAction(target, MovePlayerPath(path));
@@ -854,12 +912,31 @@ namespace ProjectC.Gameplay
 
         private void HandleBombAimTap(GridPos target)
         {
+            // 단검은 타일이 아니라 적을 조준한다.
+            if (_bombAimKind == ItemKind.ThrowingKnife)
+            {
+                EnemyAgent knifeTarget = FindLivingEnemyAt(target);
+                if (knifeTarget == null || !_visibleTiles.Contains(target))
+                {
+                    InteractionFeedback?.Invoke("KNIFE: 보이는 적을 탭해라");
+                    return;
+                }
+                StartPlayerAction(target, ThrowKnife(knifeTarget));
+                return;
+            }
+
             if (!BombRules.CanThrow(_grid.Map, _playerPos, target, bombThrowRange))
             {
                 bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, target);
                 InteractionFeedback?.Invoke(blocked
                     ? "THROW BLOCKED"
                     : $"OUT OF THROW RANGE · MAX {bombThrowRange}");
+                return;
+            }
+
+            if (_bombAimKind == ItemKind.OilFlask)
+            {
+                StartPlayerAction(target, ThrowOil(target));
                 return;
             }
 
@@ -949,6 +1026,93 @@ namespace ProjectC.Gameplay
             InteractionFeedback?.Invoke($"POTION +{healed} HP");
             Debug.Log($"[Item] 물약 사용: +{healed} HP → {_playerState.Hp}/{_playerState.MaxHp}");
             yield return FlashColor(_playerRenderer, new Color32(96, 224, 128, 255));
+
+            yield return ResolveEnemyPhase();
+        }
+
+        private IEnumerator ThrowOil(GridPos target)
+        {
+            SetBombAiming(false);
+            _inventory.TryUse(ItemKind.OilFlask);
+            InventoryChanged?.Invoke();
+
+            yield return AnimateProjectile(_playerPos, target);
+            List<GridPos> splashed = OilRules.Splash(_grid.Map, target);
+            InteractionFeedback?.Invoke($"OIL SPLASHED ×{splashed.Count} — 불이 닿으면 발화한다");
+            Debug.Log($"[Item] 기름 살포 {target}: {splashed.Count}칸");
+            RefreshFloorVisibility();
+
+            yield return ResolveEnemyPhase();
+        }
+
+        private IEnumerator ThrowKnife(EnemyAgent enemy)
+        {
+            SetBombAiming(false);
+            _inventory.TryUse(ItemKind.ThrowingKnife);
+            InventoryChanged?.Invoke();
+
+            if (CombatRules.TryRanged(
+                    _playerState, enemy.State, _grid.Map, rangedAttackRange,
+                    out int damage, knifeDamage))
+            {
+                yield return AnimateProjectile(_playerPos, enemy.State.Position);
+                InteractionFeedback?.Invoke($"KNIFE HIT · {damage} DAMAGE");
+                yield return ShowEnemyHit(enemy, damage, "Knife");
+                if (!enemy.State.IsAlive)
+                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
+            }
+            else
+            {
+                // 소모는 이미 됐다 — 빗나간 투척도 손해라는 감각 유지.
+                bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, enemy.State.Position);
+                InteractionFeedback?.Invoke(blocked ? "KNIFE BLOCKED" : $"OUT OF RANGE · MAX {rangedAttackRange}");
+            }
+
+            yield return ResolveEnemyPhase();
+        }
+
+        /// <summary>귀환 두루마리: 현재 층 입구로 순간이동. 행동 1회 소비.</summary>
+        public void UseRecallScroll()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (_inventory.Count(ItemKind.RecallScroll) <= 0)
+            {
+                InteractionFeedback?.Invoke("NO SCROLLS");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(RunPlayerAction(RecallToEntry()));
+        }
+
+        private IEnumerator RecallToEntry()
+        {
+            _inventory.TryUse(ItemKind.RecallScroll);
+            InventoryChanged?.Invoke();
+
+            _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor);
+            GridPos destination = floor.Entry;
+            if (IsLivingEnemyAt(destination))
+            {
+                // 입구가 막혔으면 걷기 가능한 인접 칸으로 비껴 착지한다.
+                foreach (GridPos candidate in new[]
+                         { destination.North, destination.East, destination.South, destination.West })
+                {
+                    if (_grid.Map.IsWalkable(candidate) && !IsLivingEnemyAt(candidate))
+                    {
+                        destination = candidate;
+                        break;
+                    }
+                }
+            }
+
+            InteractionFeedback?.Invoke("RECALL — 층 입구로 귀환");
+            Debug.Log($"[Item] 귀환 두루마리: {_playerPos} → {destination}");
+            yield return AnimateFloorTransition(_grid.GridToWorld(destination));
+            _playerState.MoveTo(destination);
+            SyncPlayerView(destination, floorChanged: false);
 
             yield return ResolveEnemyPhase();
         }
@@ -1204,7 +1368,7 @@ namespace ProjectC.Gameplay
                     ActiveFloorChanged?.Invoke(_activeFloorIndex);
                     Debug.Log($"[Dungeon] 층 이동: {FloorLabel(_activeFloorIndex)} / " +
                               $"층 내부 높이 {_dungeon.Height.LocalHeight(next.elevation)}");
-                    _runSummary.RecordFloor(_activeFloorIndex);
+                    _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
                     TryDeclareVictory();
                     if (_runSummary.Ended) yield break;
                     SaveCheckpoint();
@@ -1412,17 +1576,70 @@ namespace ProjectC.Gameplay
             }
         }
 
-        /// <summary>최심층에 살아서 도달했으면 승리로 판을 끝낸다. (GDD: 한 판 목표 = 최심층 도달)</summary>
+        /// <summary>던전 체인 좌표계: 스테이지 누적 깊이(몬스터 혼합용, 0부터 증가).</summary>
+        private int GlobalDepth(int floorIndex) => (_stageIndex - 1) * floorCount - floorIndex;
+
+        /// <summary>스테이지 누적 층 인덱스(기록/표시용, 아래로 갈수록 음수).</summary>
+        private int GlobalFloorIndex(int floorIndex) => floorIndex - (_stageIndex - 1) * floorCount;
+
+        /// <summary>
+        /// 마지막 던전의 최심층에 살아서 도달했으면 승리. (GDD: 한 판 목표 = 최심층 도달)
+        /// 앞 던전에서는 출구 계단 안내만 한다 — 다음 던전 진입은 출구 탭으로.
+        /// </summary>
         private void TryDeclareVictory()
         {
             if (_runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
             if (_activeFloorIndex != _dungeon.BottomFloorIndex) return;
 
+            if (_stageIndex < stageCount)
+            {
+                InteractionFeedback?.Invoke($"{StageLabel} 최심층 — 출구 계단(▼)을 찾아라");
+                return;
+            }
+
             _runSummary.EndInVictory();
             RunSaveStore.Clear();
             InteractionFeedback?.Invoke("DEEPEST FLOOR REACHED!");
-            Debug.Log($"[Run] 최심층 {FloorLabel(_activeFloorIndex)} 도달 — 승리");
+            Debug.Log($"[Run] 최심층 {FloorLabel(GlobalFloorIndex(_activeFloorIndex))} 도달 — 승리");
             RunEnded?.Invoke(_runSummary);
+        }
+
+        /// <summary>출구 계단까지 걸어간 뒤 다음 던전으로 넘어간다.</summary>
+        private IEnumerator MoveAndAdvanceStage(IReadOnlyList<GridPos> path, GridPos exit)
+        {
+            yield return MovePlayerPath(path);
+            if (_playerState.IsAlive && _playerPos == exit)
+                AdvanceToNextStage(); // BuildPrototype 이 이 코루틴을 정리한다 — 마지막 문장이어야 한다
+        }
+
+        /// <summary>
+        /// 다음 던전 진입: HP·인벤토리·전적을 들고 새 seed 던전을 생성한다.
+        /// 던전 간 이동은 층 이동과 달리 씬 상태를 전부 리빌드한다.
+        /// </summary>
+        private void AdvanceToNextStage()
+        {
+            var carry = new RunSaveData
+            {
+                heroId = _hero != null ? _hero.Id : null,
+                hp = _playerState.Hp,
+                potions = PotionCount,
+                bombs = BombCount,
+                frostBombs = FrostBombCount,
+                oilFlasks = ItemCount(ItemKind.OilFlask),
+                knives = ItemCount(ItemKind.ThrowingKnife),
+                scrolls = ItemCount(ItemKind.RecallScroll),
+                kills = _runSummary.Kills,
+                deepestFloorIndex = _runSummary.DeepestFloorIndex
+            };
+
+            _stageIndex++;
+            dungeonSeed = dungeonSeed * 31 + 7; // 결정론적 체인 — 같은 시작 seed 면 같은 여정
+            previewStartDepth = 0;
+            Debug.Log($"[Stage] {StageLabel} 진입 (seed {dungeonSeed})");
+
+            BuildPrototype();
+            ApplyCarriedState(carry, $"{StageLabel} 진입!");
+            SaveCheckpoint();
         }
 
         /// <summary>문 상태 전환 공통 경로: 렌더러가 있으면 연출과 함께, 없으면 데이터만.</summary>

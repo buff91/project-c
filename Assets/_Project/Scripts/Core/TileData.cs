@@ -25,6 +25,9 @@ namespace ProjectC.Core
     {
         public TileKind kind;
 
+        /// <summary>기름이 뿌려진 상태. 불 폭발과 겹치면 발화한다. (GDD §5.5 요소 반응)</summary>
+        public bool oiled;
+
         public TileData(TileKind kind = TileKind.Empty)
         {
             this.kind = kind;

@@ -350,6 +350,7 @@ GameObject:
   - component: {fileID: 2135347024}
   - component: {fileID: 2135347023}
   - component: {fileID: 2135347026}
+  - component: {fileID: 2135347027}
   m_Layer: 0
   m_Name: Prototype HUD
   m_TagString: Untagged
@@ -420,6 +421,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a665577fe857b4a6892dde698fdf5642, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.DebugPanelController
+  demo: {fileID: 291117079}
+--- !u!114 &2135347027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2135347022}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37f6755435b3143e68d3a11659c583c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.InventoryPanelController
   demo: {fileID: 291117079}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

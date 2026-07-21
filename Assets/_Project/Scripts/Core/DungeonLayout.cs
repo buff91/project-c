@@ -197,7 +197,8 @@ namespace ProjectC.Core
             int upX = (depth - 1) % 2 == 0 ? width - 2 : 1;
             int downX = depth % 2 == 0 ? width - 2 : 1;
             p.Up = depth == 0 ? (GridPos?)null : p.At(upX, 1);
-            p.Down = depth == floorCount - 1 ? (GridPos?)null : p.At(downX, 1);
+            // 최심층에도 하행 계단을 둔다 — 링크가 없는 하행 계단이 "다음 던전 출구"다.
+            p.Down = p.At(downX, 1);
             p.Entry = p.Up ?? p.At(1, 1);
             return p;
         }
@@ -364,10 +365,14 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
+                // 분배: 물약 3 · 폭탄 3 · 냉기 1 · 기름 1 · 단검 1 · 두루마리 1 (/10)
                 int roll = random.Next(0, 10);
-                if (roll < 4) return ItemKind.Potion;
-                if (roll < 8) return ItemKind.Bomb;
-                return ItemKind.FrostBomb;
+                if (roll < 3) return ItemKind.Potion;
+                if (roll < 6) return ItemKind.Bomb;
+                if (roll < 7) return ItemKind.FrostBomb;
+                if (roll < 8) return ItemKind.OilFlask;
+                if (roll < 9) return ItemKind.ThrowingKnife;
+                return ItemKind.RecallScroll;
             }
 
             bool IsFree(GridPos pos) =>

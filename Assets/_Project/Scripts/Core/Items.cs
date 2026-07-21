@@ -8,9 +8,105 @@ namespace ProjectC.Core
     /// </summary>
     public enum ItemKind
     {
-        Potion = 0,    // 회복 물약
-        Bomb = 1,      // 폭탄: 3×3 피해 + 화상 + 넉백, 약한 바닥 붕괴·폭발통 유폭.
-        FrostBomb = 2  // 냉기 폭탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
+        Potion = 0,        // 회복 물약
+        Bomb = 1,          // 폭탄: 3×3 피해 + 화상 + 넉백, 약한 바닥 붕괴·폭발통 유폭.
+        FrostBomb = 2,     // 냉기 폭탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
+        OilFlask = 3,      // 기름 병: 3×3 기름 살포. 불 폭발과 겹치면 발화 → 화상.
+        ThrowingKnife = 4, // 투척 단검: 소모형 단일 대상 원거리 피해.
+        RecallScroll = 5   // 귀환 두루마리: 현재 층 입구로 순간이동.
+    }
+
+    /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
+    public static class ItemCatalog
+    {
+        public static readonly ItemKind[] AllKinds =
+        {
+            ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
+            ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll
+        };
+
+        public static string DisplayName(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion: return "회복 물약";
+                case ItemKind.Bomb: return "폭탄";
+                case ItemKind.FrostBomb: return "냉기 폭탄";
+                case ItemKind.OilFlask: return "기름 병";
+                case ItemKind.ThrowingKnife: return "투척 단검";
+                case ItemKind.RecallScroll: return "귀환 두루마리";
+                default: return kind.ToString();
+            }
+        }
+
+        public static string Description(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion:
+                    return "HP를 회복한다. 마시는 데 행동 1회를 소비한다.";
+                case ItemKind.Bomb:
+                    return "3×3 폭발 — 화상·넉백, 약한 바닥 붕괴와 폭발통 유폭. 본인도 피해를 입는다.";
+                case ItemKind.FrostBomb:
+                    return "낮은 피해의 3×3 냉기 폭발 — 맞은 대상을 빙결시킨다. 폭발통은 터뜨리지 않는다.";
+                case ItemKind.OilFlask:
+                    return "3×3 범위에 기름을 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.";
+                case ItemKind.ThrowingKnife:
+                    return "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.";
+                case ItemKind.RecallScroll:
+                    return "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.";
+                default: return "";
+            }
+        }
+    }
+
+    /// <summary>
+    /// 기름 표면 규칙 (GDD §5.5 요소 반응 — 불+기름).
+    /// 살포와 발화만 담당하고, 화상 부여·연출은 Gameplay 가 반환 목록으로 처리한다.
+    /// </summary>
+    public static class OilRules
+    {
+        /// <summary>중심 3×3의 걷기 가능한 타일에 기름을 뿌리고 젖은 칸 목록을 반환한다.</summary>
+        public static List<GridPos> Splash(GridMap map, GridPos center)
+        {
+            if (map == null) throw new ArgumentNullException(nameof(map));
+
+            var splashed = new List<GridPos>();
+            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
+            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
+            {
+                GridPos pos = center.Offset(dx, dy);
+                TileData tile = map.Get(pos);
+                if (tile == null || !tile.IsWalkable || tile.kind == TileKind.Hole) continue;
+                if (!tile.oiled)
+                {
+                    tile.oiled = true;
+                    splashed.Add(pos);
+                }
+            }
+            return splashed;
+        }
+
+        /// <summary>
+        /// 불 폭발이 닿은 반경의 기름 타일을 발화시킨다.
+        /// 기름을 지우고 발화한 칸 목록을 반환한다 — 그 위의 대상 화상은 호출부가 처리.
+        /// </summary>
+        public static List<GridPos> Ignite(GridMap map, GridPos center)
+        {
+            if (map == null) throw new ArgumentNullException(nameof(map));
+
+            var ignited = new List<GridPos>();
+            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
+            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
+            {
+                GridPos pos = center.Offset(dx, dy);
+                TileData tile = map.Get(pos);
+                if (tile == null || !tile.oiled) continue;
+                tile.oiled = false;
+                ignited.Add(pos);
+            }
+            return ignited;
+        }
     }
 
     /// <summary>던전 생성기가 배치하는 아이템 스폰 지점. 타일이 아니라 타일 위의 오브젝트다.</summary>

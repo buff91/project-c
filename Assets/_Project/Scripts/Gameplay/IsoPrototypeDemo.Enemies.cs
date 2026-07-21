@@ -146,7 +146,9 @@ namespace ProjectC.Gameplay
 
                 _lastTrickleSpawnTurn = _turns.TurnNumber;
                 EnemyAgent reinforcement = SpawnEnemy(
-                    MonsterRoster.PickForDepth(-_activeFloorIndex, _spawnRng), spawn, _activeFloorIndex);
+                    MonsterRoster.PickForDepth(GlobalDepth(_activeFloorIndex), _spawnRng),
+                    spawn,
+                    _activeFloorIndex);
                 InteractionFeedback?.Invoke("SOMETHING STIRS IN THE DARK...");
                 Debug.Log($"[Spawn] 추가 스폰: {reinforcement.State.Id} @ {spawn}");
                 return;

@@ -43,7 +43,7 @@
 
         <ui:VisualElement class="artifact-panel depth-panel">
             <ui:Label name="depth-label" text="B2" class="depth-value" />
-            <ui:Label text="현재 심도" class="micro-caption depth-caption" />
+            <ui:Label name="depth-caption" text="던전 1/3" class="micro-caption depth-caption" />
             <ui:Label name="location-label" text="HEIGHT 0 · (0,0)" class="elevation-label" />
             <ui:Label name="floor-label" text="▲ B1 · ▼ B3" class="floor-label" />
         </ui:VisualElement>
@@ -72,6 +72,9 @@
                 <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉기 폭탄 투척 — 낮은 피해 + 빙결">
                     <ui:VisualElement class="resource-icon frost-icon" />
                     <ui:Label name="frost-count" text="FROST ×0" class="resource-value" />
+                </ui:Button>
+                <ui:Button name="bag-button" class="artifact-panel resource-pill item-button bag-button" tooltip="인벤토리 열기">
+                    <ui:Label text="BAG" class="resource-value" />
                 </ui:Button>
             </ui:VisualElement>
 
@@ -125,6 +128,26 @@
                 <ui:VisualElement class="settings-actions">
                     <ui:Button name="settings-reset" text="기본값" class="settings-reset" />
                     <ui:Button name="settings-done" text="적용 완료" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="inventory-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="INVENTORY" class="settings-title" />
+                        <ui:Label text="소지품" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="inventory-close" text="×" class="settings-close" tooltip="인벤토리 닫기" />
+                </ui:VisualElement>
+                <ui:VisualElement name="inventory-grid" class="inventory-grid" />
+                <ui:VisualElement class="inventory-detail">
+                    <ui:Label name="inventory-detail-name" text="아이템을 선택하세요" class="inventory-detail-name" />
+                    <ui:Label name="inventory-detail-desc" text="" class="inventory-detail-desc" />
+                </ui:VisualElement>
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="inventory-use" text="사용" class="settings-done" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

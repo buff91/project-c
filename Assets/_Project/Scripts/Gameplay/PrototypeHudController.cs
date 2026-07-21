@@ -36,6 +36,7 @@ namespace ProjectC.Gameplay
         private Slider _exploredAlpha;
         private Label _viewLabel;
         private Label _depthLabel;
+        private Label _depthCaption;
         private Label _floorLabel;
         private Label _locationLabel;
         private Label _statusLabel;
@@ -183,6 +184,7 @@ namespace ProjectC.Gameplay
 
             _viewLabel = root.Q<Label>("view-label");
             _depthLabel = root.Q<Label>("depth-label");
+            _depthCaption = root.Q<Label>("depth-caption");
             _floorLabel = root.Q<Label>("floor-label");
             _locationLabel = root.Q<Label>("location-label");
             _statusLabel = root.Q<Label>("status-label");
@@ -482,6 +484,8 @@ namespace ProjectC.Gameplay
         {
             if (_depthLabel != null)
                 _depthLabel.text = demo != null ? demo.ActiveFloorLabel : "B1";
+            if (_depthCaption != null)
+                _depthCaption.text = demo != null ? demo.StageLabel : "던전 1/3";
             if (_floorLabel != null)
                 _floorLabel.text = demo == null
                     ? "▲ --  ·  ▼ B2"

@@ -68,6 +68,8 @@ namespace ProjectC.EditorTools
             controller.demo = demo;
             var debugPanel = hudObject.AddComponent<DebugPanelController>();
             debugPanel.demo = demo;
+            var inventoryPanel = hudObject.AddComponent<InventoryPanelController>();
+            inventoryPanel.demo = demo;
         }
 
         private static void Capture(Camera camera)

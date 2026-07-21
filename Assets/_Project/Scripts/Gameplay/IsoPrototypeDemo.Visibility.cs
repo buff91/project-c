@@ -23,10 +23,14 @@ namespace ProjectC.Gameplay
                 bool visible = _visibleTiles.Contains(pair.Key);
                 bool explored = _exploredTiles.Contains(pair.Key);
                 bool vertical = _verticalPreviewTiles.Contains(pair.Key);
-                pair.Value.sprite = GetTileSprite(_grid.Map.Get(pair.Key).kind, pair.Key);
+                TileData tileData = _grid.Map.Get(pair.Key);
+                pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
                 pair.Value.enabled = debugVisible || visible || explored || vertical;
                 float alpha = VisibilityAlpha(pair.Key);
-                pair.Value.color = new Color(1f, 1f, 1f, alpha);
+                // 기름 타일은 갈색조로 물들여 인화성을 보여준다.
+                pair.Value.color = tileData.oiled
+                    ? new Color(0.74f, 0.64f, 0.36f, alpha)
+                    : new Color(1f, 1f, 1f, alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 

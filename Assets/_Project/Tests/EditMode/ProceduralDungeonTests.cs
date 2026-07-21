@@ -159,6 +159,20 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void AnySeed_BottomFloorHasUnlinkedExitStairs([Range(1, 30)] int seed)
+        {
+            var map = new GridMap();
+            DungeonLayout dungeon = DungeonGenerator.Generate(map, 11, 11, 3, 4, seed);
+            DungeonFloorInfo bottom = dungeon.Floors[dungeon.Floors.Count - 1];
+
+            Assert.AreEqual(dungeon.BottomFloorIndex, bottom.FloorIndex);
+            Assert.IsTrue(bottom.DownStairs.HasValue, "최심층엔 다음 던전 출구 계단이 있어야 한다");
+            Assert.AreEqual(TileKind.StairsDown, map.Get(bottom.DownStairs.Value).kind);
+            Assert.AreEqual(0, map.LinksFrom(bottom.DownStairs.Value).Count,
+                "출구 계단은 층간 링크가 없다 — 링크 없음이 곧 던전 전환 신호다");
+        }
+
+        [Test]
         public void MinimumSize_NineByNine_StillSatisfiesInvariants([Range(1, 10)] int seed)
         {
             var map = new GridMap();

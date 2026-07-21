@@ -142,4 +142,73 @@ namespace ProjectC.Tests
             CollectionAssert.Contains(result.CollapsedWeakFloors, weak);
         }
     }
+
+    public class OilRulesTests
+    {
+        private static GridMap FlatMap(int size)
+        {
+            var map = new GridMap();
+            for (int x = 0; x < size; x++)
+            for (int y = 0; y < size; y++)
+                map.Set(new GridPos(x, y, 0), TileKind.Floor);
+            return map;
+        }
+
+        [Test]
+        public void Splash_CoversWalkable3x3_AndSkipsHolesAndWalls()
+        {
+            GridMap map = FlatMap(7);
+            map.Set(new GridPos(3, 4, 0), TileKind.Wall);
+            map.Set(new GridPos(4, 4, 0), TileKind.Hole);
+
+            var splashed = OilRules.Splash(map, new GridPos(3, 3, 0));
+
+            Assert.AreEqual(7, splashed.Count, "3×3 중 벽/구멍 2칸 제외");
+            Assert.IsTrue(map.Get(new GridPos(3, 3, 0)).oiled);
+            Assert.IsFalse(map.Get(new GridPos(4, 4, 0)).oiled, "구멍엔 기름이 고이지 않는다");
+        }
+
+        [Test]
+        public void Splash_AlreadyOiledTile_IsNotReturnedTwice()
+        {
+            GridMap map = FlatMap(7);
+            OilRules.Splash(map, new GridPos(3, 3, 0));
+
+            var second = OilRules.Splash(map, new GridPos(3, 3, 0));
+
+            Assert.AreEqual(0, second.Count);
+        }
+
+        [Test]
+        public void Ignite_ClearsOilInBlast_AndReturnsIgnitedTiles()
+        {
+            GridMap map = FlatMap(7);
+            OilRules.Splash(map, new GridPos(3, 3, 0));
+
+            var ignited = OilRules.Ignite(map, new GridPos(2, 3, 0));
+
+            Assert.Greater(ignited.Count, 0);
+            foreach (GridPos pos in ignited)
+                Assert.IsFalse(map.Get(pos).oiled, "발화한 기름은 소진된다");
+            // 폭발 반경(2,3 기준 3×3) 밖의 기름은 남는다.
+            Assert.IsTrue(map.Get(new GridPos(4, 3, 0)).oiled);
+        }
+    }
+
+    public class ItemCatalogTests
+    {
+        [Test]
+        public void AllKinds_CoverEveryEnumValue_WithNameAndDescription()
+        {
+            var enumValues = System.Enum.GetValues(typeof(ItemKind));
+            Assert.AreEqual(enumValues.Length, ItemCatalog.AllKinds.Length,
+                "새 ItemKind 를 추가하면 ItemCatalog.AllKinds 에도 등록해야 한다");
+
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                Assert.IsFalse(string.IsNullOrWhiteSpace(ItemCatalog.DisplayName(kind)), kind.ToString());
+                Assert.IsFalse(string.IsNullOrWhiteSpace(ItemCatalog.Description(kind)), kind.ToString());
+            }
+        }
+    }
 }

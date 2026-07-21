@@ -113,7 +113,7 @@ namespace ProjectC.Gameplay
             if (floorChanged)
             {
                 _activeFloorIndex = _dungeon.Height.FloorIndex(position.elevation);
-                _runSummary.RecordFloor(_activeFloorIndex);
+                _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
                 UpdateInputFloorRange();
                 SaveCheckpoint();
             }
@@ -210,6 +210,24 @@ namespace ProjectC.Gameplay
                 if (affectedAgent != null) ApplyEnemyVisuals(affectedAgent); // 틴트 즉시 반영
             }
             if (anyAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
+
+            // 요소 반응: 불 폭발이 기름 타일에 닿으면 발화 — 그 위의 전원이 불탄다. (GDD §5.5)
+            if (fiery)
+            {
+                List<GridPos> ignited = OilRules.Ignite(_grid.Map, center);
+                if (ignited.Count > 0)
+                {
+                    InteractionFeedback?.Invoke($"OIL IGNITED ×{ignited.Count}!");
+                    Debug.Log($"[Oil] 기름 발화 {center}: {ignited.Count}칸");
+                    foreach (CombatantState combatant in AllCombatants())
+                    {
+                        if (!combatant.IsAlive || !ignited.Contains(combatant.Position)) continue;
+                        combatant.Statuses.Apply(StatusKind.Burn, StatusTurnsApplied);
+                        EnemyAgent burning = FindAgentByState(combatant);
+                        if (burning != null) ApplyEnemyVisuals(burning);
+                    }
+                }
+            }
 
             // 넉백: 맞고 살아남은 전원을 중심 반대쪽으로 민다. 플레이어도 예외 없음. (GDD §5.3)
             foreach (CombatantState survivor in result.Damaged)

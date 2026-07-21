@@ -647,6 +647,39 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 9, 12, 2, 4, ice);        // 심지 대신 서리 기둥
                 FillRect(texture, 8, 16, 4, 2, shine);
             }
+            else if (kind == ItemKind.OilFlask)
+            {
+                Color32 glass = new Color32(120, 112, 74, 255);
+                Color32 oil = new Color32(96, 82, 34, 255);
+                Color32 sheen = new Color32(190, 164, 84, 255);
+                Color32 cork = new Color32(150, 106, 58, 255);
+                FillRect(texture, 6, 2, 8, 10, glass);      // 몸통
+                FillRect(texture, 7, 3, 6, 6, oil);
+                FillRect(texture, 8, 6, 2, 2, sheen);
+                FillRect(texture, 8, 12, 4, 4, glass);      // 목
+                FillRect(texture, 8, 16, 4, 3, cork);
+            }
+            else if (kind == ItemKind.ThrowingKnife)
+            {
+                Color32 blade = new Color32(176, 184, 194, 255);
+                Color32 edge = new Color32(228, 234, 240, 255);
+                Color32 grip = new Color32(96, 68, 40, 255);
+                FillRect(texture, 9, 8, 3, 12, blade);      // 날
+                FillRect(texture, 10, 10, 1, 9, edge);
+                FillRect(texture, 8, 4, 5, 4, grip);        // 손잡이
+            }
+            else if (kind == ItemKind.RecallScroll)
+            {
+                Color32 paper = new Color32(212, 196, 158, 255);
+                Color32 shadow = new Color32(168, 150, 112, 255);
+                Color32 band = new Color32(122, 92, 49, 255);
+                Color32 rune = new Color32(84, 211, 197, 255);
+                FillRect(texture, 5, 4, 10, 14, paper);     // 말린 종이
+                FillRect(texture, 5, 4, 2, 14, shadow);
+                FillRect(texture, 5, 10, 10, 2, band);      // 묶음 띠
+                FillRect(texture, 9, 6, 2, 2, rune);        // 귀환 문양
+                FillRect(texture, 9, 14, 2, 2, rune);
+            }
             else
             {
                 Color32 shell = new Color32(43, 47, 52, 255);

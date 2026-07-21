@@ -15,11 +15,15 @@ namespace ProjectC.Core
         public int roomSize;
         public int floorCount;
         public int elevationsPerFloor;
+        public int stageIndex = 1;
         public int currentFloorIndex;
         public int hp;
         public int potions;
         public int bombs;
         public int frostBombs;
+        public int oilFlasks;
+        public int knives;
+        public int scrolls;
         public int kills;
         public int deepestFloorIndex;
     }

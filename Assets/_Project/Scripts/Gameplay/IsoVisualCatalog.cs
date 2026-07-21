@@ -65,7 +65,10 @@ namespace ProjectC.Gameplay
         public Sprite frostBomb;
 
         public Sprite ItemFor(ItemKind kind) =>
-            kind == ItemKind.Potion ? potion : kind == ItemKind.FrostBomb ? frostBomb : bomb;
+            kind == ItemKind.Potion ? potion
+            : kind == ItemKind.FrostBomb ? frostBomb
+            : kind == ItemKind.Bomb ? bomb
+            : null; // 미등록 종류는 런타임 임시 아트로 폴백
 
         public Sprite TileFor(TileKind kind, int elevation)
         {

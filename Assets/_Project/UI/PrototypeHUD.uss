@@ -835,3 +835,100 @@
     white-space: normal;
     margin-bottom: 1px;
 }
+
+/* ── 인벤토리 화면 ───────────────────────────────────── */
+
+.inventory-card {
+    width: 380px;
+}
+
+.inventory-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.inventory-slot {
+    width: 76px;
+    height: 84px;
+    margin: 4px;
+    padding: 6px 2px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(14, 11, 8, 0.9);
+    border-width: 1px;
+    border-color: var(--bronze);
+    border-radius: 6px;
+}
+
+.inventory-slot:hover {
+    background-color: rgba(40, 32, 22, 0.95);
+}
+
+.inventory-slot.selected {
+    border-color: var(--torch);
+    background-color: rgba(52, 41, 26, 0.98);
+}
+
+.inventory-slot.empty {
+    opacity: 0.35;
+}
+
+.inventory-slot .resource-icon {
+    margin-bottom: 5px;
+}
+
+.inventory-slot-count {
+    color: var(--parchment);
+    font-size: 10px;
+}
+
+.inventory-detail {
+    min-height: 56px;
+    padding: 8px;
+    background-color: rgba(10, 8, 5, 0.75);
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.inventory-detail-name {
+    color: var(--parchment);
+    font-size: 13px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.inventory-detail-desc {
+    color: var(--muted);
+    font-size: 10px;
+    white-space: normal;
+}
+
+.bag-button {
+    -unity-font-style: bold;
+}
+
+/* ── 신규 아이템 아이콘 (M6: 기름/단검/두루마리) ──────── */
+
+.oil-icon {
+    background-color: rgb(96, 82, 34);
+    border-radius: 3px 3px 7px 7px;
+    border-top-width: 2px;
+    border-top-color: rgb(190, 164, 84);
+}
+
+.knife-icon {
+    background-color: rgb(150, 158, 168);
+    border-radius: 1px 6px 1px 6px;
+    border-left-width: 1px;
+    border-left-color: rgb(220, 226, 234);
+}
+
+.scroll-icon {
+    background-color: rgb(212, 196, 158);
+    border-radius: 5px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-left-color: rgb(122, 92, 49);
+    border-right-color: rgb(122, 92, 49);
+}
