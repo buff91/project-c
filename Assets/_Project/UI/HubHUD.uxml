@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="DesignSystem.uss" />
+    <ui:Style src="PrototypeHUD.uss" />
+    <ui:Style src="HubHUD.uss" />
+    <ui:VisualElement name="hub-root" class="hud-root">
+        <ui:VisualElement class="hub-topbar">
+            <ui:VisualElement class="artifact-panel hub-pill">
+                <ui:Label text="캠프" class="hub-caption" />
+                <ui:Label name="hub-gold" text="0G" class="hub-gold" />
+            </ui:VisualElement>
+            <ui:Button name="hub-continue" text="이어하기" class="artifact-panel hub-pill hub-continue" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="status-zone hub-status-zone">
+            <ui:VisualElement class="status-chip feedback-chip">
+                <ui:VisualElement class="chip-dot feedback-dot" />
+                <ui:Label name="hub-status" text="상인·영웅·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-shop-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="상점" class="settings-title" />
+                        <ui:Label text="구매품은 창고로 — 새 판에 반입된다" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="hub-shop-close" text="×" class="settings-close" />
+                </ui:VisualElement>
+                <ui:VisualElement name="hub-shop-list" class="hub-shop-list" />
+                <ui:Label name="hub-shop-feedback" text="" class="hub-feedback" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-hero-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+                <ui:Label name="hub-hero-name" text="" class="gameover-title" />
+                <ui:Label name="hub-hero-desc" text="" class="gameover-detail" />
+                <ui:Label name="hub-hero-stats" text="" class="gameover-detail" />
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="hub-hero-close" text="닫기" class="settings-reset" />
+                    <ui:Button name="hub-hero-action" text="선택" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-stash-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+                <ui:Label text="창고" class="gameover-title" />
+                <ui:Label name="hub-stash-detail" text="" class="gameover-detail hub-stash-detail" />
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="hub-stash-close" text="닫기" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

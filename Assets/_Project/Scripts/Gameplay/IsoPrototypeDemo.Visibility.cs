@@ -27,22 +27,21 @@ namespace ProjectC.Gameplay
                 pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
                 pair.Value.enabled = debugVisible || visible || explored || vertical;
                 float alpha = VisibilityAlpha(pair.Key);
-                // 기름 타일은 갈색조, 젖은 타일은 청색조로 물들여 원소를 보여준다.
+                float dim = ElevationDim(pair.Key);
+                // 원소 상태 타일은 색으로 보여준다: 기름=갈색조, 물=청색조. 높이차 딤을 곱한다.
                 pair.Value.color = tileData.oiled
-                    ? new Color(0.74f, 0.64f, 0.36f, alpha)
+                    ? new Color(0.74f * dim, 0.64f * dim, 0.36f * dim, alpha)
                     : tileData.wet
-                        ? new Color(0.55f, 0.72f, 0.95f, alpha)
-                        : new Color(1f, 1f, 1f, alpha);
+                        ? new Color(0.55f * dim, 0.72f * dim, 0.95f * dim, alpha)
+                        : new Color(dim, dim, dim, alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
+            // 가시성과 함께 높이 딤 틴트도 갱신돼야 하므로 개별 갱신 경로를 그대로 태운다.
             foreach (EnemyAgent enemy in _enemies)
             {
                 if (enemy.Root == null) continue;
-                SetSpriteHierarchyVisible(
-                    enemy.Root,
-                    _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex &&
-                    (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(enemy.State.Position)));
+                ApplyEnemyVisuals(enemy);
             }
 
             foreach (ItemAgent item in _items)
@@ -52,6 +51,8 @@ namespace ProjectC.Gameplay
                     item.Root,
                     _dungeon.Height.FloorIndex(item.Spawn.Position.elevation) == _activeFloorIndex &&
                     (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
+                float itemDim = ElevationDim(item.Spawn.Position);
+                item.Renderer.color = new Color(itemDim, itemDim, itemDim, 1f);
             }
 
             if (_barrelRenderer != null && _barrelExploded)
@@ -160,6 +161,18 @@ namespace ProjectC.Gameplay
         {
             _visibleTiles.Clear();
             _verticalPreviewTiles.Clear();
+
+            // 허브 캠프는 안개 없이 전부 보인다.
+            if (hubMode)
+            {
+                foreach (var pair in _grid.Map.All())
+                {
+                    _visibleTiles.Add(pair.Key);
+                    _exploredTiles.Add(pair.Key);
+                }
+                return;
+            }
+
             if (viewMode == DungeonViewMode.DebugAll) return;
 
             GridPos origin;
@@ -405,7 +418,8 @@ namespace ProjectC.Gameplay
             renderer.sprite = mapped != null ? mapped : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
-            renderer.color = new Color(1f, 1f, 1f, VisibilityAlpha(pos));
+            float wallDim = ElevationDim(pos);
+            renderer.color = new Color(wallDim, wallDim, wallDim, VisibilityAlpha(pos));
             _rearWallRenderers.Add(renderer, pos);
         }
 
@@ -425,11 +439,12 @@ namespace ProjectC.Gameplay
                 SpriteRenderer renderer = pair.Value;
                 float baseAlpha = VisibilityAlpha(pair.Key);
                 bool occludes = fadePlayerOccluders && renderer.enabled &&
-                                SpriteOcclusion.ShouldFade(
-                                    renderer.bounds,
-                                    playerBounds,
-                                    renderer.sortingOrder,
-                                    playerSortingOrder);
+                                (SpriteOcclusion.ShouldFade(
+                                     renderer.bounds,
+                                     playerBounds,
+                                     renderer.sortingOrder,
+                                     playerSortingOrder) ||
+                                 HigherElevationOverlapsPlayer(pair.Key, renderer.bounds, playerBounds));
                 ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
             }
 
@@ -439,13 +454,28 @@ namespace ProjectC.Gameplay
                 if (renderer == null) continue;
                 float baseAlpha = VisibilityAlpha(pair.Value);
                 bool occludes = fadePlayerOccluders && renderer.enabled &&
-                                SpriteOcclusion.ShouldFade(
-                                    renderer.bounds,
-                                    playerBounds,
-                                    renderer.sortingOrder,
-                                    playerSortingOrder);
+                                (SpriteOcclusion.ShouldFade(
+                                     renderer.bounds,
+                                     playerBounds,
+                                     renderer.sortingOrder,
+                                     playerSortingOrder) ||
+                                 HigherElevationOverlapsPlayer(pair.Value, renderer.bounds, playerBounds));
                 ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
             }
+        }
+
+        /// <summary>
+        /// 겹치면 내 높이가 메인 — 플레이어보다 높은 elevation(같은 층)의 렌더러가
+        /// 화면상 플레이어 영역과 겹치면 반투명 대상으로 판정한다.
+        /// </summary>
+        private bool HigherElevationOverlapsPlayer(GridPos pos, Bounds bounds, Bounds playerBounds)
+        {
+            if (_playerState == null) return false;
+            GridPos player = _playerState.Position;
+            if (!_dungeon.Height.SameFloor(pos, player) || pos.elevation <= player.elevation)
+                return false;
+            return bounds.max.x > playerBounds.min.x && bounds.min.x < playerBounds.max.x &&
+                   bounds.max.y > playerBounds.min.y && bounds.min.y < playerBounds.max.y;
         }
 
         private void ApplyOcclusionAlpha(
@@ -525,6 +555,19 @@ namespace ProjectC.Gameplay
             else if (floor != _activeFloorIndex && _verticalPreviewTiles.Contains(pos))
                 world.y += (floor - _activeFloorIndex) * playAdjacentFloorSeparation;
             return world;
+        }
+
+        /// <summary>
+        /// 같은 층 안에서 플레이어와 elevation 이 다른 칸은 살짝 어둡게 —
+        /// "내 높이가 활성"임을 보여준다. (전투/사격은 elevation 일치 요구)
+        /// </summary>
+        private float ElevationDim(GridPos pos)
+        {
+            if (viewMode == DungeonViewMode.DebugAll || _playerState == null || _dungeon == null)
+                return 1f;
+            if (!_dungeon.Height.SameFloor(pos, _playerState.Position))
+                return 1f;
+            return pos.elevation == _playerState.Position.elevation ? 1f : 0.78f;
         }
 
         private float VisibilityAlpha(GridPos pos)

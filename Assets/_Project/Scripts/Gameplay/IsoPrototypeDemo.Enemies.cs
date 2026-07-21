@@ -251,7 +251,9 @@ namespace ProjectC.Gameplay
             GridPos pos = enemy.State.Position;
             enemy.Root.transform.position = _grid.GridToWorld(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
-            enemy.Renderer.color = EnemyTint(enemy.State);
+            float dim = ElevationDim(pos);
+            Color tint = EnemyTint(enemy.State);
+            enemy.Renderer.color = new Color(tint.r * dim, tint.g * dim, tint.b * dim, tint.a);
             bool visibleToPlayer =
                 _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex &&
                 (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(pos));

@@ -1,7 +1,17 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProjectC.Core
 {
+    /// <summary>원거리 공격이 성립하지 않는 이유 (피드백/접근 판단용).</summary>
+    public enum RangedBlockReason
+    {
+        None = 0,
+        OutOfRange,
+        Blocked,
+        ElevationMismatch
+    }
+
     /// <summary>
     /// 전투 참가자의 순수 로직 상태. 위치·HP·공격력만 소유하며 연출은 Gameplay에서 담당한다.
     /// </summary>
@@ -99,6 +109,75 @@ namespace ProjectC.Core
                 return false;
 
             damage = target.TakeDamage(attackPower ?? attacker.AttackPower);
+            return true;
+        }
+
+        /// <summary>이 칸에서 target 을 쏠 수 있는가 — 같은 elevation·사거리·시야선. (SPD식 접근 사격의 판정 코어)</summary>
+        public static bool CanFireFrom(GridMap map, GridPos from, GridPos target, int maxRange)
+        {
+            return map != null &&
+                   from != target &&
+                   from.elevation == target.elevation &&
+                   from.ManhattanTo(target) <= maxRange &&
+                   HasLineOfSight(map, from, target);
+        }
+
+        /// <summary>원거리가 안 되는 첫 번째 이유. 높이 > 사거리 > 시야선 순으로 진단한다.</summary>
+        public static RangedBlockReason DiagnoseRanged(GridMap map, GridPos from, GridPos target, int maxRange)
+        {
+            if (from.elevation != target.elevation) return RangedBlockReason.ElevationMismatch;
+            if (from.ManhattanTo(target) > maxRange) return RangedBlockReason.OutOfRange;
+            if (!HasLineOfSight(map, from, target)) return RangedBlockReason.Blocked;
+            return RangedBlockReason.None;
+        }
+
+        /// <summary>
+        /// 사격 가능 위치까지의 최단 경로를 찾는다. 이미 쏠 수 있으면 true + 빈 경로.
+        /// 후보는 target 주변 사거리 다이아몬드(같은 elevation·시야선·걷기 가능)로 한정하고,
+        /// 동률이면 target 근접 → x → y 순으로 결정적으로 고른다.
+        /// </summary>
+        public static bool FindFiringPosition(
+            GridMap map,
+            GridPos shooter,
+            GridPos target,
+            int maxRange,
+            out List<GridPos> firingPath,
+            Func<GridPos, bool> isBlocked = null)
+        {
+            firingPath = new List<GridPos>();
+            if (map == null || maxRange < 1) return false;
+            if (CanFireFrom(map, shooter, target, maxRange)) return true;
+
+            List<GridPos> best = null;
+            GridPos bestPos = default;
+            for (int dx = -maxRange; dx <= maxRange; dx++)
+            for (int dy = -(maxRange - Math.Abs(dx)); dy <= maxRange - Math.Abs(dx); dy++)
+            {
+                var candidate = new GridPos(target.x + dx, target.y + dy, target.elevation);
+                if (candidate == target || candidate == shooter) continue;
+                if (!map.IsWalkable(candidate)) continue;
+                if (isBlocked != null && isBlocked(candidate)) continue;
+                if (!CanFireFrom(map, candidate, target, maxRange)) continue;
+
+                List<GridPos> path = GridPathfinder.FindPath(map, shooter, candidate, isBlocked);
+                if (path.Count < 2) continue;
+
+                bool better = best == null ||
+                              path.Count < best.Count ||
+                              (path.Count == best.Count &&
+                               (candidate.ManhattanTo(target) < bestPos.ManhattanTo(target) ||
+                                (candidate.ManhattanTo(target) == bestPos.ManhattanTo(target) &&
+                                 (candidate.x < bestPos.x ||
+                                  (candidate.x == bestPos.x && candidate.y < bestPos.y)))));
+                if (better)
+                {
+                    best = path;
+                    bestPos = candidate;
+                }
+            }
+
+            if (best == null) return false;
+            firingPath = best;
             return true;
         }
 

@@ -1,0 +1,78 @@
+.hub-topbar {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    right: 12px;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.hub-pill {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 14px;
+}
+
+.hub-caption {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-right: 8px;
+}
+
+.hub-gold {
+    color: rgb(255, 213, 84);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.hub-continue {
+    color: rgb(238, 244, 230);
+    font-size: 12px;
+    display: none;
+}
+
+.hub-continue.is-available {
+    display: flex;
+}
+
+.hub-status-zone {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    align-items: center;
+}
+
+.hub-shop-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.hub-shop-item {
+    width: 31%;
+    margin: 1%;
+    padding: 8px 4px;
+    font-size: 10px;
+    background-color: rgb(34, 28, 18);
+    color: rgb(233, 220, 192);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgb(74, 58, 34);
+    white-space: normal;
+}
+
+.hub-shop-item:hover {
+    background-color: rgb(50, 40, 26);
+}
+
+.hub-feedback {
+    color: rgb(255, 213, 84);
+    font-size: 10px;
+    min-height: 12px;
+}
+
+.hub-stash-detail {
+    white-space: normal;
+}

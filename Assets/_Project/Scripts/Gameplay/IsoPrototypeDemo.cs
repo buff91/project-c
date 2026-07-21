@@ -64,6 +64,10 @@ namespace ProjectC.Gameplay
         [Tooltip("한 판에 완주해야 하는 던전 수. 각 던전의 최심층 출구가 다음 던전으로 이어진다.")]
         [Range(1, 5)] public int stageCount = 3;
 
+        [Header("허브 모드")]
+        [Tooltip("켜면 던전 대신 허브 캠프(상인/영웅/창고/포탈)를 만든다. Hub 씬 전용.")]
+        public bool hubMode;
+
         [Header("M3 다층 던전")]
         [Range(2, 5)] public int floorCount = 3;
         [Range(3, 6)] public int elevationsPerFloor = 4;
@@ -152,6 +156,8 @@ namespace ProjectC.Gameplay
         public event System.Action<RunSummary> RunEnded;
         /// <summary>던전 출구 도착 — HUD 가 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
         public event System.Action ExitChoiceRequested;
+        /// <summary>허브 상호작용 — id: "merchant" | "stash" | "hero:{heroId}".</summary>
+        public event System.Action<string> HubInteractionRequested;
 
         private GridManager _grid;
         private IsoTapInput _input;
@@ -187,6 +193,10 @@ namespace ProjectC.Gameplay
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
+        private readonly Dictionary<GridPos, string> _hubInteractables =
+            new Dictionary<GridPos, string>();
+        private readonly Dictionary<string, SpriteRenderer> _hubHeroProps =
+            new Dictionary<string, SpriteRenderer>();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -250,7 +260,7 @@ namespace ProjectC.Gameplay
 
             // 이어하기: 저장된 seed/규격으로 같은 던전을 재생성하고 해당 층 입구에서 시작한다.
             RunSaveData continueData = null;
-            if (Application.isPlaying && RunSaveStore.ContinueRequested)
+            if (Application.isPlaying && !hubMode && RunSaveStore.ContinueRequested)
             {
                 RunSaveStore.ContinueRequested = false;
                 if (RunSaveStore.TryLoad(out continueData))
@@ -303,7 +313,7 @@ namespace ProjectC.Gameplay
             CreateActorsAndProps();
             if (continueData != null)
                 ApplyContinueData(continueData);
-            else if (Application.isPlaying && _hero != null && _stageIndex == 1)
+            else if (Application.isPlaying && !hubMode && _hero != null && _stageIndex == 1)
             {
                 // 시작 키트는 첫 던전에서만 — 던전 전환은 ApplyCarriedState 가 이월한다.
                 if (_hero.StartPotions > 0) _inventory.Add(ItemKind.Potion, _hero.StartPotions);
@@ -474,7 +484,7 @@ namespace ProjectC.Gameplay
         /// <summary>층 도착 시점의 체크포인트 저장. 판이 끝났으면 저장하지 않는다.</summary>
         private void SaveCheckpoint()
         {
-            if (!Application.isPlaying || _runSummary.Ended ||
+            if (!Application.isPlaying || hubMode || _runSummary.Ended ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
 
@@ -519,6 +529,15 @@ namespace ProjectC.Gameplay
 
         private void BuildRoomData()
         {
+            if (hubMode)
+            {
+                _dungeon = HubLayout.Build(_grid.Map);
+                _activeFloorIndex = 0;
+                _runSummary = new RunSummary();
+                UpdateInputFloorRange();
+                return;
+            }
+
             _dungeon = DungeonGenerator.Generate(
                 _grid.Map,
                 roomSize,
@@ -592,6 +611,26 @@ namespace ProjectC.Gameplay
             Sprite barrelSprite = visualCatalog != null && visualCatalog.explosiveBarrel != null
                 ? visualCatalog.explosiveBarrel
                 : GetBarrelSprite();
+
+            if (hubMode)
+            {
+                // 허브: 폭발통 대신 캠프 프롭(상인/영웅/창고/포탈/모닥불)을 세운다.
+                _barrelExploded = true; // 폭발통 분기 비활성
+                CreateHubProps();
+                _playerHpFill = CreateHealthBar(_player, "Player HP");
+                UpdateHealthBar(_playerHpFill, _playerState);
+                _selection = new GameObject("Selection Marker");
+                _selection.transform.SetParent(_visualRoot, false);
+                var hubSelection = _selection.AddComponent<SpriteRenderer>();
+                hubSelection.sprite = visualCatalog != null && visualCatalog.selection != null
+                    ? visualCatalog.selection
+                    : GetSelectionSprite();
+                hubSelection.sortingOrder = _grid.iso.SortingOrder(_playerPos, -1);
+                _selection.transform.position = _grid.GridToWorld(_playerPos);
+                _selectionPos = _playerPos;
+                RefreshFloorVisibility();
+                return;
+            }
 
             // 생성기가 배치한 스폰대로 모든 층의 적과 아이템을 만든다.
             // 몬스터 종류는 깊이 비례 혼합 — 스탯·혼합표는 MonsterRoster 한 곳에서. (M5)
@@ -942,6 +981,14 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            // 허브: NPC/오브젝트 탭 → 옆까지 걸어가 상호작용.
+            if (hubMode && _hubInteractables.TryGetValue(target, out string hubId))
+            {
+                if (TryFindApproach(target, out List<GridPos> hubPath))
+                    StartPlayerAction(target, ApproachAndInteract(hubPath, target, hubId));
+                return;
+            }
+
             // 적 판정을 문/구멍보다 먼저: 열린 문 위에 선 적을 탭하면 공격이지
             // 문 토글이 아니다. 시야 밖(explored 기억)의 적은 이동 탭으로만 취급.
             EnemyAgent tappedEnemy = FindLivingEnemyAt(target);
@@ -1112,8 +1159,44 @@ namespace ProjectC.Gameplay
             }
             else
             {
-                bool blocked = !CombatRules.HasLineOfSight(_grid.Map, _playerPos, enemy.State.Position);
-                InteractionFeedback?.Invoke(blocked ? "SHOT BLOCKED" : $"OUT OF RANGE · MAX {rangedAttackRange}");
+                // 쏠 수 없으면 사격 가능 위치까지 접근한다 (SPD식). 탭당 1스텝 규칙 유지.
+                RangedBlockReason reason = CombatRules.DiagnoseRanged(
+                    _grid.Map, _playerPos, enemy.State.Position, rangedAttackRange);
+                if (!CombatRules.FindFiringPosition(
+                        _grid.Map, _playerPos, enemy.State.Position, rangedAttackRange,
+                        out List<GridPos> firingPath,
+                        pos => pos != _playerPos &&
+                               (IsLivingEnemyAt(pos) || _grid.Map.Get(pos)?.kind == TileKind.WeakFloor)))
+                {
+                    InteractionFeedback?.Invoke("사선을 잡을 위치가 없다");
+                    yield break;
+                }
+
+                InteractionFeedback?.Invoke(reason switch
+                {
+                    RangedBlockReason.ElevationMismatch => "높이가 다르다 — 계단으로 접근한다",
+                    RangedBlockReason.Blocked => "사선이 막혔다 — 접근한다",
+                    _ => $"사거리 밖(MAX {rangedAttackRange}) — 접근한다"
+                });
+
+                int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), firingPath.Count - 1);
+                if (allowedSteps < firingPath.Count - 1)
+                    firingPath.RemoveRange(allowedSteps + 1, firingPath.Count - allowedSteps - 1);
+                yield return MovePlayerPath(firingPath);
+
+                // 접근이 끝난 그 탭에서 조건이 갖춰졌으면 즉시 발사.
+                if (_playerState.IsAlive && enemy.State.IsAlive &&
+                    CombatRules.TryRanged(
+                        _playerState, enemy.State, _grid.Map, rangedAttackRange,
+                        out int approachDamage, rangedAttackDamage))
+                {
+                    yield return AnimateProjectile(_playerPos, enemy.State.Position);
+                    InteractionFeedback?.Invoke($"RANGED HIT · {approachDamage} DAMAGE");
+                    yield return ShowEnemyHit(enemy, approachDamage, "Ranged");
+                    if (!enemy.State.IsAlive)
+                        InteractionFeedback?.Invoke("ENEMY DEFEATED");
+                    yield return ResolveEnemyPhase();
+                }
             }
         }
 
@@ -1452,6 +1535,13 @@ namespace ProjectC.Gameplay
                 ConfigureCamera(Camera.main);
                 TryCollectItemAt(next);
 
+                // 허브 포탈은 밟는 순간 출발한다.
+                if (hubMode && next == HubLayout.Portal)
+                {
+                    StartRunFromHub();
+                    yield break;
+                }
+
                 // 약한 바닥은 밟는 순간 무너진다 — 낙하로 경로가 무효화된다. (GDD §5.3)
                 if (_grid.Map.Get(next)?.kind == TileKind.WeakFloor)
                 {
@@ -1679,6 +1769,77 @@ namespace ProjectC.Gameplay
             }
         }
 
+        // ── 허브 캠프 ─────────────────────────────────────────
+
+        /// <summary>캠프 프롭 생성: 상인/영웅 3명/창고/포탈/모닥불. 탭 상호작용 좌표도 등록한다.</summary>
+        private void CreateHubProps()
+        {
+            _hubInteractables.Clear();
+            _hubHeroProps.Clear();
+
+            CreateHubProp("Campfire", GetHubPropSprite("campfire"), HubLayout.Campfire);
+            CreateHubProp("Portal", GetHubPropSprite("portal"), HubLayout.Portal);
+
+            var merchant = CreateHubProp("Merchant", GetCharacterSprite(true), HubLayout.Merchant);
+            merchant.color = new Color32(232, 200, 120, 255);
+            _hubInteractables[HubLayout.Merchant] = "merchant";
+
+            CreateHubProp("Stash", GetHubPropSprite("stash"), HubLayout.Stash);
+            _hubInteractables[HubLayout.Stash] = "stash";
+
+            for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
+            {
+                HeroArchetype hero = HeroRoster.All[i];
+                var prop = CreateHubProp(
+                    $"Hero {hero.Id}", GetCharacterSprite(false), HubLayout.HeroPositions[i]);
+                _hubInteractables[HubLayout.HeroPositions[i]] = $"hero:{hero.Id}";
+                _hubHeroProps[hero.Id] = prop;
+            }
+
+            RefreshHubHeroLocks();
+        }
+
+        private SpriteRenderer CreateHubProp(string objectName, Sprite sprite, GridPos pos)
+        {
+            CreateStandingSprite(objectName, sprite, pos, out SpriteRenderer renderer);
+            return renderer;
+        }
+
+        /// <summary>잠긴 영웅은 회색, 선택된 영웅은 밝은 금색 틴트. 해금/선택 후 HUD 가 호출.</summary>
+        public void RefreshHubHeroLocks()
+        {
+            if (!hubMode) return;
+            MetaSaveData meta = MetaStore.LoadOrNew();
+            foreach (KeyValuePair<string, SpriteRenderer> pair in _hubHeroProps)
+            {
+                HeroArchetype hero = HeroRoster.ById(pair.Key);
+                bool unlocked = hero.UnlockCost <= 0 || meta.IsHeroUnlocked(hero.Id);
+                bool selected = (HeroSelection.SelectedId ?? HeroRoster.All[0].Id) == hero.Id;
+                pair.Value.color = !unlocked
+                    ? (Color)new Color32(96, 100, 104, 255)
+                    : selected
+                        ? (Color)new Color32(255, 226, 150, 255)
+                        : Color.white;
+            }
+        }
+
+        /// <summary>NPC/오브젝트 옆까지 걸어간 뒤 상호작용 이벤트를 쏜다. (허브 전용)</summary>
+        private IEnumerator ApproachAndInteract(IReadOnlyList<GridPos> path, GridPos target, string id)
+        {
+            yield return MovePlayerPath(path);
+            if (_playerState.IsAlive && IsPlayerAdjacentTo(target))
+                HubInteractionRequested?.Invoke(id);
+        }
+
+        /// <summary>포탈 도착 — 새 판 시작. (허브의 "새로 시작")</summary>
+        private void StartRunFromHub()
+        {
+            RunSaveStore.Clear();
+            RunSaveStore.ContinueRequested = false;
+            InteractionFeedback?.Invoke("던전으로 내려간다…");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("IsoPrototype");
+        }
+
         /// <summary>던전 체인 좌표계: 스테이지 누적 깊이(몬스터 혼합용, 0부터 증가).</summary>
         private int GlobalDepth(int floorIndex) => (_stageIndex - 1) * floorCount - floorIndex;
 
@@ -1691,7 +1852,7 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void TryDeclareVictory()
         {
-            if (_runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
+            if (hubMode || _runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
             if (_activeFloorIndex != _dungeon.BottomFloorIndex) return;
 
             if (_stageIndex < stageCount)

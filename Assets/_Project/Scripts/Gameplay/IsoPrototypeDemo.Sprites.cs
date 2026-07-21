@@ -729,6 +729,50 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>허브 캠프 프롭 임시 아트: campfire / stash / portal.</summary>
+        private Sprite GetHubPropSprite(string kind)
+        {
+            string key = $"hub-{kind}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(28, 32);
+            if (kind == "campfire")
+            {
+                Color32 wood = new Color32(96, 66, 36, 255);
+                Color32 flame = new Color32(255, 150, 48, 255);
+                Color32 flameCore = new Color32(255, 220, 96, 255);
+                FillRect(texture, 6, 2, 16, 4, wood);       // 장작
+                FillRect(texture, 9, 6, 10, 10, flame);     // 불꽃
+                FillRect(texture, 11, 8, 6, 10, flameCore);
+                FillRect(texture, 13, 18, 2, 4, flame);     // 불티
+            }
+            else if (kind == "stash")
+            {
+                Color32 chest = new Color32(110, 76, 40, 255);
+                Color32 lid = new Color32(140, 100, 54, 255);
+                Color32 band = new Color32(200, 156, 60, 255);
+                FillRect(texture, 4, 2, 20, 10, chest);     // 몸통
+                FillRect(texture, 4, 12, 20, 6, lid);       // 뚜껑
+                FillRect(texture, 12, 2, 4, 16, band);      // 금속 띠
+                FillRect(texture, 13, 8, 2, 3, band);       // 자물쇠
+            }
+            else // portal
+            {
+                Color32 rim = new Color32(84, 211, 197, 255);
+                Color32 core = new Color32(24, 60, 66, 255);
+                Color32 swirl = new Color32(150, 240, 230, 255);
+                FillRect(texture, 6, 2, 16, 26, rim);       // 게이트 테두리
+                FillRect(texture, 9, 5, 10, 20, core);      // 심연
+                FillRect(texture, 12, 9, 4, 4, swirl);      // 소용돌이
+                FillRect(texture, 14, 17, 3, 3, swirl);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.02f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetMonsterSprite(string archetypeId)
         {
             switch (archetypeId)

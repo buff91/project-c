@@ -495,7 +495,7 @@ namespace ProjectC.Gameplay
 
         private void GoToMainMenu()
         {
-            SceneManager.LoadScene("MainMenu");
+            SceneManager.LoadScene("Hub");
         }
 
         // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.

@@ -27,9 +27,7 @@ namespace ProjectC.Core
             IReadOnlyList<ItemSpawn> items,
             IReadOnlyList<GridPos> doors)
         {
-            if (enemySpawns == null || enemySpawns.Count == 0)
-                throw new ArgumentException("층마다 적 스폰이 하나 이상 필요합니다.", nameof(enemySpawns));
-
+            // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
             Entry = entry;
             UpStairs = upStairs;
