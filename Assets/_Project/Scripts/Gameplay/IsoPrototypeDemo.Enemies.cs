@@ -13,7 +13,9 @@ namespace ProjectC.Gameplay
     public partial class IsoPrototypeDemo
     {
         private const int TrickleSpawnIntervalTurns = 12;
-        private const int ActiveFloorMonsterCap = 4;
+
+        /// <summary>진행 중 추가 스폰 상한. 층이 커지면 생성기 밀도 보정과 같이 올라간다.</summary>
+        private int ActiveFloorMonsterCap => 4 + DungeonGenerator.AreaSpawnBonus(roomSize, roomSize);
 
         private readonly List<EnemyAgent> _enemyTurnOrder = new List<EnemyAgent>();
         private bool _enemyPhaseMapChanged;

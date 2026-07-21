@@ -34,14 +34,15 @@ namespace ProjectC.Gameplay
         public const int PixelsPerUnit = 64;
 
         [Header("프로토타입")]
-        [Range(9, 14)] public int roomSize = 11;
+        [Tooltip("층 한 변 크기. 키우면 방·복도가 넓어지고 적/아이템 밀도가 면적 비례로 따라 오른다.")]
+        [Range(9, 20)] public int roomSize = 13;
         [Range(0.03f, 0.3f)] public float secondsPerStep = 0.09f;
         public bool buildOnStart = true;
         public bool configureMainCamera = true;
 
         [Header("카메라 구도")]
         [Range(4f, 7f)] public float playCameraSize = 5.2f;
-        [Range(7f, 11f)] public float debugCameraSize = 8.8f;
+        [Range(7f, 16f)] public float debugCameraSize = 8.8f;
 
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;

@@ -150,7 +150,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e54ee2be1ad040ae98ea47933473c0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoPrototypeDemo
-  roomSize: 11
+  roomSize: 13
   secondsPerStep: 0.09
   buildOnStart: 1
   configureMainCamera: 1
@@ -165,6 +165,8 @@ MonoBehaviour:
   bombDamage: 3
   frostBombDamage: 1
   bombThrowRange: 4
+  knifeDamage: 3
+  stageCount: 3
   floorCount: 3
   elevationsPerFloor: 4
   dungeonSeed: 1977

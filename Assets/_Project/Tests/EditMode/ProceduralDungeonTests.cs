@@ -172,6 +172,51 @@ namespace ProjectC.Tests
                 "출구 계단은 층간 링크가 없다 — 링크 없음이 곧 던전 전환 신호다");
         }
 
+        [TestCase(11, 11, 0)]
+        [TestCase(13, 13, 0)]
+        [TestCase(14, 14, 1)]
+        [TestCase(16, 16, 2)]
+        [TestCase(20, 20, 4)]
+        public void AreaSpawnBonus_ScalesWithFloorArea(int width, int height, int expected)
+        {
+            Assert.AreEqual(expected, DungeonGenerator.AreaSpawnBonus(width, height));
+        }
+
+        [Test]
+        public void LargerFloors_ScaleSpawnDensity_AndStayReachable([Range(1, 15)] int seed)
+        {
+            int CountEnemies(DungeonLayout dungeon)
+            {
+                int total = 0;
+                foreach (DungeonFloorInfo floor in dungeon.Floors)
+                    total += floor.EnemySpawns.Count;
+                return total;
+            }
+
+            var smallMap = new GridMap();
+            DungeonLayout small = DungeonGenerator.Generate(smallMap, 11, 11, 3, 4, seed);
+            var bigMap = new GridMap();
+            DungeonLayout big = DungeonGenerator.Generate(bigMap, 20, 20, 3, 4, seed);
+
+            Assert.Greater(CountEnemies(big), CountEnemies(small),
+                "큰 층은 면적 비례로 적이 더 많아야 한다");
+
+            // 문을 다 열면 입구에서 모든 적 스폰과 계단에 닿아야 한다 (큰 층 도달성).
+            foreach (DungeonFloorInfo floor in big.Floors)
+            foreach (GridPos door in floor.Doors)
+                bigMap.Set(door, TileKind.DoorOpen);
+            foreach (DungeonFloorInfo floor in big.Floors)
+            {
+                foreach (GridPos spawn in floor.EnemySpawns)
+                    Assert.Greater(GridPathfinder.FindPath(bigMap, big.Entry, spawn).Count, 0,
+                        $"seed {seed}: {spawn} 도달 불가");
+                if (floor.DownStairs.HasValue)
+                    Assert.Greater(
+                        GridPathfinder.FindPath(bigMap, big.Entry, floor.DownStairs.Value).Count, 0,
+                        $"seed {seed}: 하행 계단 도달 불가");
+            }
+        }
+
         [Test]
         public void MinimumSize_NineByNine_StillSatisfiesInvariants([Range(1, 10)] int seed)
         {

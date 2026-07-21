@@ -150,6 +150,7 @@ namespace ProjectC.Core
             var p = new FloorPlan
             {
                 Width = width,
+                Height = height,
                 FloorIndex = -depth
             };
             p.BaseElevation = heightModel.Elevation(p.FloorIndex);
@@ -325,7 +326,7 @@ namespace ProjectC.Core
             }
 
             int depth = -p.FloorIndex;
-            int desired = 1 + random.Next(0, 2) + depth / 2;
+            int desired = 1 + random.Next(0, 2) + depth / 2 + AreaSpawnBonus(p.Width, p.Height);
             p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
 
             // 하행 계단 경비병: 완주 동선(남쪽 방→하행 계단)이 전투를 완전히
@@ -408,10 +409,17 @@ namespace ProjectC.Core
                 if (IsFree(pos)) scatter.Add(pos);
             }
 
-            int scatterCount = 1 + random.Next(0, 2);
+            int scatterCount = 1 + random.Next(0, 2) + AreaSpawnBonus(p.Width, p.Height) / 2;
             foreach (GridPos pos in TakeRandom(scatter, scatterCount, random))
                 p.Items.Add(new ItemSpawn(pos, RollKind()));
         }
+
+        /// <summary>
+        /// 면적 비례 스폰 보정. 기준 11×11(=121)에서 0, 약 60칸 늘 때마다 +1 —
+        /// 층을 키웠을 때 방이 텅 비지 않게 적/아이템 밀도를 따라 올린다.
+        /// </summary>
+        public static int AreaSpawnBonus(int width, int height) =>
+            Math.Max(0, (width * height - 121) / 60);
 
         /// <summary>후보 목록에서 서로 다른 위치를 최대 count개 뽑는다. 목록은 소모된다.</summary>
         private static List<GridPos> TakeRandom(List<GridPos> pool, int count, Random random)
@@ -430,6 +438,7 @@ namespace ProjectC.Core
         private sealed class FloorPlan
         {
             public int Width;
+            public int Height;
             public int FloorIndex;
             public int BaseElevation;
             public int LeftMaxX;
