@@ -59,6 +59,10 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: return 10;
                 case ItemKind.ThrowingKnife: return 10;
                 case ItemKind.RecallScroll: return 25;
+                // 조합 재료 — 재료로 만드는 쪽이 완제품 구매보다 싸게 유지한다.
+                case ItemKind.Herb: return 6;
+                case ItemKind.BlastPowder: return 8;
+                case ItemKind.FrostShard: return 5;
                 default: return 0;
             }
         }
