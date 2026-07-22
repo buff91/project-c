@@ -46,7 +46,7 @@ namespace ProjectC.Gameplay
         private Label _statusLabel;
         private Label _verticalHintLabel;
         private Label _hpValueLabel;
-        private VisualElement _hpLiquid;
+        private VisualElement _hpHearts;
         private VisualElement _gameoverOverlay;
         private Label _gameoverTitle;
         private Label _gameoverCause;
@@ -223,7 +223,7 @@ namespace ProjectC.Gameplay
             _frostCountLabel = root.Q<Label>("frost-count");
             _settingsModal = root.Q<VisualElement>("settings-modal");
             _hpValueLabel = root.Q<Label>("hp-value");
-            _hpLiquid = root.Q<VisualElement>("hp-liquid");
+            _hpHearts = root.Q<VisualElement>("hp-hearts");
             _gameoverOverlay = root.Q<VisualElement>("gameover-overlay");
             _gameoverTitle = root.Q<Label>("gameover-title");
             _gameoverCause = root.Q<Label>("gameover-cause");
@@ -461,8 +461,14 @@ namespace ProjectC.Gameplay
             CombatantState state = demo != null ? demo.PlayerState : null;
             if (_hpValueLabel != null)
                 _hpValueLabel.text = state != null ? $"{state.Hp}/{state.MaxHp}" : "--/--";
-            if (_hpLiquid != null && state != null)
-                _hpLiquid.style.height = Length.Percent(100f * state.Hp / state.MaxHp);
+            if (_hpHearts == null || state == null) return;
+
+            int heartCount = _hpHearts.childCount;
+            for (int i = 0; i < heartCount; i++)
+            {
+                bool filled = state.Hp * heartCount > i * state.MaxHp;
+                _hpHearts[i].EnableInClassList("is-empty", !filled);
+            }
         }
 
         // ── 게임 메뉴 / 대기 / 액션 휠 ──────────────────────
@@ -560,6 +566,9 @@ namespace ProjectC.Gameplay
             {
                 var button = new Button { name = $"wheel-{i}" };
                 button.AddToClassList("wheel-button");
+                var label = new Label { name = $"wheel-label-{i}" };
+                label.AddToClassList("wheel-button-label");
+                button.Add(label);
                 _actionWheel.Add(button);
             }
         }
@@ -604,7 +613,8 @@ namespace ProjectC.Gameplay
             {
                 var button = (Button)_actionWheel[i];
                 WheelSlot slot = slots[i];
-                button.text = slot.Label;
+                Label label = button.Q<Label>($"wheel-label-{i}");
+                if (label != null) label.text = slot.Label;
                 button.SetEnabled(slot.Enabled);
                 button.clickable = new Clickable(() =>
                 {

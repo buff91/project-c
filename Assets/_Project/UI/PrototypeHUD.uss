@@ -1127,3 +1127,273 @@
     height: 20px;
     flex-shrink: 0;
 }
+
+/* ── Torchstone v2 art-direction convergence ────────────────
+   기준: docs/art-direction/project-c-artstyle-concept-v1.png
+   기존 레이아웃의 기능은 유지하되 브라운 라운드 패널/벡터 도형을 제거한다. */
+
+.hud-root {
+    color: var(--pc-text);
+}
+
+.artifact-panel {
+    background-color: var(--pc-panel);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.vitals {
+    left: 10px;
+    top: 10px;
+    width: auto;
+}
+
+.hp-strip,
+.hp-hearts {
+    flex-direction: row;
+    align-items: center;
+}
+
+.pc-heart {
+    background-image: url("../Art/Runtime/ui-heart-full.png");
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 4px;
+}
+
+.pc-heart.is-empty {
+    background-image: url("../Art/Runtime/ui-heart-empty.png");
+}
+
+.hp-value {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    margin-left: 4px;
+    text-shadow: 1px 1px 0 rgb(0, 0, 0);
+}
+
+.micro-caption,
+.orb-caption,
+.settings-subtitle,
+.setting-help,
+.floor-label,
+.craft-caption {
+    color: var(--pc-dim);
+}
+
+.minimap-panel {
+    width: 160px;
+    padding: 6px;
+}
+
+.minimap-grid,
+.inventory-detail,
+.inventory-slot,
+.craft-row {
+    background-color: var(--pc-inset);
+    border-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.settings-button,
+.rotate-button,
+.mode-button,
+.wait-button {
+    color: var(--pc-ice);
+    background-color: var(--pc-teal-bg);
+    border-radius: 0;
+    border-left-color: var(--pc-teal);
+    border-top-color: var(--pc-teal);
+    border-right-color: var(--pc-teal-bg);
+    border-bottom-color: var(--pc-teal-bg);
+}
+
+.depth-panel {
+    right: 184px;
+    width: 150px;
+    padding: 4px 6px;
+    background-color: rgba(5, 7, 12, 0.72);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.depth-value,
+.turn-label,
+.settings-title,
+.hub-gold {
+    color: var(--pc-gold);
+}
+
+.elevation-label,
+.route-chip .chip-label {
+    color: var(--pc-ice);
+}
+
+.feedback-chip,
+.route-chip {
+    min-height: 22px;
+    border-radius: 0;
+}
+
+.feedback-chip {
+    background-color: var(--pc-action-bg);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-gold-deep);
+    border-top-color: var(--pc-gold-deep);
+    border-right-color: var(--pc-gold-deep);
+    border-bottom-color: var(--pc-gold-deep);
+}
+
+.feedback-chip .chip-label {
+    color: var(--pc-gold);
+}
+
+.route-chip {
+    background-color: var(--pc-teal-bg);
+    border-left-color: var(--pc-teal);
+    border-top-color: var(--pc-teal);
+    border-right-color: var(--pc-teal-bg);
+    border-bottom-color: var(--pc-teal-bg);
+}
+
+.resource-pill,
+.turn-pill {
+    height: 34px;
+    background-color: var(--pc-panel);
+    border-radius: 0;
+}
+
+.potion-icon,
+.bomb-icon,
+.frost-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.potion-icon { background-image: url("../Art/Runtime/item-potion.png"); }
+.bomb-icon { background-image: url("../Art/Runtime/item-bomb.png"); }
+.frost-icon { background-image: url("../Art/Runtime/item-frost-bomb.png"); }
+
+.resource-value,
+.view-label,
+.setting-label,
+.inventory-detail-name,
+.inventory-slot-count,
+.craft-row-label {
+    color: var(--pc-text);
+}
+
+.combat-button,
+.interact-button,
+.settings-done,
+.craft-button {
+    border-radius: 0;
+}
+
+.combat-button {
+    color: var(--pc-gold);
+    background-color: var(--pc-action-bg);
+    border-left-color: var(--pc-gold-deep);
+    border-top-color: var(--pc-gold-deep);
+    border-right-color: var(--pc-gold-deep);
+    border-bottom-color: var(--pc-gold-deep);
+}
+
+.combat-button.ranged {
+    color: var(--pc-ice);
+    background-color: var(--pc-teal-bg);
+    border-left-color: var(--pc-teal);
+    border-top-color: var(--pc-teal);
+    border-right-color: var(--pc-teal-bg);
+    border-bottom-color: var(--pc-teal-bg);
+}
+
+.settings-modal {
+    background-color: rgba(5, 7, 12, 0.82);
+}
+
+.settings-card {
+    background-color: var(--pc-panel-solid);
+    border-left-color: var(--pc-stone-lit);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.settings-reset,
+.settings-close {
+    color: var(--pc-text);
+    background-color: var(--pc-btn-bg);
+    border-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.settings-done,
+.craft-button {
+    color: var(--pc-void);
+    background-color: var(--pc-gold);
+    border-left-color: var(--pc-stone-lit);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-gold-deep);
+    border-bottom-color: var(--pc-gold-deep);
+}
+
+.action-wheel {
+    overflow: visible;
+}
+
+.wheel-button {
+    width: 58px;
+    height: 58px;
+    margin-left: -29px;
+    margin-top: -29px;
+    padding: 0;
+    rotate: 45deg;
+    color: var(--pc-text);
+    background-color: rgb(20, 16, 12);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+    border-left-color: var(--pc-stone-lit);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.wheel-button-label {
+    width: 48px;
+    height: 48px;
+    rotate: -45deg;
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.wheel-button:hover {
+    background-color: var(--pc-action-bg);
+    border-left-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-right-color: var(--pc-gold);
+    border-bottom-color: var(--pc-gold);
+}

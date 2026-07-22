@@ -36,12 +36,29 @@ MonoBehaviour:
   rearWallRisingLeft: {fileID: 21300000, guid: 698634ebef95a4f0390a33286ca14520, type: 3}
   rearWallTorchRisingRight: {fileID: 21300000, guid: e4fee66e8f20847d0afdb8c2b9aecbcd, type: 3}
   rearWallTorchRisingLeft: {fileID: 21300000, guid: 85c190b2bdbd4460f884c2e85b7a710b, type: 3}
-  player: {fileID: -76136354250151179, guid: 9a7db6f28932244c08569ee866a6c93f, type: 3}
-  goblin: {fileID: -6600559419891483580, guid: 346f1350629ea42648029759789b6f9e, type: 3}
-  skeleton: {fileID: 0}
-  slime: {fileID: 0}
-  explosiveBarrel: {fileID: 0}
-  selection: {fileID: 0}
-  potion: {fileID: -5122039910520194202, guid: e81b3efca0d5d40ad9e7b03f3d37cb8e, type: 3}
-  bomb: {fileID: 0}
-  frostBomb: {fileID: 0}
+  player: {fileID: 21300000, guid: 48d2ea6b1bb084f7597ade7612f514f7, type: 3}
+  knight: {fileID: 21300000, guid: 1508ed9030b0d474ba7b9817fc06cfac, type: 3}
+  ranger: {fileID: 21300000, guid: 379fcd188cbc941219ab49f853188ad1, type: 3}
+  alchemist: {fileID: 21300000, guid: f664c6b0a6e0b41d797b10f9e6ea8d48, type: 3}
+  goblin: {fileID: 21300000, guid: 7ff67453ca97d480d88a9ed4421f8a93, type: 3}
+  skeleton: {fileID: 21300000, guid: ab7f344e226794bd89069311fc91b6db, type: 3}
+  slime: {fileID: 21300000, guid: f166d5b1d9cfe4bd58763be1c0de5232, type: 3}
+  merchant: {fileID: 21300000, guid: 3d7833257dfec46fc91f747f23ebb9ab, type: 3}
+  explosiveBarrel: {fileID: 21300000, guid: 4c8099366907c4441ba6cb466d3b2e32, type: 3}
+  hubCampfire: {fileID: 21300000, guid: 0d4841f04d8f249c78fb4baf1c37d8f3, type: 3}
+  hubStash: {fileID: 21300000, guid: 4de93aa50691b462fbe39861ff7be8ed, type: 3}
+  hubPortal: {fileID: 21300000, guid: e4d1ff0e00f914136a4586cb9c473035, type: 3}
+  playerFootprint: {fileID: 21300000, guid: 63e3ddf2470b3425f9a80b064b7dfd7d, type: 3}
+  selection: {fileID: 21300000, guid: e4d063a3610f0444096a92a37d8a4634, type: 3}
+  potion: {fileID: 21300000, guid: a7a56b266ed4a49e3b2234db75fcf583, type: 3}
+  bomb: {fileID: 21300000, guid: 52c7ba7074469415dacd16d036c373a3, type: 3}
+  frostBomb: {fileID: 21300000, guid: 0bec232e238bd45359b4cff188f5c97d, type: 3}
+  oilFlask: {fileID: 21300000, guid: b3f5fccc4a36e4fca8a77d95820a444f, type: 3}
+  throwingKnife: {fileID: 21300000, guid: af979d18de2e6429c80333c1db9aa440, type: 3}
+  recallScroll: {fileID: 21300000, guid: 96a58552a9dd8442bb161b4feac5bcba, type: 3}
+  coinPouch: {fileID: 21300000, guid: 73c4c231a436a4191b85a45323dc6ed2, type: 3}
+  gemstone: {fileID: 21300000, guid: 0384babf161e44f78a4ad32908b94648, type: 3}
+  relic: {fileID: 21300000, guid: 7416c1e74c5ea4cc988605504fdeed43, type: 3}
+  herb: {fileID: 21300000, guid: 873c5028942ac413a84a158986f1654c, type: 3}
+  blastPowder: {fileID: 21300000, guid: 17f6159259c954e9383e8e916f90953d, type: 3}
+  frostShard: {fileID: 21300000, guid: fbbaf6d835b6c460eb1e302189c082b1, type: 3}

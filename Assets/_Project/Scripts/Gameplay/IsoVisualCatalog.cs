@@ -43,11 +43,29 @@ namespace ProjectC.Gameplay
 
         [Header("액터와 소품")]
         public Sprite player;
+        public Sprite knight;
+        public Sprite ranger;
+        public Sprite alchemist;
         public Sprite goblin;
         public Sprite skeleton;
         public Sprite slime;
+        public Sprite merchant;
         public Sprite explosiveBarrel;
+        public Sprite hubCampfire;
+        public Sprite hubStash;
+        public Sprite hubPortal;
+        public Sprite playerFootprint;
         public Sprite selection;
+
+        public Sprite HeroFor(string heroId)
+        {
+            switch (heroId)
+            {
+                case "ranger": return ranger != null ? ranger : player;
+                case "alchemist": return alchemist != null ? alchemist : player;
+                default: return knight != null ? knight : player;
+            }
+        }
 
         public Sprite MonsterFor(string archetypeId)
         {
@@ -63,12 +81,35 @@ namespace ProjectC.Gameplay
         public Sprite potion;
         public Sprite bomb;
         public Sprite frostBomb;
+        public Sprite oilFlask;
+        public Sprite throwingKnife;
+        public Sprite recallScroll;
+        public Sprite coinPouch;
+        public Sprite gemstone;
+        public Sprite relic;
+        public Sprite herb;
+        public Sprite blastPowder;
+        public Sprite frostShard;
 
-        public Sprite ItemFor(ItemKind kind) =>
-            kind == ItemKind.Potion ? potion
-            : kind == ItemKind.FrostBomb ? frostBomb
-            : kind == ItemKind.Bomb ? bomb
-            : null; // 미등록 종류는 런타임 임시 아트로 폴백
+        public Sprite ItemFor(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion: return potion;
+                case ItemKind.Bomb: return bomb;
+                case ItemKind.FrostBomb: return frostBomb;
+                case ItemKind.OilFlask: return oilFlask;
+                case ItemKind.ThrowingKnife: return throwingKnife;
+                case ItemKind.RecallScroll: return recallScroll;
+                case ItemKind.CoinPouch: return coinPouch;
+                case ItemKind.Gemstone: return gemstone;
+                case ItemKind.Relic: return relic;
+                case ItemKind.Herb: return herb;
+                case ItemKind.BlastPowder: return blastPowder;
+                case ItemKind.FrostShard: return frostShard;
+                default: return null;
+            }
+        }
 
         public Sprite TileFor(TileKind kind, int elevation)
         {

@@ -591,9 +591,11 @@ namespace ProjectC.Gameplay
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo activeFloor);
             _playerPos = activeFloor.Entry;
             _playerState = new CombatantState("Player", _playerPos, playerMaxHp, playerAttack);
-            Sprite playerSprite = visualCatalog != null && visualCatalog.player != null
-                ? visualCatalog.player
-                : GetCharacterSprite(false);
+            Sprite playerSprite = visualCatalog != null
+                ? visualCatalog.HeroFor(_hero != null ? _hero.Id : HeroSelection.SelectedId)
+                : null;
+            if (playerSprite == null)
+                playerSprite = GetCharacterSprite(false);
             _player = CreateStandingSprite("Player", playerSprite, _playerPos, out _playerRenderer);
             _playerSorting = _player.AddComponent<GridSortingObject>();
             _playerSorting.grid = _grid;
@@ -612,7 +614,9 @@ namespace ProjectC.Gameplay
             footprint.transform.SetParent(_player.transform, false);
             footprint.transform.localPosition = Vector3.zero;
             var footprintRenderer = footprint.AddComponent<SpriteRenderer>();
-            footprintRenderer.sprite = GetPlayerFootprintSprite();
+            footprintRenderer.sprite = visualCatalog != null && visualCatalog.playerFootprint != null
+                ? visualCatalog.playerFootprint
+                : GetPlayerFootprintSprite();
             footprintRenderer.sortingOrder = 29990;
             _playerFootprint = footprint.transform;
 
@@ -1908,21 +1912,31 @@ namespace ProjectC.Gameplay
             _hubInteractables.Clear();
             _hubHeroProps.Clear();
 
-            CreateHubProp("Campfire", GetHubPropSprite("campfire"), HubLayout.Campfire);
-            CreateHubProp("Portal", GetHubPropSprite("portal"), HubLayout.Portal);
+            Sprite campfire = visualCatalog != null ? visualCatalog.hubCampfire : null;
+            Sprite portal = visualCatalog != null ? visualCatalog.hubPortal : null;
+            Sprite merchantSprite = visualCatalog != null ? visualCatalog.merchant : null;
+            Sprite stash = visualCatalog != null ? visualCatalog.hubStash : null;
 
-            var merchant = CreateHubProp("Merchant", GetCharacterSprite(true), HubLayout.Merchant);
-            merchant.color = new Color32(232, 200, 120, 255);
+            CreateHubProp("Campfire", campfire != null ? campfire : GetHubPropSprite("campfire"), HubLayout.Campfire);
+            CreateHubProp("Portal", portal != null ? portal : GetHubPropSprite("portal"), HubLayout.Portal);
+
+            CreateHubProp(
+                "Merchant",
+                merchantSprite != null ? merchantSprite : GetCharacterSprite(true),
+                HubLayout.Merchant);
             _hubInteractables[HubLayout.Merchant] = "merchant";
 
-            CreateHubProp("Stash", GetHubPropSprite("stash"), HubLayout.Stash);
+            CreateHubProp("Stash", stash != null ? stash : GetHubPropSprite("stash"), HubLayout.Stash);
             _hubInteractables[HubLayout.Stash] = "stash";
 
             for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
             {
                 HeroArchetype hero = HeroRoster.All[i];
+                Sprite heroSprite = visualCatalog != null ? visualCatalog.HeroFor(hero.Id) : null;
                 var prop = CreateHubProp(
-                    $"Hero {hero.Id}", GetCharacterSprite(false), HubLayout.HeroPositions[i]);
+                    $"Hero {hero.Id}",
+                    heroSprite != null ? heroSprite : GetCharacterSprite(false),
+                    HubLayout.HeroPositions[i]);
                 _hubInteractables[HubLayout.HeroPositions[i]] = $"hero:{hero.Id}";
                 _hubHeroProps[hero.Id] = prop;
             }

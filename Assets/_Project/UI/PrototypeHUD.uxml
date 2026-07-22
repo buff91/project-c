@@ -4,25 +4,15 @@
     <ui:Style src="PrototypeHUD.uss" />
     <ui:VisualElement name="hud-root" class="hud-root">
         <ui:VisualElement class="vitals">
-            <ui:VisualElement class="orb-row">
-                <ui:VisualElement class="orb-frame hp-orb">
-                    <ui:VisualElement name="hp-liquid" class="orb-liquid hp-liquid" />
-                    <ui:VisualElement class="orb-shine" />
+            <ui:VisualElement class="hp-strip">
+                <ui:VisualElement name="hp-hearts" class="hp-hearts">
+                    <ui:VisualElement class="pc-heart" />
+                    <ui:VisualElement class="pc-heart" />
+                    <ui:VisualElement class="pc-heart" />
+                    <ui:VisualElement class="pc-heart" />
+                    <ui:VisualElement class="pc-heart" />
                 </ui:VisualElement>
-                <ui:VisualElement class="orb-copy">
-                    <ui:Label text="체력" class="orb-caption" />
-                    <ui:Label name="hp-value" text="--/--" class="orb-value hp-value" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-            <ui:VisualElement class="orb-row">
-                <ui:VisualElement class="orb-frame mana-orb">
-                    <ui:VisualElement class="orb-liquid mana-liquid" />
-                    <ui:VisualElement class="orb-shine" />
-                </ui:VisualElement>
-                <ui:VisualElement class="orb-copy">
-                    <ui:Label text="마나" class="orb-caption" />
-                    <ui:Label text="6/12" class="orb-value mana-value" />
-                </ui:VisualElement>
+                <ui:Label name="hp-value" text="--/--" class="hp-value" />
             </ui:VisualElement>
         </ui:VisualElement>
 

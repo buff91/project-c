@@ -79,6 +79,41 @@ namespace ProjectC.Tests
             Assert.AreSame(wallRight, _catalog.RearWallFor(false, true));
         }
 
+        [Test]
+        public void HeroFor_UsesDistinctRoleSprite_AndFallsBackToPlayer()
+        {
+            Sprite fallback = MakeSprite();
+            Sprite knight = MakeSprite();
+            Sprite ranger = MakeSprite();
+            Sprite alchemist = MakeSprite();
+            _catalog.player = fallback;
+            _catalog.knight = knight;
+            _catalog.ranger = ranger;
+            _catalog.alchemist = alchemist;
+
+            Assert.AreSame(knight, _catalog.HeroFor("knight"));
+            Assert.AreSame(ranger, _catalog.HeroFor("ranger"));
+            Assert.AreSame(alchemist, _catalog.HeroFor("alchemist"));
+
+            _catalog.ranger = null;
+            Assert.AreSame(fallback, _catalog.HeroFor("ranger"));
+        }
+
+        [Test]
+        public void ItemFor_MapsCraftingMaterialsWithoutRuntimeArtFallback()
+        {
+            Sprite herb = MakeSprite();
+            Sprite powder = MakeSprite();
+            Sprite shard = MakeSprite();
+            _catalog.herb = herb;
+            _catalog.blastPowder = powder;
+            _catalog.frostShard = shard;
+
+            Assert.AreSame(herb, _catalog.ItemFor(ItemKind.Herb));
+            Assert.AreSame(powder, _catalog.ItemFor(ItemKind.BlastPowder));
+            Assert.AreSame(shard, _catalog.ItemFor(ItemKind.FrostShard));
+        }
+
         private Sprite MakeSprite()
         {
             Sprite sprite = Sprite.Create(

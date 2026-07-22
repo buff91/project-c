@@ -100,3 +100,38 @@
     color: rgb(255, 213, 84);
     font-size: 9px;
 }
+
+/* 허브도 던전과 동일한 Torchstone 팔레트/모서리/강조 규칙을 사용한다. */
+.hub-caption {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+}
+
+.hub-gold,
+.hub-modal-gold,
+.hub-feedback,
+.slot-price {
+    color: var(--pc-gold);
+}
+
+.hub-continue {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+}
+
+.hub-shop-item {
+    color: var(--pc-text);
+    background-color: var(--pc-btn-bg);
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.hub-shop-item:hover {
+    color: var(--pc-gold);
+    background-color: var(--pc-action-bg);
+    border-left-color: var(--pc-gold-deep);
+    border-top-color: var(--pc-gold-deep);
+}

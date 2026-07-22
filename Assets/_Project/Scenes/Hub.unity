@@ -338,7 +338,7 @@ MonoBehaviour:
   playerOccluderFadeSpeed: 8
   playerOcclusionPadding: 0.06
   showRearWalls: 1
-  visualCatalog: {fileID: 0}
+  visualCatalog: {fileID: 11400000, guid: e80f08e8904cc4a17834530b29b7cb3e, type: 2}
   floorTop:
     serializedVersion: 2
     rgba: 4283584072
