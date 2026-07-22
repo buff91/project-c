@@ -934,11 +934,24 @@ namespace ProjectC.Gameplay
             for (int deltaElevation = 1; deltaElevation >= -1; deltaElevation--)
             {
                 var candidate = new GridPos(x, y, _playerPos.elevation + deltaElevation);
-                if (_grid.Map.Has(candidate))
+                if (!_grid.Map.Has(candidate)) continue;
+
+                // 이동 입력은 이동이 우선: 열린 문은 닫기 토글이 아니라 그냥 지나간다.
+                // (문을 닫고 싶으면 Space/탭으로.)
+                TileData candidateTile = _grid.Map.Get(candidate);
+                if (candidateTile != null && candidateTile.kind == TileKind.DoorOpen &&
+                    !IsLivingEnemyAt(candidate))
                 {
-                    HandleTileTapped(candidate, tileExists: true);
-                    return;
+                    List<GridPos> stepPath = GridPathfinder.FindPath(_grid.Map, _playerPos, candidate);
+                    if (stepPath.Count > 1)
+                    {
+                        StartPlayerAction(candidate, MovePlayerPath(stepPath));
+                        return;
+                    }
                 }
+
+                HandleTileTapped(candidate, tileExists: true);
+                return;
             }
             HandleTileTapped(new GridPos(x, y, _playerPos.elevation), tileExists: false);
         }
