@@ -3,6 +3,9 @@ using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace ProjectC.Gameplay
 {
@@ -58,6 +61,14 @@ namespace ProjectC.Gameplay
         private VisualElement _minimapView;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
+        private Button _waitButton;
+        private Button _gameMenuButton;
+        private VisualElement _gameMenuModal;
+        private Button _menuResume;
+        private Button _menuLobby;
+        private Button _menuAbandon;
+        private VisualElement _actionWheel;
+        private bool _wheelPinned; // 캐릭터 탭 토글로 열린 상태 (홀드와 구분)
 
         private IsoTapInput _tapInput;
 
@@ -80,6 +91,7 @@ namespace ProjectC.Gameplay
                 demo.PlayerHpChanged += HandlePlayerHpChanged;
                 demo.RunEnded += HandleRunEnded;
                 demo.ExitChoiceRequested += HandleExitChoiceRequested;
+                demo.PlayerTapped += HandlePlayerTapped;
             }
         }
 
@@ -127,7 +139,13 @@ namespace ProjectC.Gameplay
                 demo.PlayerHpChanged -= HandlePlayerHpChanged;
                 demo.RunEnded -= HandleRunEnded;
                 demo.ExitChoiceRequested -= HandleExitChoiceRequested;
+                demo.PlayerTapped -= HandlePlayerTapped;
             }
+            RebindButton(ref _waitButton, null, HandleWaitClicked);
+            RebindButton(ref _gameMenuButton, null, OpenGameMenu);
+            RebindButton(ref _menuResume, null, CloseGameMenu);
+            RebindButton(ref _menuLobby, null, GoToLobbyKeepingSave);
+            RebindButton(ref _menuAbandon, null, AbandonRun);
             RebindButton(ref _exitAdvance, null, HandleExitAdvance);
             RebindButton(ref _exitExtract, null, HandleExitExtract);
             if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
@@ -212,6 +230,14 @@ namespace ProjectC.Gameplay
             _gameoverFloor = root.Q<Label>("gameover-floor");
             _gameoverKills = root.Q<Label>("gameover-kills");
             _minimapView = root.Q<VisualElement>("minimap-view");
+            RebindButton(ref _waitButton, root.Q<Button>("wait-button"), HandleWaitClicked);
+            RebindButton(ref _gameMenuButton, root.Q<Button>("game-menu-button"), OpenGameMenu);
+            RebindButton(ref _menuResume, root.Q<Button>("menu-resume"), CloseGameMenu);
+            RebindButton(ref _menuLobby, root.Q<Button>("menu-lobby"), GoToLobbyKeepingSave);
+            RebindButton(ref _menuAbandon, root.Q<Button>("menu-abandon"), AbandonRun);
+            _gameMenuModal = root.Q<VisualElement>("game-menu-modal");
+            _actionWheel = root.Q<VisualElement>("action-wheel");
+            BuildActionWheel();
             _exitModal = root.Q<VisualElement>("exit-modal");
             _exitDesc = root.Q<Label>("exit-desc");
             RebindButton(ref _exitAdvance, root.Q<Button>("exit-advance"), HandleExitAdvance);
@@ -439,6 +465,185 @@ namespace ProjectC.Gameplay
                 _hpLiquid.style.height = Length.Percent(100f * state.Hp / state.MaxHp);
         }
 
+        // ── 게임 메뉴 / 대기 / 액션 휠 ──────────────────────
+
+        private void Update()
+        {
+            if (!Application.isPlaying) return;
+
+            // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.
+            UpdateInteractButton();
+
+            if (EscapePressed())
+            {
+                if (_gameMenuModal != null && _gameMenuModal.ClassListContains("is-open"))
+                    CloseGameMenu();
+                else
+                    OpenGameMenu();
+            }
+
+            // Ctrl/Cmd 홀드 동안 액션 휠 표시 (캐릭터 탭 토글과 병행).
+            bool hold = ModifierHeld();
+            bool shouldShow = hold || _wheelPinned;
+            if (_actionWheel != null)
+            {
+                bool isOpen = _actionWheel.ClassListContains("is-open");
+                if (shouldShow && !isOpen)
+                {
+                    RefreshActionWheel();
+                    _actionWheel.AddToClassList("is-open");
+                }
+                else if (!shouldShow && isOpen)
+                {
+                    _actionWheel.RemoveFromClassList("is-open");
+                }
+                if (shouldShow) PositionActionWheel();
+            }
+        }
+
+        private static bool EscapePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Escape);
+#endif
+        }
+
+        private static bool ModifierHeld()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null &&
+                   (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed ||
+                    keyboard.leftCommandKey.isPressed || keyboard.rightCommandKey.isPressed);
+#else
+            return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+                   Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+#endif
+        }
+
+        private void HandleWaitClicked() => demo?.WaitTurn();
+
+        private void HandlePlayerTapped()
+        {
+            _wheelPinned = !_wheelPinned;
+        }
+
+        private void OpenGameMenu() => _gameMenuModal?.AddToClassList("is-open");
+
+        private void CloseGameMenu() => _gameMenuModal?.RemoveFromClassList("is-open");
+
+        private void GoToLobbyKeepingSave()
+        {
+            // 체크포인트는 층 도착마다 저장돼 있다 — 허브의 "이어하기"로 재개.
+            SceneManager.LoadScene("Hub");
+        }
+
+        private void AbandonRun() => demo?.AbandonRun();
+
+        // ── 액션 휠 ─────────────────────────────────────────
+
+        private struct WheelSlot
+        {
+            public string Label;
+            public Action Action;
+            public bool Enabled;
+        }
+
+        private void BuildActionWheel()
+        {
+            if (_actionWheel == null) return;
+            _actionWheel.Clear();
+            for (int i = 0; i < 6; i++)
+            {
+                var button = new Button { name = $"wheel-{i}" };
+                button.AddToClassList("wheel-button");
+                _actionWheel.Add(button);
+            }
+        }
+
+        /// <summary>지금 할 수 있는 것들로 휠 내용을 구성한다.</summary>
+        private void RefreshActionWheel()
+        {
+            if (_actionWheel == null || demo == null) return;
+
+            bool hasInteraction = demo.TryFindAdjacentInteraction(out _, out string interactLabel);
+            var slots = new[]
+            {
+                new WheelSlot { Label = "대기", Action = () => demo.WaitTurn(), Enabled = true },
+                new WheelSlot
+                {
+                    Label = hasInteraction ? interactLabel : "상호작용 없음",
+                    Action = () => demo.InteractAdjacent(),
+                    Enabled = hasInteraction
+                },
+                new WheelSlot
+                {
+                    Label = $"물약 {demo.PotionCount}",
+                    Action = () => demo.UsePotion(),
+                    Enabled = demo.PotionCount > 0
+                },
+                new WheelSlot
+                {
+                    Label = $"폭탄 조준 {demo.BombCount}",
+                    Action = () => demo.ToggleBombAim(),
+                    Enabled = demo.BombCount > 0
+                },
+                new WheelSlot
+                {
+                    Label = demo.CombatMode == CombatActionMode.Melee ? "원거리로" : "근접으로",
+                    Action = () => demo.ToggleCombatMode(),
+                    Enabled = true
+                },
+                new WheelSlot { Label = "메뉴", Action = OpenGameMenu, Enabled = true }
+            };
+
+            for (int i = 0; i < 6 && i < _actionWheel.childCount; i++)
+            {
+                var button = (Button)_actionWheel[i];
+                WheelSlot slot = slots[i];
+                button.text = slot.Label;
+                button.SetEnabled(slot.Enabled);
+                button.clickable = new Clickable(() =>
+                {
+                    _wheelPinned = false;
+                    slot.Action();
+                });
+            }
+        }
+
+        /// <summary>플레이어 머리 위를 중심으로 6방향 원형 배치.</summary>
+        private void PositionActionWheel()
+        {
+            if (_actionWheel == null || demo == null || Camera.main == null) return;
+            IPanel panel = _actionWheel.panel;
+            if (panel == null) return;
+
+            // 플레이어 스크린 좌표 → 패널 좌표
+            Vector3 world = Camera.main.WorldToScreenPoint(
+                new Vector3(0f, 0.4f, 0f) + (Vector3)CameraFollowTarget());
+            Vector2 panelPoint = RuntimePanelUtils.ScreenToPanel(
+                panel, new Vector2(world.x, Screen.height - world.y));
+
+            const float radius = 96f;
+            for (int i = 0; i < _actionWheel.childCount; i++)
+            {
+                float angle = Mathf.Deg2Rad * (90f - i * 60f); // 위에서 시계 방향 6등분
+                var button = _actionWheel[i];
+                button.style.left = panelPoint.x + Mathf.Cos(angle) * radius;
+                button.style.top = panelPoint.y - Mathf.Sin(angle) * radius;
+            }
+        }
+
+        private Vector2 CameraFollowTarget()
+        {
+            // 플레이어 월드 위치 (데모의 그리드 변환 재사용)
+            var grid = demo.GetComponent<GridManager>();
+            return grid != null ? (Vector2)grid.GridToWorld(demo.PlayerPos) : Vector2.zero;
+        }
+
         private void HandleExitChoiceRequested()
         {
             if (_exitModal == null || demo == null) return;
@@ -496,12 +701,6 @@ namespace ProjectC.Gameplay
         private void GoToMainMenu()
         {
             SceneManager.LoadScene("Hub");
-        }
-
-        // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.
-        private void Update()
-        {
-            UpdateInteractButton();
         }
 
         private void UpdateInteractButton()

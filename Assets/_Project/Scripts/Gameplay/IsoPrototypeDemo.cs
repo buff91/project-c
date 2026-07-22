@@ -158,6 +158,8 @@ namespace ProjectC.Gameplay
         public event System.Action ExitChoiceRequested;
         /// <summary>허브 상호작용 — id: "merchant" | "stash" | "hero:{heroId}".</summary>
         public event System.Action<string> HubInteractionRequested;
+        /// <summary>플레이어 자신을 탭 — HUD 가 액션 휠을 토글한다.</summary>
+        public event System.Action PlayerTapped;
 
         private GridManager _grid;
         private IsoTapInput _input;
@@ -220,6 +222,8 @@ namespace ProjectC.Gameplay
             _input.TileTapped += HandleTileTapped;
             _input.ViewRotationRequested += RotateView;
             _input.StepRequested += HandleStepRequested;
+            _input.InteractRequested += InteractAdjacent;
+            _input.WaitRequested += WaitTurn;
             _input.ActorPicker = PickEnemyTileAt;
 
             // 생성된 임시 스프라이트는 씬에 저장하지 않는다. 대신 씬을 열 때마다
@@ -247,6 +251,8 @@ namespace ProjectC.Gameplay
                 _input.TileTapped -= HandleTileTapped;
                 _input.ViewRotationRequested -= RotateView;
                 _input.StepRequested -= HandleStepRequested;
+                _input.InteractRequested -= InteractAdjacent;
+                _input.WaitRequested -= WaitTurn;
                 if (_input.ActorPicker == PickEnemyTileAt)
                     _input.ActorPicker = null;
             }
@@ -771,58 +777,10 @@ namespace ProjectC.Gameplay
             !Application.isPlaying || _resolvingAction ||
             _playerState == null || !_playerState.IsAlive || _runSummary.Ended
                 ? null
-                : FindContextInteraction(out _, out string label) ? label : null;
+                : TryFindAdjacentInteraction(out _, out string label) ? label : null;
 
-        /// <summary>상호작용 버튼 실행 — 탭과 같은 경로(StartPlayerAction)를 태운다.</summary>
-        public void PerformContextInteraction()
-        {
-            if (!Application.isPlaying || _resolvingAction ||
-                _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
-                return;
-            if (!FindContextInteraction(out GridPos target, out _)) return;
-
-            TileData tile = _grid.Map.Get(target);
-            if (tile != null && (tile.CanOpen || tile.CanClose))
-            {
-                if (TryFindApproach(target, out List<GridPos> doorPath))
-                    StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
-            }
-            else if (TryFindApproach(target, out List<GridPos> pushPath))
-            {
-                StartPlayerAction(target, ApproachAndPushBarrel(pushPath));
-            }
-        }
-
-        /// <summary>플레이어 상하좌우에서 상호작용 대상 하나를 찾는다. 문이 폭발통보다 우선.</summary>
-        private bool FindContextInteraction(out GridPos target, out string label)
-        {
-            GridPos barrel = default;
-            bool barrelFound = false;
-            foreach (GridPos pos in new[]
-                     {
-                         _playerPos.Offset(1, 0), _playerPos.Offset(-1, 0),
-                         _playerPos.Offset(0, 1), _playerPos.Offset(0, -1)
-                     })
-            {
-                TileData tile = _grid.Map.Get(pos);
-                if (tile != null && (tile.CanOpen || tile.CanClose))
-                {
-                    target = pos;
-                    label = tile.CanOpen ? "OPEN" : "CLOSE";
-                    return true;
-                }
-                if (!barrelFound && !_barrelExploded && pos == _barrelPos &&
-                    _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex)
-                {
-                    barrel = pos;
-                    barrelFound = true;
-                }
-            }
-
-            target = barrel;
-            label = barrelFound ? "PUSH" : null;
-            return barrelFound;
-        }
+        /// <summary>상호작용 버튼 실행 — 스페이스바/액션 휠과 같은 경로.</summary>
+        public void PerformContextInteraction() => InteractAdjacent();
 
         /// <summary>폭탄/냉기 폭탄 조준 모드. 켠 상태에서 타일을 탭하면 투척한다.</summary>
         public void ToggleBombAim() => ToggleThrowAim(ItemKind.Bomb);
@@ -985,6 +943,84 @@ namespace ProjectC.Gameplay
             HandleTileTapped(new GridPos(x, y, _playerPos.elevation), tileExists: false);
         }
 
+        /// <summary>
+        /// 인접 상호작용 (스페이스바/액션 휠): 적 공격 > 문 > 허브 오브젝트 > 폭발통.
+        /// 대상이 없으면 아무 일도 하지 않는다 — 오입력이 턴을 낭비하지 않게.
+        /// </summary>
+        public void InteractAdjacent()
+        {
+            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+                _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
+                return;
+
+            if (TryFindAdjacentInteraction(out GridPos target, out _))
+                HandleTileTapped(target, tileExists: true);
+        }
+
+        /// <summary>인접 상호작용 대상 탐색. 액션 휠 라벨에도 쓴다.</summary>
+        public bool TryFindAdjacentInteraction(out GridPos target, out string label)
+        {
+            target = default;
+            label = null;
+            if (_playerState == null || _grid == null || _dungeon == null) return false;
+
+            GridPos player = _playerPos;
+            foreach (GridPos candidate in new[] { player.North, player.East, player.South, player.West })
+            {
+                EnemyAgent enemy = FindLivingEnemyAt(candidate);
+                if (enemy != null && (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(candidate)))
+                {
+                    target = candidate;
+                    label = "공격";
+                    return true;
+                }
+            }
+
+            foreach (GridPos candidate in new[] { player.North, player.East, player.South, player.West })
+            {
+                TileData tile = _grid.Map.Get(candidate);
+                if (tile != null && (tile.CanOpen || tile.CanClose))
+                {
+                    target = candidate;
+                    label = tile.CanOpen ? "문 열기" : "문 닫기";
+                    return true;
+                }
+                if (hubMode && _hubInteractables.TryGetValue(candidate, out string hubId))
+                {
+                    target = candidate;
+                    label = hubId == "merchant" ? "상인" : hubId == "stash" ? "창고" : "영웅";
+                    return true;
+                }
+                if (!hubMode && !_barrelExploded && candidate == _barrelPos)
+                {
+                    target = candidate;
+                    label = "밀기";
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>대기(턴 스킵): 제자리에서 행동 1회를 소비하고 적 턴만 돌린다.</summary>
+        public void WaitTurn()
+        {
+            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+                _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
+                return;
+
+            InteractionFeedback?.Invoke("대기 — 주변을 살핀다");
+            _moveRoutine = StartCoroutine(RunPlayerAction(ResolveEnemyPhase()));
+        }
+
+        /// <summary>게임 포기: 소지품을 전부 잃고(창고는 유지) 허브로 돌아간다.</summary>
+        public void AbandonRun()
+        {
+            if (!Application.isPlaying || hubMode) return;
+            RunSaveStore.Clear();
+            Debug.Log("[Run] 게임 포기 — 소지품 소실, 허브 복귀");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Hub");
+        }
+
         private void HandleTileTapped(GridPos target, bool tileExists)
         {
             if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive ||
@@ -1010,6 +1046,13 @@ namespace ProjectC.Gameplay
             if (_bombAiming)
             {
                 HandleBombAimTap(target);
+                return;
+            }
+
+            // 자기 자신 탭 = 액션 휠 토글 (터치/마우스 공용).
+            if (target == _playerPos)
+            {
+                PlayerTapped?.Invoke();
                 return;
             }
 
@@ -1759,7 +1802,7 @@ namespace ProjectC.Gameplay
                 int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
                 if (allowedSteps < path.Count - 1)
                     path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
-                InteractionFeedback?.Invoke("미탐색 방향으로 이동…");
+                InteractionFeedback?.Invoke("미탐색 방향으로 이동...");
                 StartPlayerAction(candidates[i], MovePlayerPath(path));
                 return;
             }
@@ -1911,7 +1954,7 @@ namespace ProjectC.Gameplay
         {
             RunSaveStore.Clear();
             RunSaveStore.ContinueRequested = false;
-            InteractionFeedback?.Invoke("던전으로 내려간다…");
+            InteractionFeedback?.Invoke("던전으로 내려간다...");
             UnityEngine.SceneManagement.SceneManager.LoadScene("IsoPrototype");
         }
 

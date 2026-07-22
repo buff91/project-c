@@ -30,6 +30,12 @@ namespace ProjectC.Gameplay
         /// <summary>방향키/WASD 한 칸 이동 요청 — 격자 델타 (화면 기준 → 회전 보정 완료).</summary>
         public event System.Action<int, int> StepRequested;
 
+        /// <summary>스페이스바 — 인접 상호작용/근접공격 요청.</summary>
+        public event System.Action InteractRequested;
+
+        /// <summary>X 키 — 대기(턴 스킵) 요청.</summary>
+        public event System.Action WaitRequested;
+
         /// <summary>
         /// 화면 좌표에서 액터(몬스터 등)를 우선 집는 선택자. 게임 로직이 주입한다.
         /// 아이소 스프라이트는 발밑 타일보다 화면상 위에 그려져서, 평면 역변환만으로는
@@ -63,6 +69,9 @@ namespace ProjectC.Gameplay
                 Vector2 gridDelta = _gm.iso.RotateDeltaFromView(viewDx, viewDy);
                 StepRequested?.Invoke(Mathf.RoundToInt(gridDelta.x), Mathf.RoundToInt(gridDelta.y));
             }
+
+            if (SpacePressed()) InteractRequested?.Invoke();
+            if (XPressed()) WaitRequested?.Invoke();
 
             if (TryGetTap(out Vector2 screenPoint))
             {
@@ -135,6 +144,26 @@ namespace ProjectC.Gameplay
             if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) { viewDy = 1; return true; }
             if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) { viewDx = -1; return true; }
             return false;
+#endif
+        }
+
+        private static bool SpacePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Space);
+#endif
+        }
+
+        private static bool XPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.xKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.X);
 #endif
         }
 
