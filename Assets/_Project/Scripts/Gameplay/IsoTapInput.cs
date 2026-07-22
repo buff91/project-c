@@ -27,6 +27,9 @@ namespace ProjectC.Gameplay
         public event System.Action<GridPos, bool> TileTapped;
         public event System.Action<int> ViewRotationRequested;
 
+        /// <summary>방향키/WASD 한 칸 이동 요청 — 격자 델타 (화면 기준 → 회전 보정 완료).</summary>
+        public event System.Action<int, int> StepRequested;
+
         /// <summary>
         /// 화면 좌표에서 액터(몬스터 등)를 우선 집는 선택자. 게임 로직이 주입한다.
         /// 아이소 스프라이트는 발밑 타일보다 화면상 위에 그려져서, 평면 역변환만으로는
@@ -53,6 +56,13 @@ namespace ProjectC.Gameplay
         {
             if (TryGetViewRotation(out int direction))
                 ViewRotationRequested?.Invoke(direction);
+
+            if (TryGetStep(out int viewDx, out int viewDy))
+            {
+                // 화면 기준 방향을 현재 회전에 맞는 격자 델타로 변환한다.
+                Vector2 gridDelta = _gm.iso.RotateDeltaFromView(viewDx, viewDy);
+                StepRequested?.Invoke(Mathf.RoundToInt(gridDelta.x), Mathf.RoundToInt(gridDelta.y));
+            }
 
             if (TryGetTap(out Vector2 screenPoint))
             {
@@ -95,6 +105,35 @@ namespace ProjectC.Gameplay
                 direction = 1;
                 return true;
             }
+            return false;
+#endif
+        }
+
+        /// <summary>
+        /// 화면 기준 한 칸 이동 입력 (PC): ↑/W=오른쪽 위, →/D=오른쪽 아래,
+        /// ↓/S=왼쪽 아래, ←/A=왼쪽 위. 뷰 좌표 델타로 반환한다.
+        /// </summary>
+        private static bool TryGetStep(out int viewDx, out int viewDy)
+        {
+            viewDx = 0;
+            viewDy = 0;
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return false;
+            if (keyboard.upArrowKey.wasPressedThisFrame || keyboard.wKey.wasPressedThisFrame)
+            { viewDy = -1; return true; }
+            if (keyboard.rightArrowKey.wasPressedThisFrame || keyboard.dKey.wasPressedThisFrame)
+            { viewDx = 1; return true; }
+            if (keyboard.downArrowKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame)
+            { viewDy = 1; return true; }
+            if (keyboard.leftArrowKey.wasPressedThisFrame || keyboard.aKey.wasPressedThisFrame)
+            { viewDx = -1; return true; }
+            return false;
+#else
+            if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) { viewDy = -1; return true; }
+            if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) { viewDx = 1; return true; }
+            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) { viewDy = 1; return true; }
+            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) { viewDx = -1; return true; }
             return false;
 #endif
         }

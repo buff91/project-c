@@ -219,6 +219,7 @@ namespace ProjectC.Gameplay
             if (_input == null) _input = GetComponent<IsoTapInput>();
             _input.TileTapped += HandleTileTapped;
             _input.ViewRotationRequested += RotateView;
+            _input.StepRequested += HandleStepRequested;
             _input.ActorPicker = PickEnemyTileAt;
 
             // 생성된 임시 스프라이트는 씬에 저장하지 않는다. 대신 씬을 열 때마다
@@ -245,6 +246,7 @@ namespace ProjectC.Gameplay
             {
                 _input.TileTapped -= HandleTileTapped;
                 _input.ViewRotationRequested -= RotateView;
+                _input.StepRequested -= HandleStepRequested;
                 if (_input.ActorPicker == PickEnemyTileAt)
                     _input.ActorPicker = null;
             }
@@ -931,9 +933,10 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 탭 지점이 살아있는 적 스프라이트 안이면 그 적의 발밑 타일을 반환한다.
+        /// 탭 지점이 적(시체 포함) 스프라이트 안이면 그 발밑 타일을 반환한다.
         /// 아이소 몸통은 타일보다 화면상 위에 그려져, 평면 역변환만 쓰면
-        /// 몸통 탭이 뒤 타일 이동으로 새는 문제의 보정이다. 겹치면 앞(정렬 위) 적 우선.
+        /// 몸통 탭이 뒤 타일 이동으로 새는 문제의 보정이다. 겹치면 앞(정렬 위) 우선.
+        /// 살아있으면 공격, 시체면 그 칸으로 이동 — 분기는 HandleTileTapped 가 한다.
         /// </summary>
         private GridPos? PickEnemyTileAt(Vector2 screenPoint)
         {
@@ -944,7 +947,7 @@ namespace ProjectC.Gameplay
             EnemyAgent best = null;
             foreach (EnemyAgent enemy in _enemies)
             {
-                if (!enemy.State.IsAlive || enemy.Renderer == null || !enemy.Renderer.enabled)
+                if (enemy.Renderer == null || !enemy.Renderer.enabled)
                     continue;
                 Bounds bounds = enemy.Renderer.bounds;
                 if (world.x < bounds.min.x || world.x > bounds.max.x ||
@@ -955,6 +958,31 @@ namespace ProjectC.Gameplay
             }
 
             return best?.State.Position;
+        }
+
+        /// <summary>
+        /// 방향키 한 칸 이동 (PC). 탭 파이프라인을 재사용해 인접 적 공격·문 열기·
+        /// 계단 오르내림이 그대로 성립한다. 조준 중엔 오발 방지를 위해 무시.
+        /// </summary>
+        private void HandleStepRequested(int dx, int dy)
+        {
+            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+                _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
+                return;
+
+            int x = _playerPos.x + dx;
+            int y = _playerPos.y + dy;
+            // 계단 승강 커버: 위 → 같은 높이 → 아래 순으로 존재하는 타일을 고른다.
+            for (int deltaElevation = 1; deltaElevation >= -1; deltaElevation--)
+            {
+                var candidate = new GridPos(x, y, _playerPos.elevation + deltaElevation);
+                if (_grid.Map.Has(candidate))
+                {
+                    HandleTileTapped(candidate, tileExists: true);
+                    return;
+                }
+            }
+            HandleTileTapped(new GridPos(x, y, _playerPos.elevation), tileExists: false);
         }
 
         private void HandleTileTapped(GridPos target, bool tileExists)
@@ -1031,7 +1059,14 @@ namespace ProjectC.Gameplay
             }
 
             if (!tileExists || !_grid.Map.IsWalkable(target))
+            {
+                // 조용히 무시하면 "보이는 것과 갈 수 있는 곳"이 헷갈린다 — 즉시 알려준다.
+                InteractionFeedback?.Invoke(
+                    tileExists && _grid.Map.Get(target)?.kind == TileKind.Wall
+                        ? "벽이다 — 지나갈 수 없다"
+                        : "갈 수 없는 곳");
                 return;
+            }
 
             // 다른 층의 탐색된 칸도 목적지로 허용 — 경로 탐색이 계단 링크를 자동 경유한다.
             List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, target);

@@ -132,6 +132,21 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>
+        /// 화면(뷰) 기준 방향 델타를 격자 델타로 되돌린다 (피벗 무관 순수 회전).
+        /// 방향키 이동: 뷰 (0,-1)=화면 오른쪽 위, (1,0)=오른쪽 아래, (0,1)=왼쪽 아래, (-1,0)=왼쪽 위.
+        /// </summary>
+        public Vector2 RotateDeltaFromView(float dx, float dy)
+        {
+            switch (NormalizeQuarterTurns(viewQuarterTurns))
+            {
+                case 1: return new Vector2(-dy, dx);
+                case 2: return new Vector2(-dx, -dy);
+                case 3: return new Vector2(dy, -dx);
+                default: return new Vector2(dx, dy);
+            }
+        }
+
         public Vector2 RotateFromView(float x, float y)
         {
             float dx = x - viewPivotX;
