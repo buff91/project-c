@@ -972,7 +972,8 @@ namespace ProjectC.Gameplay
 
             if (viewMode == DungeonViewMode.Play &&
                 !_visibleTiles.Contains(target) &&
-                !_exploredTiles.Contains(target))
+                !_exploredTiles.Contains(target) &&
+                !_verticalPreviewTiles.Contains(target))
             {
                 TryTravelTowardUnexplored(target);
                 return;
@@ -1029,12 +1030,17 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            if (!tileExists || !_grid.Map.IsWalkable(target) ||
-                _dungeon.Height.FloorIndex(target.elevation) != _activeFloorIndex)
+            if (!tileExists || !_grid.Map.IsWalkable(target))
                 return;
 
+            // 다른 층의 탐색된 칸도 목적지로 허용 — 경로 탐색이 계단 링크를 자동 경유한다.
             List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, target);
-            if (path.Count == 0) return;
+            if (path.Count == 0)
+            {
+                if (_dungeon.Height.FloorIndex(target.elevation) != _activeFloorIndex)
+                    InteractionFeedback?.Invoke("그 층으로 가는 길을 아직 모른다");
+                return;
+            }
 
             // 적이 시야에 있는 동안엔 탭당 1스텝만 — 카이팅/오토무브 남용 방지. (SPD 관례)
             int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
@@ -2066,9 +2072,13 @@ namespace ProjectC.Gameplay
         private void UpdateInputFloorRange()
         {
             if (_input == null || _dungeon == null) return;
-            _input.minElevation = _dungeon.Height.Elevation(_activeFloorIndex);
-            _input.maxElevation = _input.minElevation + _dungeon.Height.ElevationsPerFloor - 1;
-            _input.targetElevation = _input.minElevation;
+            // 픽킹은 던전 전체 높이에서 허용한다 — 다른 층의 탐색된 칸을 눌러
+            // 계단을 자동 경유해 이동할 수 있게. (겹치면 위 타일 우선은 유지)
+            _input.minElevation = _dungeon.Height.Elevation(_dungeon.BottomFloorIndex);
+            _input.maxElevation =
+                _dungeon.Height.Elevation(_dungeon.TopFloorIndex) +
+                _dungeon.Height.ElevationsPerFloor - 1;
+            _input.targetElevation = _dungeon.Height.Elevation(_activeFloorIndex);
         }
 
         public static string FloorLabel(int floorIndex) =>

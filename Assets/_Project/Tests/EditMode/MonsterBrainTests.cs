@@ -24,6 +24,28 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void FindPath_RoutesThroughStairLink_ToAnotherFloorTarget()
+        {
+            var map = new GridMap();
+            for (int x = 0; x <= 3; x++)
+            {
+                map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+                map.Set(new GridPos(x, 0, -4), TileKind.Floor);
+            }
+            map.Set(new GridPos(3, 0, 0), TileKind.StairsDown);
+            map.Set(new GridPos(0, 0, -4), TileKind.StairsUp);
+            map.Connect(new GridPos(3, 0, 0), new GridPos(0, 0, -4));
+
+            // 다른 층 목적지 — 경로가 하행 계단 링크를 자동 경유해야 한다.
+            var path = GridPathfinder.FindPath(map, new GridPos(0, 0, 0), new GridPos(2, 0, -4));
+
+            Assert.Greater(path.Count, 0, "층을 넘는 경로가 있어야 한다");
+            CollectionAssert.Contains(path, new GridPos(3, 0, 0), "하행 계단 경유");
+            CollectionAssert.Contains(path, new GridPos(0, 0, -4), "링크 착지");
+            Assert.AreEqual(new GridPos(2, 0, -4), path[path.Count - 1]);
+        }
+
+        [Test]
         public void OpenClosedDoors_AllowsPathThroughDoor()
         {
             var map = new GridMap();

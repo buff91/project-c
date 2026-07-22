@@ -27,13 +27,15 @@ namespace ProjectC.Gameplay
                 pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
                 pair.Value.enabled = debugVisible || visible || explored || vertical;
                 float alpha = VisibilityAlpha(pair.Key);
-                float dim = ElevationDim(pair.Key);
-                // 원소 상태 타일은 색으로 보여준다: 기름=갈색조, 물=청색조. 높이차 딤을 곱한다.
-                pair.Value.color = tileData.oiled
-                    ? new Color(0.74f * dim, 0.64f * dim, 0.36f * dim, alpha)
+                Color tint = ElevationTint(pair.Key);
+                // 원소 상태 타일은 색으로 보여준다: 기름=갈색조, 물=청색조. 높이 틴트를 곱한다.
+                Color baseColor = tileData.oiled
+                    ? new Color(0.74f, 0.64f, 0.36f)
                     : tileData.wet
-                        ? new Color(0.55f * dim, 0.72f * dim, 0.95f * dim, alpha)
-                        : new Color(dim, dim, dim, alpha);
+                        ? new Color(0.55f, 0.72f, 0.95f)
+                        : Color.white;
+                pair.Value.color = new Color(
+                    baseColor.r * tint.r, baseColor.g * tint.g, baseColor.b * tint.b, alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
@@ -51,8 +53,8 @@ namespace ProjectC.Gameplay
                     item.Root,
                     _dungeon.Height.FloorIndex(item.Spawn.Position.elevation) == _activeFloorIndex &&
                     (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
-                float itemDim = ElevationDim(item.Spawn.Position);
-                item.Renderer.color = new Color(itemDim, itemDim, itemDim, 1f);
+                Color itemTint = ElevationTint(item.Spawn.Position);
+                item.Renderer.color = new Color(itemTint.r, itemTint.g, itemTint.b, 1f);
             }
 
             if (_barrelRenderer != null && _barrelExploded)
@@ -76,7 +78,47 @@ namespace ProjectC.Gameplay
 
             RebuildRearWalls();
             RebuildVerticalShafts();
+            RebuildElevationEdgeMarkers();
             VerticalContextChanged?.Invoke();
+        }
+
+        private Transform _elevationMarkerRoot;
+
+        /// <summary>
+        /// 높이 경계 마커: 활성 층의 계단(층 내 높이 전환점) 위에 청록 테두리를 상시 표시해
+        /// "여기서 높이가 바뀐다"를 보여준다.
+        /// </summary>
+        private void RebuildElevationEdgeMarkers()
+        {
+            if (_elevationMarkerRoot != null)
+            {
+                if (Application.isPlaying) Destroy(_elevationMarkerRoot.gameObject);
+                else DestroyImmediate(_elevationMarkerRoot.gameObject);
+            }
+            if (hubMode || viewMode == DungeonViewMode.DebugAll) return;
+
+            var root = new GameObject("Elevation Edge Markers");
+            root.hideFlags = HideFlags.DontSaveInEditor;
+            root.transform.SetParent(_visualRoot, false);
+            _elevationMarkerRoot = root.transform;
+
+            foreach (var pair in _grid.Map.All())
+            {
+                if (pair.Value.kind != TileKind.Stairs) continue;
+                if (_dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex) continue;
+                if (!_visibleTiles.Contains(pair.Key) && !_exploredTiles.Contains(pair.Key)) continue;
+
+                var marker = new GameObject($"Elevation Edge {pair.Key}");
+                marker.transform.SetParent(_elevationMarkerRoot, false);
+                marker.transform.position = VisualPosition(pair.Key) + Vector3.up * 0.02f;
+                var renderer = marker.AddComponent<SpriteRenderer>();
+                renderer.sprite = visualCatalog != null && visualCatalog.selection != null
+                    ? visualCatalog.selection
+                    : GetSelectionSprite();
+                renderer.sortingOrder = _grid.iso.SortingOrder(pair.Key, 0);
+                renderer.color = new Color(0.33f, 0.83f, 0.77f, // accent 청록
+                    _visibleTiles.Contains(pair.Key) ? 0.45f : 0.2f);
+            }
         }
 
         private void RebuildVerticalShafts()
@@ -418,8 +460,8 @@ namespace ProjectC.Gameplay
             renderer.sprite = mapped != null ? mapped : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
-            float wallDim = ElevationDim(pos);
-            renderer.color = new Color(wallDim, wallDim, wallDim, VisibilityAlpha(pos));
+            Color wallTint = ElevationTint(pos);
+            renderer.color = new Color(wallTint.r, wallTint.g, wallTint.b, VisibilityAlpha(pos));
             _rearWallRenderers.Add(renderer, pos);
         }
 
@@ -557,18 +599,20 @@ namespace ProjectC.Gameplay
             return world;
         }
 
+        private static readonly Color ActiveTint = Color.white;
+        private static readonly Color InactiveTint = new Color(0.50f, 0.55f, 0.70f); // 차가운 비활성 톤
+
         /// <summary>
-        /// 같은 층 안에서 플레이어와 elevation 이 다른 칸은 살짝 어둡게 —
-        /// "내 높이가 활성"임을 보여준다. (전투/사격은 elevation 일치 요구)
+        /// 내 높이(플레이어와 같은 elevation)만 원색, 그 외(같은 층 다른 높이·다른 층 잔상)는
+        /// 진하게 어둡고 차가운 톤 — "내가 상호작용할 수 있는 평면"을 색으로 못박는다.
         /// </summary>
-        private float ElevationDim(GridPos pos)
+        private Color ElevationTint(GridPos pos)
         {
             if (viewMode == DungeonViewMode.DebugAll || _playerState == null || _dungeon == null)
-                return 1f;
-            if (!_dungeon.Height.SameFloor(pos, _playerState.Position))
-                return 1f;
-            return pos.elevation == _playerState.Position.elevation ? 1f : 0.78f;
+                return ActiveTint;
+            return pos.elevation == _playerState.Position.elevation ? ActiveTint : InactiveTint;
         }
+
 
         private float VisibilityAlpha(GridPos pos)
         {
