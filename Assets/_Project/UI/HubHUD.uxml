@@ -26,10 +26,20 @@
                         <ui:Label text="상점" class="settings-title" />
                         <ui:Label text="구매품은 창고로 — 새 판에 반입된다" class="settings-subtitle" />
                     </ui:VisualElement>
-                    <ui:Button name="hub-shop-close" text="×" class="settings-close" />
+                    <ui:VisualElement class="hub-header-right">
+                        <ui:Label name="hub-shop-gold" text="0G" class="hub-modal-gold" />
+                        <ui:Button name="hub-shop-close" text="×" class="settings-close" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:VisualElement name="hub-shop-list" class="hub-shop-list" />
-                <ui:Label name="hub-shop-feedback" text="" class="hub-feedback" />
+                <ui:VisualElement name="hub-shop-grid" class="inventory-grid" />
+                <ui:VisualElement class="inventory-detail">
+                    <ui:Label name="hub-shop-name" text="상품을 선택하세요" class="inventory-detail-name" />
+                    <ui:Label name="hub-shop-desc" text="" class="inventory-detail-desc" />
+                </ui:VisualElement>
+                <ui:VisualElement class="settings-actions">
+                    <ui:Label name="hub-shop-feedback" text="" class="hub-feedback hub-shop-feedback" />
+                    <ui:Button name="hub-shop-buy" text="구매" class="settings-done" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -46,11 +56,21 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-stash-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card gameover-card">
-                <ui:Label text="창고" class="gameover-title" />
-                <ui:Label name="hub-stash-detail" text="" class="gameover-detail hub-stash-detail" />
-                <ui:VisualElement class="settings-actions">
-                    <ui:Button name="hub-stash-close" text="닫기" class="settings-done" />
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="창고" class="settings-title" />
+                        <ui:Label text="보관품은 새 판 시작 시 전량 반입된다" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="hub-header-right">
+                        <ui:Label name="hub-stash-gold" text="0G" class="hub-modal-gold" />
+                        <ui:Button name="hub-stash-close" text="×" class="settings-close" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="hub-stash-grid" class="inventory-grid" />
+                <ui:VisualElement class="inventory-detail">
+                    <ui:Label name="hub-stash-name" text="" class="inventory-detail-name" />
+                    <ui:Label name="hub-stash-desc" text="" class="inventory-detail-desc" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

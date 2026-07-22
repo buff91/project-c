@@ -76,3 +76,27 @@
 .hub-stash-detail {
     white-space: normal;
 }
+
+/* ── 상점/창고 슬롯 그리드 ───────────────────────────── */
+
+.hub-header-right {
+    flex-direction: row;
+    align-items: center;
+}
+
+.hub-modal-gold {
+    color: rgb(255, 213, 84);
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-right: 10px;
+}
+
+.hub-shop-feedback {
+    flex-grow: 1;
+    -unity-text-align: middle-left;
+}
+
+.slot-price {
+    color: rgb(255, 213, 84);
+    font-size: 9px;
+}

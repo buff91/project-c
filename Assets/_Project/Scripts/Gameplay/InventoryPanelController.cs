@@ -88,7 +88,8 @@ namespace ProjectC.Gameplay
             Select(_selected);
         }
 
-        private static string IconClass(ItemKind kind)
+        /// <summary>아이템 종류 → 아이콘 USS 클래스. 허브 상점/창고 슬롯도 공유한다.</summary>
+        public static string IconClass(ItemKind kind)
         {
             switch (kind)
             {

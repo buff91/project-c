@@ -20,15 +20,27 @@ namespace ProjectC.Gameplay
         private Label _statusLabel;
         private Button _continueButton;
         private VisualElement _shopModal;
-        private VisualElement _shopList;
+        private VisualElement _shopGrid;
         private Label _shopFeedback;
+        private Label _shopGold;
+        private Label _shopName;
+        private Label _shopDesc;
+        private Button _shopBuy;
+        private ItemKind _shopSelected = ItemKind.Potion;
+        private readonly System.Collections.Generic.Dictionary<ItemKind, Button> _shopSlots =
+            new System.Collections.Generic.Dictionary<ItemKind, Button>();
+        private readonly System.Collections.Generic.Dictionary<ItemKind, Label> _shopCounts =
+            new System.Collections.Generic.Dictionary<ItemKind, Label>();
         private VisualElement _heroModal;
         private Label _heroName;
         private Label _heroDesc;
         private Label _heroStats;
         private Button _heroAction;
         private VisualElement _stashModal;
-        private Label _stashDetail;
+        private VisualElement _stashGrid;
+        private Label _stashGold;
+        private Label _stashName;
+        private Label _stashDesc;
         private string _heroModalId;
         private IsoTapInput _tapInput;
 
@@ -41,20 +53,28 @@ namespace ProjectC.Gameplay
             _statusLabel = root.Q<Label>("hub-status");
             _continueButton = root.Q<Button>("hub-continue");
             _shopModal = root.Q<VisualElement>("hub-shop-modal");
-            _shopList = root.Q<VisualElement>("hub-shop-list");
+            _shopGrid = root.Q<VisualElement>("hub-shop-grid");
             _shopFeedback = root.Q<Label>("hub-shop-feedback");
+            _shopGold = root.Q<Label>("hub-shop-gold");
+            _shopName = root.Q<Label>("hub-shop-name");
+            _shopDesc = root.Q<Label>("hub-shop-desc");
+            _shopBuy = root.Q<Button>("hub-shop-buy");
             _heroModal = root.Q<VisualElement>("hub-hero-modal");
             _heroName = root.Q<Label>("hub-hero-name");
             _heroDesc = root.Q<Label>("hub-hero-desc");
             _heroStats = root.Q<Label>("hub-hero-stats");
             _heroAction = root.Q<Button>("hub-hero-action");
             _stashModal = root.Q<VisualElement>("hub-stash-modal");
-            _stashDetail = root.Q<Label>("hub-stash-detail");
+            _stashGrid = root.Q<VisualElement>("hub-stash-grid");
+            _stashGold = root.Q<Label>("hub-stash-gold");
+            _stashName = root.Q<Label>("hub-stash-name");
+            _stashDesc = root.Q<Label>("hub-stash-desc");
 
             Bind(root.Q<Button>("hub-shop-close"), CloseModals);
             Bind(root.Q<Button>("hub-hero-close"), CloseModals);
             Bind(root.Q<Button>("hub-stash-close"), CloseModals);
             Bind(_heroAction, HandleHeroAction);
+            Bind(_shopBuy, BuySelected);
             Bind(_continueButton, ContinueRun);
 
             if (_continueButton != null)
@@ -111,7 +131,7 @@ namespace ProjectC.Gameplay
         private void HandleHubInteraction(string id)
         {
             CloseModals();
-            if (id == "merchant") _shopModal?.AddToClassList("is-open");
+            if (id == "merchant") { RefreshShop(); SelectShopItem(_shopSelected); _shopModal?.AddToClassList("is-open"); }
             else if (id == "stash") OpenStash();
             else if (id.StartsWith("hero:")) OpenHero(id.Substring(5));
         }
@@ -132,35 +152,81 @@ namespace ProjectC.Gameplay
 
         private void BuildShop()
         {
-            if (_shopList == null) return;
-            _shopList.Clear();
+            if (_shopGrid == null) return;
+            _shopGrid.Clear();
+            _shopSlots.Clear();
+            _shopCounts.Clear();
+
             foreach (ItemKind kind in ItemCatalog.AllKinds)
             {
                 int price = ItemCatalog.ShopPrice(kind);
                 if (price <= 0) continue;
+
                 ItemKind captured = kind;
-                var button = new Button(() => BuyItem(captured))
-                {
-                    text = $"{ItemCatalog.DisplayName(kind)}\n{price}G"
-                };
-                button.AddToClassList("hub-shop-item");
-                _shopList.Add(button);
+                var slot = new Button(() => SelectShopItem(captured)) { name = $"shop-{kind}" };
+                slot.AddToClassList("inventory-slot");
+
+                var icon = new VisualElement();
+                icon.AddToClassList("resource-icon");
+                icon.AddToClassList(InventoryPanelController.IconClass(kind));
+                slot.Add(icon);
+
+                var priceLabel = new Label($"{price}G");
+                priceLabel.AddToClassList("slot-price");
+                slot.Add(priceLabel);
+
+                var owned = new Label("x0");
+                owned.AddToClassList("inventory-slot-count");
+                slot.Add(owned);
+
+                _shopGrid.Add(slot);
+                _shopSlots.Add(kind, slot);
+                _shopCounts.Add(kind, owned);
             }
         }
 
-        private void BuyItem(ItemKind kind)
+        private void RefreshShop()
         {
+            _meta = MetaStore.LoadOrNew();
+            if (_shopGold != null) _shopGold.text = $"{_meta.gold}G";
+            foreach (var pair in _shopCounts)
+                pair.Value.text = $"보유 {_meta.GetCount(pair.Key)}";
+            UpdateGoldLabel();
+        }
+
+        private void SelectShopItem(ItemKind kind)
+        {
+            _shopSelected = kind;
+            foreach (var pair in _shopSlots)
+                pair.Value.EnableInClassList("selected", pair.Key == kind);
+
             int price = ItemCatalog.ShopPrice(kind);
+            if (_shopName != null)
+                _shopName.text = $"{ItemCatalog.DisplayName(kind)} — {price}G";
+            if (_shopDesc != null) _shopDesc.text = ItemCatalog.Description(kind);
+            if (_shopBuy != null)
+            {
+                _shopBuy.SetEnabled(_meta.gold >= price);
+                _shopBuy.text = $"구매 ({price}G)";
+            }
+            if (_shopFeedback != null) _shopFeedback.text = "";
+        }
+
+        private void BuySelected()
+        {
+            int price = ItemCatalog.ShopPrice(_shopSelected);
             if (!_meta.TrySpend(price))
             {
                 if (_shopFeedback != null)
                     _shopFeedback.text = $"골드가 부족하다 ({_meta.gold}G / {price}G)";
                 return;
             }
-            _meta.AddCount(kind, 1);
+            _meta.AddCount(_shopSelected, 1);
             MetaStore.Save(_meta);
             if (_shopFeedback != null)
-                _shopFeedback.text = $"{ItemCatalog.DisplayName(kind)} 구매 — 창고 보관 (보유 {_meta.GetCount(kind)})";
+                _shopFeedback.text = $"{ItemCatalog.DisplayName(_shopSelected)} 구매 완료";
+            RefreshShop();
+            SelectShopItem(_shopSelected);
             UpdateGoldLabel();
         }
 
@@ -218,23 +284,43 @@ namespace ProjectC.Gameplay
 
         private void OpenStash()
         {
-            if (_stashDetail != null)
+            _meta = MetaStore.LoadOrNew();
+            if (_stashGold != null) _stashGold.text = $"{_meta.gold}G";
+            if (_stashGrid != null)
             {
-                var text = new StringBuilder();
-                text.AppendLine($"골드: {_meta.gold}G");
-                bool any = false;
+                _stashGrid.Clear();
                 foreach (ItemKind kind in ItemCatalog.AllKinds)
                 {
+                    if (ItemCatalog.IsTreasure(kind)) continue; // 전리품은 보관 안 됨(즉시 환금)
                     int count = _meta.GetCount(kind);
-                    if (count <= 0) continue;
-                    text.AppendLine($"{ItemCatalog.DisplayName(kind)} ×{count}");
-                    any = true;
+
+                    ItemKind captured = kind;
+                    var slot = new Button(() => SelectStashItem(captured)) { name = $"stash-{kind}" };
+                    slot.AddToClassList("inventory-slot");
+                    slot.EnableInClassList("empty", count == 0);
+
+                    var icon = new VisualElement();
+                    icon.AddToClassList("resource-icon");
+                    icon.AddToClassList(InventoryPanelController.IconClass(kind));
+                    slot.Add(icon);
+
+                    var owned = new Label($"x{count}");
+                    owned.AddToClassList("inventory-slot-count");
+                    slot.Add(owned);
+
+                    _stashGrid.Add(slot);
                 }
-                if (!any) text.AppendLine("보관 물품 없음 — 생환하거나 상점에서 사두자");
-                text.Append("보관품은 새 판 시작 시 전량 반입된다");
-                _stashDetail.text = text.ToString();
             }
+            if (_stashName != null) _stashName.text = "보관품";
+            if (_stashDesc != null) _stashDesc.text = "새 판 시작 시 전량 반입 — 죽으면 잃는다";
             _stashModal?.AddToClassList("is-open");
+        }
+
+        private void SelectStashItem(ItemKind kind)
+        {
+            if (_stashName != null)
+                _stashName.text = $"{ItemCatalog.DisplayName(kind)} x{_meta.GetCount(kind)}";
+            if (_stashDesc != null) _stashDesc.text = ItemCatalog.Description(kind);
         }
 
         private void UpdateGoldLabel()

@@ -1121,3 +1121,9 @@
 .wheel-button:disabled {
     opacity: 0.35;
 }
+
+.inventory-slot .resource-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
