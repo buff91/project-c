@@ -10,11 +10,12 @@ namespace ProjectC.Core
         Wall,        // 벽. 이동/시야 차단.
         WeakFloor,   // 약한 바닥. 밟거나 충격 시 붕괴 → 낙하 트리거. (GDD §5.3)
         Hole,        // 구멍. 아래층으로 뚫려 있음. FOV 포털이자 낙하 지점. (GDD §5.2)
-        Stairs,      // 계단/경사로. 같은 층 내 elevation 변화. (GDD §5.1)
-        StairsUp,    // 던전 위층으로 이어지는 명시적 링크 타일.
-        StairsDown,  // 던전 아래층으로 이어지는 명시적 링크 타일.
+        Stairs,      // 계단/경사로. 같은 던전 층 내 elevation 변화. 추후 Ladder도 같은 범주. (GDD §5.1)
+        StairsUp,    // 던전 위층으로 전환하는 링크 타일. 수직 시야 포털은 아님.
+        StairsDown,  // 던전 아래층으로 전환하는 링크 타일. 수직 시야 포털은 아님.
         DoorClosed, // 같은 층의 방/복도 경계. 이동·시야 차단, 상호작용으로 연다.
-        DoorOpen    // 열린 문. 일반 바닥처럼 이동·시야 통과.
+        DoorOpen,   // 열린 문. 일반 바닥처럼 이동·시야 통과.
+        Ladder      // 같은 던전 층 안의 떨어진 elevation을 잇는 명시적 사다리 링크.
     }
 
     /// <summary>
@@ -39,6 +40,7 @@ namespace ProjectC.Core
         /// <summary>서 있을 수 있는 단단한 바닥인가. (착지/정지 판정용)</summary>
         public bool IsSolidGround => kind == TileKind.Floor ||
                                      kind == TileKind.Stairs ||
+                                     kind == TileKind.Ladder ||
                                      kind == TileKind.StairsUp ||
                                      kind == TileKind.StairsDown ||
                                      kind == TileKind.DoorClosed ||

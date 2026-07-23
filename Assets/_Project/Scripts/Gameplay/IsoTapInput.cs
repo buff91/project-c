@@ -44,6 +44,12 @@ namespace ProjectC.Gameplay
         public System.Func<Vector2, GridPos?> ActorPicker;
 
         /// <summary>
+        /// 화면에 실제 렌더된 타일을 고르는 선택자. 게임 로직이 주입하면 전체 elevation
+        /// 역산 대신 현재 활성 층과 개구부 미리보기의 실제 표시 위치를 기준으로 선택한다.
+        /// </summary>
+        public System.Func<Vector2, GridPos?> TilePicker;
+
+        /// <summary>
         /// 탭 지점이 화면 UI 위인지 판정하는 훅 (HUD가 주입).
         /// true 면 이번 탭을 무시한다 — 버튼 클릭이 월드 이동으로 관통하는 것을 막는다.
         /// </summary>
@@ -79,10 +85,19 @@ namespace ProjectC.Gameplay
                     return;
 
                 GridPos? actor = ActorPicker?.Invoke(screenPoint);
-                GridPos picked = actor ?? PickGrid(screenPoint);
-                bool exists = _gm.Map.Has(picked);
+                GridPos? tile = actor.HasValue ? null : TilePicker?.Invoke(screenPoint);
+                if (!actor.HasValue && TilePicker != null && !tile.HasValue)
+                    return;
+
+                GridPos picked = actor ?? tile ?? PickGrid(screenPoint);
+                bool exists = WorldInputRules.IsMapTile(_gm.Map, picked);
                 Debug.Log($"[Tap] 화면 {screenPoint} → 격자 {picked} (타일 있음: {exists})");
-                TileTapped?.Invoke(picked, exists);
+
+                // 유한한 맵 바깥의 검은 여백도 역변환하면 GridPos는 만들어진다.
+                // 여기서 걸러야 미탐색 자동 이동이나 조준 입력으로 관통하지 않는다.
+                if (!exists) return;
+
+                TileTapped?.Invoke(picked, true);
             }
         }
 

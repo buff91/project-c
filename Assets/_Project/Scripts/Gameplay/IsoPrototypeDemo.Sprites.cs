@@ -10,6 +10,40 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
+        private Sprite GetDungeonFogBackdropSprite()
+        {
+            string key = $"fog-backdrop-{unknownFogColor}-{unknownFogEdge}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            const int width = 128;
+            const int height = 64;
+            var texture = NewTexture(width, height);
+            var transparent = new Color32(0, 0, 0, 0);
+            for (int py = 0; py < height; py++)
+            for (int px = 0; px < width; px++)
+            {
+                float diamond = Mathf.Abs((px - 63.5f) / 64f) +
+                                Mathf.Abs((py - 31.5f) / 32f);
+                if (diamond > 1f)
+                {
+                    texture.SetPixel(px, py, transparent);
+                    continue;
+                }
+
+                bool edge = diamond > 0.985f;
+                int noise = px * 73856093 ^ py * 19349663;
+                Color32 color = edge
+                    ? unknownFogEdge
+                    : Shift(unknownFogColor, (noise & 31) == 0 ? 2 : 0);
+                texture.SetPixel(px, py, color);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetTileSprite(TileKind kind, GridPos pos)
         {
             if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen)
@@ -105,6 +139,7 @@ namespace ProjectC.Gameplay
                     color = new Color32(24, 20, 19, 255);
                 else if (kind == TileKind.Stairs && ((px + py * 2) % 12 < 3))
                     color = border ? outline : Shift(baseColor, 25);
+                // Ladder는 바닥 문양이 아니라 두 발판 사이에 세워진 별도 월드 오브젝트로 그린다.
                 else if (kind == TileKind.StairsDown && ((px + py) % 10 < 3))
                     color = border ? outline : new Color32(220, 119, 47, 255);
                 else if (kind == TileKind.StairsUp && ((px + py) % 10 < 3))
@@ -349,6 +384,141 @@ namespace ProjectC.Gameplay
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetLocalStairLandmarkSprite()
+        {
+            const string key = "landmark-local-stairs";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(64, 38);
+            Color32 riser = new Color32(34, 50, 52, 255);
+            Color32 tread = new Color32(105, 214, 194, 255);
+            Color32 edge = new Color32(188, 244, 224, 255);
+            for (int step = 0; step < 4; step++)
+            {
+                int y = 7 + step * 6;
+                int inset = 7 + step * 4;
+                DrawThickLine(texture, inset, y, 63 - inset, y, 4, riser);
+                DrawThickLine(texture, inset, y + 2, 63 - inset, y + 2, 2,
+                    step == 3 ? edge : tread);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.42f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetLadderLandmarkSprite()
+        {
+            const string key = "landmark-ladder";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(36, 72);
+            Color32 shadow = new Color32(45, 30, 19, 255);
+            Color32 wood = new Color32(181, 113, 45, 255);
+            Color32 gold = new Color32(246, 190, 68, 255);
+            Color32 shine = new Color32(255, 226, 134, 255);
+
+            DrawThickLine(texture, 8, 5, 8, 65, 6, shadow);
+            DrawThickLine(texture, 27, 5, 27, 65, 6, shadow);
+            DrawThickLine(texture, 8, 5, 8, 65, 3, wood);
+            DrawThickLine(texture, 27, 5, 27, 65, 3, wood);
+            for (int y = 10; y <= 61; y += 9)
+            {
+                DrawThickLine(texture, 8, y, 27, y, 5, shadow);
+                DrawThickLine(texture, 9, y + 1, 26, y + 1, 2, gold);
+            }
+            FillRect(texture, 6, 63, 5, 5, shine);
+            FillRect(texture, 25, 63, 5, 5, shine);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetFloorTransitionLandmarkSprite(bool down)
+        {
+            string key = down ? "landmark-floor-down" : "landmark-floor-up";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(58, 72);
+            Color32 stoneDark = new Color32(31, 34, 38, 255);
+            Color32 stone = new Color32(67, 65, 61, 255);
+            Color32 stoneLight = new Color32(126, 112, 91, 255);
+            Color32 voidColor = new Color32(3, 5, 8, 255);
+            Color32 route = down
+                ? new Color32(245, 126, 43, 255)
+                : new Color32(255, 178, 69, 255);
+            Color32 routeCore = new Color32(255, 226, 140, 255);
+
+            FillRect(texture, 7, 5, 44, 50, stoneDark);
+            FillRect(texture, 11, 7, 36, 46, stone);
+            FillRect(texture, 16, 7, 26, 40, voidColor);
+            FillRect(texture, 7, 51, 44, 8, stoneLight);
+            FillRect(texture, 12, 57, 34, 5, stone);
+
+            for (int step = 0; step < 4; step++)
+            {
+                int y = 8 + step * 7;
+                int inset = down ? step * 2 : (3 - step) * 2;
+                FillRect(texture, 17 + inset, y, 24 - inset * 2, 3, route);
+                FillRect(texture, 19 + inset, y + 2, 20 - inset * 2, 1, routeCore);
+            }
+
+            int arrowCenter = 29;
+            int arrowY = down ? 34 : 31;
+            FillRect(texture, arrowCenter - 2, arrowY, 5, 11, routeCore);
+            if (down)
+            {
+                DrawThickLine(texture, arrowCenter, arrowY - 2, arrowCenter - 7, arrowY + 5, 3, routeCore);
+                DrawThickLine(texture, arrowCenter, arrowY - 2, arrowCenter + 7, arrowY + 5, 3, routeCore);
+            }
+            else
+            {
+                DrawThickLine(texture, arrowCenter, arrowY + 13, arrowCenter - 7, arrowY + 6, 3, routeCore);
+                DrawThickLine(texture, arrowCenter, arrowY + 13, arrowCenter + 7, arrowY + 6, 3, routeCore);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetHoleLandmarkSprite()
+        {
+            const string key = "landmark-hole";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(64, 44);
+            Color32 deep = new Color32(1, 4, 7, 250);
+            Color32 stone = new Color32(52, 66, 70, 255);
+            Color32 broken = new Color32(103, 129, 128, 255);
+            Color32 depth = new Color32(75, 218, 221, 220);
+
+            for (int y = 7; y <= 31; y++)
+            {
+                float normalized = Mathf.Abs((y - 19f) / 13f);
+                int half = Mathf.RoundToInt((1f - normalized) * 25f);
+                for (int x = 32 - half; x <= 32 + half; x++)
+                    texture.SetPixel(x, y, deep);
+            }
+
+            DrawThickLine(texture, 32, 4, 60, 19, 4, stone);
+            DrawThickLine(texture, 60, 19, 32, 35, 4, broken);
+            DrawThickLine(texture, 32, 35, 4, 19, 4, stone);
+            DrawThickLine(texture, 4, 19, 32, 4, 4, broken);
+            DrawThickLine(texture, 24, 16, 29, 13, 2, depth);
+            DrawThickLine(texture, 32, 20, 32, 11, 2, depth);
+            DrawThickLine(texture, 40, 16, 35, 13, 2, depth);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.43f));
             _spriteCache[key] = cached;
             return cached;
         }
@@ -753,7 +923,8 @@ namespace ProjectC.Gameplay
             }
 
             texture.Apply(false, true);
-            cached = CreateSprite(texture, new Vector2(0.5f, 0.02f));
+            // 임시 아이템 아트는 y=2부터 그리므로 그 접지선을 타일 중심에 맞춘다.
+            cached = CreateSprite(texture, new Vector2(0.5f, 2f / 24f));
             _spriteCache[key] = cached;
             return cached;
         }
@@ -797,7 +968,8 @@ namespace ProjectC.Gameplay
             }
 
             texture.Apply(false, true);
-            cached = CreateSprite(texture, new Vector2(0.5f, 0.02f));
+            // 임시 허브 프롭도 y=2부터 그린다. 캔버스 바닥이 아닌 실제 접지선 기준.
+            cached = CreateSprite(texture, new Vector2(0.5f, 2f / 32f));
             _spriteCache[key] = cached;
             return cached;
         }

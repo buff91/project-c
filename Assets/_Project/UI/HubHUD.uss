@@ -13,6 +13,11 @@
     padding: 6px 14px;
 }
 
+.hub-top-actions {
+    flex-direction: row;
+    align-items: center;
+}
+
 .hub-caption {
     color: var(--muted);
     font-size: 10px;
@@ -36,12 +41,109 @@
     display: flex;
 }
 
+.hub-icon-button {
+    width: 44px;
+    height: 44px;
+    margin-left: 6px;
+    color: var(--pc-gold);
+    font-size: 18px;
+}
+
+.hub-menu-actions {
+    align-self: stretch;
+    justify-content: center;
+}
+
+.hub-menu-actions > .settings-reset,
+.hub-menu-actions > .settings-done {
+    width: 130px;
+}
+
 .hub-status-zone {
     position: absolute;
     bottom: 16px;
     left: 0;
     right: 0;
+    translate: 0 0;
     align-items: center;
+}
+
+.hub-dungeon-card {
+    width: 820px;
+    max-width: 92%;
+}
+
+.hub-dungeon-layout {
+    flex-direction: row;
+    margin-top: 18px;
+    margin-bottom: 16px;
+}
+
+.hub-dungeon-list {
+    width: 42%;
+    margin-right: 18px;
+}
+
+.hub-dungeon-option {
+    min-height: 64px;
+    margin-bottom: 8px;
+    padding: 10px 14px;
+    color: var(--pc-text);
+    background-color: var(--pc-btn-bg);
+    border-width: 1px;
+    border-color: var(--pc-stone);
+    white-space: normal;
+    -unity-text-align: middle-left;
+}
+
+.hub-dungeon-option.selected {
+    color: var(--pc-gold);
+    background-color: var(--pc-action-bg);
+    border-color: var(--pc-gold-deep);
+}
+
+.hub-dungeon-option.locked {
+    color: var(--pc-dim);
+    opacity: 0.55;
+}
+
+.hub-dungeon-detail {
+    flex-grow: 1;
+    min-height: 210px;
+    padding: 18px;
+    background-color: rgba(10, 12, 16, 0.72);
+    border-left-width: 2px;
+    border-left-color: var(--pc-gold-deep);
+}
+
+.hub-dungeon-name {
+    color: var(--pc-gold);
+    font-size: var(--pc-fs-3);
+    -unity-font-style: bold;
+}
+
+.hub-dungeon-route {
+    color: var(--pc-teal);
+    font-size: var(--pc-fs-1);
+    margin-top: 8px;
+}
+
+.hub-dungeon-desc {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-2);
+    margin-top: 18px;
+    white-space: normal;
+}
+
+.hub-dungeon-legend {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    margin-top: 24px;
+    white-space: normal;
+}
+
+.hub-dungeon-enter {
+    min-width: 240px;
 }
 
 .hub-shop-list {
@@ -134,4 +236,275 @@
     background-color: var(--pc-action-bg);
     border-left-color: var(--pc-gold-deep);
     border-top-color: var(--pc-gold-deep);
+}
+
+.hud-root.is-narrow .hub-topbar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+}
+
+.hud-root.is-narrow .hub-pill {
+    padding: 5px 8px;
+}
+
+.hud-root.is-narrow .hub-icon-button {
+    width: 44px;
+    height: 44px;
+}
+
+.hud-root.is-narrow .hub-status-zone {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+}
+
+.hud-root.is-narrow .hub-status-zone .status-chip {
+    max-width: 100%;
+}
+
+.hud-root.is-narrow .hub-dungeon-card {
+    max-width: 94%;
+}
+
+.hud-root.is-narrow .hub-dungeon-layout {
+    flex-direction: column;
+}
+
+.hud-root.is-narrow .hub-dungeon-list {
+    width: 100%;
+    margin-right: 0;
+    flex-direction: row;
+}
+
+.hud-root.is-narrow .hub-dungeon-option {
+    flex-grow: 1;
+    width: 31%;
+    min-height: 58px;
+    margin-right: 4px;
+    padding: 6px;
+    font-size: 9px;
+    -unity-text-align: middle-center;
+}
+
+.hud-root.is-narrow .hub-dungeon-detail {
+    min-height: 148px;
+    margin-top: 8px;
+    padding: 12px;
+}
+
+/* ── 출정 준비: 창고 ↔ 멀티슬롯 백팩 ─────────────────── */
+
+.expedition-card,
+.hud-root.is-expanded .expedition-card,
+.hud-root.is-landscape .expedition-card {
+    width: 960px;
+    max-width: 96%;
+    height: 88%;
+}
+
+.expedition-layout {
+    width: 100%;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.expedition-card .unity-scroll-view__horizontal-scroller {
+    display: none;
+}
+
+.expedition-card .unity-scroll-view__content-viewport {
+    overflow: hidden;
+}
+
+.expedition-pane {
+    padding: 10px;
+    background-color: rgb(8, 10, 14);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-right-color: rgb(30, 27, 25);
+    border-bottom-color: rgb(30, 27, 25);
+}
+
+.expedition-stash-pane {
+    width: 420px;
+}
+
+.expedition-loadout-pane {
+    width: 292px;
+    min-height: 250px;
+}
+
+.expedition-transfer-rail {
+    width: 60px;
+    min-height: 176px;
+    align-items: center;
+    justify-content: center;
+}
+
+.expedition-transfer-symbol {
+    color: var(--pc-gold);
+    font-size: 28px;
+}
+
+.expedition-transfer-hint,
+.expedition-hero-label,
+.expedition-locked-hint {
+    color: var(--pc-dim);
+    font-size: 9px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.expedition-transfer-hint {
+    margin-top: 8px;
+}
+
+.expedition-hero-label {
+    margin-top: 3px;
+    -unity-text-align: middle-left;
+}
+
+.expedition-locked-hint {
+    width: 264px;
+    margin-top: 8px;
+}
+
+.expedition-backpack-grid {
+    flex-shrink: 0;
+}
+
+.hud-root.is-expanded .expedition-loadout-pane .inventory-section-header,
+.hud-root.is-landscape .expedition-loadout-pane .inventory-section-header {
+    width: 264px;
+    height: 36px;
+}
+
+.hud-root.is-expanded .expedition-loadout-pane .backpack-grid,
+.hud-root.is-landscape .expedition-loadout-pane .backpack-grid {
+    width: 264px;
+    min-width: 264px;
+}
+
+.hud-root.is-expanded .expedition-card .unity-scroll-view__content-container,
+.hud-root.is-landscape .expedition-card .unity-scroll-view__content-container {
+    padding-right: 18px;
+}
+
+.expedition-detail {
+    width: 100%;
+    min-height: 132px;
+    margin-top: 12px;
+    padding: 12px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.expedition-detail-copy {
+    flex-grow: 1;
+    min-width: 220px;
+}
+
+.expedition-feedback {
+    margin-top: 8px;
+}
+
+.expedition-actions {
+    min-width: 172px;
+    margin-left: 12px;
+}
+
+.expedition-transfer-button {
+    width: 172px;
+    min-height: 42px;
+    margin: 3px 0;
+}
+
+.backpack-item.loadout-starter {
+    background-color: rgb(19, 31, 36);
+    border-left-color: var(--pc-teal);
+    border-top-color: var(--pc-teal);
+}
+
+.loadout-starter-badge {
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    color: var(--pc-ice);
+    font-size: 8px;
+    background-color: rgb(6, 15, 19);
+}
+
+.expedition-drag-source {
+    opacity: 0.5;
+}
+
+.expedition-pane.drop-valid {
+    border-left-color: var(--pc-gold);
+    border-right-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-bottom-color: var(--pc-gold);
+    background-color: rgb(28, 24, 13);
+}
+
+.expedition-pane.drop-invalid {
+    border-left-color: rgb(225, 76, 66);
+    border-right-color: rgb(225, 76, 66);
+    border-top-color: rgb(225, 76, 66);
+    border-bottom-color: rgb(225, 76, 66);
+    background-color: rgb(35, 12, 14);
+}
+
+.hud-root.is-narrow .expedition-card {
+    width: 94%;
+    max-width: 94%;
+    height: 94%;
+}
+
+.hud-root.is-narrow .expedition-layout {
+    flex-direction: column;
+    align-items: center;
+}
+
+.hud-root.is-narrow .expedition-stash-pane,
+.hud-root.is-narrow .expedition-loadout-pane {
+    width: 310px;
+    max-width: 100%;
+}
+
+.hud-root.is-narrow .expedition-transfer-rail {
+    width: 100%;
+    min-height: 48px;
+    flex-direction: row;
+}
+
+.hud-root.is-narrow .expedition-transfer-hint {
+    margin: 0 0 0 8px;
+}
+
+.hud-root.is-narrow .expedition-detail {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hud-root.is-narrow .expedition-detail .inventory-detail-icon {
+    align-self: center;
+}
+
+.hud-root.is-narrow .expedition-actions {
+    width: 100%;
+    min-width: 0;
+    margin: 10px 0 0 0;
+    flex-direction: row;
+}
+
+.hud-root.is-narrow .expedition-transfer-button {
+    width: 49%;
+    margin: 0 2px;
+    flex-grow: 1;
 }

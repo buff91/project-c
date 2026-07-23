@@ -128,11 +128,13 @@ namespace ProjectC.Gameplay
 
         private IEnumerator FallEnemy(EnemyAgent enemy, GridPos from, string cause)
         {
+            bool witnessed = IsPositionVisibleToPlayer(from);
             FallResult fall = FallRules.TryFall(
                 _grid.Map, _dungeon.Height, enemy.State, from, BottomElevation, AllCombatants());
             if (fall == null) yield break;
 
-            InteractionFeedback?.Invoke($"{enemy.State.Id} FELL!");
+            if (witnessed)
+                InteractionFeedback?.Invoke($"{RunSummary.FormatCause(enemy.State.Id)} FELL!");
             Debug.Log($"[Fall] {enemy.State.Id} {cause} 낙하 → {fall.FinalPosition} (-{fall.Damage} HP)");
             enemy.Brain?.Rehome(fall.FinalPosition); // 새 층에서 순찰하도록 홈 이동
             yield return ShowEnemyHit(enemy, fall.Damage, "Fall");
@@ -181,7 +183,20 @@ namespace ProjectC.Gameplay
             yield return AnimateBlast(center, fiery);
 
             BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
-            InteractionFeedback?.Invoke($"BOOM · {result.Damaged.Count} HIT");
+            int visibleHitCount = 0;
+            foreach (CombatantState damaged in result.Damaged)
+            {
+                if (damaged == _playerState)
+                {
+                    visibleHitCount++;
+                    continue;
+                }
+                EnemyAgent visibleAgent = FindAgentByState(damaged);
+                if (visibleAgent != null && IsEnemyVisibleToPlayer(visibleAgent))
+                    visibleHitCount++;
+            }
+            InteractionFeedback?.Invoke(
+                visibleHitCount > 0 ? $"BOOM · {visibleHitCount} HIT" : "BOOM");
             Debug.Log($"[Bomb] {center} 폭발: {result.Damaged.Count}명 피해, " +
                       $"약한 바닥 {result.CollapsedWeakFloors.Count}칸 붕괴");
 
@@ -200,16 +215,18 @@ namespace ProjectC.Gameplay
                 InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
 
             // 상태 부여: 불 폭발은 화상, 냉기 폭발은 빙결. (GDD §5.5)
-            bool anyAffected = false;
+            bool anyVisibleAffected = false;
             foreach (CombatantState survivor in result.Damaged)
             {
                 if (!survivor.IsAlive) continue;
                 survivor.Statuses.Apply(fiery ? StatusKind.Burn : StatusKind.Freeze, StatusTurnsApplied);
-                anyAffected = true;
                 EnemyAgent affectedAgent = FindAgentByState(survivor);
                 if (affectedAgent != null) ApplyEnemyVisuals(affectedAgent); // 틴트 즉시 반영
+                if (survivor == _playerState ||
+                    affectedAgent != null && IsEnemyVisibleToPlayer(affectedAgent))
+                    anyVisibleAffected = true;
             }
-            if (anyAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
+            if (anyVisibleAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
 
             // 요소 반응: 불 폭발이 기름 타일에 닿으면 발화 — 그 위의 전원이 불탄다. (GDD §5.5)
             if (fiery)

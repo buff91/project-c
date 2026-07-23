@@ -65,6 +65,18 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TileFor_MapsLadderSeparatelyFromStairs()
+        {
+            Sprite stairs = MakeSprite();
+            Sprite ladder = MakeSprite();
+            _catalog.stairs = stairs;
+            _catalog.ladder = ladder;
+
+            Assert.AreSame(stairs, _catalog.TileFor(TileKind.Stairs, 0));
+            Assert.AreSame(ladder, _catalog.TileFor(TileKind.Ladder, 0));
+        }
+
+        [Test]
         public void RearWallFor_MissingTorchVariant_FallsBackToSameDirectionWall()
         {
             Sprite wallRight = MakeSprite();

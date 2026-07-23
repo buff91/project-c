@@ -26,6 +26,7 @@ namespace ProjectC.Gameplay
         private VisualElement _commands;
         private Label _status;
         private ScrollView _log;
+        private PrototypeHudController _hudController;
         private readonly List<(string Label, Action Action)> _entries = new List<(string, Action)>();
         private readonly Queue<string> _logLines = new Queue<string>(LogCapacity);
         private float _statusTimer;
@@ -37,14 +38,11 @@ namespace ProjectC.Gameplay
         {
             if (!DebugAllowed) return;
 
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
-            _panel = root.Q<VisualElement>("debug-panel");
-            _commands = root.Q<VisualElement>("debug-commands");
-            _status = root.Q<Label>("debug-status");
-            _log = root.Q<ScrollView>("debug-log");
-
             RegisterDefaultCommands();
-            BuildCommandButtons();
+            _hudController = GetComponent<PrototypeHudController>();
+            if (_hudController != null)
+                _hudController.DocumentChanged += BindDocument;
+            BindDocument();
 
             Application.logMessageReceived += HandleLogMessage;
             if (demo != null) demo.InteractionFeedback += HandleFeedback;
@@ -53,9 +51,22 @@ namespace ProjectC.Gameplay
         private void OnDisable()
         {
             if (!DebugAllowed) return;
+            if (_hudController != null)
+                _hudController.DocumentChanged -= BindDocument;
+            _hudController = null;
             Application.logMessageReceived -= HandleLogMessage;
             if (demo != null) demo.InteractionFeedback -= HandleFeedback;
             _entries.Clear();
+        }
+
+        private void BindDocument()
+        {
+            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            _panel = root.Q<VisualElement>("debug-panel");
+            _commands = root.Q<VisualElement>("debug-commands");
+            _status = root.Q<Label>("debug-status");
+            _log = root.Q<ScrollView>("debug-log");
+            BuildCommandButtons();
         }
 
         /// <summary>치트/커맨드 추가 지점. 라벨과 실행만 주면 버튼이 생긴다.</summary>

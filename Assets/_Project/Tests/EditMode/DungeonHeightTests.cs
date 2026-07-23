@@ -78,6 +78,31 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Generate_AddsOneRecognizableLadderLinkPerDungeonFloor()
+        {
+            var map = new GridMap();
+            DungeonLayout dungeon = DungeonGenerator.Generate(map, 11, 11, 3, 4, seed: 23);
+
+            foreach (DungeonFloorInfo floor in dungeon.Floors)
+            {
+                GridPos[] ladderTiles = map.All()
+                    .Where(pair =>
+                        pair.Value.kind == TileKind.Ladder &&
+                        dungeon.Height.FloorIndex(pair.Key.elevation) == floor.FloorIndex)
+                    .Select(pair => pair.Key)
+                    .ToArray();
+
+                Assert.AreEqual(2, ladderTiles.Length);
+                Assert.AreEqual(1, System.Math.Abs(
+                    ladderTiles[0].elevation - ladderTiles[1].elevation));
+                CollectionAssert.Contains(map.LinksFrom(ladderTiles[0]), ladderTiles[1]);
+                CollectionAssert.Contains(map.LinksFrom(ladderTiles[1]), ladderTiles[0]);
+                Assert.IsTrue(map.Get(ladderTiles[0]).IsSolidGround);
+                Assert.IsTrue(map.Get(ladderTiles[1]).IsWalkable);
+            }
+        }
+
+        [Test]
         public void GeneratedHoles_HaveSolidLandingOnLowerFloor()
         {
             var map = new GridMap();

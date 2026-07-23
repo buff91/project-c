@@ -27,7 +27,18 @@ namespace ProjectC.Core
         public int coinPouches;
         public int gemstones;
         public int relics;
+        public int herbs;
+        public int powders;
+        public int frostShards;
         public int kills;
         public int deepestFloorIndex;
+    }
+
+    /// <summary>새 판과 이어하기가 시작할 던전 내부 깊이를 결정한다.</summary>
+    public static class RunStartRules
+    {
+        /// <summary>새 판은 반드시 B1(0), 이어하기만 저장된 음수 floor index를 깊이로 변환한다.</summary>
+        public static int ResolvePreviewDepth(RunSaveData continueData) =>
+            continueData == null ? 0 : Math.Max(0, -continueData.currentFloorIndex);
     }
 }

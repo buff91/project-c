@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="settings-modal" class="settings-modal">
+        <ui:VisualElement class="artifact-panel settings-card">
+            <ui:VisualElement class="settings-header">
+                <ui:VisualElement>
+                    <ui:Label text="DISPLAY SETTINGS" class="settings-title" />
+                    <ui:Label text="월드 가독성 · 모든 화면에 저장" class="settings-subtitle" />
+                </ui:VisualElement>
+                <ui:Button name="settings-close" text="×" class="settings-close" tooltip="설정 닫기" />
+            </ui:VisualElement>
+
+            <ui:Toggle name="occlusion-toggle" label="플레이어 가림 자동 투명화" value="true" class="settings-toggle" />
+            <ui:VisualElement class="setting-row">
+                <ui:VisualElement class="setting-copy">
+                    <ui:Label text="가림 오브젝트 투명도" class="setting-label" />
+                    <ui:Label text="낮을수록 플레이어가 선명하게 보입니다" class="setting-help" />
+                </ui:VisualElement>
+                <ui:Slider name="occlusion-alpha" low-value="0.12" high-value="0.7" value="0.3" class="setting-slider" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="setting-row">
+                <ui:VisualElement class="setting-copy">
+                    <ui:Label text="인접 층 밝기" class="setting-label" />
+                    <ui:Label text="계단과 낙하 연결부 미리보기" class="setting-help" />
+                </ui:VisualElement>
+                <ui:Slider name="vertical-alpha" low-value="0.1" high-value="0.8" value="0.54" class="setting-slider" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="setting-row">
+                <ui:VisualElement class="setting-copy">
+                    <ui:Label text="탐색 지역 밝기" class="setting-label" />
+                    <ui:Label text="현재 시야 밖의 방문한 타일" class="setting-help" />
+                </ui:VisualElement>
+                <ui:Slider name="explored-alpha" low-value="0.05" high-value="0.4" value="0.16" class="setting-slider" />
+            </ui:VisualElement>
+
+            <ui:Toggle name="rear-walls-toggle" label="방향별 외곽 벽 표시" value="true" class="settings-toggle" />
+
+            <ui:VisualElement name="development-viewport" class="development-viewport">
+                <ui:Label text="DEVELOPMENT VIEWPORT" class="development-title" />
+                <ui:Label text="개발 중 UI 모드와 Game View 해상도를 즉시 전환합니다" class="development-help" />
+                <ui:VisualElement class="development-controls">
+                    <ui:VisualElement class="development-field viewport-mode-field">
+                        <ui:Label text="UI" class="development-field-label" />
+                        <ui:DropdownField name="viewport-mode" class="development-dropdown viewport-mode" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="development-field viewport-resolution-field">
+                        <ui:Label text="해상도" class="development-field-label" />
+                        <ui:DropdownField name="viewport-resolution" class="development-dropdown viewport-resolution" />
+                    </ui:VisualElement>
+                    <ui:Button name="viewport-apply" text="화면 적용" class="viewport-apply" />
+                </ui:VisualElement>
+                <ui:Label name="viewport-status" text="현재 화면을 확인하는 중" class="viewport-status" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="settings-actions">
+                <ui:Button name="settings-reset" text="기본값" class="settings-reset" />
+                <ui:Button name="settings-done" text="적용 완료" class="settings-done" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

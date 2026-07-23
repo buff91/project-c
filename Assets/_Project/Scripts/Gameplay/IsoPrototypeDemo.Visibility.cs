@@ -16,6 +16,7 @@ namespace ProjectC.Gameplay
             if (_dungeon == null) return;
 
             RecomputeVisibility();
+            RefreshDungeonFogBackdrop();
 
             foreach (var pair in _tileRenderers)
             {
@@ -23,9 +24,16 @@ namespace ProjectC.Gameplay
                 bool visible = _visibleTiles.Contains(pair.Key);
                 bool explored = _exploredTiles.Contains(pair.Key);
                 bool vertical = _verticalPreviewTiles.Contains(pair.Key);
+                int tileFloor = _dungeon.Height.FloorIndex(pair.Key.elevation);
                 TileData tileData = _grid.Map.Get(pair.Key);
                 pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
-                pair.Value.enabled = debugVisible || visible || explored || vertical;
+                pair.Value.enabled = FloorVisibilityRules.ShouldRenderWorldGeometry(
+                    debugVisible,
+                    tileFloor,
+                    _activeFloorIndex,
+                    visible,
+                    explored,
+                    vertical);
                 float alpha = VisibilityAlpha(pair.Key);
                 Color tint = ElevationTint(pair.Key);
                 // 원소 상태 타일은 색으로 보여준다: 기름=갈색조, 물=청색조. 높이 틴트를 곱한다.
@@ -79,14 +87,322 @@ namespace ProjectC.Gameplay
             RebuildRearWalls();
             RebuildVerticalShafts();
             RebuildElevationEdgeMarkers();
+            RefreshVerticalLandmarks();
+            DetectNewVerticalRoute();
             VerticalContextChanged?.Invoke();
+        }
+
+        private sealed class VerticalLandmarkAgent
+        {
+            public GridPos Anchor;
+            public GridPos? Destination;
+            public TileKind Kind;
+            public GameObject Root;
+            public SpriteRenderer Renderer;
+            public TextMesh Label;
+        }
+
+        /// <summary>
+        /// 색 테두리 대신 실루엣으로 읽히는 월드 오브젝트를 만든다.
+        /// 계단은 발판, 사다리는 세워진 레일, 층 전환은 어두운 아치, Hole은 깨진 구멍이다.
+        /// </summary>
+        private void CreateVerticalLandmarks()
+        {
+            if (hubMode || _visualRoot == null) return;
+
+            foreach (var pair in _grid.Map.All())
+            {
+                GridPos anchor = pair.Key;
+                TileKind kind = pair.Value.kind;
+                GridPos? destination = null;
+                Sprite sprite;
+                float labelHeight;
+
+                switch (kind)
+                {
+                    case TileKind.Stairs:
+                        if (StairTopology.TryGetHigherLanding(_grid.Map, anchor, out GridPos landing))
+                            destination = landing;
+                        sprite = GetLocalStairLandmarkSprite();
+                        labelHeight = 0.48f;
+                        break;
+                    case TileKind.Ladder:
+                    {
+                        IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(anchor);
+                        if (links.Count == 0 || links[0].elevation < anchor.elevation)
+                            continue; // 한 쌍의 낮은 끝에서만 세워진 사다리를 하나 만든다.
+                        destination = links[0];
+                        sprite = GetLadderLandmarkSprite();
+                        labelHeight = 0.58f;
+                        break;
+                    }
+                    case TileKind.StairsUp:
+                    case TileKind.StairsDown:
+                    {
+                        IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(anchor);
+                        if (links.Count > 0) destination = links[0];
+                        sprite = GetFloorTransitionLandmarkSprite(kind == TileKind.StairsDown);
+                        labelHeight = 1.02f;
+                        break;
+                    }
+                    case TileKind.Hole:
+                        destination = _grid.Map.FindLandingBelow(anchor, BottomElevation);
+                        sprite = GetHoleLandmarkSprite();
+                        labelHeight = 0.62f;
+                        break;
+                    default:
+                        continue;
+                }
+
+                var root = new GameObject($"Vertical Landmark {kind} {anchor}");
+                root.transform.SetParent(_visualRoot, false);
+                var art = new GameObject("Route Art");
+                art.transform.SetParent(root.transform, false);
+                var renderer = art.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                renderer.sortingOrder = _grid.iso.SortingOrder(anchor, 1);
+
+                var landmark = new VerticalLandmarkAgent
+                {
+                    Anchor = anchor,
+                    Destination = destination,
+                    Kind = kind,
+                    Root = root,
+                    Renderer = renderer,
+                    Label = CreateVerticalLandmarkLabel(root.transform, labelHeight)
+                };
+                _verticalLandmarks.Add(landmark);
+                UpdateVerticalLandmarkTransform(landmark);
+            }
+        }
+
+        private TextMesh CreateVerticalLandmarkLabel(Transform parent, float localHeight)
+        {
+            var labelObject = new GameObject("Route Label");
+            labelObject.transform.SetParent(parent, false);
+            labelObject.transform.localPosition = Vector3.up * localHeight;
+            var label = labelObject.AddComponent<TextMesh>();
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.font = font;
+            label.fontSize = 48;
+            label.characterSize = 0.032f;
+            label.fontStyle = FontStyle.Bold;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = new Color32(255, 229, 154, 255);
+            MeshRenderer renderer = labelObject.GetComponent<MeshRenderer>();
+            renderer.material = font.material;
+            renderer.sortingOrder = 31990;
+            return label;
+        }
+
+        private void UpdateVerticalLandmarkTransform(VerticalLandmarkAgent landmark)
+        {
+            Vector3 position = VisualPosition(landmark.Anchor);
+            landmark.Renderer.transform.localScale = Vector3.one;
+            if (landmark.Kind == TileKind.Ladder && landmark.Destination.HasValue)
+            {
+                Vector3 destination = VisualPosition(landmark.Destination.Value);
+                position = Vector3.Lerp(position, destination, 0.5f) + Vector3.up * 0.02f;
+                float scaleY = VerticalTraversalRules.LadderScaleY(
+                    landmark.Destination.Value.elevation - landmark.Anchor.elevation,
+                    _grid.iso.elevationStep,
+                    _grid.iso.tileHeight,
+                    landmark.Renderer.sprite.bounds.size.y);
+                landmark.Renderer.transform.localScale = new Vector3(0.82f, scaleY, 1f);
+            }
+            else
+            {
+                position += Vector3.up * 0.03f;
+            }
+
+            landmark.Root.transform.position = position;
+            landmark.Renderer.sortingOrder = _grid.iso.SortingOrder(landmark.Anchor, 1);
+        }
+
+        private void RefreshVerticalLandmarks()
+        {
+            foreach (VerticalLandmarkAgent landmark in _verticalLandmarks)
+            {
+                UpdateVerticalLandmarkTransform(landmark);
+                bool anchorVisible = _visibleTiles.Contains(landmark.Anchor);
+                bool anchorPreview = _verticalPreviewTiles.Contains(landmark.Anchor);
+                bool destinationVisible = landmark.Destination.HasValue &&
+                                          _visibleTiles.Contains(landmark.Destination.Value);
+                bool destinationPreview = landmark.Destination.HasValue &&
+                                          _verticalPreviewTiles.Contains(landmark.Destination.Value);
+                bool anchorOnActiveFloor =
+                    _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _activeFloorIndex;
+                bool destinationOnActiveFloor =
+                    landmark.Destination.HasValue &&
+                    _dungeon.Height.FloorIndex(landmark.Destination.Value.elevation) ==
+                    _activeFloorIndex;
+                bool activeRoute = landmark.Kind == TileKind.Hole
+                    ? anchorOnActiveFloor || destinationOnActiveFloor
+                    : anchorOnActiveFloor;
+                bool show = viewMode == DungeonViewMode.DebugAll
+                    ? activeRoute && IsDebugLandmarkReachable(landmark)
+                    : landmark.Kind == TileKind.Hole
+                        ? anchorVisible || anchorPreview || destinationVisible || destinationPreview
+                        : activeRoute && (anchorVisible || destinationVisible);
+                landmark.Root.SetActive(show);
+                if (!show) continue;
+
+                bool viewedFromBelow =
+                    _dungeon.Height.FloorIndex(landmark.Anchor.elevation) > _activeFloorIndex;
+                string destinationLabel = VerticalLandmarkDestinationLabel(
+                    landmark, viewedFromBelow);
+                if (VerticalRouteCue.TryCreate(
+                        landmark.Kind, viewedFromBelow, destinationLabel, out VerticalRouteCue cue))
+                    landmark.Label.text = cue.WorldLabel;
+
+                float alpha = viewMode == DungeonViewMode.DebugAll ||
+                              anchorVisible || destinationVisible
+                    ? 1f
+                    : verticalPreviewAlpha;
+                landmark.Renderer.color = new Color(1f, 1f, 1f, alpha);
+                Color labelColor = LandmarkLabelColor(cue.Role);
+                labelColor.a = alpha;
+                landmark.Label.color = labelColor;
+            }
+        }
+
+        private bool IsDebugLandmarkReachable(VerticalLandmarkAgent landmark)
+        {
+            if (landmark.Kind == TileKind.Hole) return true;
+            if (_playerState == null) return false;
+            if (_playerPos == landmark.Anchor) return true;
+            return GridPathfinder.FindPath(_grid.Map, _playerPos, landmark.Anchor).Count > 0;
+        }
+
+        private static Color LandmarkLabelColor(VerticalRouteRole role)
+        {
+            switch (role)
+            {
+                case VerticalRouteRole.Ladder:
+                    return new Color32(255, 205, 83, 255);
+                case VerticalRouteRole.FloorUp:
+                case VerticalRouteRole.FloorDown:
+                    return new Color32(255, 153, 64, 255);
+                case VerticalRouteRole.OpeningUp:
+                case VerticalRouteRole.OpeningDown:
+                    return new Color32(102, 230, 238, 255);
+                default:
+                    return new Color32(134, 225, 203, 255);
+            }
+        }
+
+        private string VerticalLandmarkDestinationLabel(
+            VerticalLandmarkAgent landmark,
+            bool viewedFromBelow)
+        {
+            if (landmark.Kind == TileKind.Stairs || landmark.Kind == TileKind.Ladder)
+                return null;
+
+            if (landmark.Kind == TileKind.Hole && viewedFromBelow)
+                return FloorLabel(_dungeon.Height.FloorIndex(landmark.Anchor.elevation));
+
+            if (landmark.Destination.HasValue)
+                return FloorLabel(_dungeon.Height.FloorIndex(landmark.Destination.Value.elevation));
+
+            if (landmark.Kind == TileKind.StairsDown &&
+                _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _dungeon.BottomFloorIndex)
+                return _stageIndex < stageCount ? "NEXT" : "EXIT";
+
+            return "--";
+        }
+
+        /// <summary>수직 수단이 시야에 처음 들어온 그 프레임에만 설명을 보낸다.</summary>
+        private void DetectNewVerticalRoute()
+        {
+            if (hubMode || viewMode == DungeonViewMode.DebugAll || _playerState == null)
+                return;
+
+            VerticalLandmarkAgent nearest = null;
+            VerticalRouteCue nearestCue = default;
+            float nearestDistance = float.MaxValue;
+
+            foreach (VerticalLandmarkAgent landmark in _verticalLandmarks)
+            {
+                GridPos focus = landmark.Anchor;
+                bool viewedFromBelow =
+                    _dungeon.Height.FloorIndex(landmark.Anchor.elevation) > _activeFloorIndex;
+                if (viewedFromBelow && landmark.Destination.HasValue)
+                    focus = landmark.Destination.Value;
+
+                bool seen = _visibleTiles.Contains(focus) ||
+                            (landmark.Kind == TileKind.Hole &&
+                             (_verticalPreviewTiles.Contains(landmark.Anchor) ||
+                              (landmark.Destination.HasValue &&
+                               _verticalPreviewTiles.Contains(landmark.Destination.Value))));
+                if (!seen) continue;
+
+                string destination = VerticalLandmarkDestinationLabel(landmark, viewedFromBelow);
+                if (!VerticalRouteCue.TryCreate(
+                        landmark.Kind, viewedFromBelow, destination, out VerticalRouteCue cue) ||
+                    _discoveredVerticalRoutes.Contains(cue.Role))
+                    continue;
+
+                float distance = _playerPos.ManhattanTo(focus);
+                if (distance >= nearestDistance) continue;
+                nearest = landmark;
+                nearestCue = cue;
+                nearestDistance = distance;
+            }
+
+            if (nearest == null) return;
+            _discoveredVerticalRoutes.Add(nearestCue.Role);
+            VerticalRouteDiscovered?.Invoke(nearestCue);
+            FloatingText?.Show(
+                nearest.Root.transform.position + Vector3.up * 0.35f,
+                nearestCue.WorldLabel,
+                FloatingTextKind.Alert);
+        }
+
+        /// <summary>
+        /// 미탐색 방 모양을 노출하지 않고 현재 층의 생성 가능 영역만 어두운 다이아몬드로 표시한다.
+        /// 이 배경은 시각 구분 전용이며 타일/콜라이더/입력 대상이 아니다.
+        /// </summary>
+        private void RefreshDungeonFogBackdrop()
+        {
+            bool shouldShow = showDungeonFogBackdrop && !hubMode &&
+                              viewMode == DungeonViewMode.Play && _visualRoot != null;
+            if (!shouldShow)
+            {
+                if (_dungeonFogBackdrop != null) _dungeonFogBackdrop.enabled = false;
+                return;
+            }
+
+            if (_dungeonFogBackdrop == null)
+            {
+                var backdrop = new GameObject("Dungeon Fog Backdrop");
+                backdrop.transform.SetParent(_visualRoot, false);
+                _dungeonFogBackdrop = backdrop.AddComponent<SpriteRenderer>();
+                _dungeonFogBackdrop.sortingOrder = -100000;
+            }
+
+            int baseElevation = _dungeon.Height.Elevation(_activeFloorIndex);
+            DungeonFogBackdropFrame frame = DungeonFogBackdropLayout.Calculate(
+                _grid.iso,
+                roomSize,
+                roomSize,
+                baseElevation);
+            _dungeonFogBackdrop.sprite = GetDungeonFogBackdropSprite();
+            _dungeonFogBackdrop.transform.position = new Vector3(frame.Center.x, frame.Center.y, 0f);
+
+            // 생성 스프라이트 기본 크기는 2×1 world unit. 프레임에 맞게 균등 확장한다.
+            _dungeonFogBackdrop.transform.localScale = new Vector3(
+                frame.Width * 0.5f,
+                frame.Height,
+                1f);
+            _dungeonFogBackdrop.enabled = true;
         }
 
         private Transform _elevationMarkerRoot;
 
         /// <summary>
-        /// 높이 경계 마커: 활성 층의 계단(층 내 높이 전환점) 위에 청록 테두리를 상시 표시해
-        /// "여기서 높이가 바뀐다"를 보여준다.
+        /// 발판 계단의 걸어서 통과 가능한 경계만 얇게 강조한다.
+        /// 사다리·층 전환·개구부는 별도 실루엣 오브젝트가 역할을 설명한다.
         /// </summary>
         private void RebuildElevationEdgeMarkers()
         {
@@ -104,11 +420,12 @@ namespace ProjectC.Gameplay
 
             foreach (var pair in _grid.Map.All())
             {
-                if (pair.Value.kind != TileKind.Stairs) continue;
+                TileKind kind = pair.Value.kind;
+                if (kind != TileKind.Stairs) continue;
                 if (_dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex) continue;
                 if (!_visibleTiles.Contains(pair.Key) && !_exploredTiles.Contains(pair.Key)) continue;
 
-                var marker = new GameObject($"Elevation Edge {pair.Key}");
+                var marker = new GameObject($"Vertical Marker {kind} {pair.Key}");
                 marker.transform.SetParent(_elevationMarkerRoot, false);
                 marker.transform.position = VisualPosition(pair.Key) + Vector3.up * 0.02f;
                 var renderer = marker.AddComponent<SpriteRenderer>();
@@ -116,8 +433,9 @@ namespace ProjectC.Gameplay
                     ? visualCatalog.selection
                     : GetSelectionSprite();
                 renderer.sortingOrder = _grid.iso.SortingOrder(pair.Key, 0);
-                renderer.color = new Color(0.33f, 0.83f, 0.77f, // accent 청록
-                    _visibleTiles.Contains(pair.Key) ? 0.45f : 0.2f);
+                Color markerColor = new Color(0.33f, 0.83f, 0.77f);
+                markerColor.a = _visibleTiles.Contains(pair.Key) ? 0.5f : 0.22f;
+                renderer.color = markerColor;
             }
         }
 
@@ -138,26 +456,27 @@ namespace ProjectC.Gameplay
             {
                 foreach (DungeonFloorInfo floor in _dungeon.Floors)
                 {
-                    CreateLinkedShaft(floor.DownStairs);
                     CreateHoleShaft(floor.Hole);
                 }
                 return;
             }
 
-            if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo active)) return;
-            if (active.UpStairs.HasValue && _visibleTiles.Contains(active.UpStairs.Value))
-                CreateLinkedShaft(active.UpStairs);
-            if (active.DownStairs.HasValue && _visibleTiles.Contains(active.DownStairs.Value))
-                CreateLinkedShaft(active.DownStairs);
-            if (active.Hole.HasValue && _visibleTiles.Contains(active.Hole.Value))
-                CreateHoleShaft(active.Hole);
-        }
-
-        private void CreateLinkedShaft(GridPos? stair)
-        {
-            if (!stair.HasValue) return;
-            foreach (GridPos linked in _grid.Map.LinksFrom(stair.Value))
-                CreateVerticalShaft(stair.Value, linked, hole: false);
+            // PLAY에서는 실제 개구부만 층 사이를 시각적으로 연결한다.
+            // StairsUp/Down은 활성 던전 층을 교체하는 전환구이므로 투시 샤프트를 만들지 않는다.
+            foreach (var pair in _grid.Map.All())
+            {
+                if (pair.Value.kind != TileKind.Hole) continue;
+                VerticalOpeningView view = VerticalOpeningRules.ViewFromFloor(
+                    _grid.Map,
+                    _dungeon.Height,
+                    _activeFloorIndex,
+                    pair.Key,
+                    BottomElevation,
+                    _visibleTiles.Contains,
+                    out GridPos landing);
+                if (view != VerticalOpeningView.None)
+                    CreateVerticalShaft(pair.Key, landing, hole: true);
+            }
         }
 
         private void CreateHoleShaft(GridPos? hole)
@@ -239,24 +558,24 @@ namespace ProjectC.Gameplay
                 _exploredTiles.Add(pos);
             }
 
-            if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo activeFloor)) return;
-
-            if (activeFloor.Hole.HasValue &&
-                _visibleTiles.Contains(activeFloor.Hole.Value) &&
-                _dungeon.TryGetFloor(_activeFloorIndex - 1, out _))
+            // 실제 Hole만 양방향 시야 포털이다.
+            // 위에서는 착지점 주변을 내려다보고, 아래에서는 같은 개구부 주변을 올려다본다.
+            foreach (var pair in _grid.Map.All())
             {
-                AddVerticalWindow(activeFloor.Hole.Value, _activeFloorIndex - 1);
+                if (pair.Value.kind != TileKind.Hole) continue;
+                VerticalOpeningView view = VerticalOpeningRules.ViewFromFloor(
+                    _grid.Map,
+                    _dungeon.Height,
+                    _activeFloorIndex,
+                    pair.Key,
+                    BottomElevation,
+                    _visibleTiles.Contains,
+                    out GridPos landing);
+                if (view == VerticalOpeningView.Downward)
+                    AddVerticalWindow(landing, _dungeon.Height.FloorIndex(landing.elevation));
+                else if (view == VerticalOpeningView.Upward)
+                    AddVerticalWindow(pair.Key, _dungeon.Height.FloorIndex(pair.Key.elevation));
             }
-
-            AddLinkedStairWindow(activeFloor.UpStairs);
-            AddLinkedStairWindow(activeFloor.DownStairs);
-        }
-
-        private void AddLinkedStairWindow(GridPos? stair)
-        {
-            if (!stair.HasValue || !_visibleTiles.Contains(stair.Value)) return;
-            foreach (GridPos linked in _grid.Map.LinksFrom(stair.Value))
-                AddVerticalWindow(linked, _dungeon.Height.FloorIndex(linked.elevation));
         }
 
         private string BuildVerticalHintLabel()
@@ -266,13 +585,63 @@ namespace ProjectC.Gameplay
             if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor))
                 return "EXPLORE TO FIND VERTICAL ROUTES";
 
-            var hints = new List<string>(3);
+            var hints = new List<string>(4);
+            TileKind? playerTile = _grid.Map.Get(_playerPos)?.kind;
+            if (playerTile == TileKind.Ladder)
+                return "사다리 위 · 캐릭터 탭 또는 SPACE로 오르내리기";
+            else if (playerTile == TileKind.StairsUp)
+                return $"{AboveFloorLabel} 되돌아가기 · 캐릭터 탭 또는 SPACE";
+            else if (playerTile == TileKind.StairsDown)
+                return $"{BelowFloorLabel} 되돌아가기 · 캐릭터 탭 또는 SPACE";
+
+            bool localStairsVisible = false;
+            bool ladderVisible = false;
+            foreach (var pair in _grid.Map.All())
+            {
+                if (_dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex ||
+                    !_visibleTiles.Contains(pair.Key))
+                    continue;
+                localStairsVisible |= pair.Value.kind == TileKind.Stairs;
+                ladderVisible |= pair.Value.kind == TileKind.Ladder;
+            }
+            if (localStairsVisible)
+                hints.Add("발판 계단은 그대로 걸어서 통과");
+            if (ladderVisible && playerTile != TileKind.Ladder)
+                hints.Add("세워진 사다리 앞에 서면 오르기 가능");
+
             if (floor.UpStairs.HasValue && _visibleTiles.Contains(floor.UpStairs.Value))
-                hints.Add($"ORANGE ▲ TAP STAIR → {AboveFloorLabel}");
+                hints.Add($"{AboveFloorLabel} 상층 계단 · 밟으면 즉시 이동");
             if (floor.DownStairs.HasValue && _visibleTiles.Contains(floor.DownStairs.Value))
-                hints.Add($"ORANGE ▼ TAP STAIR → {BelowFloorLabel}");
-            if (floor.Hole.HasValue && _visibleTiles.Contains(floor.Hole.Value))
-                hints.Add($"CYAN ▼ TAP HOLE TO DROP → {BelowFloorLabel}");
+                hints.Add($"{BelowFloorLabel} 하층 계단 · 밟으면 즉시 이동");
+
+            bool downwardOpeningAdded = false;
+            bool upwardOpeningAdded = false;
+            foreach (var pair in _grid.Map.All())
+            {
+                if (pair.Value.kind != TileKind.Hole) continue;
+                VerticalOpeningView openingView = VerticalOpeningRules.ViewFromFloor(
+                    _grid.Map,
+                    _dungeon.Height,
+                    _activeFloorIndex,
+                    pair.Key,
+                    BottomElevation,
+                    _visibleTiles.Contains,
+                    out GridPos landing);
+                if (openingView == VerticalOpeningView.Downward && !downwardOpeningAdded)
+                {
+                    hints.Add(
+                        $"바닥 구멍 탭: 아래로 뛰어내리기 → " +
+                        $"{FloorLabel(_dungeon.Height.FloorIndex(landing.elevation))}");
+                    downwardOpeningAdded = true;
+                }
+                else if (openingView == VerticalOpeningView.Upward && !upwardOpeningAdded)
+                {
+                    hints.Add(
+                        $"천장 개구부: 위층 올려다보기 → " +
+                        $"{FloorLabel(_dungeon.Height.FloorIndex(pair.Key.elevation))}");
+                    upwardOpeningAdded = true;
+                }
+            }
 
             return hints.Count > 0
                 ? string.Join("\n", hints)
@@ -354,6 +723,9 @@ namespace ProjectC.Gameplay
                 case TileKind.Stairs:
                     bright = new Color32(190, 168, 128, 255);
                     break;
+                case TileKind.Ladder:
+                    bright = new Color32(238, 185, 67, 255);
+                    break;
                 case TileKind.Hole:
                     bright = new Color32(64, 170, 190, 255);
                     break;
@@ -427,11 +799,16 @@ namespace ProjectC.Gameplay
             {
                 GridPos pos = pair.Key;
                 int floor = _dungeon.Height.FloorIndex(pos.elevation);
-                if (!pair.Value.IsWalkable ||
-                    (viewMode == DungeonViewMode.Play &&
-                     !_visibleTiles.Contains(pos) &&
-                     !_exploredTiles.Contains(pos) &&
-                     !_verticalPreviewTiles.Contains(pos)))
+                if (!pair.Value.IsWalkable)
+                    continue;
+
+                if (!FloorVisibilityRules.ShouldRenderWorldGeometry(
+                        viewMode == DungeonViewMode.DebugAll,
+                        floor,
+                        _activeFloorIndex,
+                        _visibleTiles.Contains(pos),
+                        _exploredTiles.Contains(pos),
+                        _verticalPreviewTiles.Contains(pos)))
                     continue;
 
                 if (!HasPlanarTile(pos.x + backA.x, pos.y + backA.y, floor))
@@ -637,7 +1014,7 @@ namespace ProjectC.Gameplay
         }
 
         private GridPos TileVisualSortingPos(GridPos pos, TileKind kind) =>
-            kind == TileKind.Stairs ? SortingAnchor(pos) : pos;
+            kind == TileKind.Stairs || kind == TileKind.Ladder ? SortingAnchor(pos) : pos;
 
         private void ApplyPlayerVisualSorting(GridPos pos)
         {
@@ -648,7 +1025,7 @@ namespace ProjectC.Gameplay
         private static int TileSortOffset(TileKind kind)
         {
             if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen) return 0;
-            return kind == TileKind.Stairs ? -1 : -2;
+            return kind == TileKind.Stairs || kind == TileKind.Ladder ? -1 : -2;
         }
     }
 }

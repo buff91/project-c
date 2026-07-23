@@ -5,15 +5,15 @@ using UnityEngine;
 namespace ProjectC.EditorTools
 {
     /// <summary>
-    /// 에디터 Play 시 어떤 씬이 열려 있어도 허브 캠프부터 시작하는 토글. 기본 OFF —
+    /// 에디터 Play 시 어떤 씬이 열려 있어도 타이틀 화면부터 시작하는 토글. 기본 OFF —
     /// 평소엔 열려 있는 씬을 바로 도는 반복 개발용, 전체 흐름 확인 때만 켠다.
     /// </summary>
     [InitializeOnLoad]
     public static class PlayFromMainMenu
     {
-        private const string MenuPath = "ProjectC/Play From Hub";
+        private const string MenuPath = "ProjectC/Play From Main Menu";
         private const string PrefKey = "ProjectC.PlayFromMainMenu";
-        private const string MenuScenePath = "Assets/_Project/Scenes/Hub.unity";
+        private const string MenuScenePath = "Assets/_Project/Scenes/MainMenu.unity";
 
         static PlayFromMainMenu()
         {

@@ -17,6 +17,14 @@ namespace ProjectC.Gameplay
     {
         public IsoPrototypeDemo demo;
 
+        [Header("HUD 프레젠테이션")]
+        public HudPresentationMode presentationMode = HudPresentationMode.Auto;
+        public VisualTreeAsset mobileHudAsset;
+        public VisualTreeAsset desktopHudAsset;
+
+        public HudPresentationMode ActivePresentation { get; private set; }
+        public event Action DocumentChanged;
+
         private Button _rotateLeft;
         private Button _rotateRight;
         private Button _modeButton;
@@ -28,16 +36,7 @@ namespace ProjectC.Gameplay
         private Label _potionCountLabel;
         private Label _bombCountLabel;
         private Label _frostCountLabel;
-        private Button _settingsButton;
-        private Button _settingsClose;
-        private Button _settingsDone;
-        private Button _settingsReset;
-        private VisualElement _settingsModal;
-        private Toggle _occlusionToggle;
-        private Toggle _rearWallsToggle;
-        private Slider _occlusionAlpha;
-        private Slider _verticalAlpha;
-        private Slider _exploredAlpha;
+        private DisplaySettingsPanelController _displaySettings;
         private Label _viewLabel;
         private Label _depthLabel;
         private Label _depthCaption;
@@ -45,6 +44,10 @@ namespace ProjectC.Gameplay
         private Label _locationLabel;
         private Label _statusLabel;
         private Label _verticalHintLabel;
+        private VisualElement _routeDiscovery;
+        private Label _routeDiscoveryTitle;
+        private Label _routeDiscoveryDetail;
+        private Coroutine _routeDiscoveryRoutine;
         private Label _hpValueLabel;
         private VisualElement _hpHearts;
         private VisualElement _gameoverOverlay;
@@ -64,17 +67,24 @@ namespace ProjectC.Gameplay
         private Button _waitButton;
         private Button _gameMenuButton;
         private VisualElement _gameMenuModal;
+        private VisualElement _inventoryModal;
         private Button _menuResume;
         private Button _menuLobby;
         private Button _menuAbandon;
         private VisualElement _actionWheel;
         private bool _wheelPinned; // 캐릭터 탭 토글로 열린 상태 (홀드와 구분)
+        private ResponsiveUiLayout _responsiveLayout;
+        private bool _developmentViewportRefreshRequested;
+        private bool _reopenSettingsAfterViewportRefresh;
 
         private IsoTapInput _tapInput;
 
         private void OnEnable()
         {
+            ApplyPresentation();
             BindDocument();
+            BindResponsiveLayout();
+            DevelopmentViewportService.Changed += HandleDevelopmentViewportChanged;
             if (demo != null)
             {
                 _tapInput = demo.GetComponent<IsoTapInput>();
@@ -84,6 +94,7 @@ namespace ProjectC.Gameplay
                 demo.ViewModeChanged += HandleViewModeChanged;
                 demo.CombatModeChanged += HandleCombatModeChanged;
                 demo.InteractionFeedback += HandleInteractionFeedback;
+                demo.VerticalRouteDiscovered += HandleVerticalRouteDiscovered;
                 demo.PlayerPositionChanged += HandlePlayerPositionChanged;
                 demo.VerticalContextChanged += HandleVerticalContextChanged;
                 demo.InventoryChanged += HandleInventoryChanged;
@@ -99,11 +110,17 @@ namespace ProjectC.Gameplay
         {
             // UIDocument의 패널이 OnEnable 뒤에 준비되는 환경도 있어 한 번 더 안전하게 연결한다.
             BindDocument();
+            BindResponsiveLayout();
             UpdateViewLabel();
         }
 
         private void OnDisable()
         {
+            _responsiveLayout?.Dispose();
+            _responsiveLayout = null;
+            _displaySettings?.Dispose();
+            _displaySettings = null;
+            DevelopmentViewportService.Changed -= HandleDevelopmentViewportChanged;
             // null 로 재바인딩해 구독을 해제하고 필드를 비운다.
             // 필드를 남겨두면 재활성화 시 BindDocument가 같은 요소로 판단해 재구독을 건너뛴다.
             RebindButton(ref _rotateLeft, null, RotateLeft);
@@ -114,17 +131,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _potionButton, null, UsePotion);
             RebindButton(ref _bombButton, null, ToggleBombAim);
             RebindButton(ref _frostButton, null, ToggleFrostBombAim);
-            RebindButton(ref _settingsButton, null, OpenSettings);
-            RebindButton(ref _settingsClose, null, CloseSettings);
-            RebindButton(ref _settingsDone, null, CloseSettings);
-            RebindButton(ref _settingsReset, null, ResetSettings);
             RebindButton(ref _restartButton, null, RestartRun);
             RebindButton(ref _menuButton, null, GoToMainMenu);
-            RebindField<Toggle, bool>(ref _occlusionToggle, null, HandleOcclusionToggle);
-            RebindField<Toggle, bool>(ref _rearWallsToggle, null, HandleRearWallsToggle);
-            RebindField<Slider, float>(ref _occlusionAlpha, null, HandleOcclusionAlpha);
-            RebindField<Slider, float>(ref _verticalAlpha, null, HandleVerticalAlpha);
-            RebindField<Slider, float>(ref _exploredAlpha, null, HandleExploredAlpha);
             if (demo != null)
             {
                 demo.ViewRotationChanged -= HandleViewRotationChanged;
@@ -132,6 +140,7 @@ namespace ProjectC.Gameplay
                 demo.ViewModeChanged -= HandleViewModeChanged;
                 demo.CombatModeChanged -= HandleCombatModeChanged;
                 demo.InteractionFeedback -= HandleInteractionFeedback;
+                demo.VerticalRouteDiscovered -= HandleVerticalRouteDiscovered;
                 demo.PlayerPositionChanged -= HandlePlayerPositionChanged;
                 demo.VerticalContextChanged -= HandleVerticalContextChanged;
                 demo.InventoryChanged -= HandleInventoryChanged;
@@ -151,6 +160,11 @@ namespace ProjectC.Gameplay
             if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
                 _tapInput.UiBlocker = null;
             _tapInput = null;
+            if (_routeDiscoveryRoutine != null)
+            {
+                StopCoroutine(_routeDiscoveryRoutine);
+                _routeDiscoveryRoutine = null;
+            }
         }
 
         /// <summary>
@@ -186,6 +200,9 @@ namespace ProjectC.Gameplay
         private void BindDocument()
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            _displaySettings?.Dispose();
+            _displaySettings = new DisplaySettingsPanelController(
+                root, demo, "settings-button", CloseTransientOverlays);
             RebindButton(ref _rotateLeft, root.Q<Button>("rotate-left"), RotateLeft);
             RebindButton(ref _rotateRight, root.Q<Button>("rotate-right"), RotateRight);
             RebindButton(ref _modeButton, root.Q<Button>("mode-button"), ToggleViewMode);
@@ -194,22 +211,8 @@ namespace ProjectC.Gameplay
             RebindButton(ref _potionButton, root.Q<Button>("potion-button"), UsePotion);
             RebindButton(ref _bombButton, root.Q<Button>("bomb-button"), ToggleBombAim);
             RebindButton(ref _frostButton, root.Q<Button>("frost-button"), ToggleFrostBombAim);
-            RebindButton(ref _settingsButton, root.Q<Button>("settings-button"), OpenSettings);
-            RebindButton(ref _settingsClose, root.Q<Button>("settings-close"), CloseSettings);
-            RebindButton(ref _settingsDone, root.Q<Button>("settings-done"), CloseSettings);
-            RebindButton(ref _settingsReset, root.Q<Button>("settings-reset"), ResetSettings);
             RebindButton(ref _restartButton, root.Q<Button>("restart-button"), RestartRun);
             RebindButton(ref _menuButton, root.Q<Button>("menu-button"), GoToMainMenu);
-            RebindField<Toggle, bool>(
-                ref _occlusionToggle, root.Q<Toggle>("occlusion-toggle"), HandleOcclusionToggle);
-            RebindField<Toggle, bool>(
-                ref _rearWallsToggle, root.Q<Toggle>("rear-walls-toggle"), HandleRearWallsToggle);
-            RebindField<Slider, float>(
-                ref _occlusionAlpha, root.Q<Slider>("occlusion-alpha"), HandleOcclusionAlpha);
-            RebindField<Slider, float>(
-                ref _verticalAlpha, root.Q<Slider>("vertical-alpha"), HandleVerticalAlpha);
-            RebindField<Slider, float>(
-                ref _exploredAlpha, root.Q<Slider>("explored-alpha"), HandleExploredAlpha);
 
             _viewLabel = root.Q<Label>("view-label");
             _depthLabel = root.Q<Label>("depth-label");
@@ -218,10 +221,12 @@ namespace ProjectC.Gameplay
             _locationLabel = root.Q<Label>("location-label");
             _statusLabel = root.Q<Label>("status-label");
             _verticalHintLabel = root.Q<Label>("vertical-hint-label");
+            _routeDiscovery = root.Q<VisualElement>("vertical-route-discovery");
+            _routeDiscoveryTitle = root.Q<Label>("route-discovery-title");
+            _routeDiscoveryDetail = root.Q<Label>("route-discovery-detail");
             _potionCountLabel = root.Q<Label>("potion-count");
             _bombCountLabel = root.Q<Label>("bomb-count");
             _frostCountLabel = root.Q<Label>("frost-count");
-            _settingsModal = root.Q<VisualElement>("settings-modal");
             _hpValueLabel = root.Q<Label>("hp-value");
             _hpHearts = root.Q<VisualElement>("hp-hearts");
             _gameoverOverlay = root.Q<VisualElement>("gameover-overlay");
@@ -236,6 +241,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _menuLobby, root.Q<Button>("menu-lobby"), GoToLobbyKeepingSave);
             RebindButton(ref _menuAbandon, root.Q<Button>("menu-abandon"), AbandonRun);
             _gameMenuModal = root.Q<VisualElement>("game-menu-modal");
+            _inventoryModal = root.Q<VisualElement>("inventory-modal");
             _actionWheel = root.Q<VisualElement>("action-wheel");
             BuildActionWheel();
             _exitModal = root.Q<VisualElement>("exit-modal");
@@ -251,7 +257,43 @@ namespace ProjectC.Gameplay
             UpdateLocationLabel();
             UpdateVerticalHintLabel();
             UpdateItemLabels();
-            SyncSettingsControls();
+        }
+
+        private void ApplyPresentation()
+        {
+            HudPresentationMode requested = DevelopmentViewportService.ResolvePresentation(
+                presentationMode);
+            ActivePresentation = HudPresentation.Resolve(requested, Application.isMobilePlatform);
+
+            UIDocument document = GetComponent<UIDocument>();
+            VisualTreeAsset target = ActivePresentation == HudPresentationMode.Mobile
+                ? mobileHudAsset
+                : desktopHudAsset;
+            if (target != null && document.visualTreeAsset != target)
+                document.visualTreeAsset = target;
+
+            VisualElement contentRoot = document.rootVisualElement.Q<VisualElement>("hud-root");
+            if (contentRoot == null) return;
+            contentRoot.EnableInClassList(
+                "hud-mobile", ActivePresentation == HudPresentationMode.Mobile);
+            contentRoot.EnableInClassList(
+                "hud-desktop", ActivePresentation == HudPresentationMode.Desktop);
+            DocumentChanged?.Invoke();
+        }
+
+        private void BindResponsiveLayout()
+        {
+            UIDocument document = GetComponent<UIDocument>();
+            VisualElement documentRoot = document.rootVisualElement;
+            VisualElement contentRoot = documentRoot.Q<VisualElement>("hud-root");
+            if (contentRoot == null) return;
+
+            contentRoot.EnableInClassList(
+                "hud-mobile", ActivePresentation == HudPresentationMode.Mobile);
+            contentRoot.EnableInClassList(
+                "hud-desktop", ActivePresentation == HudPresentationMode.Desktop);
+            _responsiveLayout?.Dispose();
+            _responsiveLayout = new ResponsiveUiLayout(documentRoot, contentRoot);
         }
 
         /// <summary>요소가 바뀐 경우에만 이전 구독을 풀고 새 요소에 다시 구독한다.</summary>
@@ -261,18 +303,6 @@ namespace ProjectC.Gameplay
             if (field != null) field.clicked -= onClick;
             field = next;
             if (field != null) field.clicked += onClick;
-        }
-
-        private static void RebindField<TField, TValue>(
-            ref TField field,
-            TField next,
-            EventCallback<ChangeEvent<TValue>> callback)
-            where TField : VisualElement, INotifyValueChanged<TValue>
-        {
-            if (field == next) return;
-            field?.UnregisterValueChangedCallback(callback);
-            field = next;
-            field?.RegisterValueChangedCallback(callback);
         }
 
         private void RotateLeft()
@@ -310,76 +340,6 @@ namespace ProjectC.Gameplay
             if (demo != null) demo.ToggleFrostBombAim();
         }
 
-        private void OpenSettings()
-        {
-            SyncSettingsControls();
-            _settingsModal?.AddToClassList("is-open");
-        }
-
-        private void CloseSettings()
-        {
-            _settingsModal?.RemoveFromClassList("is-open");
-        }
-
-        private void ResetSettings()
-        {
-            if (demo == null) return;
-            demo.fadePlayerOccluders = true;
-            demo.playerOccluderAlpha = 0.3f;
-            demo.verticalPreviewAlpha = 0.54f;
-            demo.exploredAlpha = 0.16f;
-            demo.showRearWalls = true;
-            demo.ApplyVisualSettings();
-            SyncSettingsControls();
-        }
-
-        private void HandleOcclusionToggle(ChangeEvent<bool> evt)
-        {
-            if (demo == null) return;
-            demo.fadePlayerOccluders = evt.newValue;
-            demo.ApplyVisualSettings();
-            _occlusionAlpha?.SetEnabled(evt.newValue);
-        }
-
-        private void HandleRearWallsToggle(ChangeEvent<bool> evt)
-        {
-            if (demo == null) return;
-            demo.showRearWalls = evt.newValue;
-            demo.ApplyVisualSettings();
-        }
-
-        private void HandleOcclusionAlpha(ChangeEvent<float> evt)
-        {
-            if (demo == null) return;
-            demo.playerOccluderAlpha = evt.newValue;
-            demo.ApplyVisualSettings();
-        }
-
-        private void HandleVerticalAlpha(ChangeEvent<float> evt)
-        {
-            if (demo == null) return;
-            demo.verticalPreviewAlpha = evt.newValue;
-            demo.ApplyVisualSettings();
-        }
-
-        private void HandleExploredAlpha(ChangeEvent<float> evt)
-        {
-            if (demo == null) return;
-            demo.exploredAlpha = evt.newValue;
-            demo.ApplyVisualSettings();
-        }
-
-        private void SyncSettingsControls()
-        {
-            if (demo == null) return;
-            _occlusionToggle?.SetValueWithoutNotify(demo.fadePlayerOccluders);
-            _rearWallsToggle?.SetValueWithoutNotify(demo.showRearWalls);
-            _occlusionAlpha?.SetValueWithoutNotify(demo.playerOccluderAlpha);
-            _verticalAlpha?.SetValueWithoutNotify(demo.verticalPreviewAlpha);
-            _exploredAlpha?.SetValueWithoutNotify(demo.exploredAlpha);
-            _occlusionAlpha?.SetEnabled(demo.fadePlayerOccluders);
-        }
-
         private void HandleViewRotationChanged(int _)
         {
             UpdateViewLabel();
@@ -404,6 +364,45 @@ namespace ProjectC.Gameplay
         private void HandleInteractionFeedback(string message)
         {
             if (_statusLabel != null) _statusLabel.text = message;
+        }
+
+        private void HandleVerticalRouteDiscovered(VerticalRouteCue cue)
+        {
+            if (_routeDiscovery == null) return;
+            if (_routeDiscoveryRoutine != null)
+                StopCoroutine(_routeDiscoveryRoutine);
+
+            if (_routeDiscoveryTitle != null) _routeDiscoveryTitle.text = cue.Title;
+            if (_routeDiscoveryDetail != null) _routeDiscoveryDetail.text = cue.Detail;
+            _routeDiscovery.RemoveFromClassList("route-ladder");
+            _routeDiscovery.RemoveFromClassList("route-floor");
+            _routeDiscovery.RemoveFromClassList("route-opening");
+            switch (cue.Role)
+            {
+                case VerticalRouteRole.Ladder:
+                    _routeDiscovery.AddToClassList("route-ladder");
+                    break;
+                case VerticalRouteRole.FloorUp:
+                case VerticalRouteRole.FloorDown:
+                    _routeDiscovery.AddToClassList("route-floor");
+                    break;
+                case VerticalRouteRole.OpeningUp:
+                case VerticalRouteRole.OpeningDown:
+                    _routeDiscovery.AddToClassList("route-opening");
+                    break;
+            }
+
+            _routeDiscovery.BringToFront();
+            _routeDiscovery.AddToClassList("is-open");
+            _routeDiscoveryRoutine = StartCoroutine(HideVerticalRouteDiscovery());
+        }
+
+        private System.Collections.IEnumerator HideVerticalRouteDiscovery()
+        {
+            // 최초 발견 안내는 전투를 막지 않으므로, 월드 오브젝트와 문장을 연결해 읽을 시간을 준다.
+            yield return new WaitForSecondsRealtime(7f);
+            _routeDiscovery?.RemoveFromClassList("is-open");
+            _routeDiscoveryRoutine = null;
         }
 
         private void HandlePlayerPositionChanged()
@@ -477,11 +476,26 @@ namespace ProjectC.Gameplay
         {
             if (!Application.isPlaying) return;
 
+            if (_developmentViewportRefreshRequested)
+            {
+                _developmentViewportRefreshRequested = false;
+                ApplyPresentation();
+                BindDocument();
+                BindResponsiveLayout();
+                if (_reopenSettingsAfterViewportRefresh) _displaySettings?.Open();
+                _reopenSettingsAfterViewportRefresh = false;
+            }
+
             // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.
             UpdateInteractButton();
 
             if (EscapePressed())
             {
+                if (_displaySettings != null && _displaySettings.IsOpen)
+                {
+                    _displaySettings.Close();
+                    return;
+                }
                 if (_gameMenuModal != null && _gameMenuModal.ClassListContains("is-open"))
                     CloseGameMenu();
                 else
@@ -490,7 +504,7 @@ namespace ProjectC.Gameplay
 
             // Ctrl/Cmd 홀드 동안 액션 휠 표시 (캐릭터 탭 토글과 병행).
             bool hold = ModifierHeld();
-            bool shouldShow = hold || _wheelPinned;
+            bool shouldShow = !AnyModalOpen() && (hold || _wheelPinned);
             if (_actionWheel != null)
             {
                 bool isOpen = _actionWheel.ClassListContains("is-open");
@@ -537,14 +551,42 @@ namespace ProjectC.Gameplay
             _wheelPinned = !_wheelPinned;
         }
 
-        private void OpenGameMenu() => _gameMenuModal?.AddToClassList("is-open");
+        private void OpenGameMenu()
+        {
+            CloseTransientOverlays();
+            _gameMenuModal?.BringToFront();
+            _gameMenuModal?.AddToClassList("is-open");
+        }
 
         private void CloseGameMenu() => _gameMenuModal?.RemoveFromClassList("is-open");
+
+        private void CloseTransientOverlays()
+        {
+            _wheelPinned = false;
+            _actionWheel?.RemoveFromClassList("is-open");
+            CloseGameMenu();
+        }
+
+        private bool AnyModalOpen()
+        {
+            return (_displaySettings != null && _displaySettings.IsOpen) ||
+                   IsOpen(_gameMenuModal) || IsOpen(_inventoryModal) ||
+                   IsOpen(_exitModal) || IsOpen(_gameoverOverlay);
+        }
+
+        private static bool IsOpen(VisualElement element) =>
+            element != null && element.ClassListContains("is-open");
+
+        private void HandleDevelopmentViewportChanged()
+        {
+            _reopenSettingsAfterViewportRefresh = _displaySettings != null && _displaySettings.IsOpen;
+            _developmentViewportRefreshRequested = true;
+        }
 
         private void GoToLobbyKeepingSave()
         {
             // 체크포인트는 층 도착마다 저장돼 있다 — 허브의 "이어하기"로 재개.
-            SceneManager.LoadScene("Hub");
+            SceneManager.LoadScene(FrontEndFlow.HubScene);
         }
 
         private void AbandonRun() => demo?.AbandonRun();
@@ -657,11 +699,15 @@ namespace ProjectC.Gameplay
         private void HandleExitChoiceRequested()
         {
             if (_exitModal == null || demo == null) return;
+            CloseTransientOverlays();
             if (_exitDesc != null)
             {
                 int gold = demo.CarriedTreasureGold();
-                _exitDesc.text = $"들고 있는 전리품 가치: {gold}G · 다음은 던전 {demo.StageIndex + 1}";
+                _exitDesc.text =
+                    $"들고 있는 전리품 가치: {ItemCatalog.FormatGold(gold)} · " +
+                    $"다음은 던전 {demo.StageIndex + 1}";
             }
+            _exitModal.BringToFront();
             _exitModal.AddToClassList("is-open");
         }
 
@@ -681,6 +727,8 @@ namespace ProjectC.Gameplay
         {
             if (_gameoverOverlay == null) return;
 
+            CloseTransientOverlays();
+
             bool survived = summary.Victory || summary.Extracted;
             _gameoverOverlay.EnableInClassList("is-victory", survived);
             if (_gameoverTitle != null)
@@ -691,7 +739,7 @@ namespace ProjectC.Gameplay
             {
                 _gameoverCause.text = survived
                     ? (summary.GoldBanked > 0
-                        ? $"+{summary.GoldBanked}G 창고 적립 · 소지품 보관 완료"
+                        ? $"+{ItemCatalog.FormatGold(summary.GoldBanked)} 창고 적립 · 소지품 보관 완료"
                         : "소지품을 창고에 보관했다")
                     : $"사인: {RunSummary.FormatCause(summary.CauseOfDeath)} — 소지품을 모두 잃었다";
                 _gameoverCause.style.display = DisplayStyle.Flex;
@@ -700,6 +748,7 @@ namespace ProjectC.Gameplay
                 _gameoverFloor.text = $"도달 층: {IsoPrototypeDemo.FloorLabel(summary.DeepestFloorIndex)}";
             if (_gameoverKills != null)
                 _gameoverKills.text = $"처치: {summary.Kills}";
+            _gameoverOverlay.BringToFront();
             _gameoverOverlay.AddToClassList("is-open");
         }
 
@@ -710,7 +759,7 @@ namespace ProjectC.Gameplay
 
         private void GoToMainMenu()
         {
-            SceneManager.LoadScene("Hub");
+            SceneManager.LoadScene(FrontEndFlow.MainMenuScene);
         }
 
         private void UpdateInteractButton()

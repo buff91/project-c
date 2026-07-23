@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Template name="DisplaySettings" src="DisplaySettings.uxml" />
     <ui:Style src="DesignSystem.uss" />
     <ui:Style src="PrototypeHUD.uss" />
     <ui:Style src="HubHUD.uss" />
@@ -7,9 +8,13 @@
         <ui:VisualElement class="hub-topbar">
             <ui:VisualElement class="artifact-panel hub-pill">
                 <ui:Label text="캠프" class="hub-caption" />
-                <ui:Label name="hub-gold" text="0G" class="hub-gold" />
+                <ui:Label name="hub-gold" text="$0" class="hub-gold" />
             </ui:VisualElement>
-            <ui:Button name="hub-continue" text="이어하기" class="artifact-panel hub-pill hub-continue" />
+            <ui:VisualElement class="hub-top-actions">
+                <ui:Button name="hub-continue" text="이어하기" class="artifact-panel hub-pill hub-continue" />
+                <ui:Button name="hub-settings-button" text="⚙︎" class="artifact-panel hub-icon-button icon-button" tooltip="화면 설정" />
+                <ui:Button name="hub-menu-button" text="☰" class="artifact-panel hub-icon-button icon-button" tooltip="캠프 메뉴 (ESC)" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement class="status-zone hub-status-zone">
@@ -19,6 +24,48 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="hub-dungeon-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card hub-dungeon-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="원정지 선택" class="settings-title" />
+                        <ui:Label text="영웅 선택  →  던전 선택  →  출발" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="hub-dungeon-close" text="×" class="settings-close" />
+                </ui:VisualElement>
+                <ui:VisualElement class="hub-dungeon-layout">
+                    <ui:VisualElement class="hub-dungeon-list">
+                        <ui:Button name="hub-dungeon-catacombs" text="01  잊힌 지하묘지&#10;플레이 가능" class="hub-dungeon-option selected" />
+                        <ui:Button name="hub-dungeon-flooded" text="02  침수된 금고&#10;준비 중" class="hub-dungeon-option locked" />
+                        <ui:Button name="hub-dungeon-ember" text="03  잿불 성채&#10;준비 중" class="hub-dungeon-option locked" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="hub-dungeon-detail">
+                        <ui:Label name="hub-dungeon-name" text="잊힌 지하묘지" class="hub-dungeon-name" />
+                        <ui:Label name="hub-dungeon-route" text="3개 구역 · 권장: 기사" class="hub-dungeon-route" />
+                        <ui:Label name="hub-dungeon-desc" text="제한된 시야 속에서 세 구역을 내려가 최심층에 도달한다." class="hub-dungeon-desc" />
+                        <ui:Label text="주황: 층 이동  ·  금색: 사다리  ·  하늘색: 개구부" class="hub-dungeon-legend" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="settings-actions">
+                    <ui:Button name="hub-dungeon-loadout" text="출정 백팩 준비" class="settings-reset" />
+                    <ui:Button name="hub-dungeon-enter" text="잊힌 지하묘지 진입" class="settings-done hub-dungeon-enter" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-menu-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+                <ui:Label text="캠프 메뉴" class="gameover-title" />
+                <ui:Label text="진행 상황은 자동으로 저장된다" class="gameover-detail" />
+                <ui:VisualElement class="settings-actions hub-menu-actions">
+                    <ui:Button name="hub-menu-quit" text="게임 종료" class="settings-reset" />
+                    <ui:Button name="hub-menu-resume" text="계속하기" class="settings-done" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Instance template="DisplaySettings" class="settings-template-host" picking-mode="Ignore" />
+
         <ui:VisualElement name="hub-shop-modal" class="settings-modal">
             <ui:VisualElement class="artifact-panel settings-card inventory-card">
                 <ui:VisualElement class="settings-header">
@@ -27,7 +74,7 @@
                         <ui:Label text="구매품은 창고로 — 새 판에 반입된다" class="settings-subtitle" />
                     </ui:VisualElement>
                     <ui:VisualElement class="hub-header-right">
-                        <ui:Label name="hub-shop-gold" text="0G" class="hub-modal-gold" />
+                        <ui:Label name="hub-shop-gold" text="$0" class="hub-modal-gold" />
                         <ui:Button name="hub-shop-close" text="×" class="settings-close" />
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -56,22 +103,55 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-stash-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card diablo-inventory-card stash-card expedition-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
-                        <ui:Label text="창고" class="settings-title" />
-                        <ui:Label text="보관품은 새 판 시작 시 전량 반입된다" class="settings-subtitle" />
+                        <ui:Label text="EXPEDITION LOADOUT" class="settings-title" />
+                        <ui:Label text="창고에서 선택한 물품만 다음 원정에 반입됩니다" class="settings-subtitle" />
                     </ui:VisualElement>
                     <ui:VisualElement class="hub-header-right">
-                        <ui:Label name="hub-stash-gold" text="0G" class="hub-modal-gold" />
+                        <ui:Label name="hub-stash-gold" text="$0" class="hub-modal-gold" />
                         <ui:Button name="hub-stash-close" text="×" class="settings-close" />
                     </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:VisualElement name="hub-stash-grid" class="inventory-grid" />
-                <ui:VisualElement class="inventory-detail">
-                    <ui:Label name="hub-stash-name" text="" class="inventory-detail-name" />
-                    <ui:Label name="hub-stash-desc" text="" class="inventory-detail-desc" />
-                </ui:VisualElement>
+                <ui:ScrollView mode="Vertical" class="inventory-content-scroll">
+                    <ui:VisualElement class="expedition-layout">
+                        <ui:VisualElement class="expedition-pane expedition-stash-pane">
+                            <ui:VisualElement class="inventory-section-header">
+                                <ui:Label text="창고 · 종류별 중첩" class="inventory-section-title" />
+                                <ui:Label name="hub-stash-capacity" text="0 / 48" class="inventory-capacity" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="hub-stash-grid" class="inventory-grid item-slot-grid stash-grid" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="expedition-transfer-rail">
+                            <ui:Label text="↔" class="expedition-transfer-symbol" />
+                            <ui:Label text="탭 또는 드래그" class="expedition-transfer-hint" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="expedition-pane expedition-loadout-pane">
+                            <ui:VisualElement class="inventory-section-header">
+                                <ui:VisualElement>
+                                    <ui:Label text="출정 백팩" class="inventory-section-title" />
+                                    <ui:Label name="hub-loadout-hero" text="기사 기본 지급 포함" class="expedition-hero-label" />
+                                </ui:VisualElement>
+                                <ui:Label name="hub-loadout-capacity" text="0 / 24칸" class="inventory-capacity" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="hub-loadout-grid" class="inventory-grid item-slot-grid backpack-grid expedition-backpack-grid" />
+                            <ui:Label text="기본 지급품은 잠금 표시되며 창고로 옮길 수 없습니다." class="expedition-locked-hint" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="inventory-detail expedition-detail">
+                        <ui:VisualElement name="hub-stash-detail-icon" class="resource-icon inventory-detail-icon is-empty" />
+                        <ui:VisualElement class="inventory-detail-copy expedition-detail-copy">
+                            <ui:Label name="hub-stash-name" text="아이템을 선택하세요" class="inventory-detail-name" />
+                            <ui:Label name="hub-stash-desc" text="모바일은 선택 후 반대쪽 빈 공간을 탭하고, PC는 드래그할 수 있습니다." class="inventory-detail-desc" />
+                            <ui:Label name="hub-prep-feedback" text="" class="hub-feedback expedition-feedback" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="expedition-actions">
+                            <ui:Button name="hub-to-stash" text="← 창고로" class="settings-reset expedition-transfer-button" />
+                            <ui:Button name="hub-to-loadout" text="백팩에 넣기 →" class="settings-done expedition-transfer-button" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:ScrollView>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

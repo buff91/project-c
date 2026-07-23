@@ -213,6 +213,15 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void FormatGold_UsesCompactCurrencySymbol_InsteadOfAmbiguousG()
+        {
+            Assert.AreEqual("$0", ItemCatalog.FormatGold(0));
+            Assert.AreEqual("$15", ItemCatalog.FormatGold(15));
+            StringAssert.DoesNotContain("G", ItemCatalog.FormatGold(15));
+            StringAssert.DoesNotContain("골드", ItemCatalog.FormatGold(15));
+        }
+
+        [Test]
         public void MetaSaveData_StoresConsumables_ButNeverTreasures()
         {
             var meta = new MetaSaveData();

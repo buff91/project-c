@@ -172,6 +172,7 @@ namespace ProjectC.Core
 
             p.RaisedY = height - 2;
             p.StairX = random.Next(p.UpperMinX, p.UpperMaxX + 1);
+            p.LadderX = p.StairX != p.UpperMinX ? p.UpperMinX : p.UpperMaxX;
             p.HorizontalY = random.Next(1, p.LowerMaxY + 1);
             p.VerticalX = random.Next(p.RightMinX, Math.Min(p.UpperMaxX, width - 2) + 1);
 
@@ -241,6 +242,14 @@ namespace ProjectC.Core
                 map.Set(new GridPos(x, y, p.BaseElevation + 1), TileKind.Floor);
             }
             map.Set(new GridPos(p.StairX, p.RaisedY - 1, p.BaseElevation), TileKind.Stairs);
+
+            // 계단과 떨어진 위치에 사다리를 하나 더 둔다. 아래/위 발판을 모두 금색 사다리
+            // 타일로 표시하고 명시적 링크로 연결해, 같은 층 높이 이동임을 데이터로도 구분한다.
+            var ladderBottom = new GridPos(p.LadderX, p.RaisedY - 1, p.BaseElevation);
+            var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
+            map.Set(ladderBottom, TileKind.Ladder);
+            map.Set(ladderTop, TileKind.Ladder);
+            map.Connect(ladderBottom, ladderTop);
 
             if (p.Up.HasValue) map.Set(p.Up.Value, TileKind.StairsUp);
             if (p.Down.HasValue) map.Set(p.Down.Value, TileKind.StairsDown);
@@ -494,6 +503,7 @@ namespace ProjectC.Core
             public int HorizontalY;
             public int VerticalX;
             public int StairX;
+            public int LadderX;
             public int RaisedY;
             public bool HasBranch;
             public int BranchDoorX;

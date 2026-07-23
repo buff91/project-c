@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Template name="SharedHUD" src="PrototypeHUD.uxml" />
+    <ui:Style src="PrototypeHUD.Mobile.uss" />
+    <ui:Instance template="SharedHUD" class="hud-layout-shell" />
+</ui:UXML>

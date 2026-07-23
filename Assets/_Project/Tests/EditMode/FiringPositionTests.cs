@@ -180,5 +180,16 @@ namespace ProjectC.Tests
                     $"입구에서 {poi} 도달 불가");
             }
         }
+
+        [Test]
+        public void HeroRosterPosition_HidesSelectedHero_AndRestoresPreviousHero()
+        {
+            Assert.IsFalse(HubLayout.ShouldShowHeroAtRosterPosition("knight", null));
+            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("ranger", null));
+
+            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("knight", "ranger"));
+            Assert.IsFalse(HubLayout.ShouldShowHeroAtRosterPosition("ranger", "ranger"));
+            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("alchemist", "ranger"));
+        }
     }
 }

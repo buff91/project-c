@@ -1,0 +1,149 @@
+.main-menu-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--pc-void);
+}
+
+.main-menu-vignette {
+    width: 620px;
+    max-width: 88%;
+    align-items: center;
+    padding: 44px 52px 36px 52px;
+    background-color: rgba(10, 13, 19, 0.78);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+}
+
+.main-menu-title {
+    color: var(--pc-gold);
+    font-size: var(--pc-fs-6);
+    letter-spacing: 8px;
+    -unity-text-align: middle-center;
+}
+
+.main-menu-subtitle {
+    margin-top: 10px;
+    color: var(--pc-stone-lit);
+    font-size: var(--pc-fs-2);
+    -unity-text-align: middle-center;
+}
+
+.main-menu-divider {
+    align-self: stretch;
+    height: 1px;
+    margin-top: 28px;
+    margin-bottom: 24px;
+    background-color: var(--pc-gold-deep);
+}
+
+.main-story-slot {
+    align-items: center;
+}
+
+.main-story-kicker {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-2);
+    -unity-text-align: middle-center;
+}
+
+.main-story-copy {
+    margin-top: 8px;
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.main-menu-actions {
+    width: 320px;
+    max-width: 100%;
+    margin-top: 30px;
+    align-items: center;
+}
+
+.main-primary-button,
+.main-secondary-button {
+    width: 260px;
+    height: 58px;
+    margin-top: 8px;
+    font-size: var(--pc-fs-2);
+}
+
+.main-menu-utility {
+    flex-direction: row;
+    margin-top: 18px;
+}
+
+.main-utility-button {
+    height: 38px;
+    margin-left: 4px;
+    margin-right: 4px;
+    padding-left: 16px;
+    padding-right: 16px;
+    color: var(--pc-dim);
+    background-color: transparent;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+    border-right-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+}
+
+.main-utility-button:hover {
+    color: var(--pc-text);
+    border-left-color: var(--pc-stone);
+    border-right-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-bottom-color: var(--pc-stone);
+}
+
+.main-menu-root.is-narrow .main-menu-vignette {
+    max-width: 92%;
+    padding: 28px 18px 24px 18px;
+}
+
+.main-menu-root.is-narrow .main-menu-title {
+    font-size: 36px;
+    letter-spacing: 5px;
+}
+
+.main-menu-root.is-narrow .main-menu-subtitle {
+    font-size: var(--pc-fs-1);
+}
+
+.main-menu-root.is-narrow .main-menu-actions {
+    width: 100%;
+}
+
+.main-menu-root.is-narrow .main-primary-button,
+.main-menu-root.is-narrow .main-secondary-button {
+    width: 100%;
+}
+
+.main-menu-root.is-short .main-menu-vignette {
+    padding-top: 20px;
+    padding-bottom: 18px;
+}
+
+.main-menu-root.is-short .main-menu-divider {
+    margin-top: 16px;
+    margin-bottom: 14px;
+}
+
+.main-menu-root.is-short .main-menu-actions {
+    margin-top: 16px;
+}

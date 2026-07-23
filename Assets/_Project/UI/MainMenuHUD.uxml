@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Template name="DisplaySettings" src="DisplaySettings.uxml" />
+    <ui:Style src="DesignSystem.uss" />
+    <ui:Style src="PrototypeHUD.uss" />
+    <ui:Style src="MainMenuHUD.uss" />
+    <ui:VisualElement name="main-menu-root" class="main-menu-root">
+        <ui:VisualElement class="main-menu-vignette">
+            <ui:Label text="PROJECT C" class="main-menu-title" />
+            <ui:Label text="깊이를 읽고, 살아서 돌아와라" class="main-menu-subtitle" />
+            <ui:VisualElement class="main-menu-divider" />
+
+            <ui:VisualElement name="main-story-slot" class="main-story-slot">
+                <ui:Label text="왕국 아래 잠든 문이 다시 열렸다." class="main-story-kicker" />
+                <ui:Label text="캠프에서 원정을 준비하고, 잊힌 심연의 끝을 찾아라." class="main-story-copy" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="main-menu-actions">
+                <ui:Button name="main-start-button" text="게임 시작" class="settings-done main-primary-button" />
+                <ui:Button name="main-continue-button" text="이어하기" class="settings-reset main-secondary-button" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="main-menu-utility">
+                <ui:Button name="main-settings-button" text="⚙︎  설정" class="main-utility-button" />
+                <ui:Button name="main-quit-button" text="게임 종료" class="main-utility-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Instance template="DisplaySettings" class="settings-template-host" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

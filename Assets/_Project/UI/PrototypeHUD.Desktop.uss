@@ -1,0 +1,98 @@
+/* Pointer-first shell: denser controls and persistent information rails. */
+
+.hud-layout-shell {
+    flex-grow: 1;
+}
+
+.hud-root.hud-desktop .vitals {
+    left: 18px;
+    top: 18px;
+}
+
+.hud-root.hud-desktop .depth-panel {
+    left: 18px;
+    right: auto;
+    top: 62px;
+    width: 210px;
+    align-items: flex-start;
+}
+
+.hud-root.hud-desktop .depth-value,
+.hud-root.hud-desktop .elevation-label,
+.hud-root.hud-desktop .floor-label {
+    -unity-text-align: middle-left;
+}
+
+.hud-root.hud-desktop .minimap-panel {
+    right: 18px;
+    top: 18px;
+    width: 210px;
+}
+
+.hud-root.hud-desktop .status-zone {
+    left: 18px;
+    bottom: 70px;
+    translate: 0 0;
+    align-items: flex-start;
+}
+
+.hud-root.hud-desktop .hud-bottom {
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
+}
+
+.hud-root.hud-desktop .resource-pill {
+    min-width: 92px;
+}
+
+.hud-root.hud-desktop .action-cluster {
+    max-width: 470px;
+}
+
+.hud-root.hud-desktop .settings-card {
+    width: 560px;
+}
+
+.hud-root.hud-desktop .inventory-card {
+    width: 680px;
+}
+
+.hud-root.hud-desktop .gameover-card {
+    width: 520px;
+}
+
+/* 5:4, 4:3 and similarly roomy desktop windows can carry wider information rails. */
+.hud-root.hud-desktop.is-expanded .depth-panel,
+.hud-root.hud-desktop.is-expanded .minimap-panel {
+    width: 230px;
+}
+
+.hud-root.hud-desktop.is-expanded .settings-card {
+    width: 600px;
+}
+
+.hud-root.hud-desktop.is-expanded .inventory-card {
+    width: 720px;
+}
+
+/* Ultrawide keeps the center playfield open and anchors UI to wider side gutters. */
+.hud-root.hud-desktop.is-ultrawide .vitals,
+.hud-root.hud-desktop.is-ultrawide .depth-panel,
+.hud-root.hud-desktop.is-ultrawide .status-zone {
+    left: 32px;
+}
+
+.hud-root.hud-desktop.is-ultrawide .minimap-panel {
+    right: 32px;
+    width: 230px;
+}
+
+.hud-root.hud-desktop.is-ultrawide .hud-bottom {
+    left: 32px;
+    right: 32px;
+}
+
+.hud-root.hud-desktop.is-ultrawide .action-cluster {
+    max-width: 540px;
+}

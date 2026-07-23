@@ -170,7 +170,7 @@ MonoBehaviour:
   floorCount: 3
   elevationsPerFloor: 4
   dungeonSeed: 1977
-  previewStartDepth: 1
+  previewStartDepth: 0
   viewMode: 0
   fieldOfViewRadius: 6
   verticalPreviewRadius: 2
@@ -373,6 +373,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.PrototypeHudController
   demo: {fileID: 291117079}
+  presentationMode: 0
+  mobileHudAsset: {fileID: 9197481963319205126, guid: ac1f6773881264054ab3c4221b55636e, type: 3}
+  desktopHudAsset: {fileID: 9197481963319205126, guid: 0ce8b0c16a5b14f50ab3411b592da7b4, type: 3}
 --- !u!114 &2135347024
 MonoBehaviour:
   m_ObjectHideFlags: 0

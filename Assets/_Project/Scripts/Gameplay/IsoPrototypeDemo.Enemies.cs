@@ -40,7 +40,7 @@ namespace ProjectC.Gameplay
                 yield return ShowPlayerHit(playerTick.BurnDamage, "Burn");
                 if (!_playerState.IsAlive)
                 {
-                    _turns.TryCompleteEnemyPhase();
+                    CompleteEnemyPhaseAndRefreshCorpses();
                     yield break;
                 }
             }
@@ -88,7 +88,7 @@ namespace ProjectC.Gameplay
                 RefreshFloorVisibility();
 
             TrySpawnReinforcement();
-            _turns.TryCompleteEnemyPhase();
+            CompleteEnemyPhaseAndRefreshCorpses();
         }
 
         /// <summary>몬스터 한 마리를 만들어 씬과 목록에 붙인다. 초기 배치와 런타임 스폰이 공유.</summary>
@@ -108,6 +108,7 @@ namespace ProjectC.Gameplay
                 enemy.State.Id, MonsterSpriteFor(archetype), spawn, out SpriteRenderer renderer);
             enemy.Renderer = renderer;
             enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
+            enemy.HpBackground = enemy.Root.transform.Find($"{enemy.State.Id} HP Background");
             UpdateHealthBar(enemy.HpFill, enemy.State);
             enemy.MoodIcon = CreateMoodIcon(enemy.Root);
             enemy.LastMood = enemy.Brain.Mood;
@@ -248,18 +249,57 @@ namespace ProjectC.Gameplay
         private void ApplyEnemyVisuals(EnemyAgent enemy)
         {
             if (enemy.Root == null) return;
+            if (!enemy.State.IsAlive && enemy.DeathTurn < 0)
+                enemy.DeathTurn = _turns.TurnNumber;
+
             GridPos pos = enemy.State.Position;
             enemy.Root.transform.position = _grid.GridToWorld(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
             Color elevationTint = ElevationTint(pos);
             Color tint = EnemyTint(enemy.State);
+            float alpha = enemy.State.IsAlive
+                ? tint.a
+                : EnemyPresentationRules.CorpseAlpha(
+                    _turns.TurnNumber,
+                    enemy.DeathTurn,
+                    corpseLifetimeTurns);
             enemy.Renderer.color = new Color(
-                tint.r * elevationTint.r, tint.g * elevationTint.g, tint.b * elevationTint.b, tint.a);
-            bool visibleToPlayer =
-                _dungeon.Height.FloorIndex(pos.elevation) == _activeFloorIndex &&
-                (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(pos));
+                tint.r * elevationTint.r, tint.g * elevationTint.g, tint.b * elevationTint.b, alpha);
+            bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
+            bool showHealthBar = visibleToPlayer && enemy.State.IsAlive;
+            if (enemy.HpFill != null)
+                enemy.HpFill.gameObject.SetActive(showHealthBar);
+            if (enemy.HpBackground != null)
+                enemy.HpBackground.gameObject.SetActive(showHealthBar);
             UpdateMoodIcon(enemy, visibleToPlayer);
+        }
+
+        private void CompleteEnemyPhaseAndRefreshCorpses()
+        {
+            if (!_turns.TryCompleteEnemyPhase()) return;
+
+            for (int index = _enemies.Count - 1; index >= 0; index--)
+            {
+                EnemyAgent enemy = _enemies[index];
+                if (enemy.State.IsAlive) continue;
+                if (enemy.DeathTurn < 0)
+                    enemy.DeathTurn = _turns.TurnNumber - 1;
+
+                if (EnemyPresentationRules.IsCorpseExpired(
+                        _turns.TurnNumber,
+                        enemy.DeathTurn,
+                        corpseLifetimeTurns))
+                {
+                    if (enemy.Root != null)
+                        Destroy(enemy.Root);
+                    _enemies.RemoveAt(index);
+                    Debug.Log($"[Combat] {enemy.State.Id} 시체 제거");
+                    continue;
+                }
+
+                ApplyEnemyVisuals(enemy);
+            }
         }
 
         /// <summary>머리 위 인지 상태 아이콘 (SPD 관례): 추격 "!", 도주 "…", 순찰은 없음.</summary>
@@ -341,9 +381,19 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private bool IsEnemyVisibleToPlayer(EnemyAgent enemy) =>
-            _dungeon.Height.FloorIndex(enemy.State.Position.elevation) == _activeFloorIndex &&
-            (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(enemy.State.Position));
+        private bool IsEnemyVisibleToPlayer(EnemyAgent enemy)
+        {
+            return IsPositionVisibleToPlayer(enemy.State.Position);
+        }
+
+        private bool IsPositionVisibleToPlayer(GridPos pos)
+        {
+            return EnemyPresentationRules.ShouldShowFeedback(
+                viewMode == DungeonViewMode.DebugAll,
+                _dungeon.Height.FloorIndex(pos.elevation),
+                _activeFloorIndex,
+                _visibleTiles.Contains(pos));
+        }
 
         /// <summary>몬스터 틴트의 단일 출처: 사망 회색 > 빙결 하늘색 > 화상 주황 > 기본.</summary>
         private static Color EnemyTint(CombatantState state)

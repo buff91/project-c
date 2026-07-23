@@ -70,8 +70,12 @@ namespace ProjectC.Core
             if (!CanCraft(inventory, recipe)) return false;
             inventory.TryUse(recipe.IngredientA);
             inventory.TryUse(recipe.IngredientB);
-            inventory.Add(recipe.Output);
-            return true;
+            if (inventory.TryAdd(recipe.Output, out _)) return true;
+
+            // 이후 더 큰 산출물이 생겨도 재료만 사라지지 않도록 원자적으로 되돌린다.
+            inventory.Add(recipe.IngredientA);
+            inventory.Add(recipe.IngredientB);
+            return false;
         }
 
         /// <summary>현재 인벤토리로 만들 수 있는 레시피 목록 (조합 UI 표시용).</summary>

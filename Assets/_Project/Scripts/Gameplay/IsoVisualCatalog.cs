@@ -15,6 +15,7 @@ namespace ProjectC.Gameplay
         public Sprite raisedFloor;
         public Sprite lowerFloor;
         public Sprite stairs;
+        public Sprite ladder;
         public Sprite stairsUp;
         public Sprite stairsDown;
         public Sprite hole;
@@ -116,6 +117,7 @@ namespace ProjectC.Gameplay
             switch (kind)
             {
                 case TileKind.Stairs: return stairs;
+                case TileKind.Ladder: return ladder;
                 case TileKind.StairsUp: return stairsUp != null ? stairsUp : stairs;
                 case TileKind.StairsDown: return stairsDown != null ? stairsDown : stairs;
                 case TileKind.Hole: return hole;

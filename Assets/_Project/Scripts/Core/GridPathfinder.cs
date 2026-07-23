@@ -97,8 +97,12 @@ namespace ProjectC.Core
 
                     TileData candidateTile = map.Get(candidate);
                     bool changesHeight = elevationDelta != 0;
-                    bool usesStairs = currentTile.kind == TileKind.Stairs || candidateTile.kind == TileKind.Stairs;
-                    if (!changesHeight || usesStairs)
+                    bool usesLocalConnector =
+                        currentTile.kind == TileKind.Stairs ||
+                        candidateTile.kind == TileKind.Stairs ||
+                        currentTile.kind == TileKind.Ladder ||
+                        candidateTile.kind == TileKind.Ladder;
+                    if (!changesHeight || usesLocalConnector)
                         yield return candidate;
                 }
             }

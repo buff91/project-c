@@ -176,6 +176,13 @@
     -unity-font-style: bold;
 }
 
+.icon-button {
+    min-width: 30px;
+    padding: 0;
+    font-size: 16px;
+    -unity-text-align: middle-center;
+}
+
 .minimap-grid {
     position: relative;
     height: 48px;
@@ -316,6 +323,64 @@
     -unity-font-style: bold;
     margin-top: 4px;
     -unity-text-align: middle-right;
+}
+
+.vertical-route-discovery {
+    display: none;
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    translate: -50% 0;
+    width: 360px;
+    max-width: 50%;
+    padding: 12px 18px;
+    background-color: rgba(9, 13, 18, 0.96);
+    border-left-width: 4px;
+    border-left-color: var(--pc-teal);
+}
+
+.vertical-route-discovery.is-open {
+    display: flex;
+}
+
+.route-discovery-kicker {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    letter-spacing: 2px;
+}
+
+.route-discovery-title {
+    color: var(--pc-ice);
+    font-size: var(--pc-fs-2);
+    -unity-font-style: bold;
+    margin-top: 3px;
+}
+
+.route-discovery-detail {
+    color: var(--pc-text);
+    font-size: 12px;
+    white-space: normal;
+    margin-top: 5px;
+}
+
+.vertical-route-discovery.route-ladder {
+    border-left-color: var(--pc-gold);
+}
+
+.vertical-route-discovery.route-ladder .route-discovery-title {
+    color: var(--pc-gold);
+}
+
+.vertical-route-discovery.route-floor {
+    border-left-color: var(--pc-torch);
+}
+
+.vertical-route-discovery.route-floor .route-discovery-title {
+    color: var(--pc-torch);
+}
+
+.vertical-route-discovery.route-opening {
+    border-left-color: var(--pc-ice);
 }
 
 .status-zone {
@@ -600,6 +665,16 @@
     background-color: rgba(4, 3, 2, 0.78);
 }
 
+/* UXML 템플릿 인스턴스가 만드는 TemplateContainer도 화면 전체를 차지해야
+   내부 absolute 모달이 허브/던전 어디서든 같은 좌표계를 사용한다. */
+.settings-template-host {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+
 .settings-modal.is-open {
     display: flex;
 }
@@ -722,6 +797,100 @@
     flex-direction: row;
     justify-content: flex-end;
     margin-top: 12px;
+}
+
+.development-viewport {
+    display: none;
+    flex-shrink: 0;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top-width: 1px;
+    border-top-color: rgb(57, 43, 25);
+}
+
+.development-title {
+    color: var(--pc-gold);
+    font-size: 9px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.development-help,
+.viewport-status {
+    color: var(--pc-dim);
+    font-size: 8px;
+    margin-top: 2px;
+}
+
+.development-controls {
+    min-height: 42px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-top: 4px;
+}
+
+.development-field {
+    flex-direction: column;
+    margin-right: 6px;
+}
+
+.development-field-label {
+    height: 11px;
+    color: var(--pc-dim);
+    font-size: 8px;
+}
+
+.development-dropdown {
+    height: 32px;
+    color: var(--pc-text);
+}
+
+.development-dropdown .unity-base-field__label {
+    display: none;
+}
+
+.development-dropdown .unity-base-field__input {
+    min-height: 30px;
+    color: var(--pc-text);
+    background-color: var(--pc-btn-bg);
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+}
+
+.development-dropdown .unity-base-popup-field__text {
+    color: var(--pc-text);
+    -unity-text-align: middle-left;
+}
+
+.viewport-mode-field {
+    width: 90px;
+    flex-shrink: 0;
+}
+
+.viewport-resolution-field {
+    flex-grow: 1;
+    min-width: 190px;
+}
+
+.viewport-mode,
+.viewport-resolution {
+    width: 100%;
+}
+
+.viewport-apply {
+    width: 82px;
+    height: 28px;
+    color: var(--ink);
+    background-color: var(--pc-gold);
+    border-left-color: var(--pc-stone-lit);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-gold-deep);
+    border-bottom-color: var(--pc-gold-deep);
+    font-size: 9px;
+    -unity-font-style: bold;
 }
 
 .settings-reset,
@@ -1396,4 +1565,591 @@
     border-top-color: var(--pc-gold);
     border-right-color: var(--pc-gold);
     border-bottom-color: var(--pc-gold);
+}
+
+/* ── Responsive viewport profiles ───────────────────────────
+   ResponsiveUiLayout이 패널의 논리 크기와 Safe Area를 반영한다.
+   기준 세로 540×960은 기존 배치를 유지하고, 좁거나 짧을 때만 재배치한다. */
+
+.settings-modal {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    padding: 10px;
+}
+
+.settings-card,
+.inventory-card,
+.gameover-card {
+    max-width: 100%;
+    max-height: 96%;
+}
+
+.hud-root.is-narrow {
+    padding: 8px;
+}
+
+.hud-root.is-narrow .vitals {
+    left: 8px;
+    top: 8px;
+}
+
+.hud-root.is-narrow .pc-heart {
+    width: 19px;
+    height: 17px;
+    margin-right: 2px;
+}
+
+.hud-root.is-narrow .minimap-panel {
+    right: 8px;
+    top: 8px;
+    width: 128px;
+}
+
+/* Phone-width headers prioritize the two actions; keeping the caption here makes
+   the trailing menu touch target overflow even when the panel itself still fits. */
+.hud-root.is-narrow .minimap-header {
+    justify-content: flex-end;
+}
+
+.hud-root.is-narrow .minimap-header > .micro-caption {
+    display: none;
+}
+
+.hud-root.is-narrow .depth-panel {
+    right: 8px;
+    top: 112px;
+    width: 128px;
+}
+
+.hud-root.is-narrow .status-zone {
+    left: 8px;
+    right: 8px;
+    bottom: 154px;
+    translate: 0 0;
+}
+
+.hud-root.is-narrow .vertical-route-discovery {
+    top: 68px;
+    width: auto;
+    max-width: none;
+    left: 12px;
+    right: 12px;
+    translate: 0 0;
+    padding: 10px 12px;
+}
+
+.hud-root.is-narrow .route-discovery-title {
+    font-size: 16px;
+}
+
+.hud-root.is-narrow .route-discovery-detail {
+    font-size: 10px;
+}
+
+.hud-root.is-narrow .status-chip,
+.hud-root.is-narrow .route-chip {
+    max-width: 100%;
+}
+
+.hud-root.is-narrow .hud-bottom {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hud-root.is-narrow .resources {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.hud-root.is-narrow .resource-pill {
+    min-width: 72px;
+    flex-grow: 1;
+    margin-right: 3px;
+    margin-bottom: 3px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.hud-root.is-narrow .resource-value {
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.is-narrow .action-cluster {
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+}
+
+.hud-root.is-narrow .mode-button {
+    width: 100px;
+}
+
+.hud-root.is-narrow .combat-button {
+    width: 120px;
+}
+
+.hud-root.is-narrow .wait-button,
+.hud-root.is-narrow .interact-button {
+    width: 76px;
+}
+
+.hud-root.is-short .settings-card {
+    padding: 10px;
+}
+
+.hud-root.is-short .settings-header {
+    height: 36px;
+    margin-bottom: 3px;
+}
+
+.hud-root.is-short .settings-subtitle {
+    display: none;
+}
+
+.hud-root.is-short .settings-toggle {
+    height: 24px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.hud-root.is-short .setting-row {
+    min-height: 40px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.hud-root.is-short .settings-actions {
+    height: 30px;
+    margin-top: 2px;
+}
+
+.hud-root.is-short .settings-reset,
+.hud-root.is-short .settings-done {
+    height: 28px;
+}
+
+.hud-root.is-short.is-landscape .game-menu-actions {
+    height: 38px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.hud-root.is-short.is-landscape .game-menu-actions > .settings-reset,
+.hud-root.is-short.is-landscape .game-menu-actions > .settings-done {
+    width: 30%;
+    height: 34px;
+    margin: 2px 4px 0 4px;
+}
+
+.hud-root.is-short .development-help {
+    display: none;
+}
+
+.hud-root.is-short .development-controls {
+    min-height: 34px;
+    margin-top: 2px;
+}
+
+.hud-root.is-narrow .development-controls {
+    align-items: flex-end;
+}
+
+.hud-root.is-narrow .viewport-mode-field {
+    width: 96px;
+}
+
+.hud-root.is-narrow .viewport-resolution-field {
+    min-width: 0;
+    margin-right: 0;
+}
+
+.hud-root.is-narrow .viewport-apply {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.hud-root.is-short .inventory-grid {
+    margin-bottom: 4px;
+}
+
+.hud-root.is-short .inventory-slot {
+    width: 54px;
+    height: 58px;
+    margin: 2px;
+}
+
+.hud-root.is-short .craft-caption,
+.hud-root.is-short .craft-list,
+.hud-root.is-short .craft-row,
+.hud-root.is-short .inventory-detail {
+    margin-bottom: 3px;
+}
+
+.hud-root.is-short .craft-row {
+    padding: 2px 6px;
+}
+
+.hud-root.is-short .inventory-detail {
+    min-height: 34px;
+    padding: 4px 6px;
+}
+
+.hud-root.is-landscape .status-zone {
+    bottom: 54px;
+}
+
+/* ── Diablo식 백팩/창고 격자 ───────────────────────────────
+   현재 아이템 모델은 종류별 스택이므로, 실제 보유 종류만 앞에서 채우고
+   나머지는 빈 고정 슬롯으로 보여준다. 다칸 배치/드래그는 데이터 모델 확장 후 적용한다. */
+
+.diablo-inventory-card {
+    width: 470px;
+    height: 640px;
+    overflow: hidden;
+}
+
+.inventory-content-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.inventory-content-scroll .unity-scroll-view__content-container {
+    flex-grow: 1;
+}
+
+.inventory-layout {
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.inventory-grid-pane {
+    align-items: center;
+    flex-shrink: 0;
+    padding: 8px;
+    background-color: var(--pc-inset);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-right-color: rgb(35, 30, 26);
+    border-bottom-color: rgb(35, 30, 26);
+}
+
+.inventory-section-header {
+    width: 288px;
+    height: 24px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.inventory-section-title {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.inventory-capacity {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+}
+
+.item-slot-grid {
+    width: 288px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    margin-bottom: 0;
+}
+
+.item-grid-slot {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    margin: 2px;
+    padding: 0;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(11, 13, 18);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-right-color: rgb(38, 33, 29);
+    border-bottom-color: rgb(38, 33, 29);
+    border-radius: 0;
+}
+
+.item-grid-slot:hover {
+    background-color: var(--pc-btn-bg-hover);
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+}
+
+.item-grid-slot.selected {
+    background-color: var(--pc-action-bg);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-right-color: var(--pc-gold-deep);
+    border-bottom-color: var(--pc-gold-deep);
+}
+
+.item-grid-slot.inventory-empty-slot {
+    background-color: rgb(8, 10, 14);
+    opacity: 0.72;
+}
+
+.item-grid-slot .resource-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.item-grid-slot .inventory-slot-count {
+    position: absolute;
+    right: 2px;
+    bottom: 0;
+    color: white;
+    font-size: var(--pc-fs-1);
+    -unity-font-style: bold;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: black;
+}
+
+.inventory-detail-pane {
+    min-height: 112px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding: 12px;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    border-left-width: 2px;
+    border-left-color: var(--pc-gold-deep);
+}
+
+.inventory-detail-icon {
+    width: 72px;
+    height: 72px;
+    min-width: 72px;
+    min-height: 72px;
+    margin: 0 12px 0 0;
+    background-color: rgb(8, 10, 14);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.inventory-detail-icon.is-empty {
+    border-left-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    opacity: 0.45;
+}
+
+.inventory-detail-copy {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.inventory-detail-action {
+    width: 104px;
+    height: 36px;
+    margin-left: 10px;
+    flex-shrink: 0;
+}
+
+.craft-section {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top-width: 1px;
+    border-top-color: var(--pc-stone-dim);
+    flex-shrink: 0;
+}
+
+.potion-icon { background-image: url("../Art/Runtime/item-potion.png"); }
+.bomb-icon { background-image: url("../Art/Runtime/item-bomb.png"); }
+.frost-icon { background-image: url("../Art/Runtime/item-frost-bomb.png"); }
+.oil-icon { background-image: url("../Art/Runtime/item-oil-flask.png"); }
+.knife-icon { background-image: url("../Art/Runtime/item-throwing-knife.png"); }
+.scroll-icon { background-image: url("../Art/Runtime/item-recall-scroll.png"); }
+.coin-icon { background-image: url("../Art/Runtime/item-coin-pouch.png"); }
+.gem-icon { background-image: url("../Art/Runtime/item-gemstone.png"); }
+.relic-icon { background-image: url("../Art/Runtime/item-relic.png"); }
+.herb-icon { background-image: url("../Art/Runtime/item-herb.png"); }
+.powder-icon { background-image: url("../Art/Runtime/item-blast-powder.png"); }
+.shard-icon { background-image: url("../Art/Runtime/item-frost-shard.png"); }
+
+.hud-root.is-landscape .diablo-inventory-card {
+    width: 760px;
+}
+
+.hud-root.is-landscape .inventory-layout {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.hud-root.is-landscape .inventory-grid-pane {
+    width: 320px;
+}
+
+.hud-root.is-landscape .inventory-detail-pane {
+    min-width: 220px;
+    min-height: 0;
+    margin: 0 0 0 10px;
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hud-root.is-landscape .inventory-detail-icon {
+    margin: 8px 0 14px 0;
+    align-self: center;
+}
+
+.hud-root.is-landscape .inventory-detail-action {
+    width: 100%;
+    margin: 14px 0 0 0;
+}
+
+.hud-root.is-expanded .diablo-inventory-card {
+    width: 760px;
+}
+
+.hud-root.is-expanded .inventory-layout {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.hud-root.is-expanded .inventory-grid-pane {
+    width: 440px;
+}
+
+.hud-root.is-expanded .inventory-section-header,
+.hud-root.is-expanded .item-slot-grid {
+    width: 416px;
+}
+
+.hud-root.is-expanded .item-grid-slot {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.hud-root.is-expanded .item-grid-slot .resource-icon {
+    width: 36px;
+    height: 36px;
+}
+
+.hud-root.is-expanded .inventory-detail-pane {
+    min-width: 246px;
+    min-height: 0;
+    margin: 0 0 0 10px;
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hud-root.is-expanded .inventory-detail-icon {
+    width: 104px;
+    height: 104px;
+    min-width: 104px;
+    min-height: 104px;
+    margin: 8px 0 18px 0;
+    align-self: center;
+}
+
+.hud-root.is-expanded .inventory-detail-action {
+    width: 100%;
+    margin: 18px 0 0 0;
+}
+
+.hud-root.is-short .diablo-inventory-card {
+    height: 96%;
+}
+
+.hud-root.is-short .item-grid-slot {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+}
+
+/* 6×4 멀티슬롯 백팩. 창고의 스택형 flex 그리드와 분리한다. */
+.backpack-grid,
+.hud-root.is-expanded .backpack-grid {
+    position: relative;
+    width: 264px;
+    height: 176px;
+    min-width: 264px;
+    min-height: 176px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    background-color: rgb(7, 9, 13);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(38, 34, 31);
+    border-top-color: rgb(38, 34, 31);
+    border-right-color: rgb(20, 18, 17);
+    border-bottom-color: rgb(20, 18, 17);
+}
+
+.backpack-grid .item-grid-slot,
+.hud-root.is-expanded .backpack-grid .item-grid-slot,
+.hud-root.is-short .backpack-grid .item-grid-slot {
+    margin: 0;
+}
+
+.backpack-cell {
+    z-index: 0;
+}
+
+.backpack-item {
+    z-index: 2;
+}
+
+.backpack-item.backpack-size-1x2 .resource-icon {
+    width: 34px;
+    height: 68px;
+}
+
+.backpack-item.backpack-size-2x2 .resource-icon {
+    width: 68px;
+    height: 68px;
 }

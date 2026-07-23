@@ -40,11 +40,31 @@ namespace ProjectC.EditorTools
             if (path.Contains("/marker-"))
                 return new Vector2(0.5f, 0.5f);
 
-            if (path.Contains("/item-"))
-                return new Vector2(0.5f, 0.08f);
+            // 월드 스프라이트는 캔버스 바닥이 아니라 실제 불투명 픽셀의
+            // 접지선이 GridToWorld 위치에 닿아야 한다. 아트별 투명 여백을 반영한다.
+            if (path.EndsWith("/prop-campfire.png")) return Grounded(6, 64);
+            if (path.EndsWith("/prop-explosive-barrel.png")) return Grounded(5, 64);
+            if (path.EndsWith("/prop-portal.png")) return Grounded(6, 80);
+            if (path.EndsWith("/prop-stash.png")) return Grounded(11, 64);
+
+            if (path.EndsWith("/item-blast-powder.png")) return Grounded(5, 32);
+            if (path.EndsWith("/item-bomb.png")) return Grounded(4, 32);
+            if (path.EndsWith("/item-coin-pouch.png")) return Grounded(6, 32);
+            if (path.EndsWith("/item-frost-bomb.png")) return Grounded(4, 32);
+            if (path.EndsWith("/item-frost-shard.png")) return Grounded(4, 32);
+            if (path.EndsWith("/item-gemstone.png")) return Grounded(2, 32);
+            if (path.EndsWith("/item-herb.png")) return Grounded(5, 32);
+            if (path.EndsWith("/item-oil-flask.png")) return Grounded(4, 32);
+            if (path.EndsWith("/item-potion.png")) return Grounded(4, 32);
+            if (path.EndsWith("/item-recall-scroll.png")) return Grounded(3, 32);
+            if (path.EndsWith("/item-relic.png")) return Grounded(3, 32);
+            if (path.EndsWith("/item-throwing-knife.png")) return Grounded(2, 32);
 
             return new Vector2(0.5f, 0.04f);
         }
+
+        private static Vector2 Grounded(int transparentBottomPixels, int textureHeight) =>
+            new Vector2(0.5f, transparentBottomPixels / (float)textureHeight);
 
         [MenuItem("Project-C/Reimport Runtime Pixel Art")]
         public static void ReimportRuntimeArt()

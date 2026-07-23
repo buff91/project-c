@@ -16,6 +16,7 @@ namespace ProjectC.Gameplay
         public Color raisedColor = new Color(1f, 0.8f, 0.3f, 1f);
         public Color holeColor = new Color(0.9f, 0.2f, 0.2f, 1f);
         public Color stairsColor = new Color(0.6f, 1f, 0.6f, 1f);
+        public Color ladderColor = new Color(0.95f, 0.7f, 0.2f, 1f);
 
         private GridManager _gm;
 
@@ -44,6 +45,7 @@ namespace ProjectC.Gameplay
             {
                 case TileKind.Hole:   return holeColor;
                 case TileKind.Stairs: return stairsColor;
+                case TileKind.Ladder: return ladderColor;
                 default:              return elevation > 0 ? raisedColor : floorColor;
             }
         }

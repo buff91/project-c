@@ -25,6 +25,16 @@ namespace ProjectC.Core
             new GridPos(6, 2, 0)
         };
 
+        /// <summary>
+        /// 선택 영웅은 플레이어로 캠프에 서 있으므로 대기 위치에서는 숨긴다.
+        /// 선택이 바뀌면 이전 영웅은 다시 자신의 대기 위치에 나타난다.
+        /// </summary>
+        public static bool ShouldShowHeroAtRosterPosition(string heroId, string selectedHeroId)
+        {
+            if (string.IsNullOrEmpty(heroId)) return false;
+            return heroId != HeroRoster.ById(selectedHeroId).Id;
+        }
+
         public static DungeonLayout Build(GridMap map)
         {
             map.Clear();

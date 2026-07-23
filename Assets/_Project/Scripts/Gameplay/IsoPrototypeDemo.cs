@@ -43,6 +43,8 @@ namespace ProjectC.Gameplay
         [Header("카메라 구도")]
         [Range(4f, 7f)] public float playCameraSize = 5.2f;
         [Range(7f, 16f)] public float debugCameraSize = 8.8f;
+        [Min(0f)] public float hubCameraHorizontalPadding = 0.75f;
+        [Min(0f)] public float hubCameraVerticalPadding = 1.5f;
 
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
@@ -51,6 +53,8 @@ namespace ProjectC.Gameplay
         [Min(1)] public int rangedAttackDamage = 1;
         [Range(2, 8)] public int rangedAttackRange = 4;
         public CombatActionMode combatMode = CombatActionMode.Melee;
+        [Tooltip("적이 죽은 뒤 시체가 월드에 남는 턴 수. 지나면 탭 대상과 시뮬레이션 목록에서도 제거한다.")]
+        [Range(1, 8)] public int corpseLifetimeTurns = 3;
 
         [Header("M1 아이템")]
         [Min(1)] public int potionHealAmount = 5;
@@ -74,7 +78,7 @@ namespace ProjectC.Gameplay
         [Tooltip("절차 생성 seed. 같은 값이면 같은 던전이 재현된다.")]
         public int dungeonSeed = 1977;
         [Tooltip("검증 장면에서 시작할 깊이. 1이면 B2에서 시작한다.")]
-        [Range(0, 2)] public int previewStartDepth = 1;
+        [Range(0, 2)] public int previewStartDepth = 0;
         public DungeonViewMode viewMode = DungeonViewMode.Play;
         [Range(3, 10)] public int fieldOfViewRadius = 6;
         [Range(1, 2)] public int verticalPreviewRadius = 2;
@@ -85,6 +89,12 @@ namespace ProjectC.Gameplay
         [Range(0.15f, 0.8f)] public float debugAdjacentAlpha = 0.48f;
         [Tooltip("자동 검증용: Play 시작 후 첫 하행 계단을 타고 B2로 이동한다.")]
         public bool autoDescendOnStart;
+
+        [Header("안개 / 맵 경계")]
+        [Tooltip("실제 방 구조는 숨기고, 현재 층이 놓이는 전체 영역만 어두운 안개로 구분한다.")]
+        public bool showDungeonFogBackdrop = true;
+        public Color32 unknownFogColor = new Color32(8, 13, 20, 210);
+        public Color32 unknownFogEdge = new Color32(18, 27, 38, 228);
 
         [Header("플레이어 가림 처리")]
         [Tooltip("플레이어와 화면상 겹치는 앞쪽 타일·벽을 자동으로 투명하게 만든다.")]
@@ -128,6 +138,7 @@ namespace ProjectC.Gameplay
         public int BombCount => _inventory.Count(ItemKind.Bomb);
         public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);
         public int ItemCount(ItemKind kind) => _inventory.Count(kind);
+        public BackpackLayout CurrentBackpackLayout => _inventory.CreateLayout();
 
         /// <summary>지금 들고 있는 전리품의 골드 환산 가치 (출구 선택지 표시용).</summary>
         public int CarriedTreasureGold()
@@ -148,6 +159,7 @@ namespace ProjectC.Gameplay
         public event System.Action<DungeonViewMode> ViewModeChanged;
         public event System.Action<CombatActionMode> CombatModeChanged;
         public event System.Action<string> InteractionFeedback;
+        public event System.Action<VerticalRouteCue> VerticalRouteDiscovered;
         public event System.Action PlayerPositionChanged;
         public event System.Action VerticalContextChanged;
         public event System.Action InventoryChanged;
@@ -175,7 +187,8 @@ namespace ProjectC.Gameplay
         private GridPos _barrelPos;
         private readonly List<EnemyAgent> _enemies = new List<EnemyAgent>();
         private readonly List<ItemAgent> _items = new List<ItemAgent>();
-        private readonly Inventory _inventory = new Inventory();
+        private readonly Inventory _inventory =
+            new Inventory(BackpackRules.Columns, BackpackRules.Rows);
         private bool _bombAiming;
         private ItemKind _bombAimKind = ItemKind.Bomb;
         private GameObject _selection;
@@ -199,6 +212,8 @@ namespace ProjectC.Gameplay
             new Dictionary<GridPos, string>();
         private readonly Dictionary<string, SpriteRenderer> _hubHeroProps =
             new Dictionary<string, SpriteRenderer>();
+        private readonly Dictionary<string, GridPos> _hubHeroPositions =
+            new Dictionary<string, GridPos>();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -209,6 +224,13 @@ namespace ProjectC.Gameplay
         private readonly HashSet<GridPos> _visibleTiles = new HashSet<GridPos>();
         private readonly HashSet<GridPos> _exploredTiles = new HashSet<GridPos>();
         private readonly HashSet<GridPos> _verticalPreviewTiles = new HashSet<GridPos>();
+        private readonly List<VerticalLandmarkAgent> _verticalLandmarks =
+            new List<VerticalLandmarkAgent>();
+        private readonly HashSet<VerticalRouteRole> _discoveredVerticalRoutes =
+            new HashSet<VerticalRouteRole>();
+        private SpriteRenderer _dungeonFogBackdrop;
+        private Camera _configuredCamera;
+        private float _lastCameraAspect = -1f;
 
         private void Awake()
         {
@@ -225,6 +247,7 @@ namespace ProjectC.Gameplay
             _input.InteractRequested += InteractAdjacent;
             _input.WaitRequested += WaitTurn;
             _input.ActorPicker = PickEnemyTileAt;
+            _input.TilePicker = PickVisibleTileAt;
 
             // 생성된 임시 스프라이트는 씬에 저장하지 않는다. 대신 씬을 열 때마다
             // 편집 모드 미리보기를 다시 만들어 Game 뷰가 비어 보이지 않게 한다.
@@ -255,6 +278,8 @@ namespace ProjectC.Gameplay
                 _input.WaitRequested -= WaitTurn;
                 if (_input.ActorPicker == PickEnemyTileAt)
                     _input.ActorPicker = null;
+                if (_input.TilePicker == PickVisibleTileAt)
+                    _input.TilePicker = null;
             }
         }
 
@@ -277,10 +302,13 @@ namespace ProjectC.Gameplay
                     roomSize = Mathf.Max(9, continueData.roomSize);
                     floorCount = continueData.floorCount;
                     elevationsPerFloor = continueData.elevationsPerFloor;
-                    previewStartDepth = -continueData.currentFloorIndex;
                     _stageIndex = Mathf.Max(1, continueData.stageIndex);
                 }
             }
+            if (Application.isPlaying && !hubMode)
+                previewStartDepth = RunStartRules.ResolvePreviewDepth(continueData);
+            if (Application.isPlaying && !hubMode && continueData == null && _stageIndex == 1)
+                dungeonSeed = DungeonSelection.Selected.Seed;
 
             // 영웅 프리셋: 새 판은 메뉴 선택, 이어하기는 저장된 영웅. 편집 모드 미리보기는 인스펙터 값 유지.
             if (Application.isPlaying)
@@ -300,6 +328,8 @@ namespace ProjectC.Gameplay
             _visibleTiles.Clear();
             _exploredTiles.Clear();
             _verticalPreviewTiles.Clear();
+            _verticalLandmarks.Clear();
+            _discoveredVerticalRoutes.Clear();
             _enemies.Clear();
             _items.Clear();
             _inventory.Clear();
@@ -324,30 +354,28 @@ namespace ProjectC.Gameplay
             else if (Application.isPlaying && !hubMode && _hero != null && _stageIndex == 1)
             {
                 // 시작 키트는 첫 던전에서만 — 던전 전환은 ApplyCarriedState 가 이월한다.
-                if (_hero.StartPotions > 0) _inventory.Add(ItemKind.Potion, _hero.StartPotions);
-                if (_hero.StartBombs > 0) _inventory.Add(ItemKind.Bomb, _hero.StartBombs);
-                if (_hero.StartFrostBombs > 0) _inventory.Add(ItemKind.FrostBomb, _hero.StartFrostBombs);
+                if (_hero.StartPotions > 0) _inventory.AddUpTo(ItemKind.Potion, _hero.StartPotions);
+                if (_hero.StartBombs > 0) _inventory.AddUpTo(ItemKind.Bomb, _hero.StartBombs);
+                if (_hero.StartFrostBombs > 0) _inventory.AddUpTo(ItemKind.FrostBomb, _hero.StartFrostBombs);
 
-                // 창고 반입 (extraction 규칙): 보관한 소모품을 전량 들고 들어간다.
-                // 들고 들어간 이상 죽으면 잃는다 — 창고에서는 비운다.
+                // 허브에서 선택한 출정 백팩만 반입한다. 창고의 나머지 물품은 안전하게 유지한다.
                 MetaSaveData meta = MetaStore.LoadOrNew();
-                int carried = 0;
+                int selected = 0;
                 foreach (ItemKind kind in ItemCatalog.AllKinds)
+                    selected += meta.GetLoadoutCount(kind);
+
+                int carried = ExpeditionLoadoutRules.ConsumeLoadout(meta, _inventory);
+                if (selected > 0)
                 {
-                    int stored = meta.GetCount(kind);
-                    if (stored <= 0) continue;
-                    _inventory.Add(kind, stored);
-                    carried += stored;
-                }
-                if (carried > 0)
-                {
-                    meta.ClearItems();
                     MetaStore.Save(meta);
-                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 창고 물품 {carried}개 반입");
+                    int returned = selected - carried;
+                    string leftover = returned > 0 ? $" · {returned}개는 창고 복귀" : "";
+                    InteractionFeedback?.Invoke(
+                        $"{_hero.DisplayName} — 출정 물품 {carried}개 반입{leftover}");
                 }
                 else
                 {
-                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 던전 진입");
+                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 기본 지급품으로 던전 진입");
                 }
             }
 
@@ -409,7 +437,13 @@ namespace ProjectC.Gameplay
         public void DebugGiveItem(ItemKind kind)
         {
             if (!Application.isPlaying) return;
-            int count = _inventory.Add(kind);
+            if (!_inventory.TryAdd(kind, out int count))
+            {
+                InteractionFeedback?.Invoke(
+                    $"CHEAT: 백팩 공간 부족 · {ItemCatalog.DisplayName(kind)} " +
+                    $"{BackpackRules.Footprint(kind)}칸 필요");
+                return;
+            }
             InventoryChanged?.Invoke();
             InteractionFeedback?.Invoke($"CHEAT: {ItemLabel(kind)} +1 (×{count})");
         }
@@ -482,6 +516,9 @@ namespace ProjectC.Gameplay
             if (data.coinPouches > 0) _inventory.Add(ItemKind.CoinPouch, data.coinPouches);
             if (data.gemstones > 0) _inventory.Add(ItemKind.Gemstone, data.gemstones);
             if (data.relics > 0) _inventory.Add(ItemKind.Relic, data.relics);
+            if (data.herbs > 0) _inventory.Add(ItemKind.Herb, data.herbs);
+            if (data.powders > 0) _inventory.Add(ItemKind.BlastPowder, data.powders);
+            if (data.frostShards > 0) _inventory.Add(ItemKind.FrostShard, data.frostShards);
             InventoryChanged?.Invoke();
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
@@ -515,6 +552,9 @@ namespace ProjectC.Gameplay
                 coinPouches = ItemCount(ItemKind.CoinPouch),
                 gemstones = ItemCount(ItemKind.Gemstone),
                 relics = ItemCount(ItemKind.Relic),
+                herbs = ItemCount(ItemKind.Herb),
+                powders = ItemCount(ItemKind.BlastPowder),
+                frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex
             });
@@ -583,6 +623,7 @@ namespace ProjectC.Gameplay
                 _tileRenderers.Add(pos, renderer);
             }
 
+            CreateVerticalLandmarks();
             RefreshFloorVisibility();
         }
 
@@ -691,6 +732,15 @@ namespace ProjectC.Gameplay
         private void LateUpdate()
         {
             if (!Application.isPlaying || _playerLocator == null) return;
+
+            if (hubMode && configureMainCamera)
+            {
+                Camera mainCamera = _configuredCamera != null ? _configuredCamera : Camera.main;
+                if (mainCamera != null &&
+                    !Mathf.Approximately(mainCamera.aspect, _lastCameraAspect))
+                    ConfigureCamera(mainCamera);
+            }
+
             float pulse = 1f + Mathf.Sin(Time.time * 5f) * 0.1f;
             _playerLocator.localScale = new Vector3(pulse, pulse, 1f);
             if (_playerFootprint != null)
@@ -781,7 +831,9 @@ namespace ProjectC.Gameplay
             !Application.isPlaying || _resolvingAction ||
             _playerState == null || !_playerState.IsAlive || _runSummary.Ended
                 ? null
-                : TryFindAdjacentInteraction(out _, out string label) ? label : null;
+                : TryGetCurrentConnectorInteraction(out string connectorLabel)
+                    ? connectorLabel
+                    : TryFindAdjacentInteraction(out _, out string label) ? label : null;
 
         /// <summary>상호작용 버튼 실행 — 스페이스바/액션 휠과 같은 경로.</summary>
         public void PerformContextInteraction() => InteractAdjacent();
@@ -895,7 +947,7 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 탭 지점이 적(시체 포함) 스프라이트 안이면 그 발밑 타일을 반환한다.
+        /// 탭 지점이 적(남아 있는 시체 포함) 스프라이트 안이면 그 발밑 타일을 반환한다.
         /// 아이소 몸통은 타일보다 화면상 위에 그려져, 평면 역변환만 쓰면
         /// 몸통 탭이 뒤 타일 이동으로 새는 문제의 보정이다. 겹치면 앞(정렬 위) 우선.
         /// 살아있으면 공격, 시체면 그 칸으로 이동 — 분기는 HandleTileTapped 가 한다.
@@ -920,6 +972,55 @@ namespace ProjectC.Gameplay
             }
 
             return best?.State.Position;
+        }
+
+        /// <summary>
+        /// 화면에 실제 그려진 타일 다이아몬드만 집는다. 전체 elevation 평면을 역산하면
+        /// 같은 화면 좌표에 우연히 놓인 아래층 타일이 선택될 수 있으므로, 현재 활성 층을
+        /// 최우선으로 하고 실제 개구부를 통해 표시된 인접 층은 그다음 순위로 둔다.
+        /// </summary>
+        private GridPos? PickVisibleTileAt(Vector2 screenPoint)
+        {
+            if (!Application.isPlaying || _dungeon == null || Camera.main == null)
+                return null;
+
+            Vector3 world = Camera.main.ScreenToWorldPoint(screenPoint);
+            var candidates = new List<WorldInputCandidate>();
+            foreach (var pair in _tileRenderers)
+            {
+                SpriteRenderer renderer = pair.Value;
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    continue;
+
+                GridPos position = pair.Key;
+                int floorIndex = _dungeon.Height.FloorIndex(position.elevation);
+                bool activeFloor = floorIndex == _activeFloorIndex;
+                bool inputVisible = viewMode == DungeonViewMode.DebugAll ||
+                                    (activeFloor &&
+                                     (_visibleTiles.Contains(position) ||
+                                      _exploredTiles.Contains(position))) ||
+                                    _verticalPreviewTiles.Contains(position);
+                if (!inputVisible) continue;
+
+                Vector3 center = VisualPosition(position);
+                int layerPriority = activeFloor ? 2 : 1;
+                candidates.Add(new WorldInputCandidate(
+                    position,
+                    center.x,
+                    center.y,
+                    layerPriority,
+                    renderer.sortingOrder));
+            }
+
+            return WorldInputRules.TryPickProjectedTile(
+                candidates,
+                world.x,
+                world.y,
+                _grid.iso.tileWidth,
+                _grid.iso.tileHeight,
+                out GridPos picked)
+                ? picked
+                : (GridPos?)null;
         }
 
         /// <summary>
@@ -970,8 +1071,83 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
                 return;
 
+            if (TryActivateHubPortal() || TryActivateCurrentConnector())
+                return;
+
             if (TryFindAdjacentInteraction(out GridPos target, out _))
                 HandleTileTapped(target, tileExists: true);
+        }
+
+        private bool TryGetCurrentConnectorInteraction(out string label)
+        {
+            label = null;
+            if (_grid == null || _dungeon == null) return false;
+
+            TileKind? kind = _grid.Map.Get(_playerPos)?.kind;
+            if (kind == TileKind.Ladder)
+            {
+                IReadOnlyList<GridPos> ladderLinks = _grid.Map.LinksFrom(_playerPos);
+                if (ladderLinks.Count == 0) return false;
+                label = ladderLinks[0].elevation > _playerPos.elevation
+                    ? "사다리 오르기"
+                    : "사다리 내려가기";
+                return true;
+            }
+
+            if (kind == TileKind.StairsUp)
+            {
+                label = $"{AboveFloorLabel}로 이동";
+                return _grid.Map.LinksFrom(_playerPos).Count > 0;
+            }
+
+            if (kind == TileKind.StairsDown)
+            {
+                bool hasDestination = _grid.Map.LinksFrom(_playerPos).Count > 0 ||
+                                      (_activeFloorIndex == _dungeon.BottomFloorIndex &&
+                                       _stageIndex < stageCount);
+                if (!hasDestination) return false;
+                label = _activeFloorIndex == _dungeon.BottomFloorIndex && _stageIndex < stageCount
+                    ? "다음 던전으로"
+                    : $"{BelowFloorLabel}로 이동";
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryActivateHubPortal()
+        {
+            if (!hubMode || _playerPos != HubLayout.Portal) return false;
+            InteractionFeedback?.Invoke("포탈 활성화 — 목적지를 선택하세요");
+            HubInteractionRequested?.Invoke("dungeon-select");
+            return true;
+        }
+
+        private bool TryActivateCurrentConnector()
+        {
+            if (!TryGetCurrentConnectorInteraction(out string label)) return false;
+
+            TileKind kind = _grid.Map.Get(_playerPos).kind;
+            IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(_playerPos);
+            if (links.Count > 0)
+            {
+                var path = new List<GridPos> { _playerPos, links[0] };
+                InteractionFeedback?.Invoke(label);
+                StartPlayerAction(links[0], MovePlayerPath(path));
+                return true;
+            }
+
+            if (kind == TileKind.StairsDown &&
+                _activeFloorIndex == _dungeon.BottomFloorIndex &&
+                _stageIndex < stageCount)
+            {
+                var path = new List<GridPos> { _playerPos };
+                InteractionFeedback?.Invoke(label);
+                StartPlayerAction(_playerPos, MoveAndAdvanceStage(path, _playerPos));
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>인접 상호작용 대상 탐색. 액션 휠 라벨에도 쓴다.</summary>
@@ -1035,13 +1211,19 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || hubMode) return;
             RunSaveStore.Clear();
             Debug.Log("[Run] 게임 포기 — 소지품 소실, 허브 복귀");
-            UnityEngine.SceneManagement.SceneManager.LoadScene("Hub");
+            UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
         }
 
         private void HandleTileTapped(GridPos target, bool tileExists)
         {
             if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive ||
                 _runSummary.Ended)
+                return;
+
+            // 화면의 검은 여백(void)은 미탐색 타일이 아니다. 이 검사를 FOV/자동 이동보다
+            // 먼저 해야 맵 밖 탭이 가까운 탐색 경계로 걷는 명령으로 바뀌지 않는다.
+            // IsoTapInput에서도 차단하지만 키보드/테스트 등 직접 호출 경로를 위해 재검증한다.
+            if (!tileExists || !WorldInputRules.IsMapTile(_grid.Map, target))
                 return;
 
             // 자동 이동 중 재탭 = 취소 요청. 다음 스텝 경계에서 멈춘다.
@@ -1066,9 +1248,12 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            // 자기 자신 탭 = 액션 휠 토글 (터치/마우스 공용).
+            // 사다리/층 전환 타일 위에서는 자기 자신 탭이 곧 사용이다.
+            // 그 외 타일에서만 액션 휠을 연다.
             if (target == _playerPos)
             {
+                if (TryActivateHubPortal() || TryActivateCurrentConnector())
+                    return;
                 PlayerTapped?.Invoke();
                 return;
             }
@@ -1118,11 +1303,11 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            if (!tileExists || !_grid.Map.IsWalkable(target))
+            if (!_grid.Map.IsWalkable(target))
             {
                 // 조용히 무시하면 "보이는 것과 갈 수 있는 곳"이 헷갈린다 — 즉시 알려준다.
                 InteractionFeedback?.Invoke(
-                    tileExists && _grid.Map.Get(target)?.kind == TileKind.Wall
+                    _grid.Map.Get(target)?.kind == TileKind.Wall
                         ? "벽이다 — 지나갈 수 없다"
                         : "갈 수 없는 곳");
                 return;
@@ -1142,8 +1327,25 @@ namespace ProjectC.Gameplay
             if (allowedSteps < path.Count - 1)
                 path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
 
-            // 계단 링크는 경로가 실제로 계단까지 닿을 때만 잇는다(절단되면 생략).
-            if ((targetTile.kind == TileKind.StairsUp || targetTile.kind == TileKind.StairsDown) &&
+            // 사다리/층 전환 링크는 경로가 실제로 입구까지 닿을 때만 잇는다(절단되면 생략).
+            // 링크를 타고 반대편 끝을 목적지로 탭한 경로에는 되돌아가는 링크를 덧붙이지 않는다.
+            bool usesExplicitConnector =
+                targetTile.kind == TileKind.Ladder ||
+                targetTile.kind == TileKind.StairsUp ||
+                targetTile.kind == TileKind.StairsDown;
+            bool arrivedThroughSameLink = false;
+            if (path.Count >= 2)
+            {
+                GridPos previous = path[path.Count - 2];
+                foreach (GridPos linked in _grid.Map.LinksFrom(target))
+                {
+                    if (linked != previous) continue;
+                    arrivedThroughSameLink = true;
+                    break;
+                }
+            }
+            if (usesExplicitConnector &&
+                !arrivedThroughSameLink &&
                 path[path.Count - 1] == target)
             {
                 IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(target);
@@ -1256,9 +1458,6 @@ namespace ProjectC.Gameplay
                 yield return AnimateProjectile(_playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
                 yield return ShowEnemyHit(enemy, damage, "Ranged");
-                if (!enemy.State.IsAlive)
-                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
-
                 yield return ResolveEnemyPhase();
             }
             else
@@ -1297,8 +1496,6 @@ namespace ProjectC.Gameplay
                     yield return AnimateProjectile(_playerPos, enemy.State.Position);
                     InteractionFeedback?.Invoke($"RANGED HIT · {approachDamage} DAMAGE");
                     yield return ShowEnemyHit(enemy, approachDamage, "Ranged");
-                    if (!enemy.State.IsAlive)
-                        InteractionFeedback?.Invoke("ENEMY DEFEATED");
                     yield return ResolveEnemyPhase();
                 }
             }
@@ -1348,8 +1545,6 @@ namespace ProjectC.Gameplay
                 yield return AnimateProjectile(_playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke($"KNIFE HIT · {damage} DAMAGE");
                 yield return ShowEnemyHit(enemy, damage, "Knife");
-                if (!enemy.State.IsAlive)
-                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
             }
             else
             {
@@ -1660,6 +1855,27 @@ namespace ProjectC.Gameplay
                     }
                 }
 
+                _player.transform.position = end;
+
+                // 던전 층 전환 계단은 "입구 칸에 서기"와 "링크 이동"을 한 행동으로 묶는다.
+                // 둘 사이에 적 턴/자동 이동 인터럽트가 끼면 계단 위에 남아 층이 안 바뀐 것처럼
+                // 보이므로, 같은 층에서 입구를 밟은 즉시 반대편 출구까지 이동한다.
+                bool enteredFromSameFloor =
+                    _dungeon.Height.SameFloor(_playerState.Position, next);
+                if (enteredFromSameFloor &&
+                    VerticalTraversalRules.TryGetAutomaticFloorDestination(
+                        _grid.Map, next, out GridPos floorDestination))
+                {
+                    InteractionFeedback?.Invoke(
+                        $"{FloorLabel(_dungeon.Height.FloorIndex(floorDestination.elevation))}로 이동");
+                    yield return AnimateFloorTransition(_grid.GridToWorld(floorDestination));
+
+                    if (i + 1 < path.Count && path[i + 1] == floorDestination)
+                        i++; // 경로 탐색이 넣은 링크 목적지는 이미 함께 소비했다.
+                    next = floorDestination;
+                    end = _grid.GridToWorld(next);
+                }
+
                 _playerPos = next;
                 _playerState.MoveTo(next);
                 PlayerPositionChanged?.Invoke();
@@ -1670,10 +1886,10 @@ namespace ProjectC.Gameplay
                 ConfigureCamera(Camera.main);
                 TryCollectItemAt(next);
 
-                // 허브 포탈은 밟는 순간 출발한다.
+                // 허브 포탈은 밟는 순간 목적지 선택을 연다. 던전 진입은 확인 버튼에서만 확정한다.
                 if (hubMode && next == HubLayout.Portal)
                 {
-                    StartRunFromHub();
+                    TryActivateHubPortal();
                     yield break;
                 }
 
@@ -1852,24 +2068,40 @@ namespace ProjectC.Gameplay
         private IEnumerator FlashDamage(SpriteRenderer renderer) =>
             FlashColor(renderer, new Color32(255, 92, 72, 255));
 
-        /// <summary>적 피격 공통 연출: HP바 → 플래시 → 상태/사망 틴트 재적용(단일 경로).</summary>
+        /// <summary>
+        /// 적 피격 공통 처리. 전투 결과와 로그는 항상 반영하되,
+        /// 플로팅 피해·사망 안내·플래시는 현재 FOV 안에서만 공개한다.
+        /// </summary>
         private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
         {
             UpdateHealthBar(enemy.HpFill, enemy.State);
-            FloatingText?.ShowDamage(
-                enemy.Root != null ? enemy.Root.transform.position : _grid.GridToWorld(enemy.State.Position),
-                damage,
-                FloatingTextKind.EnemyDamage);
+            bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
+            if (visibleToPlayer)
+            {
+                FloatingText?.ShowDamage(
+                    enemy.Root != null
+                        ? enemy.Root.transform.position
+                        : _grid.GridToWorld(enemy.State.Position),
+                    damage,
+                    FloatingTextKind.EnemyDamage);
+            }
             Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
-            yield return FlashDamage(enemy.Renderer);
-            ApplyEnemyVisuals(enemy);
 
-            if (!enemy.State.IsAlive)
+            if (visibleToPlayer && enemy.Renderer != null)
+                yield return FlashDamage(enemy.Renderer);
+
+            bool newlyDead = !enemy.State.IsAlive && enemy.DeathTurn < 0;
+            if (newlyDead)
             {
+                enemy.DeathTurn = _turns.TurnNumber;
                 _runSummary.RecordKill();
                 Debug.Log($"[Combat] {enemy.State.Id} 처치");
+                if (visibleToPlayer)
+                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
             }
+
+            ApplyEnemyVisuals(enemy);
         }
 
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
@@ -1911,6 +2143,7 @@ namespace ProjectC.Gameplay
         {
             _hubInteractables.Clear();
             _hubHeroProps.Clear();
+            _hubHeroPositions.Clear();
 
             Sprite campfire = visualCatalog != null ? visualCatalog.hubCampfire : null;
             Sprite portal = visualCatalog != null ? visualCatalog.hubPortal : null;
@@ -1937,8 +2170,8 @@ namespace ProjectC.Gameplay
                     $"Hero {hero.Id}",
                     heroSprite != null ? heroSprite : GetCharacterSprite(false),
                     HubLayout.HeroPositions[i]);
-                _hubInteractables[HubLayout.HeroPositions[i]] = $"hero:{hero.Id}";
                 _hubHeroProps[hero.Id] = prop;
+                _hubHeroPositions[hero.Id] = HubLayout.HeroPositions[i];
             }
 
             RefreshHubHeroLocks();
@@ -1950,21 +2183,58 @@ namespace ProjectC.Gameplay
             return renderer;
         }
 
-        /// <summary>잠긴 영웅은 회색, 선택된 영웅은 밝은 금색 틴트. 해금/선택 후 HUD 가 호출.</summary>
+        /// <summary>
+        /// 선택 영웅은 플레이어로 표시하고 대기 위치에서는 숨긴다.
+        /// 나머지 영웅은 자기 위치에 복귀하며, 잠긴 영웅만 회색으로 표시한다.
+        /// </summary>
         public void RefreshHubHeroLocks()
         {
             if (!hubMode) return;
             MetaSaveData meta = MetaStore.LoadOrNew();
+            HeroArchetype selectedHero = HeroRoster.ById(HeroSelection.SelectedId);
+
+            _hero = selectedHero;
+            playerMaxHp = selectedHero.MaxHp;
+            playerAttack = selectedHero.Attack;
+            rangedAttackDamage = selectedHero.RangedDamage;
+
+            if (_playerRenderer != null)
+            {
+                Sprite selectedSprite = visualCatalog != null
+                    ? visualCatalog.HeroFor(selectedHero.Id)
+                    : null;
+                _playerRenderer.sprite = selectedSprite != null
+                    ? selectedSprite
+                    : GetCharacterSprite(false);
+                _playerRenderer.color = Color.white;
+            }
+
+            if (_playerState != null)
+            {
+                _playerState = new CombatantState(
+                    "Player", _playerState.Position, selectedHero.MaxHp, selectedHero.Attack);
+                UpdateHealthBar(_playerHpFill, _playerState);
+                PlayerHpChanged?.Invoke();
+            }
+
             foreach (KeyValuePair<string, SpriteRenderer> pair in _hubHeroProps)
             {
                 HeroArchetype hero = HeroRoster.ById(pair.Key);
                 bool unlocked = hero.UnlockCost <= 0 || meta.IsHeroUnlocked(hero.Id);
-                bool selected = (HeroSelection.SelectedId ?? HeroRoster.All[0].Id) == hero.Id;
+                bool showAtRosterPosition = HubLayout.ShouldShowHeroAtRosterPosition(
+                    hero.Id, selectedHero.Id);
+
+                pair.Value.gameObject.SetActive(showAtRosterPosition);
                 pair.Value.color = !unlocked
                     ? (Color)new Color32(96, 100, 104, 255)
-                    : selected
-                        ? (Color)new Color32(255, 226, 150, 255)
-                        : Color.white;
+                    : Color.white;
+
+                if (!_hubHeroPositions.TryGetValue(hero.Id, out GridPos position))
+                    continue;
+                if (showAtRosterPosition)
+                    _hubInteractables[position] = $"hero:{hero.Id}";
+                else
+                    _hubInteractables.Remove(position);
             }
         }
 
@@ -1976,13 +2246,14 @@ namespace ProjectC.Gameplay
                 HubInteractionRequested?.Invoke(id);
         }
 
-        /// <summary>포탈 도착 — 새 판 시작. (허브의 "새로 시작")</summary>
-        private void StartRunFromHub()
+        /// <summary>던전 선택 확인 — 허브에서 새 판을 시작한다.</summary>
+        public void BeginSelectedDungeon()
         {
+            if (!Application.isPlaying || !hubMode) return;
             RunSaveStore.Clear();
             RunSaveStore.ContinueRequested = false;
-            InteractionFeedback?.Invoke("던전으로 내려간다...");
-            UnityEngine.SceneManagement.SceneManager.LoadScene("IsoPrototype");
+            InteractionFeedback?.Invoke($"{DungeonSelection.Selected.DisplayName}(으)로 출발");
+            UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.DungeonScene);
         }
 
         /// <summary>던전 체인 좌표계: 스테이지 누적 깊이(몬스터 혼합용, 0부터 증가).</summary>
@@ -2041,8 +2312,10 @@ namespace ProjectC.Gameplay
             int gold = BankInventoryToStash();
             RunSaveStore.Clear();
             _runSummary.EndInExtraction(gold);
-            InteractionFeedback?.Invoke($"생환 — +{gold}G 적립");
-            Debug.Log($"[Run] 생환: +{gold}G, 최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
+            InteractionFeedback?.Invoke($"생환 — +{ItemCatalog.FormatGold(gold)} 적립");
+            Debug.Log(
+                $"[Run] 생환: +{ItemCatalog.FormatGold(gold)}, " +
+                $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
             RunEnded?.Invoke(_runSummary);
         }
 
@@ -2093,6 +2366,9 @@ namespace ProjectC.Gameplay
                 coinPouches = ItemCount(ItemKind.CoinPouch),
                 gemstones = ItemCount(ItemKind.Gemstone),
                 relics = ItemCount(ItemKind.Relic),
+                herbs = ItemCount(ItemKind.Herb),
+                powders = ItemCount(ItemKind.BlastPowder),
+                frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex
             };
@@ -2177,8 +2453,8 @@ namespace ProjectC.Gameplay
         private void UpdateInputFloorRange()
         {
             if (_input == null || _dungeon == null) return;
-            // 픽킹은 던전 전체 높이에서 허용한다 — 다른 층의 탐색된 칸을 눌러
-            // 계단을 자동 경유해 이동할 수 있게. (겹치면 위 타일 우선은 유지)
+            // 키보드/편집기 폴백을 위한 범위다. 실제 포인터 입력은 TilePicker가
+            // 현재 화면에 렌더된 다이아몬드를 먼저 판정해 겹친 아래층 오선택을 막는다.
             _input.minElevation = _dungeon.Height.Elevation(_dungeon.BottomFloorIndex);
             _input.maxElevation =
                 _dungeon.Height.Elevation(_dungeon.TopFloorIndex) +
@@ -2202,21 +2478,58 @@ namespace ProjectC.Gameplay
         {
             if (camera == null) return;
 
+            _configuredCamera = camera;
             camera.orthographic = true;
-            camera.orthographicSize = viewMode == DungeonViewMode.DebugAll
-                ? debugCameraSize
-                : playCameraSize;
-            if (viewMode == DungeonViewMode.Play && _playerState != null)
+            if (hubMode && TryGetHubCameraFrame(camera.aspect, out OrthographicCameraFrame hubFrame))
             {
-                Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
-                camera.transform.position = new Vector3(playerWorld.x, playerWorld.y, -10f);
+                camera.orthographicSize = hubFrame.Size;
+                camera.transform.position = new Vector3(hubFrame.Center.x, hubFrame.Center.y, -10f);
             }
             else
             {
-                camera.transform.position = new Vector3(0f, -1.65f, -10f);
+                camera.orthographicSize = viewMode == DungeonViewMode.DebugAll
+                    ? debugCameraSize
+                    : playCameraSize;
+                if (viewMode == DungeonViewMode.Play && _playerState != null)
+                {
+                    Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
+                    camera.transform.position = new Vector3(playerWorld.x, playerWorld.y, -10f);
+                }
+                else
+                {
+                    camera.transform.position = new Vector3(0f, -1.65f, -10f);
+                }
             }
+            _lastCameraAspect = camera.aspect;
             camera.backgroundColor = new Color32(6, 9, 13, 255);
             camera.clearFlags = CameraClearFlags.SolidColor;
+        }
+
+        private bool TryGetHubCameraFrame(float aspect, out OrthographicCameraFrame frame)
+        {
+            frame = default;
+            if (_grid == null || _grid.Map.Count == 0 || aspect <= 0f) return false;
+
+            float minX = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float minY = float.PositiveInfinity;
+            float maxY = float.NegativeInfinity;
+            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
+            {
+                Vector2 world = _grid.iso.GridToWorld(pair.Key);
+                minX = Mathf.Min(minX, world.x);
+                maxX = Mathf.Max(maxX, world.x);
+                minY = Mathf.Min(minY, world.y);
+                maxY = Mathf.Max(maxY, world.y);
+            }
+
+            frame = OrthographicCameraFraming.Fit(
+                minX, maxX, minY, maxY,
+                aspect,
+                playCameraSize,
+                hubCameraHorizontalPadding,
+                hubCameraVerticalPadding);
+            return true;
         }
 
         private void ClearVisuals()
@@ -2253,12 +2566,24 @@ namespace ProjectC.Gameplay
             {
                 if (item.Collected || item.Spawn.Position != pos) continue;
 
+                ItemFootprint footprint = BackpackRules.Footprint(item.Spawn.Kind);
+                if (!_inventory.TryAdd(item.Spawn.Kind, out int count))
+                {
+                    InteractionFeedback?.Invoke(
+                        $"백팩 공간 부족 · {ItemCatalog.DisplayName(item.Spawn.Kind)} " +
+                        $"{footprint}칸 필요");
+                    Debug.Log(
+                        $"[Item] {item.Spawn.Kind} 획득 실패 {pos} " +
+                        $"(백팩 {CurrentBackpackLayout.UsedCells}/{BackpackRules.Capacity}칸)");
+                    return;
+                }
+
                 item.Collected = true;
                 if (item.Root != null) item.Root.SetActive(false);
-                int count = _inventory.Add(item.Spawn.Kind);
                 InventoryChanged?.Invoke();
 
-                InteractionFeedback?.Invoke($"{ItemLabel(item.Spawn.Kind)} 획득 ×{count}");
+                InteractionFeedback?.Invoke(
+                    $"{ItemLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");
                 Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
                 return;
             }
@@ -2273,8 +2598,10 @@ namespace ProjectC.Gameplay
             public GameObject Root;
             public SpriteRenderer Renderer;
             public Transform HpFill;
+            public Transform HpBackground;
             public MonsterMood LastMood;
             public TextMesh MoodIcon;
+            public int DeathTurn = -1;
         }
 
         /// <summary>바닥에 놓인 아이템 프롭. 밟으면 Collected 로 바뀌고 숨겨진다.</summary>

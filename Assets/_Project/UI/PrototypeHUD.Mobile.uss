@@ -1,0 +1,105 @@
+/* Touch-first shell. Viewport-specific wrapping remains in PrototypeHUD.uss. */
+
+.hud-layout-shell {
+    flex-grow: 1;
+}
+
+.hud-root.hud-mobile .resource-pill {
+    min-height: 58px;
+}
+
+.hud-root.hud-mobile .mode-button,
+.hud-root.hud-mobile .combat-button,
+.hud-root.hud-mobile .interact-button {
+    min-height: 54px;
+}
+
+.hud-root.hud-mobile .settings-button,
+.hud-root.hud-mobile .rotate-button {
+    min-width: 40px;
+    min-height: 48px;
+}
+
+.hud-root.hud-mobile .minimap-panel {
+    width: 174px;
+}
+
+.hud-root.hud-mobile .minimap-header,
+.hud-root.hud-mobile .view-controls {
+    min-height: 48px;
+}
+
+.hud-root.hud-mobile .settings-card,
+.hud-root.hud-mobile .inventory-card {
+    width: 100%;
+}
+
+/* Narrow phone rails still need enough room for the 40px touch settings button. */
+.hud-root.hud-mobile.is-narrow .minimap-panel,
+.hud-root.hud-mobile.is-narrow .depth-panel {
+    width: 160px;
+}
+
+/* Tall phones keep transient messages clear of the two-row touch bar. */
+.hud-root.hud-mobile.is-tall .status-zone {
+    bottom: 174px;
+}
+
+/* Tablets use the added canvas for readable panels instead of stretching edge to edge. */
+.hud-root.hud-mobile.is-expanded .minimap-panel {
+    width: 210px;
+}
+
+.hud-root.hud-mobile.is-expanded .hud-bottom {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hud-root.hud-mobile.is-expanded .resources {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.hud-root.hud-mobile.is-expanded .action-cluster {
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+}
+
+.hud-root.hud-mobile.is-expanded .status-zone {
+    bottom: 142px;
+}
+
+.hud-root.hud-mobile.is-expanded .settings-card {
+    width: 560px;
+}
+
+.hud-root.hud-mobile.is-expanded .inventory-card {
+    width: 600px;
+}
+
+.hud-root.hud-mobile.is-expanded .gameover-card {
+    width: 480px;
+}
+
+/* Phone landscape has width to spare but very little vertical room. */
+.hud-root.hud-mobile.is-ultrawide .resource-pill,
+.hud-root.hud-mobile.is-ultrawide .mode-button,
+.hud-root.hud-mobile.is-ultrawide .combat-button,
+.hud-root.hud-mobile.is-ultrawide .interact-button {
+    min-height: 44px;
+}
+
+.hud-root.hud-mobile.is-ultrawide .settings-button,
+.hud-root.hud-mobile.is-ultrawide .rotate-button {
+    min-height: 38px;
+}
+
+.hud-root.hud-mobile.is-ultrawide .minimap-header,
+.hud-root.hud-mobile.is-ultrawide .view-controls {
+    min-height: 38px;
+}
+
+.hud-root.hud-mobile.is-ultrawide .minimap-panel {
+    width: 190px;
+}

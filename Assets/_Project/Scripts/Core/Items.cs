@@ -67,6 +67,12 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>
+        /// 긴 단위명이나 G 대신 픽셀 HUD에서 즉시 읽히는 달러 기호를 접두사로 사용한다.
+        /// HUD·상점·정산 화면이 모두 "$120" 형식을 공유한다.
+        /// </summary>
+        public static string FormatGold(int amount) => $"${amount}";
+
         /// <summary>조합 재료 여부. 사용 불가 — 조합 화면에서만 소비된다.</summary>
         public static bool IsMaterial(ItemKind kind) =>
             kind == ItemKind.Herb || kind == ItemKind.BlastPowder || kind == ItemKind.FrostShard;
@@ -108,11 +114,11 @@ namespace ProjectC.Core
                 case ItemKind.RecallScroll:
                     return "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.";
                 case ItemKind.CoinPouch:
-                    return "생환하면 10골드로 환산된다. 죽으면 잃는다.";
+                    return "생환하면 소지금 $10을 얻는다. 죽으면 잃는다.";
                 case ItemKind.Gemstone:
-                    return "생환하면 25골드로 환산된다. 죽으면 잃는다.";
+                    return "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.";
                 case ItemKind.Relic:
-                    return "깊은 층의 희귀한 유물. 생환하면 60골드로 환산된다.";
+                    return "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.";
                 case ItemKind.Herb:
                     return "조합 재료. 2개를 빻으면 회복 물약이 된다.";
                 case ItemKind.BlastPowder:
@@ -189,19 +195,85 @@ namespace ProjectC.Core
         public override string ToString() => $"{Kind}@{Position}";
     }
 
-    /// <summary>종류별 개수만 세는 최소 인벤토리. 장비/스택 상한은 콘텐츠 확장 때 붙인다.</summary>
+    /// <summary>
+    /// 종류별 수량과 선택적 격자 용량을 함께 관리한다.
+    /// 기본 생성자는 테스트/창고용 무제한, 크기를 지정하면 실제 백팩 용량을 적용한다.
+    /// </summary>
     public sealed class Inventory
     {
         private readonly Dictionary<ItemKind, int> _counts = new Dictionary<ItemKind, int>();
+        private readonly int _columns;
+        private readonly int _rows;
+
+        public bool IsBounded => _columns > 0 && _rows > 0;
+        public int Columns => _columns;
+        public int Rows => _rows;
+
+        public Inventory()
+        {
+        }
+
+        public Inventory(int columns, int rows)
+        {
+            if (columns <= 0) throw new ArgumentOutOfRangeException(nameof(columns));
+            if (rows <= 0) throw new ArgumentOutOfRangeException(nameof(rows));
+            _columns = columns;
+            _rows = rows;
+        }
 
         public int Count(ItemKind kind) => _counts.TryGetValue(kind, out int count) ? count : 0;
 
         public int Add(ItemKind kind, int amount = 1)
         {
+            AddUpTo(kind, amount);
+            return Count(kind);
+        }
+
+        /// <summary>요청 수량 전체가 들어갈 때만 추가한다.</summary>
+        public bool TryAdd(ItemKind kind, int amount, out int totalCount)
+        {
             if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
-            int next = Count(kind) + amount;
-            _counts[kind] = next;
-            return next;
+
+            int previous = Count(kind);
+            _counts[kind] = previous + amount;
+            if (IsBounded && !BackpackRules.TryCreateLayout(this, _columns, _rows, out _))
+            {
+                RestoreCount(kind, previous);
+                totalCount = previous;
+                return false;
+            }
+
+            totalCount = previous + amount;
+            return true;
+        }
+
+        public bool TryAdd(ItemKind kind, out int totalCount) => TryAdd(kind, 1, out totalCount);
+
+        /// <summary>공간이 허용하는 만큼만 추가하고 실제 추가된 개수를 반환한다.</summary>
+        public int AddUpTo(ItemKind kind, int amount)
+        {
+            if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
+
+            if (!IsBounded)
+            {
+                int next = Count(kind) + amount;
+                _counts[kind] = next;
+                return amount;
+            }
+
+            int added = 0;
+            while (added < amount && TryAdd(kind, out _))
+                added++;
+            return added;
+        }
+
+        public BackpackLayout CreateLayout()
+        {
+            if (!IsBounded)
+                throw new InvalidOperationException("무제한 인벤토리에는 백팩 레이아웃이 없다.");
+            if (!BackpackRules.TryCreateLayout(this, _columns, _rows, out BackpackLayout layout))
+                throw new InvalidOperationException("현재 인벤토리 수량을 백팩에 배치할 수 없다.");
+            return layout;
         }
 
         public bool TryUse(ItemKind kind)
@@ -213,6 +285,14 @@ namespace ProjectC.Core
         }
 
         public void Clear() => _counts.Clear();
+
+        private void RestoreCount(ItemKind kind, int count)
+        {
+            if (count <= 0)
+                _counts.Remove(kind);
+            else
+                _counts[kind] = count;
+        }
     }
 
     public sealed class BombResult
