@@ -74,7 +74,13 @@ namespace ProjectC.EditorTools
                 { "item-relic", "relic" },
                 { "item-herb", "herb" },
                 { "item-blast-powder", "blastPowder" },
-                { "item-frost-shard", "frostShard" }
+                { "item-frost-shard", "frostShard" },
+                { "fx-impact-physical", "fxImpactPhysical" },
+                { "fx-impact-fire", "fxImpactFire" },
+                { "fx-impact-frost", "fxImpactFrost" },
+                { "fx-impact-heavy", "fxImpactHeavy" },
+                { "fx-status-burn", "fxStatusBurn" },
+                { "fx-status-freeze", "fxStatusFreeze" }
             };
 
         private static readonly Dictionary<string, Vector2> CustomPivots =
@@ -120,7 +126,13 @@ namespace ProjectC.EditorTools
                 { "item-potion", new Vector2(0.5f, 4f / 32f) },
                 { "item-recall-scroll", new Vector2(0.5f, 3f / 32f) },
                 { "item-relic", new Vector2(0.5f, 3f / 32f) },
-                { "item-throwing-knife", new Vector2(0.5f, 2f / 32f) }
+                { "item-throwing-knife", new Vector2(0.5f, 2f / 32f) },
+                { "fx-impact-physical", new Vector2(0.5f, 0.5f) },
+                { "fx-impact-fire", new Vector2(0.5f, 0.5f) },
+                { "fx-impact-frost", new Vector2(0.5f, 0.5f) },
+                { "fx-impact-heavy", new Vector2(0.5f, 0.5f) },
+                { "fx-status-burn", new Vector2(0.5f, 0.5f) },
+                { "fx-status-freeze", new Vector2(0.5f, 0.5f) }
             };
 
         private static bool _catalogSyncQueued;

@@ -283,6 +283,9 @@ namespace ProjectC.Gameplay
 
         private Sprite GetCombatStatusSprite(StatusKind kind)
         {
+            Sprite art = visualCatalog != null ? visualCatalog.StatusFx(kind) : null;
+            if (art != null) return art;
+
             string key = kind == StatusKind.Burn ? "combat-status-burn" : "combat-status-freeze";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
@@ -355,6 +358,9 @@ namespace ProjectC.Gameplay
 
         private Sprite GetCombatImpactSprite(CombatImpactKind kind)
         {
+            Sprite art = visualCatalog != null ? visualCatalog.ImpactFx(kind) : null;
+            if (art != null) return art;
+
             string key = $"combat-impact-{kind}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 

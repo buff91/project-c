@@ -1,0 +1,31 @@
+GIMP Palette
+Name: Project-C Torchstone
+Columns: 6
+# Project-C 기준 팔레트 (SSOT). 출처: Assets/_Project/UI/DesignSystem.uss 토큰 = 씬 실측.
+# 모든 스프라이트는 이 팔레트 인덱스만 사용한다. 새 색은 씬 실측 후 토큰화하여 추가한다.
+#
+# --- 청흑 배경 ---
+  5   7  12	pc-void #05070C
+  7   9  14	pc-inset #07090E
+ 10  13  19	pc-panel #0A0D13
+# --- 돌 프레임 ---
+ 74  64  56	pc-stone-dim #4A4038
+152 134 111	pc-stone #98866F
+207 192 174	pc-stone-lit #CFC0AE
+# --- 토치 / 골드 ---
+154 107  34	pc-gold-deep #9A6B22
+255 189  65	pc-torch #FFBD41
+255 213  84	pc-gold #FFD554
+# --- 본문 / 보조 ---
+151 144 126	pc-dim #97907E
+234 223 200	pc-text #EADFC8
+# --- HP / 화염 램프 ---
+ 69  16  11	pc-hp-empty #45100B
+216  69  42	pc-hp #D8452A
+# --- 틸 / 얼음 / 물 ---
+ 20  52  58	pc-teal-bg #14343A
+ 28  67  71	water #1C4347
+ 79 167 160	pc-teal #4FA7A0
+154 223 232	pc-ice #9ADFE8
+# --- 독 / 경험치 ---
+127 178  65	pc-xp #7FB241
