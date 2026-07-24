@@ -106,6 +106,11 @@
 새 색이 필요하면 **씬 실측/레퍼런스 도출 → 토큰 추가 → 사용**. 화면 USS에 리터럴 금지.
 코어 토큰(인덱스 0~17)의 이름·값은 리네임 금지 — postapoc는 **추가**로만 확장한다.
 
+> **UI 토큰 ⊂ 스프라이트 마스터 `.gpl`.** 스프라이트 팔레트(`project-c-torchstone.gpl`)는 UI 토큰의
+> **슈퍼셋**이다 — 콘크리트/강철 셰이딩용 **중립 계조**(인덱스 30~, UI 토큰 아님)를 더 갖는다.
+> UI 팔레트만으로 스프라이트를 하드락하면 중간톤이 채도색으로 튀어 노이즈가 난다(실측).
+> UI는 신호색·프레임만 토큰화하고, 계조 보강은 `.gpl` 전용으로 둔다. 상세: `art-direction/comfyui-to-aseprite-pipeline.md` §3.
+
 ## 타이포그래피 — Galmuri9, 정수 배율
 
 - 폰트: **Galmuri9** (`UI/Fonts/Galmuri9.ttf`, SIL OFL 1.1 — 라이선스 동봉). `DesignSystem.uss`의 `:root`에서 전역 지정.

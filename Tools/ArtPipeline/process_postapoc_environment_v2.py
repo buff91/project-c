@@ -13,6 +13,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from torchstone_palette import lock_to_palette
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (
@@ -27,7 +29,6 @@ OUTPUT = ROOT / "Assets/_Project/Art/Environment"
 CELL_SIZE = (512, 512)
 STAIRS_CELL_SIZE = 627
 ALPHA_CUTOFF = 80
-COLOR_COUNT = 32
 
 
 @dataclass(frozen=True)
@@ -122,17 +123,17 @@ def extract_stairs_cell(sheet: Image.Image) -> Image.Image:
 
 
 def reduce_colors(image: Image.Image) -> Image.Image:
-    """Quantize RGB without allowing Pillow to dither or soften the alpha edge."""
+    """Lock RGB to the shared Torchstone palette (no dither, hard alpha edge).
+
+    Was an independent MEDIANCUT-32 quantize; now every sheet shares the master
+    .gpl indices so environment/props/actors/UI cohere. See torchstone_palette.
+    """
     alpha = image.getchannel("A").point(
         lambda value: 255 if value >= ALPHA_CUTOFF else 0
     )
     rgb = Image.new("RGB", image.size, (5, 7, 12))
     rgb.paste(image, mask=alpha)
-    reduced = rgb.quantize(
-        colors=COLOR_COUNT,
-        method=Image.Quantize.MEDIANCUT,
-        dither=Image.Dither.NONE,
-    ).convert("RGBA")
+    reduced = lock_to_palette(rgb).convert("RGBA")
     reduced.putalpha(alpha)
     return reduced
 

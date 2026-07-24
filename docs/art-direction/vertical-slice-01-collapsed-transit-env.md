@@ -47,8 +47,9 @@
 1. **생성**: `comfyui-to-aseprite-pipeline.md` §2로 6-셀 소스 시트를 img2img 스타일 트랜스퍼
    (기존 `-environment-source-v2` 레이아웃·실루엣 보존, denoise 0.45~0.65, LineArt ControlNet,
    IPAdapter=ref-01/02/05·target). 배경 평면 `#ff00ff` 유지. 계단은 별도 소스.
-2. **마감(정적)**: 프로세서의 median-cut 32색을 **`.gpl` 고정 양자화로 교체**(파이프라인 §3) 후 실행
-   → `Assets/_Project/Art/Environment/env-*.png` 갱신. 히어로 타일만 필요 시 Aseprite 손터치(§4).
+2. **마감(정적)**: env 프로세서는 **`.gpl` 고정 양자화로 이미 전환됨**(`torchstone_palette.lock_to_palette`,
+   파이프라인 §3). 실행 시 `env-*.png`가 공용 팔레트로 잠긴 채 갱신된다(웜 중립 계조 4색 보강 검증 완료).
+   히어로 타일만 필요 시 Aseprite 손터치(§4). *(actors/props/support 프로세서는 같은 한 줄 교체가 남음.)*
 3. **검증 게이트**:
    - `Project-C > Art > Aseprite > Validate Sources` 경고 0.
    - **Unity MCP Play 캡처(PC 가로)** — 한 방이 응집 톤으로 읽히는지, FOV 3상태에서 톤 유지,
