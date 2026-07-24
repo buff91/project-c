@@ -16,6 +16,8 @@ namespace ProjectC.Core
         public static readonly GridPos Campfire = new GridPos(4, 3, 0);
         public static readonly GridPos Merchant = new GridPos(1, 4, 0);
         public static readonly GridPos Stash = new GridPos(7, 4, 0);
+        public static readonly GridPos Smith = new GridPos(1, 2, 0);
+        public static readonly GridPos BountyBoard = new GridPos(7, 2, 0);
 
         /// <summary>HeroRoster.All 순서와 짝을 이룬다.</summary>
         public static readonly IReadOnlyList<GridPos> HeroPositions = new[]

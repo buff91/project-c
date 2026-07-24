@@ -1309,6 +1309,29 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 12, 2, 4, 16, band);      // 금속 띠
                 FillRect(texture, 13, 8, 2, 3, band);       // 자물쇠
             }
+            else if (kind == "smith")
+            {
+                Color32 baseWood = new Color32(60, 40, 24, 255);
+                Color32 anvil = new Color32(70, 74, 82, 255);
+                Color32 anvilTop = new Color32(104, 110, 120, 255);
+                Color32 spark = new Color32(255, 202, 72, 255);
+                FillRect(texture, 6, 2, 16, 5, baseWood);   // 나무 받침
+                FillRect(texture, 9, 7, 10, 6, anvil);      // 모루 몸통
+                FillRect(texture, 5, 13, 18, 4, anvilTop);  // 모루 상단 뿔
+                FillRect(texture, 18, 17, 3, 3, spark);     // 불티
+            }
+            else if (kind == "bounty")
+            {
+                Color32 post = new Color32(84, 58, 32, 255);
+                Color32 board = new Color32(120, 84, 48, 255);
+                Color32 paper = new Color32(226, 214, 180, 255);
+                Color32 wax = new Color32(176, 60, 52, 255);
+                FillRect(texture, 12, 2, 4, 12, post);      // 기둥
+                FillRect(texture, 4, 12, 20, 16, board);    // 게시판
+                FillRect(texture, 7, 15, 7, 9, paper);      // 공고문 1
+                FillRect(texture, 15, 16, 6, 8, paper);     // 공고문 2
+                FillRect(texture, 10, 24, 2, 2, wax);       // 봉랍
+            }
             else // portal
             {
                 Color32 rim = new Color32(84, 211, 197, 255);

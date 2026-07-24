@@ -508,3 +508,70 @@
     margin: 0 2px;
     flex-grow: 1;
 }
+
+/* ── 대장간 / 의뢰 게시판 ─────────────────────────────── */
+
+.hub-smith-list,
+.hub-bounty-list {
+    flex-direction: column;
+    margin-top: 6px;
+}
+
+.hub-smith-row,
+.hub-bounty-row {
+    background-color: rgb(34, 28, 18);
+    border-width: 1px;
+    border-color: rgb(74, 58, 34);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+
+.hub-smith-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.hub-smith-info {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.hub-row-title {
+    color: var(--pc-text);
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.hub-row-desc {
+    color: var(--pc-dim);
+    font-size: 10px;
+    white-space: normal;
+    margin-top: 2px;
+}
+
+.hub-smith-buy {
+    min-width: 92px;
+    margin-left: 10px;
+}
+
+.hub-smith-buy:disabled {
+    opacity: 0.5;
+}
+
+.hub-bounty-row {
+    flex-direction: column;
+}
+
+.hub-bounty-reward {
+    color: var(--pc-gold);
+    font-size: 11px;
+    -unity-font-style: bold;
+    margin-top: 3px;
+}
+
+.hub-bounty-empty {
+    color: var(--pc-dim);
+    font-size: 11px;
+    white-space: normal;
+}
