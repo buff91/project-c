@@ -49,7 +49,8 @@
    IPAdapter=ref-01/02/05·target). 배경 평면 `#ff00ff` 유지. 계단은 별도 소스.
 2. **마감(정적)**: env 프로세서는 **`.gpl` 고정 양자화로 이미 전환됨**(`torchstone_palette.lock_to_palette`,
    파이프라인 §3). 실행 시 `env-*.png`가 공용 팔레트로 잠긴 채 갱신된다(웜 중립 계조 4색 보강 검증 완료).
-   히어로 타일만 필요 시 Aseprite 손터치(§4). *(actors/props/support 프로세서는 같은 한 줄 교체가 남음.)*
+   히어로 타일만 필요 시 Aseprite 손터치(§4). *(env·actors·props·support 프로세서 모두 잠금 완료 —
+   재료 계조는 34색. items 프로세서만 남음.)*
 3. **검증 게이트**:
    - `Project-C > Art > Aseprite > Validate Sources` 경고 0.
    - **Unity MCP Play 캡처(PC 가로)** — 한 방이 응집 톤으로 읽히는지, FOV 3상태에서 톤 유지,

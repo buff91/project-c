@@ -58,3 +58,8 @@ Columns: 6
 113  97  80	taupe #716150
  51  47  40	umber-dim #332F28
  31  31  27	ash #1F1F1B
+# --- 액터/소품 재료 계조 (actors·props 실아트 도출) ---
+190 162 109	tan-lit #BEA26D
+166 130  88	tan #A68258
+ 55 106 103	teal-mid #376A67
+122  62  28	rust-brown #7A3E1C
