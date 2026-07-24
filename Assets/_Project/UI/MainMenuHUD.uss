@@ -147,3 +147,51 @@
 .main-menu-root.is-short .main-menu-actions {
     margin-top: 16px;
 }
+
+/* 가로 모바일/낮은 PC 창은 세로로 쌓지 않고 주요 행동을 한 줄로 배치한다. */
+.main-menu-root.is-short.is-landscape .main-menu-vignette {
+    width: 720px;
+    max-width: 92%;
+    padding: 14px 32px 12px 32px;
+}
+
+.main-menu-root.is-short.is-landscape .main-menu-title {
+    font-size: 36px;
+    letter-spacing: 6px;
+}
+
+.main-menu-root.is-short.is-landscape .main-menu-subtitle {
+    margin-top: 4px;
+    font-size: var(--pc-fs-1);
+}
+
+.main-menu-root.is-short.is-landscape .main-menu-divider {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.main-menu-root.is-short.is-landscape .main-story-copy {
+    display: none;
+}
+
+.main-menu-root.is-short.is-landscape .main-story-kicker {
+    font-size: var(--pc-fs-1);
+}
+
+.main-menu-root.is-short.is-landscape .main-menu-actions {
+    width: 560px;
+    max-width: 100%;
+    margin-top: 8px;
+    flex-direction: row;
+}
+
+.main-menu-root.is-short.is-landscape .main-primary-button,
+.main-menu-root.is-short.is-landscape .main-secondary-button {
+    width: 270px;
+    flex-grow: 1;
+    margin: 4px;
+}
+
+.main-menu-root.is-short.is-landscape .main-menu-utility {
+    margin-top: 6px;
+}

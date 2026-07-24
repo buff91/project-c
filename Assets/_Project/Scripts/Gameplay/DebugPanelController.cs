@@ -82,6 +82,8 @@ namespace ProjectC.Gameplay
             Register("GOD 토글", demo.DebugToggleGodMode);
             Register("HP 풀회복", demo.DebugHealFull);
             Register("피해 1", () => demo.DebugDamageSelf(1));
+            Register("화상 FX", () => demo.DebugApplyStatusToSelf(StatusKind.Burn));
+            Register("빙결 FX", () => demo.DebugApplyStatusToSelf(StatusKind.Freeze));
             Register("전체 시야", demo.ToggleViewMode);
             Register("물약 +1", () => demo.DebugGiveItem(ItemKind.Potion));
             Register("폭탄 +1", () => demo.DebugGiveItem(ItemKind.Bomb));

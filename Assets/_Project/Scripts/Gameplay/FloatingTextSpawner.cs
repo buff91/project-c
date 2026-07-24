@@ -7,6 +7,9 @@ namespace ProjectC.Gameplay
     {
         EnemyDamage,
         PlayerDamage,
+        HeavyDamage,
+        Burn,
+        Freeze,
         Heal,
         Alert
     }
@@ -63,6 +66,9 @@ namespace ProjectC.Gameplay
             switch (kind)
             {
                 case FloatingTextKind.PlayerDamage: return new Color32(255, 96, 80, 255);
+                case FloatingTextKind.HeavyDamage: return new Color32(255, 76, 62, 255);
+                case FloatingTextKind.Burn: return new Color32(255, 148, 52, 255);
+                case FloatingTextKind.Freeze: return new Color32(132, 226, 255, 255);
                 case FloatingTextKind.Heal: return new Color32(112, 228, 140, 255);
                 case FloatingTextKind.Alert: return new Color32(255, 224, 96, 255);
                 default: return new Color32(255, 208, 112, 255);

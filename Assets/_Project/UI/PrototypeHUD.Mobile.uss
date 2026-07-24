@@ -40,6 +40,10 @@
     width: 160px;
 }
 
+.hud-root.hud-mobile.is-narrow .depth-panel {
+    top: 204px;
+}
+
 /* Tall phones keep transient messages clear of the two-row touch bar. */
 .hud-root.hud-mobile.is-tall .status-zone {
     bottom: 174px;

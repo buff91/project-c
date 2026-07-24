@@ -199,16 +199,17 @@ namespace ProjectC.Gameplay
                 visibleHitCount > 0 ? $"BOOM · {visibleHitCount} HIT" : "BOOM");
             Debug.Log($"[Bomb] {center} 폭발: {result.Damaged.Count}명 피해, " +
                       $"약한 바닥 {result.CollapsedWeakFloors.Count}칸 붕괴");
+            string impactSource = fiery ? "Bomb" : "FrostBomb";
 
             foreach (CombatantState damaged in result.Damaged)
             {
                 if (damaged == _playerState)
                 {
-                    yield return ShowPlayerHit(damage, "Bomb");
+                    yield return ShowPlayerHit(damage, impactSource);
                     continue;
                 }
                 EnemyAgent agent = FindAgentByState(damaged);
-                if (agent != null) yield return ShowEnemyHit(agent, damage, "Bomb");
+                if (agent != null) yield return ShowEnemyHit(agent, damage, impactSource);
             }
 
             if (result.CollapsedWeakFloors.Count > 0)
@@ -219,9 +220,11 @@ namespace ProjectC.Gameplay
             foreach (CombatantState survivor in result.Damaged)
             {
                 if (!survivor.IsAlive) continue;
-                survivor.Statuses.Apply(fiery ? StatusKind.Burn : StatusKind.Freeze, StatusTurnsApplied);
+                ApplyStatusWithPresentation(
+                    survivor,
+                    fiery ? StatusKind.Burn : StatusKind.Freeze,
+                    StatusTurnsApplied);
                 EnemyAgent affectedAgent = FindAgentByState(survivor);
-                if (affectedAgent != null) ApplyEnemyVisuals(affectedAgent); // 틴트 즉시 반영
                 if (survivor == _playerState ||
                     affectedAgent != null && IsEnemyVisibleToPlayer(affectedAgent))
                     anyVisibleAffected = true;
@@ -239,9 +242,10 @@ namespace ProjectC.Gameplay
                     foreach (CombatantState combatant in AllCombatants())
                     {
                         if (!combatant.IsAlive || !ignited.Contains(combatant.Position)) continue;
-                        combatant.Statuses.Apply(StatusKind.Burn, StatusTurnsApplied);
-                        EnemyAgent burning = FindAgentByState(combatant);
-                        if (burning != null) ApplyEnemyVisuals(burning);
+                        ApplyStatusWithPresentation(
+                            combatant,
+                            StatusKind.Burn,
+                            StatusTurnsApplied);
                     }
                 }
 
@@ -259,9 +263,10 @@ namespace ProjectC.Gameplay
                     foreach (CombatantState combatant in AllCombatants())
                     {
                         if (!combatant.IsAlive || !frozenTiles.Contains(combatant.Position)) continue;
-                        combatant.Statuses.Apply(StatusKind.Freeze, StatusTurnsApplied);
-                        EnemyAgent chilled = FindAgentByState(combatant);
-                        if (chilled != null) ApplyEnemyVisuals(chilled);
+                        ApplyStatusWithPresentation(
+                            combatant,
+                            StatusKind.Freeze,
+                            StatusTurnsApplied);
                     }
                 }
             }

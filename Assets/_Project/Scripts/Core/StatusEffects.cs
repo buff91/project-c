@@ -9,6 +9,13 @@ namespace ProjectC.Core
         Freeze = 1  // 빙결: 해당 턴 행동 불가
     }
 
+    public enum StatusApplyResult
+    {
+        Applied = 0,
+        Refreshed = 1,
+        CancelledOpposite = 2
+    }
+
     /// <summary>한 번의 턴 틱 결과. 행동 파이프라인의 "틱" 단계가 소비한다.</summary>
     public readonly struct StatusTick
     {
@@ -57,7 +64,7 @@ namespace ProjectC.Core
         /// 상태를 부여한다. 이미 있으면 남은 턴을 연장(최댓값)하고,
         /// 반응 테이블의 상쇄 상대는 지운다 (예: 빙결 중 화상 → 해동).
         /// </summary>
-        public void Apply(StatusKind kind, int turns)
+        public StatusApplyResult Apply(StatusKind kind, int turns)
         {
             if (turns <= 0) throw new ArgumentOutOfRangeException(nameof(turns));
 
@@ -66,11 +73,13 @@ namespace ProjectC.Core
                 if (incoming == kind && Has(cancels))
                 {
                     _remainingTurns.Remove(cancels);
-                    return; // 상쇄가 일어나면 새 상태는 소모된 것으로 본다.
+                    return StatusApplyResult.CancelledOpposite;
                 }
             }
 
+            bool alreadyActive = Has(kind);
             _remainingTurns[kind] = Math.Max(RemainingTurns(kind), turns);
+            return alreadyActive ? StatusApplyResult.Refreshed : StatusApplyResult.Applied;
         }
 
         /// <summary>턴 시작 틱: 화상 피해량과 빙결 여부를 반환하고 지속 턴을 줄인다.</summary>

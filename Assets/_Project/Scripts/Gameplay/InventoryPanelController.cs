@@ -18,8 +18,8 @@ namespace ProjectC.Gameplay
         public const int BackpackRows = BackpackRules.Rows;
         public const int BackpackSlotCount = BackpackRules.Capacity;
         public const int StashSlotCount = 48;
-        private const int BackpackCellPitch = 44;
-        private const int BackpackCellInset = 2;
+        public const int BackpackCellPitch = 56;
+        public const int BackpackCellInset = 2;
 
         public IsoPrototypeDemo demo;
 

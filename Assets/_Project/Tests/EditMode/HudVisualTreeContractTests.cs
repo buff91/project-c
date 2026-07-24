@@ -40,6 +40,7 @@ namespace ProjectC.Tests
             "wait-button",
             "interact-button",
             "settings-modal",
+            "settings-scroll",
             "development-viewport",
             "viewport-mode",
             "viewport-resolution",
@@ -152,6 +153,22 @@ namespace ProjectC.Tests
             VisualElement empty = InventoryPanelController.CreateEmptySlot("test-empty");
             Assert.IsTrue(empty.ClassListContains("item-grid-slot"));
             Assert.IsTrue(empty.ClassListContains("inventory-empty-slot"));
+        }
+
+        [Test]
+        public void BackpackPlacement_UsesTouchReadableCellBounds()
+        {
+            var cell = new VisualElement();
+            InventoryPanelController.PlaceBackpackElement(cell, 0, 0, 1, 1);
+            Assert.GreaterOrEqual(cell.style.width.value.value, 44f);
+            Assert.GreaterOrEqual(cell.style.height.value.value, 44f);
+
+            var largeItem = new VisualElement();
+            InventoryPanelController.PlaceBackpackElement(largeItem, 1, 1, 2, 2);
+            Assert.AreEqual(
+                InventoryPanelController.BackpackCellPitch * 2 -
+                InventoryPanelController.BackpackCellInset * 2,
+                largeItem.style.width.value.value);
         }
 
         [Test]

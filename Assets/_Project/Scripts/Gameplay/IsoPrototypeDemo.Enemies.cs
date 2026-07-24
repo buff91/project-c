@@ -33,6 +33,7 @@ namespace ProjectC.Gameplay
             // 플레이어 턴이 끝난 시점의 상태이상 틱.
             // (플레이어 빙결은 아직 소스가 없다 — 소스가 생기면 행동 차단으로 확장)
             StatusTick playerTick = _playerState.Statuses.Tick();
+            SyncPlayerStatusVisuals();
             if (playerTick.BurnDamage > 0)
             {
                 _playerState.TakeDamage(playerTick.BurnDamage);
@@ -188,6 +189,12 @@ namespace ProjectC.Gameplay
             switch (action.Kind)
             {
                 case MonsterActionKind.Attack:
+                    if (CombatRules.AreAdjacent(enemy.State, _playerState))
+                    {
+                        yield return AnimateMeleeLunge(
+                            enemy.Root != null ? enemy.Root.transform : null,
+                            _player.transform.position);
+                    }
                     if (CombatRules.TryMelee(enemy.State, _playerState, out int damage))
                         yield return ShowPlayerHit(damage, enemy.State.Id);
                     break;
@@ -256,7 +263,7 @@ namespace ProjectC.Gameplay
             enemy.Root.transform.position = _grid.GridToWorld(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
             Color elevationTint = ElevationTint(pos);
-            Color tint = EnemyTint(enemy.State);
+            Color tint = CombatantTint(enemy.State);
             float alpha = enemy.State.IsAlive
                 ? tint.a
                 : EnemyPresentationRules.CorpseAlpha(
@@ -267,6 +274,7 @@ namespace ProjectC.Gameplay
                 tint.r * elevationTint.r, tint.g * elevationTint.g, tint.b * elevationTint.b, alpha);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
+            SyncEnemyStatusVisuals(enemy, visibleToPlayer);
             bool showHealthBar = visibleToPlayer && enemy.State.IsAlive;
             if (enemy.HpFill != null)
                 enemy.HpFill.gameObject.SetActive(showHealthBar);
@@ -395,13 +403,5 @@ namespace ProjectC.Gameplay
                 _visibleTiles.Contains(pos));
         }
 
-        /// <summary>몬스터 틴트의 단일 출처: 사망 회색 > 빙결 하늘색 > 화상 주황 > 기본.</summary>
-        private static Color EnemyTint(CombatantState state)
-        {
-            if (!state.IsAlive) return new Color32(60, 64, 66, 180);
-            if (state.Statuses.Has(StatusKind.Freeze)) return new Color32(140, 210, 235, 255);
-            if (state.Statuses.Has(StatusKind.Burn)) return new Color32(255, 168, 112, 255);
-            return Color.white;
-        }
     }
 }

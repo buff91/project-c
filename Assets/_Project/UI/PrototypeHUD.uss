@@ -696,11 +696,34 @@
 
 .settings-header {
     height: 49px;
+    flex-shrink: 0;
     flex-direction: row;
     justify-content: space-between;
     border-bottom-width: 1px;
     border-bottom-color: var(--bronze);
     margin-bottom: 9px;
+}
+
+.settings-content-scroll {
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.settings-content-scroll .unity-scroll-view__content-container,
+.settings-content {
+    flex-shrink: 0;
+}
+
+.settings-content-scroll .unity-scroll-view__horizontal-scroller,
+.settings-content-scroll.unity-scroll-view--vertical > .unity-scroll-view__horizontal-scroller {
+    display: none;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.settings-content-scroll .unity-scroll-view__content-viewport {
+    overflow: hidden;
 }
 
 .settings-title {
@@ -794,6 +817,7 @@
 
 .settings-actions {
     height: 42px;
+    flex-shrink: 0;
     flex-direction: row;
     justify-content: flex-end;
     margin-top: 12px;
@@ -1825,6 +1849,69 @@
     flex-grow: 1;
 }
 
+.inventory-content-scroll .unity-scroll-view__horizontal-scroller,
+.inventory-content-scroll.unity-scroll-view--vertical > .unity-scroll-view__horizontal-scroller {
+    display: none;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.inventory-content-scroll .unity-scroll-view__content-viewport {
+    overflow: hidden;
+}
+
+/* Unity 기본 흰색 스크롤바는 게임 HUD에서 지나치게 강하게 보인다.
+   설정/인벤토리는 같은 얇은 석재 트랙을 사용하고 화살표 버튼은 숨긴다. */
+.settings-content-scroll .unity-scroll-view__vertical-scroller,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller {
+    width: 14px;
+    margin-left: 5px;
+    background-color: rgb(10, 9, 8);
+    border-left-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+}
+
+.settings-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__low-button,
+.settings-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__high-button,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__low-button,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__high-button {
+    display: none;
+}
+
+.settings-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__slider,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller .unity-scroller__slider {
+    width: 14px;
+    background-color: rgb(10, 9, 8);
+}
+
+.settings-content-scroll .unity-scroll-view__vertical-scroller .unity-base-slider__tracker,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller .unity-base-slider__tracker {
+    width: 6px;
+    align-self: center;
+    background-color: rgb(24, 21, 18);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-left-color: rgb(45, 39, 33);
+    border-right-color: rgb(19, 17, 15);
+}
+
+.settings-content-scroll .unity-scroll-view__vertical-scroller .unity-base-slider__dragger,
+.inventory-content-scroll .unity-scroll-view__vertical-scroller .unity-base-slider__dragger {
+    width: 10px;
+    min-height: 24px;
+    margin-left: 2px;
+    background-color: var(--pc-stone);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-lit);
+    border-top-color: var(--pc-stone-lit);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+}
+
 .inventory-layout {
     flex-direction: column;
     flex-shrink: 0;
@@ -1846,7 +1933,7 @@
 }
 
 .inventory-section-header {
-    width: 288px;
+    width: 336px;
     height: 24px;
     flex-direction: row;
     align-items: center;
@@ -1866,7 +1953,7 @@
 }
 
 .item-slot-grid {
-    width: 288px;
+    width: 336px;
     flex-direction: row;
     flex-wrap: wrap;
     align-content: flex-start;
@@ -2112,10 +2199,10 @@
 .backpack-grid,
 .hud-root.is-expanded .backpack-grid {
     position: relative;
-    width: 264px;
-    height: 176px;
-    min-width: 264px;
-    min-height: 176px;
+    width: 336px;
+    height: 224px;
+    min-width: 336px;
+    min-height: 224px;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow: hidden;
@@ -2145,11 +2232,109 @@
 }
 
 .backpack-item.backpack-size-1x2 .resource-icon {
-    width: 34px;
-    height: 68px;
+    width: 46px;
+    height: 92px;
 }
 
 .backpack-item.backpack-size-2x2 .resource-icon {
-    width: 68px;
-    height: 68px;
+    width: 92px;
+    height: 92px;
+}
+
+/* ── Interaction profiles ───────────────────────────────────
+   ResponsiveUiLayout이 모든 화면에 ui-touch/ui-pointer를 부여한다.
+   모바일은 손가락으로 누르는 실제 영역을 보존하고, 가로 화면은 ScrollView로
+   세로 공간을 해결한다. 작은 화면이라는 이유로 버튼 자체를 축소하지 않는다. */
+
+.ui-touch .settings-close,
+.ui-touch .icon-button,
+.ui-touch .hub-icon-button {
+    width: 56px;
+    min-width: 56px;
+    height: 56px;
+    min-height: 56px;
+}
+
+.ui-touch .settings-toggle,
+.ui-touch .setting-slider,
+.ui-touch .development-dropdown {
+    min-height: 56px;
+}
+
+.ui-touch .setting-slider .unity-base-slider__dragger {
+    width: 20px;
+    height: 20px;
+    border-radius: 0;
+}
+
+.ui-touch .settings-reset,
+.ui-touch .settings-done,
+.ui-touch .viewport-apply,
+.ui-touch .main-utility-button,
+.ui-touch .expedition-transfer-button,
+.ui-touch .craft-button,
+.ui-touch .hub-continue {
+    min-height: 56px;
+}
+
+.ui-touch .item-grid-slot {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.ui-touch.is-short .settings-toggle,
+.ui-touch.is-short .setting-row,
+.ui-touch.is-short .settings-reset,
+.ui-touch.is-short .settings-done {
+    min-height: 56px;
+}
+
+.ui-touch.is-short .settings-header {
+    height: 56px;
+    min-height: 56px;
+}
+
+.ui-touch.is-short .settings-actions {
+    height: 56px;
+}
+
+.ui-touch.is-narrow .viewport-mode-field {
+    width: 120px;
+}
+
+.ui-touch.is-narrow .viewport-resolution-field {
+    min-width: 0;
+    margin-right: 0;
+}
+
+.ui-touch.is-narrow .viewport-apply {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.ui-touch.is-ultrawide .settings-card {
+    width: 720px;
+    max-width: 92%;
+    max-height: 94%;
+}
+
+.settings-close:active,
+.settings-reset:active,
+.settings-done:active,
+.viewport-apply:active,
+.main-primary-button:active,
+.main-secondary-button:active,
+.main-utility-button:active,
+.hub-icon-button:active,
+.hub-dungeon-option:active,
+.resource-pill:active,
+.mode-button:active,
+.combat-button:active,
+.interact-button:active,
+.item-grid-slot:active,
+.craft-button:active,
+.expedition-transfer-button:active,
+.wheel-button:active {
+    translate: 0 1px;
+    opacity: 0.84;
 }

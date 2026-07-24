@@ -101,7 +101,7 @@
                     </ui:VisualElement>
                     <ui:Button name="inventory-close" text="×" class="settings-close" tooltip="인벤토리 닫기" />
                 </ui:VisualElement>
-                <ui:ScrollView class="inventory-content-scroll">
+                <ui:ScrollView mode="Vertical" class="inventory-content-scroll">
                     <ui:VisualElement class="inventory-layout">
                         <ui:VisualElement class="inventory-grid-pane">
                             <ui:VisualElement class="inventory-section-header">

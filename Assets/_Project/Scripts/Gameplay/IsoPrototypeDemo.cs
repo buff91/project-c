@@ -434,6 +434,16 @@ namespace ProjectC.Gameplay
             StartCoroutine(ShowPlayerHit(dealt, "Debug"));
         }
 
+        public void DebugApplyStatusToSelf(StatusKind kind)
+        {
+            if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive) return;
+            ApplyStatusWithPresentation(_playerState, kind, 3);
+            InteractionFeedback?.Invoke(
+                kind == StatusKind.Burn
+                    ? "CHEAT: BURN FX"
+                    : "CHEAT: FREEZE FX");
+        }
+
         public void DebugGiveItem(ItemKind kind)
         {
             if (!Application.isPlaying) return;
@@ -1438,10 +1448,18 @@ namespace ProjectC.Gameplay
             yield return MovePlayerPath(path);
 
             if (_playerState.IsAlive && enemy.State.IsAlive &&
-                CombatRules.TryMelee(_playerState, enemy.State, out int damage))
+                CombatRules.AreAdjacent(_playerState, enemy.State))
             {
-                yield return ShowEnemyHit(enemy, damage, "Melee");
-                yield return ResolveEnemyPhase();
+                yield return AnimateMeleeLunge(
+                    _player.transform,
+                    enemy.Root != null
+                        ? enemy.Root.transform.position
+                        : _grid.GridToWorld(enemy.State.Position));
+                if (CombatRules.TryMelee(_playerState, enemy.State, out int damage))
+                {
+                    yield return ShowEnemyHit(enemy, damage, "Melee");
+                    yield return ResolveEnemyPhase();
+                }
             }
         }
 
@@ -1649,6 +1667,13 @@ namespace ProjectC.Gameplay
 
         private IEnumerator AnimateBlast(GridPos center, bool fiery = true)
         {
+            CombatImpactKind impact = fiery
+                ? CombatImpactKind.Fire
+                : CombatImpactKind.Frost;
+            StartCoroutine(ShakeCamera(
+                CombatPresentationRules.ShakeStrength(impact) * 1.55f,
+                fiery ? 0.18f : 0.14f));
+
             var blast = new GameObject("Bomb Blast");
             blast.transform.SetParent(_visualRoot, false);
             blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
@@ -2065,9 +2090,6 @@ namespace ProjectC.Gameplay
             yield return new WaitForSeconds(0.12f);
         }
 
-        private IEnumerator FlashDamage(SpriteRenderer renderer) =>
-            FlashColor(renderer, new Color32(255, 92, 72, 255));
-
         /// <summary>
         /// 적 피격 공통 처리. 전투 결과와 로그는 항상 반영하되,
         /// 플로팅 피해·사망 안내·플래시는 현재 FOV 안에서만 공개한다.
@@ -2076,6 +2098,7 @@ namespace ProjectC.Gameplay
         {
             UpdateHealthBar(enemy.HpFill, enemy.State);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
+            CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
             if (visibleToPlayer)
             {
                 FloatingText?.ShowDamage(
@@ -2083,13 +2106,16 @@ namespace ProjectC.Gameplay
                         ? enemy.Root.transform.position
                         : _grid.GridToWorld(enemy.State.Position),
                     damage,
-                    FloatingTextKind.EnemyDamage);
+                    FloatingKindForImpact(impact));
             }
             Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
 
             if (visibleToPlayer && enemy.Renderer != null)
-                yield return FlashDamage(enemy.Renderer);
+                yield return PlayCombatImpact(
+                    enemy.Root != null ? enemy.Root.transform : enemy.Renderer.transform,
+                    enemy.Renderer,
+                    impact);
 
             bool newlyDead = !enemy.State.IsAlive && enemy.DeathTurn < 0;
             if (newlyDead)
@@ -2119,11 +2145,16 @@ namespace ProjectC.Gameplay
 
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
+            CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
             FloatingText?.ShowDamage(
-                _player.transform.position, damage, FloatingTextKind.PlayerDamage);
+                _player.transform.position,
+                damage,
+                impact == CombatImpactKind.Physical
+                    ? FloatingTextKind.PlayerDamage
+                    : FloatingKindForImpact(impact));
             Debug.Log($"[{source}] 플레이어가 {damage} 피해. " +
                       $"HP {_playerState.Hp}/{_playerState.MaxHp}");
-            yield return FlashDamage(_playerRenderer);
+            yield return PlayCombatImpact(_player.transform, _playerRenderer, impact);
 
             if (!_playerState.IsAlive)
             {

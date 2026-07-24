@@ -336,7 +336,7 @@
 }
 
 .expedition-loadout-pane {
-    width: 292px;
+    width: 364px;
     min-height: 250px;
 }
 
@@ -371,7 +371,7 @@
 }
 
 .expedition-locked-hint {
-    width: 264px;
+    width: 336px;
     margin-top: 8px;
 }
 
@@ -381,14 +381,14 @@
 
 .hud-root.is-expanded .expedition-loadout-pane .inventory-section-header,
 .hud-root.is-landscape .expedition-loadout-pane .inventory-section-header {
-    width: 264px;
+    width: 336px;
     height: 36px;
 }
 
 .hud-root.is-expanded .expedition-loadout-pane .backpack-grid,
 .hud-root.is-landscape .expedition-loadout-pane .backpack-grid {
-    width: 264px;
-    min-width: 264px;
+    width: 336px;
+    min-width: 336px;
 }
 
 .hud-root.is-expanded .expedition-card .unity-scroll-view__content-container,
@@ -473,7 +473,7 @@
 
 .hud-root.is-narrow .expedition-stash-pane,
 .hud-root.is-narrow .expedition-loadout-pane {
-    width: 310px;
+    width: 364px;
     max-width: 100%;
 }
 

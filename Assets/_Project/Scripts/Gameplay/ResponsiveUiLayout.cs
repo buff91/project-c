@@ -50,6 +50,7 @@ namespace ProjectC.Gameplay
             _panelRoot = panelRoot ?? throw new ArgumentNullException(nameof(panelRoot));
             _contentRoot = contentRoot ?? throw new ArgumentNullException(nameof(contentRoot));
             _panelRoot.RegisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
+            DevelopmentViewportService.Changed += HandlePresentationChanged;
             _panelRoot.schedule.Execute(Refresh);
         }
 
@@ -72,6 +73,8 @@ namespace ProjectC.Gameplay
         public void Refresh()
         {
             if (_disposed) return;
+            ApplyInteractionProfile();
+
             Rect rect = _panelRoot.contentRect;
             if (rect.width <= 0f || rect.height <= 0f ||
                 float.IsNaN(rect.width) || float.IsNaN(rect.height))
@@ -92,9 +95,23 @@ namespace ProjectC.Gameplay
             if (_disposed) return;
             _disposed = true;
             _panelRoot.UnregisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
+            DevelopmentViewportService.Changed -= HandlePresentationChanged;
         }
 
         private void HandleGeometryChanged(GeometryChangedEvent evt) => Refresh();
+        private void HandlePresentationChanged() => Refresh();
+
+        private void ApplyInteractionProfile()
+        {
+            HudPresentationMode requested = DevelopmentViewportService.ResolvePresentation(
+                HudPresentationMode.Auto);
+            HudPresentationMode active = HudPresentation.Resolve(
+                requested,
+                Application.isMobilePlatform);
+            bool touch = active == HudPresentationMode.Mobile;
+            _contentRoot.EnableInClassList("ui-touch", touch);
+            _contentRoot.EnableInClassList("ui-pointer", !touch);
+        }
 
         private void ApplySafeArea(float panelWidth, float panelHeight)
         {
