@@ -68,11 +68,18 @@ namespace ProjectC.Core
 
     public static class CombatRules
     {
+        /// <summary>근접 타격이 닿는 최대 높이차. 옆칸이 한 단(≤1) 위/아래여도 친다(단차 타격). (건물형 수직성 v0.3)</summary>
+        public const int MeleeReachHeight = 1;
+
+        /// <summary>위에서 아래로 내려칠 때의 추가 피해 — 높이 이점을 근접에도 부여. (한 줄 콘셉트 "위에서 내려치며")</summary>
+        public const int DownStrikeBonus = 1;
+
+        /// <summary>근접 사거리 판정: 평면 정사각 인접 + 높이차가 <see cref="MeleeReachHeight"/> 이내.</summary>
         public static bool AreAdjacent(CombatantState first, CombatantState second)
         {
             if (first == null || second == null) return false;
-            return first.Position.elevation == second.Position.elevation &&
-                   first.Position.ManhattanTo(second.Position) == 1;
+            return first.Position.ManhattanTo(second.Position) == 1 &&
+                   Math.Abs(first.Position.elevation - second.Position.elevation) <= MeleeReachHeight;
         }
 
         public static bool TryMelee(CombatantState attacker, CombatantState target, out int damage)
@@ -83,7 +90,12 @@ namespace ProjectC.Core
             if (!AreAdjacent(attacker, target))
                 return false;
 
-            damage = target.TakeDamage(attacker.AttackPower);
+            // 위에서 내려치면 추가 피해 — 높이 이점을 근접에도 부여한다.
+            int power = attacker.AttackPower;
+            if (attacker.Position.elevation > target.Position.elevation)
+                power += DownStrikeBonus;
+
+            damage = target.TakeDamage(power);
             return true;
         }
 

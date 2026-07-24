@@ -6,16 +6,18 @@ namespace ProjectC.Tests
     public class CombatantStateTests
     {
         [Test]
-        public void AreAdjacent_RequiresOrthogonalNeighborOnSameElevation()
+        public void AreAdjacent_OrthogonalNeighbor_WithinMeleeReachHeight()
         {
             var center = new CombatantState("center", new GridPos(2, 2, 0), 5, 1);
             var east = new CombatantState("east", new GridPos(3, 2, 0), 5, 1);
             var diagonal = new CombatantState("diagonal", new GridPos(3, 3, 0), 5, 1);
-            var raised = new CombatantState("raised", new GridPos(3, 2, 1), 5, 1);
+            var stepUp = new CombatantState("stepUp", new GridPos(3, 2, 1), 5, 1);   // 옆칸 한 단 위 = 단차 타격
+            var tooHigh = new CombatantState("tooHigh", new GridPos(3, 2, 2), 5, 1); // 두 단 차 = 사거리 밖
 
-            Assert.IsTrue(CombatRules.AreAdjacent(center, east));
-            Assert.IsFalse(CombatRules.AreAdjacent(center, diagonal));
-            Assert.IsFalse(CombatRules.AreAdjacent(center, raised));
+            Assert.IsTrue(CombatRules.AreAdjacent(center, east), "같은 높이 정사각 인접");
+            Assert.IsFalse(CombatRules.AreAdjacent(center, diagonal), "대각선은 아님");
+            Assert.IsTrue(CombatRules.AreAdjacent(center, stepUp), "단차 1칸은 근접 사거리 안");
+            Assert.IsFalse(CombatRules.AreAdjacent(center, tooHigh), "단차 2칸은 근접 사거리 밖");
         }
 
         [Test]
@@ -41,6 +43,33 @@ namespace ProjectC.Tests
             Assert.IsFalse(CombatRules.TryMelee(attacker, target, out int damage));
             Assert.AreEqual(0, damage);
             Assert.AreEqual(target.MaxHp, target.Hp);
+        }
+
+        [Test]
+        public void TryMelee_DownStrike_AddsHeightBonus()
+        {
+            var attacker = new CombatantState("highground", new GridPos(5, 5, 1), 5, 2);
+            var target = new CombatantState("below", new GridPos(5, 4, 0), 10, 1); // 옆칸 한 단 아래
+            Assert.IsTrue(CombatRules.TryMelee(attacker, target, out int damage));
+            Assert.AreEqual(3, damage, "위에서 내려치면 +1 (2→3)");
+            Assert.AreEqual(7, target.Hp);
+        }
+
+        [Test]
+        public void TryMelee_UpStrike_HasNoHeightBonus()
+        {
+            var attacker = new CombatantState("below", new GridPos(5, 4, 0), 5, 2);
+            var target = new CombatantState("above", new GridPos(5, 5, 1), 10, 1);
+            Assert.IsTrue(CombatRules.TryMelee(attacker, target, out int damage));
+            Assert.AreEqual(2, damage, "올려치기엔 보너스 없음");
+        }
+
+        [Test]
+        public void TryMelee_RejectsTargetBeyondMeleeReachHeight()
+        {
+            var attacker = new CombatantState("attacker", new GridPos(5, 5, 2), 5, 2);
+            var target = new CombatantState("target", new GridPos(5, 4, 0), 5, 1); // 두 단 차
+            Assert.IsFalse(CombatRules.TryMelee(attacker, target, out _));
         }
 
         [Test]

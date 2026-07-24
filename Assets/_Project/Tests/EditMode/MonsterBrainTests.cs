@@ -198,20 +198,24 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void PlanarAdjacent_ButDifferentElevation_DoesNotAttack()
+        public void PlanarAdjacent_WithinMeleeReach_Attacks_ButBeyondReachDoesNot()
         {
-            // 계단 위 플레이어(elevation 1)와 평면상 인접 — AreAdjacent 가 아니므로
-            // Attack 을 반환하면 실행이 항상 실패하는 헛턴 루프가 된다.
+            // 건물형 수직성 v0.3: 옆칸이 한 단(≤MeleeReachHeight) 위면 단차 타격으로 공격한다.
+            // 두 단 이상이면 근접 사거리 밖이라 공격을 반환하지 않는다(헛턴 방지).
             GridMap map = Flat(5);
             map.Set(new GridPos(2, 3, 0), TileKind.Stairs);
             map.Set(new GridPos(2, 4, 1), TileKind.Floor);
             var self = new CombatantState("g", new GridPos(2, 3, 0), 5, 1);
-            var player = new CombatantState("p", new GridPos(2, 4, 1), 8, 2);
             var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
 
-            MonsterAction action = brain.Decide(Context(map, self, player));
+            var nearPlayer = new CombatantState("p", new GridPos(2, 4, 1), 8, 2); // 한 단 위 옆칸
+            Assert.AreEqual(MonsterActionKind.Attack,
+                brain.Decide(Context(map, self, nearPlayer)).Kind, "단차 1칸은 단차 타격");
 
-            Assert.AreNotEqual(MonsterActionKind.Attack, action.Kind);
+            map.Set(new GridPos(2, 4, 2), TileKind.Floor);
+            var farPlayer = new CombatantState("p", new GridPos(2, 4, 2), 8, 2); // 두 단 위
+            Assert.AreNotEqual(MonsterActionKind.Attack,
+                brain.Decide(Context(map, self, farPlayer)).Kind, "두 단 차는 근접 사거리 밖");
         }
 
         [Test]
