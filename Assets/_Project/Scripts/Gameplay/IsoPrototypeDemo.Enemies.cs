@@ -25,6 +25,12 @@ namespace ProjectC.Gameplay
         /// <summary>활성 반경: 시야보다 약간 넓게 잡아 시야 밖에서도 접근을 준비한다. (GDD §5.7 컬링)</summary>
         private int MonsterActiveRadius => fieldOfViewRadius + 2;
 
+        /// <summary>누출 오염 슬러지 접촉 시 부여하는 중독 지속 턴.</summary>
+        private const int SlimePoisonTurns = 2;
+
+        /// <summary>대상이 젖은 칸 위에 있는가 — 화상 소화 판정용. (요소 반응: 물+불, GDD §5.5)</summary>
+        private bool IsOnWetTile(GridPos pos) => _grid != null && _grid.Map.Get(pos)?.wet == true;
+
         private IEnumerator ResolveEnemyPhase()
         {
             if (!_turns.TryBeginEnemyPhase()) yield break;
@@ -33,13 +39,24 @@ namespace ProjectC.Gameplay
 
             // 플레이어 턴이 끝난 시점의 상태이상 틱.
             // (플레이어 빙결은 아직 소스가 없다 — 소스가 생기면 행동 차단으로 확장)
-            StatusTick playerTick = _playerState.Statuses.Tick();
+            StatusTick playerTick = _playerState.Statuses.Tick(IsOnWetTile(_playerState.Position));
             SyncPlayerStatusVisuals();
             if (playerTick.BurnDamage > 0)
             {
                 _playerState.TakeDamage(playerTick.BurnDamage);
                 InteractionFeedback?.Invoke($"BURNING -{playerTick.BurnDamage} HP");
                 yield return ShowPlayerHit(playerTick.BurnDamage, "Burn");
+                if (!_playerState.IsAlive)
+                {
+                    CompleteEnemyPhaseAndRefreshCorpses();
+                    yield break;
+                }
+            }
+            if (playerTick.PoisonDamage > 0)
+            {
+                _playerState.TakeDamage(playerTick.PoisonDamage);
+                InteractionFeedback?.Invoke($"POISONED -{playerTick.PoisonDamage} HP");
+                yield return ShowPlayerHit(playerTick.PoisonDamage, "Poison");
                 if (!_playerState.IsAlive)
                 {
                     CompleteEnemyPhaseAndRefreshCorpses();
@@ -70,11 +87,17 @@ namespace ProjectC.Gameplay
                     continue;
 
                 // 상태이상 틱: 파이프라인 = 활성화 → 틱 → Decide → 실행. (GDD §5.5)
-                StatusTick tick = enemy.State.Statuses.Tick();
+                StatusTick tick = enemy.State.Statuses.Tick(IsOnWetTile(enemy.State.Position));
                 if (tick.BurnDamage > 0)
                 {
                     enemy.State.TakeDamage(tick.BurnDamage);
                     yield return ShowEnemyHit(enemy, tick.BurnDamage, "Burn");
+                    if (!enemy.State.IsAlive) continue;
+                }
+                if (tick.PoisonDamage > 0)
+                {
+                    enemy.State.TakeDamage(tick.PoisonDamage);
+                    yield return ShowEnemyHit(enemy, tick.PoisonDamage, "Poison");
                     if (!enemy.State.IsAlive) continue;
                 }
                 ApplyEnemyVisuals(enemy); // 틱으로 상태가 풀렸으면 틴트 원복
@@ -212,7 +235,16 @@ namespace ProjectC.Gameplay
                             _player.transform.position);
                     }
                     if (CombatRules.TryMelee(enemy.State, _playerState, out int damage))
+                    {
                         yield return ShowPlayerHit(damage, enemy.State.Id);
+                        // 누출 오염 슬러지(코드 ID Slime)는 접촉 시 중독시킨다. (상태이상 확장, GDD §5.5)
+                        if (_playerState.IsAlive &&
+                            enemy.State.Id.StartsWith("Slime", System.StringComparison.Ordinal))
+                        {
+                            _playerState.Statuses.Apply(StatusKind.Poison, SlimePoisonTurns);
+                            InteractionFeedback?.Invoke("POISONED!");
+                        }
+                    }
                     break;
 
                 case MonsterActionKind.Step:
