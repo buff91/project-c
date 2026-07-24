@@ -24,6 +24,28 @@ namespace ProjectC.Tests
             Assert.AreEqual(expectedLocalHeight, model.LocalHeight(elevation));
             Assert.AreEqual(elevation, model.Elevation(expectedFloor, expectedLocalHeight));
         }
+
+        [TestCase(0, 0, 0, 0)]
+        [TestCase(3, 0, 0, 3)]
+        [TestCase(-4, -1, 1, 0)]
+        [TestCase(-3, -1, 1, 1)]
+        [TestCase(-12, -3, 3, 0)]
+        public void VisualContext_SeparatesDepthElevationAndLocalHeight(
+            int elevation,
+            int expectedFloor,
+            int expectedDepth,
+            int expectedLocalHeight)
+        {
+            DungeonVisualContext context = DungeonVisualContext.From(
+                new DungeonHeightModel(4),
+                elevation);
+
+            Assert.AreEqual(expectedFloor, context.FloorIndex);
+            Assert.AreEqual(expectedDepth, context.DepthIndex);
+            Assert.AreEqual(elevation, context.Elevation);
+            Assert.AreEqual(expectedLocalHeight, context.LocalHeight);
+            Assert.AreEqual(expectedLocalHeight > 0, context.IsRaised);
+        }
     }
 
     public class DungeonGeneratorTests

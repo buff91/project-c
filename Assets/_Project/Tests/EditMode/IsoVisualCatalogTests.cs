@@ -72,8 +72,38 @@ namespace ProjectC.Tests
             _catalog.stairs = stairs;
             _catalog.ladder = ladder;
 
-            Assert.AreSame(stairs, _catalog.TileFor(TileKind.Stairs, 0));
-            Assert.AreSame(ladder, _catalog.TileFor(TileKind.Ladder, 0));
+            DungeonVisualContext context = DungeonVisualContext.Preview();
+            Assert.AreSame(stairs, _catalog.TileFor(TileKind.Stairs, context));
+            Assert.AreSame(ladder, _catalog.TileFor(TileKind.Ladder, context));
+        }
+
+        [Test]
+        public void TileFor_UsesLocalHeightBeforeDungeonDepth()
+        {
+            Sprite surface = MakeSprite();
+            Sprite raised = MakeSprite();
+            Sprite lower = MakeSprite();
+            _catalog.floor = surface;
+            _catalog.raisedFloor = raised;
+            _catalog.lowerFloor = lower;
+            var height = new DungeonHeightModel(4);
+
+            Assert.AreSame(
+                surface,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: 0)));
+            Assert.AreSame(
+                lower,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -4)));
+            Assert.AreSame(
+                raised,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -3)),
+                "B2의 e-3은 음수여도 B2 내부 local height 1이므로 raised 아트여야 합니다.");
         }
 
         [Test]

@@ -112,7 +112,7 @@ namespace ProjectC.Gameplay
             }
         }
 
-        public Sprite TileFor(TileKind kind, int elevation)
+        public Sprite TileFor(TileKind kind, DungeonVisualContext context)
         {
             switch (kind)
             {
@@ -125,8 +125,12 @@ namespace ProjectC.Gameplay
                 case TileKind.DoorClosed: return doorClosed;
                 case TileKind.DoorOpen: return doorOpen != null ? doorOpen : floor;
                 default:
-                    if (elevation < 0) return lowerFloor;
-                    if (elevation > 0) return raisedFloor;
+                    if (context.IsRaised)
+                        return raisedFloor != null
+                            ? raisedFloor
+                            : context.DepthIndex > 0 ? lowerFloor : floor;
+                    if (context.DepthIndex > 0)
+                        return lowerFloor != null ? lowerFloor : floor;
                     return floor;
             }
         }
@@ -149,7 +153,9 @@ namespace ProjectC.Gameplay
                     return null;
             }
 
-            return directed != null ? directed : TileFor(kind, 0);
+            return directed != null
+                ? directed
+                : TileFor(kind, DungeonVisualContext.Preview());
         }
 
         public Sprite DoorFor(TileKind kind, bool risesRight)
@@ -167,7 +173,9 @@ namespace ProjectC.Gameplay
                     return null;
             }
 
-            return directed != null ? directed : TileFor(kind, 0);
+            return directed != null
+                ? directed
+                : TileFor(kind, DungeonVisualContext.Preview());
         }
 
         public Sprite RearWallFor(bool torch, bool risesRight)

@@ -38,6 +38,11 @@ namespace ProjectC.Tests
             foreach (DungeonFloorInfo floor in dungeon.Floors)
             foreach (GridPos door in floor.Doors)
                 map.Set(door, TileKind.DoorOpen);
+            foreach (DungeonFloorInfo floor in dungeon.Floors)
+            {
+                if (floor.SecretDoor.HasValue)
+                    SecretRoomRules.TryReveal(map, floor.SecretDoor.Value);
+            }
 
             foreach (var pair in map.All().Where(pair => pair.Value.IsWalkable).ToList())
             {
@@ -99,8 +104,8 @@ namespace ProjectC.Tests
                     Assert.AreNotEqual(floor.Entry, item.Position, $"seed {seed}: 아이템이 입구 칸에 있습니다.");
                 }
 
-                // 막다른 분기 방(문 3개)이 있으면 보상 아이템이 하나 더 보장된다.
-                if (floor.Doors.Count >= 3)
+                // 일반/비밀 막다른 분기 방에는 보상 아이템이 하나 더 보장된다.
+                if (floor.Doors.Count >= 3 || floor.HasSecretRoom)
                     Assert.GreaterOrEqual(floor.Items.Count, 2, $"seed {seed}: 분기 방 보상이 없습니다.");
             }
         }
@@ -245,7 +250,8 @@ namespace ProjectC.Tests
                 .OrderBy(entry => entry, StringComparer.Ordinal);
             var floors = dungeon.Floors.Select(floor =>
                 $"{floor.FloorIndex}|{floor.Entry}|{floor.UpStairs}|{floor.DownStairs}|" +
-                $"{floor.Hole}|{floor.EnemySpawn}|{string.Join(",", floor.Doors)}");
+                $"{floor.Hole}|{floor.RestSite}|{floor.EnemySpawn}|{string.Join(",", floor.Doors)}|" +
+                $"{floor.SecretDoor}|{floor.SecretReward}|{string.Join(",", floor.SecretRoomTiles)}");
 
             return string.Join(";", tiles) + "#" + string.Join(";", floors);
         }

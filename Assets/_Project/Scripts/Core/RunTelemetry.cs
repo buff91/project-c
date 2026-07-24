@@ -53,7 +53,7 @@ namespace ProjectC.Core
     [Serializable]
     public sealed class RunTelemetry
     {
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 3;
 
         public int schemaVersion = CurrentSchemaVersion;
         public string runId;
@@ -80,6 +80,7 @@ namespace ProjectC.Core
         public int meleeAttacks;
         public int rangedAttacks;
         public int doorInteractions;
+        public int secretRoomsFound;
         public int barrelPushes;
         public int playerFalls;
         public int enemyFalls;
@@ -90,6 +91,8 @@ namespace ProjectC.Core
         public int oilIgnitedTiles;
         public int waterFrozenTiles;
         public int waterEvaporatedTiles;
+        public int restSitesUsed;
+        public int healingFromRest;
         public bool cheatsUsed;
         public List<RunFloorTelemetry> floors = new List<RunFloorTelemetry>();
         public List<RunDamageTelemetry> damageSources = new List<RunDamageTelemetry>();
@@ -230,6 +233,18 @@ namespace ProjectC.Core
             if (!Ended) waterEvaporatedTiles += Math.Max(0, tileCount);
         }
 
+        public void RecordRest(int healed)
+        {
+            if (Ended || healed <= 0) return;
+            restSitesUsed++;
+            healingFromRest += healed;
+        }
+
+        public void RecordSecretRoomFound()
+        {
+            if (!Ended) secretRoomsFound++;
+        }
+
         public void End(RunTelemetryOutcome result, string cause, DateTime utcNow)
         {
             if (Ended || result == RunTelemetryOutcome.InProgress) return;
@@ -249,6 +264,7 @@ namespace ProjectC.Core
                 $"피해 {totalDamageTaken} ({sourceText}) · 가한 피해 {totalDamageDealt} · 처치 {kills}\n" +
                 $"획득 {itemsCollected} · 사용 {itemsUsed} · 조합 {itemsCrafted} · " +
                 $"낙하 P{playerFalls}/E{enemyFalls}\n" +
+                $"숨은 방 {secretRoomsFound} · 휴식 {restSitesUsed}회/+{healingFromRest} HP · " +
                 $"상태 화상 {burnApplications}/빙결 {freezeApplications} · " +
                 $"반응 기름 {oilIgnitedTiles}/물결빙 {waterFrozenTiles}/증발 {waterEvaporatedTiles}" +
                 (cheatsUsed ? "\n⚠ CHEATS USED" : "");

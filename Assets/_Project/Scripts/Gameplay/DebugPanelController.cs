@@ -89,6 +89,7 @@ namespace ProjectC.Gameplay
             Register("폭탄 +1", () => demo.DebugGiveItem(ItemKind.Bomb));
             Register("냉기 +1", () => demo.DebugGiveItem(ItemKind.FrostBomb));
             Register("층 몬스터 전멸", demo.DebugKillAllOnFloor);
+            Register("비밀문 앞으로", demo.DebugJumpToSecretRoom);
             Register("한 층 위로", () => demo.DebugJumpFloor(1));
             Register("한 층 아래로", () => demo.DebugJumpFloor(-1));
             Register("리포트 저장", demo.DebugSaveTelemetryReport);

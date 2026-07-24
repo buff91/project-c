@@ -53,6 +53,8 @@ namespace ProjectC.Tests
             telemetry.RecordFall(player: true, intentional: true, fallenFloorCount: 1);
             telemetry.RecordStatus(StatusKind.Burn);
             telemetry.RecordOilIgnition(3);
+            telemetry.RecordRest(3);
+            telemetry.RecordSecretRoomFound();
 
             Assert.AreEqual(5, telemetry.totalDamageTaken);
             Assert.AreEqual(1, telemetry.damageSources[0].fatalHits);
@@ -63,7 +65,12 @@ namespace ProjectC.Tests
             Assert.AreEqual(1, telemetry.itemsCrafted);
             Assert.AreEqual(1, telemetry.intentionalFalls);
             Assert.AreEqual(3, telemetry.oilIgnitedTiles);
+            Assert.AreEqual(1, telemetry.restSitesUsed);
+            Assert.AreEqual(3, telemetry.healingFromRest);
+            Assert.AreEqual(1, telemetry.secretRoomsFound);
             StringAssert.Contains("Goblin 5", telemetry.FormatCompactSummary());
+            StringAssert.Contains("휴식 1회/+3 HP", telemetry.FormatCompactSummary());
+            StringAssert.Contains("숨은 방 1", telemetry.FormatCompactSummary());
         }
 
         [Test]
@@ -100,6 +107,7 @@ namespace ProjectC.Tests
             var save = new RunSaveData
             {
                 currentFloorIndex = -2,
+                usedRestFloorIndices = new System.Collections.Generic.List<int> { -3, -6 },
                 telemetry = telemetry
             };
 
@@ -110,6 +118,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(1, restored.telemetry.totalTurns);
             Assert.AreEqual(-2, restored.telemetry.currentFloorIndex);
             Assert.AreEqual(ItemKind.FrostShard.ToString(), restored.telemetry.items[0].itemId);
+            CollectionAssert.AreEqual(new[] { -3, -6 }, restored.usedRestFloorIndices);
         }
     }
 }

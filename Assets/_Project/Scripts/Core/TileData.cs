@@ -15,7 +15,9 @@ namespace ProjectC.Core
         StairsDown,  // 던전 아래층으로 전환하는 링크 타일. 수직 시야 포털은 아님.
         DoorClosed, // 같은 층의 방/복도 경계. 이동·시야 차단, 상호작용으로 연다.
         DoorOpen,   // 열린 문. 일반 바닥처럼 이동·시야 통과.
-        Ladder      // 같은 던전 층 안의 떨어진 elevation을 잇는 명시적 사다리 링크.
+        Ladder,     // 같은 던전 층 안의 떨어진 elevation을 잇는 명시적 사다리 링크.
+        SecretDoor, // 벽으로 위장한 비밀문. 조사/폭발 전에는 이동·시야를 모두 차단한다.
+        SecretPassage // 공개되어 무너진 비밀 통로. 이동·시야 통과, 다시 닫을 수 없다.
     }
 
     /// <summary>
@@ -44,14 +46,21 @@ namespace ProjectC.Core
                                      kind == TileKind.StairsUp ||
                                      kind == TileKind.StairsDown ||
                                      kind == TileKind.DoorClosed ||
-                                     kind == TileKind.DoorOpen;
+                                     kind == TileKind.DoorOpen ||
+                                     kind == TileKind.SecretDoor ||
+                                     kind == TileKind.SecretPassage;
 
         /// <summary>이동으로 진입 가능한가.</summary>
-        public bool IsWalkable => (IsSolidGround && kind != TileKind.DoorClosed) ||
+        public bool IsWalkable => (IsSolidGround &&
+                                   kind != TileKind.DoorClosed &&
+                                   kind != TileKind.SecretDoor) ||
                                   kind == TileKind.WeakFloor;
 
         /// <summary>시야를 차단하는가. (FOV / 조준용)</summary>
-        public bool BlocksSight => kind == TileKind.Wall || kind == TileKind.DoorClosed;
+        public bool BlocksSight =>
+            kind == TileKind.Wall ||
+            kind == TileKind.DoorClosed ||
+            kind == TileKind.SecretDoor;
 
         public bool CanOpen => kind == TileKind.DoorClosed;
         public bool CanClose => kind == TileKind.DoorOpen;

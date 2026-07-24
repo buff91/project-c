@@ -194,6 +194,9 @@ namespace ProjectC.Gameplay
             yield return AnimateBlast(center, fiery);
 
             BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
+            List<GridPos> revealedSecretDoors = SecretRoomRules.RevealInBlast(_grid.Map, center);
+            foreach (GridPos _ in revealedSecretDoors)
+                _runTelemetry?.RecordSecretRoomFound();
             int visibleHitCount = 0;
             foreach (CombatantState damaged in result.Damaged)
             {
@@ -225,6 +228,14 @@ namespace ProjectC.Gameplay
 
             if (result.CollapsedWeakFloors.Count > 0)
                 InteractionFeedback?.Invoke($"WEAK FLOOR COLLAPSED ×{result.CollapsedWeakFloors.Count}");
+            if (revealedSecretDoors.Count > 0)
+            {
+                InteractionFeedback?.Invoke(
+                    revealedSecretDoors.Count == 1
+                        ? "폭발로 숨은 통로가 드러났다!"
+                        : $"폭발로 숨은 통로 {revealedSecretDoors.Count}곳이 드러났다!");
+                Debug.Log($"[SecretRoom] 폭발 발견: {string.Join(", ", revealedSecretDoors)}");
+            }
 
             // 상태 부여: 불 폭발은 화상, 냉기 폭발은 빙결. (GDD §5.5)
             bool anyVisibleAffected = false;

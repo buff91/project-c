@@ -375,6 +375,7 @@ namespace ProjectC.Gameplay
             _discoveredVerticalRoutes.Clear();
             _enemies.Clear();
             _items.Clear();
+            ResetRestSitesForBuild();
             _inventory.Clear();
             _boss = null;
             _bossExitSeal = null;
@@ -613,6 +614,63 @@ namespace ProjectC.Gameplay
             InteractionFeedback?.Invoke($"CHEAT: {FloorLabel(_activeFloorIndex)} 로 점프");
         }
 
+        public void DebugJumpToSecretRoom()
+        {
+            if (!Application.isPlaying || hubMode || _dungeon == null || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+
+            DungeonFloorInfo secretFloor = null;
+            if (_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo active) &&
+                active.SecretDoor.HasValue &&
+                SecretRoomRules.IsSecretDoor(_grid.Map.Get(active.SecretDoor.Value)))
+            {
+                secretFloor = active;
+            }
+            else
+            {
+                foreach (DungeonFloorInfo floor in _dungeon.Floors)
+                {
+                    if (!floor.SecretDoor.HasValue ||
+                        !SecretRoomRules.IsSecretDoor(_grid.Map.Get(floor.SecretDoor.Value)))
+                        continue;
+                    secretFloor = floor;
+                    break;
+                }
+            }
+
+            if (secretFloor == null)
+            {
+                InteractionFeedback?.Invoke("CHEAT: 남은 비밀문이 없다");
+                return;
+            }
+
+            GridPos door = secretFloor.SecretDoor.Value;
+            GridPos destination = default;
+            bool found = false;
+            foreach (GridPos candidate in new[] { door.South, door.West, door.East, door.North })
+            {
+                if (!_grid.Map.IsWalkable(candidate) || IsLivingEnemyAt(candidate)) continue;
+                destination = candidate;
+                found = true;
+                break;
+            }
+            if (!found)
+            {
+                InteractionFeedback?.Invoke("CHEAT: 비밀문 앞이 막혀 있다");
+                return;
+            }
+
+            MarkTelemetryCheat();
+            _playerState.MoveTo(destination);
+            _player.transform.position = _grid.GridToWorld(destination);
+            SyncPlayerView(
+                destination,
+                floorChanged: secretFloor.FloorIndex != _activeFloorIndex);
+            InteractionFeedback?.Invoke(
+                $"CHEAT: {FloorLabel(secretFloor.FloorIndex)} 수상한 벽 앞으로 이동");
+        }
+
         public void DebugClearSave()
         {
             if (!Application.isPlaying) return;
@@ -674,7 +732,11 @@ namespace ProjectC.Gameplay
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
             _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
             if (data.telemetry != null)
+            {
                 _runTelemetry = data.telemetry;
+                _runTelemetry.schemaVersion = RunTelemetry.CurrentSchemaVersion;
+            }
+            RestoreUsedRestSites(data.usedRestFloorIndices);
             InteractionFeedback?.Invoke(feedback);
         }
 
@@ -712,6 +774,7 @@ namespace ProjectC.Gameplay
                 frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                usedRestFloorIndices = SnapshotUsedRestSites(),
                 telemetry = _runTelemetry
             });
         }
@@ -890,6 +953,8 @@ namespace ProjectC.Gameplay
                     item.Renderer = itemRenderer;
                     _items.Add(item);
                 }
+
+                CreateRestSite(floor);
             }
             CreateBossExitSeal();
 
@@ -1117,6 +1182,7 @@ namespace ProjectC.Gameplay
                 item.Root.transform.position = _grid.GridToWorld(item.Spawn.Position);
                 item.Renderer.sortingOrder = _grid.iso.SortingOrder(item.Spawn.Position, 0);
             }
+            ApplyRestSiteView();
             if (_barrelRenderer != null)
             {
                 _barrel.transform.position = _grid.GridToWorld(_barrelPos);
@@ -1372,6 +1438,12 @@ namespace ProjectC.Gameplay
             foreach (GridPos candidate in new[] { player.North, player.East, player.South, player.West })
             {
                 TileData tile = _grid.Map.Get(candidate);
+                if (SecretRoomRules.IsSecretDoor(tile))
+                {
+                    target = candidate;
+                    label = "수상한 벽 조사";
+                    return true;
+                }
                 if (tile != null && (tile.CanOpen || tile.CanClose))
                 {
                     target = candidate;
@@ -1382,6 +1454,16 @@ namespace ProjectC.Gameplay
                 {
                     target = candidate;
                     label = hubId == "merchant" ? "상인" : hubId == "stash" ? "창고" : "영웅";
+                    return true;
+                }
+                if (!hubMode && TryGetRestSiteAt(candidate, out RestSiteAgent restSite))
+                {
+                    target = candidate;
+                    label = IsRestSiteUsed(restSite)
+                        ? "휴식 완료"
+                        : DungeonRestRules.HealingAmount(_playerState.Hp, _playerState.MaxHp) > 0
+                            ? "휴식"
+                            : "휴식 불필요";
                     return true;
                 }
                 if (!hubMode && !_barrelExploded && candidate == _barrelPos)
@@ -1482,6 +1564,13 @@ namespace ProjectC.Gameplay
             }
 
             TileData targetTile = _grid.Map.Get(target);
+            if (SecretRoomRules.IsSecretDoor(targetTile))
+            {
+                if (TryFindApproach(target, out List<GridPos> secretPath))
+                    StartPlayerAction(target, ApproachAndRevealSecretDoor(secretPath, target));
+                return;
+            }
+
             if (targetTile != null && targetTile.kind == TileKind.Hole)
             {
                 if (TryFindApproach(target, out List<GridPos> dropPath))
@@ -1493,6 +1582,23 @@ namespace ProjectC.Gameplay
             {
                 if (TryFindApproach(target, out List<GridPos> doorPath))
                     StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
+                return;
+            }
+
+            if (!hubMode && TryGetRestSiteAt(target, out RestSiteAgent restSite))
+            {
+                if (IsRestSiteUsed(restSite))
+                {
+                    InteractionFeedback?.Invoke("이 휴식처는 이미 식었다");
+                    return;
+                }
+                if (DungeonRestRules.HealingAmount(_playerState.Hp, _playerState.MaxHp) <= 0)
+                {
+                    InteractionFeedback?.Invoke("지금은 쉴 필요가 없다");
+                    return;
+                }
+                if (TryFindApproach(target, out List<GridPos> restPath))
+                    StartPlayerAction(target, ApproachAndRest(restPath, restSite));
                 return;
             }
 
@@ -1945,6 +2051,27 @@ namespace ProjectC.Gameplay
             }
         }
 
+        private IEnumerator ApproachAndRevealSecretDoor(
+            IReadOnlyList<GridPos> path,
+            GridPos secretDoor)
+        {
+            yield return MovePlayerPath(path);
+
+            TileData tile = _grid.Map.Get(secretDoor);
+            if (!_playerState.IsAlive ||
+                !SecretRoomRules.CanInvestigate(_playerPos, secretDoor) ||
+                !SecretRoomRules.IsSecretDoor(tile))
+                yield break;
+
+            yield return SetDoorState(secretDoor, TileKind.SecretPassage);
+            _runTelemetry?.RecordSecretRoomFound();
+            RefreshFloorVisibility();
+            FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
+            InteractionFeedback?.Invoke("숨은 통로 발견 — 안쪽에서 희귀한 기운이 느껴진다");
+            Debug.Log($"[SecretRoom] {FloorLabel(_activeFloorIndex)} 비밀문 발견 {secretDoor}");
+            yield return ResolveEnemyPhase();
+        }
+
         private IEnumerator ApproachAndDrop(IReadOnlyList<GridPos> path, GridPos hole)
         {
             yield return MovePlayerPath(path);
@@ -2019,7 +2146,9 @@ namespace ProjectC.Gameplay
                 yield return null;
             }
             renderer.transform.localScale = Vector3.one;
-            yield return AnimateDoorInteractionFx(door, nextKind == TileKind.DoorOpen);
+            yield return AnimateDoorInteractionFx(
+                door,
+                nextKind == TileKind.DoorOpen || nextKind == TileKind.SecretPassage);
         }
 
         private IEnumerator AnimateDoorInteractionFx(GridPos door, bool opening)
@@ -2689,6 +2818,7 @@ namespace ProjectC.Gameplay
                 frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                usedRestFloorIndices = SnapshotUsedRestSites(),
                 telemetry = _runTelemetry
             };
 

@@ -51,6 +51,12 @@ namespace ProjectC.Gameplay
             if (hubMode && kind == TileKind.Floor)
                 return GetHubFloorSprite(pos);
 
+            if (kind == TileKind.SecretDoor)
+                return GetSecretDoorSprite(pos, IsSecretDoorHinted(pos));
+
+            if (kind == TileKind.SecretPassage)
+                return GetDoorSprite(TileKind.DoorOpen, pos);
+
             if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen)
             {
                 if (visualCatalog != null)
@@ -73,22 +79,20 @@ namespace ProjectC.Gameplay
                 }
             }
 
-            int floorIndex = _dungeon != null ? _dungeon.Height.FloorIndex(pos.elevation) : 0;
-            int localHeight = _dungeon != null ? _dungeon.Height.LocalHeight(pos.elevation) : pos.elevation;
-            bool extruded = localHeight > 0 || IsFrontEdge(pos);
-            int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + floorIndex * 13) % 4;
-            Color32 baseColor = localHeight > 0
-                ? raisedTop
-                : floorIndex < 0 ? Shift(lowerTop, floorIndex * 5) : floorTop;
+            DungeonVisualContext context = VisualContext(pos);
+            bool extruded = context.IsRaised || IsFrontEdge(pos);
+            int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + context.DepthIndex * 13) % 4;
+            Color32 baseColor = DungeonSurfaceColor(context);
 
             if (visualCatalog != null)
             {
-                Sprite mapped = visualCatalog.TileFor(kind, pos.elevation);
+                Sprite mapped = visualCatalog.TileFor(kind, context);
                 if (mapped != null)
                     return extruded ? GetExtrudedMappedTileSprite(mapped, baseColor) : mapped;
             }
 
-            string key = $"tile-{kind}-f{floorIndex}-h{localHeight}-v{variant}-x{extruded}";
+            string key =
+                $"tile-{kind}-d{context.DepthIndex}-h{context.LocalHeight}-v{variant}-x{extruded}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             int textureHeight = extruded ? 48 : TilePixelHeight;
@@ -119,7 +123,11 @@ namespace ProjectC.Gameplay
                                    (px * 2 - py + variant * 7) % 37 == 0);
                 if (stoneJoint) color = Shift(baseColor, -14);
 
-                bool moss = floorIndex < 0 && variant == 2 && py < 15 && px > 9 && px < 23;
+                bool moss = context.DepthIndex > 0 &&
+                            variant == 2 &&
+                            py < 15 &&
+                            px > 9 &&
+                            px < 23;
                 if (moss && (px + py) % 5 < 2)
                     color = new Color32(54, 78, 55, 255);
 
@@ -275,16 +283,17 @@ namespace ProjectC.Gameplay
 
         private Sprite GetDoorSprite(TileKind kind, GridPos pos)
         {
-            int floorIndex = _dungeon != null ? _dungeon.Height.FloorIndex(pos.elevation) : 0;
+            DungeonVisualContext context = VisualContext(pos);
             bool closed = kind == TileKind.DoorClosed;
             bool risesRight = DoorPlaneRisesRight(pos);
-            string key = $"door-iso-{kind}-f{floorIndex}-r{risesRight}";
+            string key =
+                $"door-iso-{kind}-d{context.DepthIndex}-h{context.LocalHeight}-r{risesRight}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             const int width = 64;
             const int height = 80;
             var texture = NewTexture(width, height);
-            Color32 baseColor = floorIndex < 0 ? Shift(lowerTop, floorIndex * 5) : floorTop;
+            Color32 baseColor = DungeonSurfaceColor(context);
 
             // 문 아래에도 동일한 64×32 바닥 다이아몬드를 유지한다.
             for (int py = 0; py < TilePixelHeight; py++)
@@ -348,6 +357,110 @@ namespace ProjectC.Gameplay
             cached = CreateSprite(texture, new Vector2(0.5f, 16f / height));
             _spriteCache[key] = cached;
             return cached;
+        }
+
+        private bool IsSecretDoorHinted(GridPos pos) =>
+            _playerState != null &&
+            SecretRoomRules.CanInvestigate(_playerPos, pos);
+
+        /// <summary>
+        /// 멀리서는 막힌 석벽, 인접하면 금이 은은히 빛나는 비밀문 임시 아트.
+        /// 실제 Aseprite 에셋이 들어와도 공개 전에는 문 실루엣을 노출하지 않는 규칙을 유지한다.
+        /// </summary>
+        private Sprite GetSecretDoorSprite(GridPos pos, bool hinted)
+        {
+            DungeonVisualContext context = VisualContext(pos);
+            bool risesRight = DoorPlaneRisesRight(pos);
+            string key =
+                $"secret-wall-d{context.DepthIndex}-lh{context.LocalHeight}-r{risesRight}-h{hinted}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            const int width = 64;
+            const int height = 80;
+            var texture = NewTexture(width, height);
+            Color32 baseColor = DungeonSurfaceColor(context);
+
+            // 발밑은 일반 바닥과 이어져 보이되, 통로 평면 전체는 회색 석재로 봉한다.
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond = Mathf.Abs((px - 31.5f) / 32f) +
+                                Mathf.Abs((py - 15.5f) / 16f);
+                if (diamond > 1f) continue;
+                texture.SetPixel(px, py, diamond > 0.88f ? tileSeam : baseColor);
+            }
+
+            int leftBase = risesRight ? 9 : 25;
+            int rightBase = risesRight ? 25 : 9;
+            Color32 stone = new Color32(62, 66, 67, 255);
+            Color32 stoneLight = new Color32(86, 88, 83, 255);
+            Color32 mortar = new Color32(28, 31, 32, 255);
+            FillSlantedPanel(
+                texture,
+                13,
+                leftBase,
+                51,
+                rightBase,
+                42,
+                stone,
+                stoneLight,
+                outline);
+
+            // 일반 벽과 같은 큰 석재 줄눈. 네모 문짝/손잡이는 의도적으로 그리지 않는다.
+            for (int row = 1; row <= 3; row++)
+            {
+                int leftY = leftBase + row * 10;
+                int rightY = rightBase + row * 10;
+                DrawThickLine(texture, 15, leftY, 49, rightY, 1, mortar);
+            }
+            DrawThickLine(
+                texture,
+                risesRight ? 35 : 29,
+                risesRight ? leftBase + 11 : rightBase + 11,
+                risesRight ? 35 : 29,
+                risesRight ? leftBase + 22 : rightBase + 22,
+                1,
+                mortar);
+            DrawThickLine(
+                texture,
+                risesRight ? 27 : 37,
+                risesRight ? leftBase + 22 : rightBase + 22,
+                risesRight ? 27 : 37,
+                risesRight ? leftBase + 32 : rightBase + 32,
+                1,
+                mortar);
+
+            // 한 칸 옆에서만 읽히는 작은 균열. 금색 발광은 색이 아니라 상호작용 가능성의 보조 신호다.
+            Color32 crack = hinted
+                ? new Color32(241, 184, 68, 255)
+                : new Color32(37, 39, 38, 255);
+            int centerY = (leftBase + rightBase) / 2 + 21;
+            DrawThickLine(texture, 32, centerY + 13, 29, centerY + 7, hinted ? 2 : 1, crack);
+            DrawThickLine(texture, 29, centerY + 7, 34, centerY + 2, hinted ? 2 : 1, crack);
+            DrawThickLine(texture, 34, centerY + 2, 31, centerY - 4, hinted ? 2 : 1, crack);
+            if (hinted)
+            {
+                FillRect(texture, 26, centerY + 5, 2, 2, new Color32(255, 220, 112, 255));
+                FillRect(texture, 35, centerY, 2, 2, new Color32(255, 220, 112, 255));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 16f / height));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private DungeonVisualContext VisualContext(GridPos pos) =>
+            _dungeon != null
+                ? DungeonVisualContext.From(_dungeon.Height, pos.elevation)
+                : DungeonVisualContext.Preview(pos.elevation);
+
+        private Color32 DungeonSurfaceColor(DungeonVisualContext context)
+        {
+            if (context.IsRaised) return raisedTop;
+            return context.DepthIndex > 0
+                ? Shift(lowerTop, -context.DepthIndex * 5)
+                : floorTop;
         }
 
         private bool DoorPlaneRisesRight(GridPos pos)

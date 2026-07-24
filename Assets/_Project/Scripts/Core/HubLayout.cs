@@ -48,6 +48,7 @@ namespace ProjectC.Core
                 upStairs: null,
                 downStairs: null,
                 hole: null,
+                restSite: null,
                 enemySpawns: new List<GridPos>(),
                 items: new List<ItemSpawn>(),
                 doors: new List<GridPos>());

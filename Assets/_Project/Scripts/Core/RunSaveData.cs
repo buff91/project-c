@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProjectC.Core
 {
@@ -35,6 +36,7 @@ namespace ProjectC.Core
         public int frostShards;
         public int kills;
         public int deepestFloorIndex;
+        public List<int> usedRestFloorIndices = new List<int>();
         public RunTelemetry telemetry;
     }
 

@@ -10,9 +10,14 @@ namespace ProjectC.Core
         public GridPos? UpStairs { get; }
         public GridPos? DownStairs { get; }
         public GridPos? Hole { get; }
+        public GridPos? RestSite { get; }
         public IReadOnlyList<GridPos> EnemySpawns { get; }
         public IReadOnlyList<ItemSpawn> Items { get; }
         public IReadOnlyList<GridPos> Doors { get; }
+        public GridPos? SecretDoor { get; }
+        public IReadOnlyList<GridPos> SecretRoomTiles { get; }
+        public GridPos? SecretReward { get; }
+        public bool HasSecretRoom => SecretDoor.HasValue;
 
         /// <summary>첫 번째 적 스폰. (단일 적을 쓰던 호출부 호환용 축약)</summary>
         public GridPos EnemySpawn => EnemySpawns[0];
@@ -23,9 +28,13 @@ namespace ProjectC.Core
             GridPos? upStairs,
             GridPos? downStairs,
             GridPos? hole,
+            GridPos? restSite,
             IReadOnlyList<GridPos> enemySpawns,
             IReadOnlyList<ItemSpawn> items,
-            IReadOnlyList<GridPos> doors)
+            IReadOnlyList<GridPos> doors,
+            GridPos? secretDoor = null,
+            IReadOnlyList<GridPos> secretRoomTiles = null,
+            GridPos? secretReward = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -33,9 +42,13 @@ namespace ProjectC.Core
             UpStairs = upStairs;
             DownStairs = downStairs;
             Hole = hole;
+            RestSite = restSite;
             EnemySpawns = enemySpawns;
             Items = items ?? Array.Empty<ItemSpawn>();
             Doors = doors ?? Array.Empty<GridPos>();
+            SecretDoor = secretDoor;
+            SecretRoomTiles = secretRoomTiles ?? Array.Empty<GridPos>();
+            SecretReward = secretReward;
         }
     }
 
@@ -88,6 +101,7 @@ namespace ProjectC.Core
             map.Clear();
             var heightModel = new DungeonHeightModel(elevationsPerFloor);
             var random = new Random(seed);
+            HashSet<int> secretDepths = PickSecretDepths(random, floorCount);
 
             // 1) 층 골격을 계획하고 새긴다. 아래층 북쪽 방은 윗층 북쪽 방과 기둥이
             //    겹치도록 제약해 구멍 착지 후보가 항상 남게 한다.
@@ -95,7 +109,15 @@ namespace ProjectC.Core
             for (int depth = 0; depth < floorCount; depth++)
             {
                 FloorPlan previous = depth > 0 ? plans[depth - 1] : null;
-                FloorPlan plan = PlanFloor(random, width, height, depth, floorCount, heightModel, previous);
+                FloorPlan plan = PlanFloor(
+                    random,
+                    width,
+                    height,
+                    depth,
+                    floorCount,
+                    heightModel,
+                    previous,
+                    secretDepths.Contains(depth));
                 CarveFloor(map, plan, height);
                 plans.Add(plan);
             }
@@ -114,6 +136,7 @@ namespace ProjectC.Core
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
             foreach (FloorPlan plan in plans)
             {
+                PlaceRestSite(map, random, plan, floorCount);
                 PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan);
                 PlaceItems(map, random, plan);
@@ -128,9 +151,13 @@ namespace ProjectC.Core
                     plan.Up,
                     plan.Down,
                     plan.Hole,
+                    plan.RestSite,
                     plan.EnemySpawns,
                     plan.Items,
-                    plan.Doors));
+                    plan.Doors,
+                    plan.SecretDoor,
+                    plan.SecretRoomTiles,
+                    plan.SecretReward));
             }
 
             return new DungeonLayout(heightModel, floors);
@@ -144,7 +171,8 @@ namespace ProjectC.Core
             int depth,
             int floorCount,
             DungeonHeightModel heightModel,
-            FloorPlan previous)
+            FloorPlan previous,
+            bool forceSecretBranch)
         {
             var p = new FloorPlan
             {
@@ -164,7 +192,9 @@ namespace ProjectC.Core
             int upperMinCap = Math.Min(
                 p.RightMinX - 2,
                 previous != null ? previous.UpperMaxX - 1 : int.MaxValue);
-            p.UpperMinX = random.Next(1, Math.Max(2, upperMinCap));
+            int upperMinFloor = forceSecretBranch ? 3 : 1;
+            int upperMinCeiling = Math.Max(upperMinFloor, upperMinCap);
+            p.UpperMinX = random.Next(upperMinFloor, upperMinCeiling + 1);
             int upperMaxFloor = Math.Max(
                 Math.Max(p.UpperMinX + 3, p.RightMinX),
                 previous != null ? previous.UpperMinX + 2 : 0);
@@ -180,17 +210,22 @@ namespace ProjectC.Core
             p.Doors.Add(new GridPos(p.VerticalX, p.LowerMaxY + 1, p.BaseElevation));
 
             // 확률적 막다른 분기 방: 북서쪽 빈 공간이 충분할 때만 문 하나로 매달린다.
-            bool wantBranch = random.Next(0, 2) == 1;
+            bool wantBranch = forceSecretBranch || random.Next(0, 2) == 1;
             int branchDoorCap = Math.Min(p.LeftMaxX, p.UpperMinX - 2);
             if (wantBranch && p.UpperMinX >= 3 && branchDoorCap >= 0)
             {
                 p.HasBranch = true;
+                p.BranchIsSecret = forceSecretBranch;
                 p.BranchDoorX = random.Next(0, branchDoorCap + 1);
                 p.BranchMinX = Math.Max(0, p.BranchDoorX - 1);
                 p.BranchMaxX = Math.Min(p.UpperMinX - 2, p.BranchMinX + 1 + random.Next(0, 2));
                 p.BranchMinY = p.LowerMaxY + 2;
                 p.BranchMaxY = Math.Min(height - 2, p.BranchMinY + 1 + random.Next(0, 2));
-                p.Doors.Add(new GridPos(p.BranchDoorX, p.LowerMaxY + 1, p.BaseElevation));
+                var branchDoor = new GridPos(p.BranchDoorX, p.LowerMaxY + 1, p.BaseElevation);
+                if (p.BranchIsSecret)
+                    p.SecretDoor = branchDoor;
+                else
+                    p.Doors.Add(branchDoor);
             }
 
             // 층간 링크는 같은 x/y의 수직 샤프트를 공유한다.
@@ -230,9 +265,17 @@ namespace ProjectC.Core
             {
                 CarveRect(p.BranchMinX, p.BranchMinY, p.BranchMaxX, p.BranchMaxY);
                 SetBase(p.BranchDoorX, p.LowerMaxY + 1);
+                if (p.BranchIsSecret)
+                {
+                    for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
+                    for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
+                        p.SecretRoomTiles.Add(new GridPos(x, y, p.BaseElevation));
+                }
             }
 
             foreach (GridPos door in p.Doors) map.Set(door, TileKind.DoorClosed);
+            if (p.SecretDoor.HasValue)
+                map.Set(p.SecretDoor.Value, TileKind.SecretDoor);
 
             // 북쪽 방의 뒤쪽을 한 단 올리고 계단으로 연결한다.
             for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
@@ -318,6 +361,46 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// B4·B7 같은 중간 쉼표 층에 휴식처를 하나 둔다. 막다른 분기 방을 우선하고,
+        /// 없으면 북쪽 방을 사용한다. 타일 종류는 Floor를 유지해 프롭/규칙을 지형과 분리한다.
+        /// </summary>
+        private static void PlaceRestSite(
+            GridMap map,
+            Random random,
+            FloorPlan p,
+            int floorCount)
+        {
+            int depth = -p.FloorIndex;
+            if (!DungeonRestRules.ShouldPlace(depth, floorCount)) return;
+
+            var candidates = new List<GridPos>();
+            if (p.HasBranch && !p.BranchIsSecret)
+            {
+                for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
+                for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
+                {
+                    var pos = new GridPos(x, y, p.BaseElevation);
+                    if (map.Get(pos)?.kind == TileKind.Floor)
+                        candidates.Add(pos);
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+                for (int y = p.UpperMinY; y < p.RaisedY; y++)
+                {
+                    var pos = new GridPos(x, y, p.BaseElevation);
+                    if (map.Get(pos)?.kind == TileKind.Floor)
+                        candidates.Add(pos);
+                }
+            }
+
+            if (candidates.Count > 0)
+                p.RestSite = candidates[random.Next(candidates.Count)];
+        }
+
+        /// <summary>
         /// 적 스폰은 문 뒤(북쪽 방)에만 둔다 — 입구·동쪽 방에 두면 층 진입 즉시 인접 전투가
         /// 강제되고, "문을 열기 전에는 차단" 불변식도 깨진다. 수는 깊이에 따라 1~4.
         /// </summary>
@@ -329,6 +412,7 @@ namespace ProjectC.Core
             {
                 if (x == p.VerticalX && y == p.UpperMinY) continue;
                 var pos = new GridPos(x, y, p.BaseElevation);
+                if (pos == p.RestSite) continue;
                 if (map.Get(pos)?.kind == TileKind.Floor)
                     candidates.Add(pos);
             }
@@ -353,6 +437,7 @@ namespace ProjectC.Core
                 {
                     var pos = new GridPos(x, y, p.BaseElevation);
                     if (pos == p.Entry) continue;
+                    if (pos == p.RestSite) continue;
                     if (pos.ChebyshevTo(p.Down.Value) > 3) continue;
                     if (map.Get(pos)?.kind != TileKind.Floor) continue;
                     if (p.EnemySpawns.Contains(pos)) continue;
@@ -380,7 +465,7 @@ namespace ProjectC.Core
             for (int y = 0; y <= p.LowerMaxY; y++)
             {
                 var pos = new GridPos(x, y, p.BaseElevation);
-                if (pos != p.Entry && map.Get(pos)?.kind == TileKind.Floor)
+                if (pos != p.Entry && pos != p.RestSite && map.Get(pos)?.kind == TileKind.Floor)
                     seeds.Add(pos);
             }
             if (seeds.Count == 0) return;
@@ -395,7 +480,8 @@ namespace ProjectC.Core
                          { current.Offset(1, 0), current.Offset(-1, 0), current.Offset(0, 1), current.Offset(0, -1) })
                 {
                     TileData tile = map.Get(next);
-                    if (next != p.Entry && tile != null && tile.kind == TileKind.Floor && !tile.wet)
+                    if (next != p.Entry && next != p.RestSite &&
+                        tile != null && tile.kind == TileKind.Floor && !tile.wet)
                         neighbors.Add(next);
                 }
                 if (neighbors.Count == 0) break;
@@ -432,6 +518,7 @@ namespace ProjectC.Core
             bool IsFree(GridPos pos) =>
                 map.Get(pos)?.kind == TileKind.Floor &&
                 pos != p.Entry &&
+                pos != p.RestSite &&
                 !p.EnemySpawns.Contains(pos);
 
             if (p.HasBranch)
@@ -444,7 +531,14 @@ namespace ProjectC.Core
                     if (IsFree(pos)) branchTiles.Add(pos);
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
-                    p.Items.Add(new ItemSpawn(pos, RollKind()));
+                {
+                    ItemKind kind = p.BranchIsSecret
+                        ? (p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone)
+                        : RollKind();
+                    p.Items.Add(new ItemSpawn(pos, kind));
+                    if (p.BranchIsSecret)
+                        p.SecretReward = pos;
+                }
             }
 
             var scatter = new List<GridPos>();
@@ -473,6 +567,24 @@ namespace ProjectC.Core
         /// </summary>
         public static int AreaSpawnBonus(int width, int height) =>
             Math.Max(0, (width * height - 121) / 60);
+
+        private static HashSet<int> PickSecretDepths(Random random, int floorCount)
+        {
+            int candidateCount = floorCount > 1 ? floorCount - 1 : floorCount;
+            int desired = Math.Min(SecretRoomRules.DesiredCount(floorCount), candidateCount);
+            var candidates = new List<int>(candidateCount);
+            for (int depth = 0; depth < candidateCount; depth++)
+                candidates.Add(depth);
+
+            var selected = new HashSet<int>();
+            for (int i = 0; i < desired; i++)
+            {
+                int index = random.Next(candidates.Count);
+                selected.Add(candidates[index]);
+                candidates.RemoveAt(index);
+            }
+            return selected;
+        }
 
         /// <summary>후보 목록에서 서로 다른 위치를 최대 count개 뽑는다. 목록은 소모된다.</summary>
         private static List<GridPos> TakeRandom(List<GridPos> pool, int count, Random random)
@@ -506,6 +618,7 @@ namespace ProjectC.Core
             public int LadderX;
             public int RaisedY;
             public bool HasBranch;
+            public bool BranchIsSecret;
             public int BranchDoorX;
             public int BranchMinX;
             public int BranchMaxX;
@@ -514,10 +627,14 @@ namespace ProjectC.Core
             public GridPos? Up;
             public GridPos? Down;
             public GridPos? Hole;
+            public GridPos? RestSite;
+            public GridPos? SecretDoor;
+            public GridPos? SecretReward;
             public GridPos Entry;
             public readonly List<GridPos> EnemySpawns = new List<GridPos>();
             public readonly List<ItemSpawn> Items = new List<ItemSpawn>();
             public readonly List<GridPos> Doors = new List<GridPos>();
+            public readonly List<GridPos> SecretRoomTiles = new List<GridPos>();
 
             public GridPos At(int x, int y)
             {

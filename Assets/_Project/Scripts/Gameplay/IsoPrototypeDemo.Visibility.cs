@@ -65,6 +65,8 @@ namespace ProjectC.Gameplay
                 item.Renderer.color = new Color(itemTint.r, itemTint.g, itemTint.b, 1f);
             }
 
+            RefreshRestSiteVisibility();
+
             if (_barrelRenderer != null && _barrelExploded)
             {
                 SetSpriteHierarchyVisible(_barrel, false);
@@ -734,11 +736,13 @@ namespace ProjectC.Gameplay
                     break;
                 case TileKind.DoorClosed:
                 case TileKind.DoorOpen:
+                case TileKind.SecretPassage:
                     bright = new Color32(158, 108, 56, 255);
                     break;
                 case TileKind.WeakFloor:
                     bright = new Color32(140, 128, 92, 255);
                     break;
+                case TileKind.SecretDoor:
                 case TileKind.Wall:
                     bright = new Color32(54, 44, 34, 255);
                     break;
@@ -1039,7 +1043,11 @@ namespace ProjectC.Gameplay
 
         private static int TileSortOffset(TileKind kind)
         {
-            if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen) return 0;
+            if (kind == TileKind.DoorClosed ||
+                kind == TileKind.DoorOpen ||
+                kind == TileKind.SecretDoor ||
+                kind == TileKind.SecretPassage)
+                return 0;
             return kind == TileKind.Stairs || kind == TileKind.Ladder ? -1 : -2;
         }
     }
