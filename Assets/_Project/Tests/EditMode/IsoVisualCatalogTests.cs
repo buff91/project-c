@@ -156,6 +156,43 @@ namespace ProjectC.Tests
             Assert.AreSame(shard, _catalog.ItemFor(ItemKind.FrostShard));
         }
 
+        [Test]
+        public void ImpactFx_MapsEachKind_AndDefaultsToPhysical()
+        {
+            Sprite physical = MakeSprite();
+            Sprite fire = MakeSprite();
+            Sprite frost = MakeSprite();
+            Sprite heavy = MakeSprite();
+            _catalog.fxImpactPhysical = physical;
+            _catalog.fxImpactFire = fire;
+            _catalog.fxImpactFrost = frost;
+            _catalog.fxImpactHeavy = heavy;
+
+            Assert.AreSame(fire, _catalog.ImpactFx(CombatImpactKind.Fire));
+            Assert.AreSame(frost, _catalog.ImpactFx(CombatImpactKind.Frost));
+            Assert.AreSame(heavy, _catalog.ImpactFx(CombatImpactKind.Heavy));
+            Assert.AreSame(physical, _catalog.ImpactFx(CombatImpactKind.Physical));
+        }
+
+        [Test]
+        public void StatusFx_MapsBurnAndFreeze()
+        {
+            Sprite burn = MakeSprite();
+            Sprite freeze = MakeSprite();
+            _catalog.fxStatusBurn = burn;
+            _catalog.fxStatusFreeze = freeze;
+
+            Assert.AreSame(burn, _catalog.StatusFx(StatusKind.Burn));
+            Assert.AreSame(freeze, _catalog.StatusFx(StatusKind.Freeze));
+        }
+
+        [Test]
+        public void Fx_ReturnsNullWhenUnassigned_ForProceduralFallback()
+        {
+            Assert.IsNull(_catalog.ImpactFx(CombatImpactKind.Fire));
+            Assert.IsNull(_catalog.StatusFx(StatusKind.Burn));
+        }
+
         private Sprite MakeSprite()
         {
             Sprite sprite = Sprite.Create(

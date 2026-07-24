@@ -3,6 +3,12 @@
 이 폴더의 `.aseprite`/`.ase` 파일은 Unity `2D Aseprite Importer`가 직접 읽는다.
 PNG export를 카탈로그에 다시 꽂지 않는다.
 
+## 팔레트
+
+기준 팔레트는 `project-c-torchstone.gpl` (= `UI/DesignSystem.uss` 토큰, 씬 실측).
+새 원본은 이 팔레트를 로드해 **Indexed 모드**로 작업한다. 규격·워크플로 상세는
+`docs/art-direction/asset-spec-sheet.md`, `docs/art-direction/ai-to-aseprite-workflow.md`.
+
 ## 사용 순서
 
 1. 아래 정식 파일명으로 Aseprite 원본을 저장한다.

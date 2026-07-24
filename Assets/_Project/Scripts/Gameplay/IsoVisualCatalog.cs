@@ -187,5 +187,31 @@ namespace ProjectC.Gameplay
 
             return risesRight ? rearWallRisingRight : rearWallRisingLeft;
         }
+
+        [Header("전투 이펙트")]
+        public Sprite fxImpactPhysical;
+        public Sprite fxImpactFire;
+        public Sprite fxImpactFrost;
+        public Sprite fxImpactHeavy;
+        public Sprite fxStatusBurn;
+        public Sprite fxStatusFreeze;
+
+        // 승격된 FX 아트를 우선 제공한다. 비어 있으면 null을 돌려주고,
+        // 호출부(IsoPrototypeDemo.CombatFx)가 기존 절차 생성으로 폴백한다.
+        public Sprite ImpactFx(CombatImpactKind kind)
+        {
+            switch (kind)
+            {
+                case CombatImpactKind.Fire: return fxImpactFire;
+                case CombatImpactKind.Frost: return fxImpactFrost;
+                case CombatImpactKind.Heavy: return fxImpactHeavy;
+                default: return fxImpactPhysical;
+            }
+        }
+
+        public Sprite StatusFx(StatusKind kind)
+        {
+            return kind == StatusKind.Burn ? fxStatusBurn : fxStatusFreeze;
+        }
     }
 }
