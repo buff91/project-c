@@ -94,6 +94,15 @@ namespace ProjectC.Core
                 throw new ArgumentException("Map/Height/Self 는 필수입니다.", nameof(context));
             if (!context.Self.IsAlive) return MonsterAction.Wait();
 
+            // 불이 붙으면 물을 찾아 끄려 한다 — 정상 행동보다 우선(자기 보존). (요소 반응 셋업)
+            if (context.Self.Statuses.Has(StatusKind.Burn))
+            {
+                if (context.Map.Get(context.Self.Position)?.wet == true)
+                    return MonsterAction.Wait();              // 물 위 — 서서 끈다
+                MonsterAction douse = TrySeekWater(context);
+                if (douse.Kind == MonsterActionKind.Step) return douse;
+            }
+
             bool seesPlayer = PerceivesPlayer(context);
             if (seesPlayer)
             {
@@ -201,6 +210,40 @@ namespace ProjectC.Core
         /// </summary>
         private static bool IsFallHazard(GridMap map, GridPos pos) =>
             map.Get(pos)?.kind == TileKind.WeakFloor;
+
+        private const int WaterSeekRadius = 6;
+
+        /// <summary>불붙은 몬스터가 같은 층의 가장 가까운(도달 가능한) 젖은 칸으로 한 걸음. 없으면 Wait.</summary>
+        private MonsterAction TrySeekWater(MonsterBrainContext context)
+        {
+            GridPos self = context.Self.Position;
+
+            var candidates = new List<GridPos>();
+            foreach (KeyValuePair<GridPos, TileData> pair in context.Map.All())
+            {
+                if (pair.Value?.wet != true) continue;
+                if (!context.Height.SameFloor(self, pair.Key)) continue;
+                int d = self.ChebyshevTo(pair.Key);
+                if (d >= 1 && d <= WaterSeekRadius) candidates.Add(pair.Key);
+            }
+
+            candidates.Sort((a, b) =>
+            {
+                int da = self.ChebyshevTo(a), db = self.ChebyshevTo(b);
+                if (da != db) return da.CompareTo(db);
+                if (a.x != b.x) return a.x.CompareTo(b.x);
+                return a.y.CompareTo(b.y);
+            });
+
+            foreach (GridPos wet in candidates)
+            {
+                List<GridPos> path = FindPathTo(context, wet);
+                if (path.Count >= 2 && context.Height.SameFloor(self, path[1]))
+                    return MonsterAction.Step(path[1]);
+            }
+
+            return MonsterAction.Wait();
+        }
 
         /// <summary>플레이어와의 거리(체비셰프)를 가장 크게 벌리는 이웃 칸으로 물러난다.</summary>
         private MonsterAction DecideFlee(MonsterBrainContext context)

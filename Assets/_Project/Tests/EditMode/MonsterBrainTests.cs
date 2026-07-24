@@ -272,6 +272,36 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void BurningMonster_SeeksWater_OverChasingPlayer()
+        {
+            GridMap map = Flat(11);
+            map.Get(new GridPos(2, 5, 0)).wet = true;                 // 물웅덩이 서쪽
+            var self = new CombatantState("g", new GridPos(5, 5, 0), 5, 1);
+            self.Statuses.Apply(StatusKind.Burn, 3);
+            var player = new CombatantState("p", new GridPos(9, 5, 0), 8, 2); // 물 반대(동)쪽
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.Step, action.Kind);
+            Assert.AreEqual(new GridPos(4, 5, 0), action.Target, "불붙으면 추격 대신 물(서)로 한 걸음");
+        }
+
+        [Test]
+        public void BurningMonster_OnWater_StandsToDouse()
+        {
+            GridMap map = Flat(11);
+            map.Get(new GridPos(5, 5, 0)).wet = true;
+            var self = new CombatantState("g", new GridPos(5, 5, 0), 5, 1);
+            self.Statuses.Apply(StatusKind.Burn, 3);
+            var player = new CombatantState("p", new GridPos(7, 5, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            Assert.AreEqual(MonsterActionKind.Wait,
+                brain.Decide(Context(map, self, player)).Kind, "이미 물 위면 서서 끈다");
+        }
+
+        [Test]
         public void ClosedDoorOnChasePath_ReturnsOpenDoor()
         {
             var map = new GridMap();
