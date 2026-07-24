@@ -1,19 +1,29 @@
-# UI 디자인 시스템 "Torchstone" v1.5
+# UI 디자인 시스템 "Torchstone" v1.6
 
 > 화면공간 UI(UI Toolkit)의 시각 언어 SSOT. 아키텍처 판단(UI Toolkit vs UGUI)은 `docs/UI_ARCHITECTURE.md`.
-> 근거: `docs/art-direction/project-c-artstyle-concept-v1.png` **픽셀 실측**.
+> 근거: `docs/art-direction/project-c-artstyle-concept-v1.png` **픽셀 실측**
+> + postapoc 레퍼런스(`project-c-postapoc-ref-01~05`, `integrated-postapoc-gameplay-target-v2`) 도출.
+>
+> **v1.6 변경**: 테마 전환(판타지→포스트아포)에 맞춰 **어휘를 재서술**하고 postapoc 재료색을
+> **추가**했다. 코어 토큰의 **이름·값은 불변**(런타임 카탈로그·EditMode 테스트가 단언, 씬 온도 유지).
+> 공식(청흑 void + 국소 앰버 + 틸 신호)은 테마와 무관하게 그대로다.
 > 실체 파일: `Assets/_Project/UI/DesignSystem.uss` (토큰+컴포넌트) · `DesignSystemGallery.uxml` (검증 갤러리) · `UI/Fonts/Galmuri9.ttf` (OFL).
 
 ## 콘셉트
 
 **토치스톤(Torchstone)** — 씬의 공식을 UI에 그대로 적용한다:
 
-> **차가운 청흑 바탕 + 횃불에 데워진 돌 프레임 + 토치 골드 포인트.**
+> **차가운 청흑 바탕 + 국소 앰버 광원 + 틸 신호색 1개.**
 
 - 바탕은 씬의 어둠과 같은 **청흑**(웜 브라운 금지 — 씬과 온도가 충돌한다)
-- 프레임·구조물은 **횃불빛 받은 돌**(웜 그레이·토프)
-- **골드**는 "현재·선택" 단 한 곳에만 (현재 층, 선택 슬롯, 선택 액션)
-- **틸/아이스**는 시스템·물·얼음·마법, **하트 레드**는 HP
+- 프레임·구조물은 **국소광에 데워진 표면** — 판타지에선 횃불빛 받은 돌, 포스트아포에선
+  비상등에 데워진 콘크리트/철골. 같은 웜 그레이·토프 토큰(`--pc-stone*`)을 공유한다.
+- **골드/앰버**(`--pc-gold`/`--pc-torch`)는 "현재·선택"과 인공 광원 단 한 곳에만
+  (현재 층, 선택 슬롯, 선택 액션 / 비상등·표시등)
+- **틸/아이스**는 시스템·물·얼음, 그리고 postapoc의 **이상(異常) 신호**(균열·SF), **하트 레드**는 HP
+
+> 이름은 "Torchstone"을 유지하되(브랜드), postapoc 맥락에선 **"emergency-lit concrete"**로
+> 읽는다. 재료 어휘만 바뀌고 토큰·컴포넌트는 동일하다.
 
 ### HUD 이원화 (v1.2의 핵심 규칙)
 
@@ -80,7 +90,21 @@
 | `--pc-xp` | `#7FB241` | 경험치·중독 | 파생 |
 | `--pc-btn-bg`(-hover), `--pc-action-bg`(-hover) | USS 참조 | 버튼 바탕 | 파생 |
 
-새 색이 필요하면 **씬에서 실측 → 토큰 추가 → 사용**. 화면 USS에 리터럴 금지.
+### POSTAPOC 재료 토큰 (v1.6 추가 · `.gpl` 인덱스 18~와 1:1)
+
+> 코어 원리(청흑 void + 앰버 + 틸) 위의 **폐허 재료 어휘**. 도출: postapoc refs 01~05 · target-v2.
+> 고채도 UI 신호는 여전히 틸 하나. 아래 hazard/warning은 **화면 신호가 아니라 diegetic(월드 도색/네온)**.
+
+| 토큰 | 값 | 용도 | 출처 |
+|------|-----|------|------|
+| `--pc-concrete` / `-dim` | `#6B7178` / `#3B3F45` | 냉·비조명 콘크리트 그림자면 (조명받으면 `--pc-stone-lit`로 수렴) | ref-01·03 |
+| `--pc-rust` / `-dark` | `#9C5A2E` / `#5A2E1B` | 녹 — 드럼통·철골·간판·방폭문 | ref-02·05 |
+| `--pc-moss` / `-dim` | `#6E8A3C` / `#3E4A24` | 이끼·담쟁이(자연 잠식). `--pc-xp` 그린보다 올리브·저채도 | ref-03·04 |
+| `--pc-hazard` | `#E0A62B` | 흑황 위험 스트라이프의 황(흑은 `--pc-void/-inset`) | ref-01·target |
+| `--pc-warning` | `#F0492A` | 붉은 신호/봉인 네온. **`--pc-hp`(혈적·체력)와 역할 분리** | ref-05 |
+
+새 색이 필요하면 **씬 실측/레퍼런스 도출 → 토큰 추가 → 사용**. 화면 USS에 리터럴 금지.
+코어 토큰(인덱스 0~17)의 이름·값은 리네임 금지 — postapoc는 **추가**로만 확장한다.
 
 ## 타이포그래피 — Galmuri9, 정수 배율
 
