@@ -147,6 +147,11 @@ tileFloor == activeFloor → visible || explored
 그 외 층                 → verticalPreview (Hole 국소 미리보기일 때만)
 ```
 
+> **향후 방향 — 3D(높이 인식) 시야선.** 현재 FOV·`HasLineOfSight`·`VerticalOpeningRules`는 모두
+> 같은 elevation을 전제한다(높이 다르면 차단). 이를 "높이가 달라도 실제로 보이면 보인다"로 통합하는 것이
+> 입체 전투(고지대 사격·근접 단차 타격·마법)의 토대다. void=불투명·렌더≠시뮬 불변식은 유지하며 3단계로
+> 진행한다(전투 LoS → 근접·마법 재사용 → FOV). 계획: `ROADMAP.md` "향후 기술 과제 — 3D 시야선".
+
 ---
 
 ## 6. 경로·이동 (Pathfinding & Movement)
