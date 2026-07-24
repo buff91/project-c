@@ -75,10 +75,18 @@ namespace ProjectC.Core
             return false;
         }
 
-        private static bool IsOpaque(GridMap map, int x, int y, int minElevation, int maxElevation)
+        /// <summary>눈높이보다 이 값을 초과해 높은 표면은 벽처럼 너머 시야를 막는다(건물형 높이 인식 FOV).
+        /// 1단(raised) 높이차는 막지 않고, 2단 이상(벽·컨테이너 더미·메자닌)만 차폐한다.</summary>
+        public const int HeightBlockThreshold = 1;
+
+        private static bool IsOpaque(
+            GridMap map, GridPos origin, int x, int y, int minElevation, int maxElevation)
         {
-            return !TryGetSurface(map, x, y, minElevation, maxElevation, out _, out TileData tile) ||
-                   tile.BlocksSight;
+            if (!TryGetSurface(map, x, y, minElevation, maxElevation, out GridPos surface, out TileData tile))
+                return true; // void = 불투명
+            if (tile.BlocksSight) return true;
+            // 눈높이보다 충분히 높은 표면(큰 단차)은 벽처럼 너머로 시야를 막는다.
+            return surface.elevation - origin.elevation > HeightBlockThreshold;
         }
 
         private static void CastOctant(
@@ -123,7 +131,7 @@ namespace ProjectC.Core
 
                     if (blocked)
                     {
-                        if (IsOpaque(map, mapX, mapY, minElevation, maxElevation))
+                        if (IsOpaque(map, origin, mapX, mapY, minElevation, maxElevation))
                         {
                             newStart = rightSlope;
                         }
@@ -133,7 +141,7 @@ namespace ProjectC.Core
                             start = newStart;
                         }
                     }
-                    else if (IsOpaque(map, mapX, mapY, minElevation, maxElevation) && j < radius)
+                    else if (IsOpaque(map, origin, mapX, mapY, minElevation, maxElevation) && j < radius)
                     {
                         blocked = true;
                         CastOctant(

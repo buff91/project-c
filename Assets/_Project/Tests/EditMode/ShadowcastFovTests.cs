@@ -106,5 +106,26 @@ namespace ProjectC.Tests
                 Assert.LessOrEqual(origin.ChebyshevTo(pos), radius, $"반경 초과 {pos}");
             }
         }
+
+        [Test]
+        public void TallSurface_OccludesBeyond_ButSingleStepDoesNot()
+        {
+            // 2단 이상 높은 표면(벽·컨테이너 더미 같은 큰 단차)은 너머를 가린다.
+            var tall = new GridMap();
+            for (int x = 0; x < 5; x++) tall.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            tall.Remove(new GridPos(2, 0, 0));
+            tall.Set(new GridPos(2, 0, 2), TileKind.Floor); // 눈높이+2 표면
+            var visibleTall = GridVisibility.Compute(tall, new GridPos(0, 0, 0), 0, 2, 8);
+            Assert.IsTrue(visibleTall.Contains(new GridPos(2, 0, 2)), "높은 표면 자체는 보인다");
+            Assert.IsFalse(visibleTall.Contains(new GridPos(4, 0, 0)), "2단 벽 너머는 가려진다");
+
+            // 1단(raised) 높이차는 여전히 시야를 막지 않는다(기존 규칙 보존).
+            var step = new GridMap();
+            for (int x = 0; x < 5; x++) step.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            step.Remove(new GridPos(2, 0, 0));
+            step.Set(new GridPos(2, 0, 1), TileKind.Floor); // 눈높이+1
+            var visibleStep = GridVisibility.Compute(step, new GridPos(0, 0, 0), 0, 2, 8);
+            Assert.IsTrue(visibleStep.Contains(new GridPos(4, 0, 0)), "1단 높이차 너머는 보인다");
+        }
     }
 }
