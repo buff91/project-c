@@ -32,7 +32,8 @@ namespace ProjectC.Gameplay
 
         public static bool HasDevelopmentData =>
             File.Exists(Path.Combine(DevelopmentRootPath, MetaFileName)) ||
-            File.Exists(Path.Combine(DevelopmentRootPath, RunFileName));
+            File.Exists(Path.Combine(DevelopmentRootPath, RunFileName)) ||
+            Directory.Exists(RunTelemetryStore.ReportDirectoryPath);
 
         public static void SetEnabled(bool enabled)
         {
@@ -54,6 +55,8 @@ namespace ProjectC.Gameplay
             string root = DevelopmentRootPath;
             DeleteIfPresent(Path.Combine(root, MetaFileName));
             DeleteIfPresent(Path.Combine(root, RunFileName));
+            if (Directory.Exists(RunTelemetryStore.ReportDirectoryPath))
+                Directory.Delete(RunTelemetryStore.ReportDirectoryPath, recursive: true);
 
             if (Directory.Exists(root) && Directory.GetFileSystemEntries(root).Length == 0)
                 Directory.Delete(root);

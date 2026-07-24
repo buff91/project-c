@@ -54,6 +54,10 @@ namespace ProjectC.Gameplay
                 _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants());
             if (fall == null) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
 
+            _runTelemetry?.RecordFall(
+                player: true,
+                intentional: cause == "DROP",
+                fallenFloorCount: fall.FloorsFallen);
             int destinationFloor = _dungeon.Height.FloorIndex(fall.FinalPosition.elevation);
             InteractionFeedback?.Invoke($"{cause} → {FloorLabel(destinationFloor)}");
             yield return AnimateHoleDrop(from, fall.FinalPosition);
@@ -114,6 +118,9 @@ namespace ProjectC.Gameplay
             {
                 _activeFloorIndex = _dungeon.Height.FloorIndex(position.elevation);
                 _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+                int globalFloor = GlobalFloorIndex(_activeFloorIndex);
+                if (_runTelemetry != null && _runTelemetry.currentFloorIndex != globalFloor)
+                    _runTelemetry.RecordFloorEntered(globalFloor);
                 UpdateInputFloorRange();
                 SaveCheckpoint();
             }
@@ -133,6 +140,10 @@ namespace ProjectC.Gameplay
                 _grid.Map, _dungeon.Height, enemy.State, from, BottomElevation, AllCombatants());
             if (fall == null) yield break;
 
+            _runTelemetry?.RecordFall(
+                player: false,
+                intentional: false,
+                fallenFloorCount: fall.FloorsFallen);
             if (witnessed)
                 InteractionFeedback?.Invoke($"{RunSummary.FormatCause(enemy.State.Id)} FELL!");
             Debug.Log($"[Fall] {enemy.State.Id} {cause} 낙하 → {fall.FinalPosition} (-{fall.Damage} HP)");
@@ -237,6 +248,7 @@ namespace ProjectC.Gameplay
                 List<GridPos> ignited = OilRules.Ignite(_grid.Map, center);
                 if (ignited.Count > 0)
                 {
+                    _runTelemetry?.RecordOilIgnition(ignited.Count);
                     InteractionFeedback?.Invoke($"OIL IGNITED ×{ignited.Count}!");
                     Debug.Log($"[Oil] 기름 발화 {center}: {ignited.Count}칸");
                     foreach (CombatantState combatant in AllCombatants())
@@ -250,6 +262,7 @@ namespace ProjectC.Gameplay
                 }
 
                 List<GridPos> dried = WaterRules.Evaporate(_grid.Map, center);
+                _runTelemetry?.RecordWaterEvaporation(dried.Count);
                 if (dried.Count > 0) Debug.Log($"[Water] 증발 {center}: {dried.Count}칸");
             }
             else
@@ -258,6 +271,7 @@ namespace ProjectC.Gameplay
                 List<GridPos> frozenTiles = WaterRules.ChainFreeze(_grid.Map, center);
                 if (frozenTiles.Count > 0)
                 {
+                    _runTelemetry?.RecordWaterFreeze(frozenTiles.Count);
                     InteractionFeedback?.Invoke($"PUDDLE FROZEN ×{frozenTiles.Count}!");
                     Debug.Log($"[Water] 웅덩이 결빙 {center}: {frozenTiles.Count}칸");
                     foreach (CombatantState combatant in AllCombatants())
@@ -351,6 +365,7 @@ namespace ProjectC.Gameplay
                 }
                 else
                 {
+                    if (_runTelemetry != null) _runTelemetry.barrelPushes++;
                     if (outcome == KnockbackOutcome.PushedIntoFall)
                     {
                         GridPos? landing = _grid.Map.FindLandingBelow(destination, BottomElevation);

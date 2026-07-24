@@ -68,6 +68,9 @@
 - **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
   근접 돌진·스쿼시/플래시·픽셀 버스트·감쇠 카메라 흔들림을 적용한다. 화상은 주황 불꽃 고리,
   빙결은 청록 결정 고리이며 부여/연장/상쇄를 구분한다. 적 FX도 반드시 FOV를 따른다.
+- **플레이테스트 계측**: `RunTelemetry`가 층별 시간·턴·피해·처치·아이템·낙하·상태/원소 반응을
+  체크포인트와 함께 누적한다. 개발 디버그 창에서 요약/수동 저장하며, 판 종료 시
+  `development-profile/telemetry`에 JSON 리포트를 자동 확정한다.
 - **아트 방향**: 허브는 `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`를
   기준으로 자주빛 석재 + 호박색 모닥불/횃불 + 청록 포탈의 웜 다크 판타지 디오라마를 사용한다.
   `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
@@ -82,7 +85,7 @@
   허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의
   이동·영웅 기본 지급품·초과분 복귀를 담당한다. 허브에서 선택한 물품만 던전 진입 시 반입하고
   나머지는 창고에 보존한다. 모바일은 선택 후 반대편 탭, PC는 버튼/드래그를 사용한다.
-- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **541/541 통과**,
+- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **545/545 통과**,
   PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**. 변경 후에는 숫자를 맹신하지 말고 둘 다 다시 실행한다.
 - **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
   작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.

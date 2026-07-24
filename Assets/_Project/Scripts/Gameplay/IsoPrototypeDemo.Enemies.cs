@@ -28,6 +28,7 @@ namespace ProjectC.Gameplay
         private IEnumerator ResolveEnemyPhase()
         {
             if (!_turns.TryBeginEnemyPhase()) yield break;
+            _runTelemetry?.RecordTurn(GlobalFloorIndex(_activeFloorIndex));
             _enemyPhaseMapChanged = false;
 
             // 플레이어 턴이 끝난 시점의 상태이상 틱.
@@ -435,6 +436,9 @@ namespace ProjectC.Gameplay
 
             enemy.DeathTurn = _turns.TurnNumber;
             _runSummary.RecordKill();
+            _runTelemetry?.RecordKill(
+                GlobalFloorIndex(_activeFloorIndex),
+                enemy.IsBoss);
             Debug.Log($"[Combat] {enemy.State.Id} 처치");
 
             if (enemy.IsBoss)

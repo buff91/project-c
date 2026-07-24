@@ -2,6 +2,17 @@
 
 > `GDD.md` §5의 상세를 코딩 판단용으로 압축. 충돌·모호 시 **GDD가 최종 출처**.
 
+## 플레이테스트 텔레메트리
+
+- `RunTelemetry`는 Core의 직렬화 가능한 집계 모델이다. Unity 시간·파일 API를 모르며
+  Gameplay가 실제 이벤트와 unscaled delta time을 전달한다.
+- 층별 시간/턴/피해/처치/획득, 피해 원인, 아이템 획득·사용·조합, 플레이어/적 낙하,
+  화상·빙결 부여와 기름 발화·물 결빙/증발을 기록한다.
+- `RunSaveData.telemetry`로 층 체크포인트와 함께 이어지며, 승리/생환/사망/포기에서
+  `development-profile/telemetry` 아래 JSON으로 자동 확정된다.
+- 디버그 창은 실시간 압축 요약과 수동 `리포트 저장`을 제공한다. 게임플레이 치트를
+  사용한 런은 `cheatsUsed`로 표시해 정상 밸런스 표본과 섞이지 않게 한다.
+
 ## 백팩 / 창고 — §5.6
 
 - 던전 백팩은 `BackpackRules`의 6×4 격자다. `ItemKind → ItemFootprint` 매핑과

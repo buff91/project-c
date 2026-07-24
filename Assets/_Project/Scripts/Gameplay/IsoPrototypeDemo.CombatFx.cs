@@ -181,6 +181,8 @@ namespace ProjectC.Gameplay
             int turns)
         {
             StatusApplyResult result = target.Statuses.Apply(kind, turns);
+            if (result == StatusApplyResult.Applied || result == StatusApplyResult.Refreshed)
+                _runTelemetry?.RecordStatus(kind);
             EnemyAgent enemy = target == _playerState ? null : FindAgentByState(target);
             bool visible = target == _playerState || enemy != null && IsEnemyVisibleToPlayer(enemy);
 

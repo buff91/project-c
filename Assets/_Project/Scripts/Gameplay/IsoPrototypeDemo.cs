@@ -174,6 +174,7 @@ namespace ProjectC.Gameplay
         public ItemKind AimedBombKind => _bombAimKind;
         public CombatantState PlayerState => _playerState;
         public RunSummary RunSummary => _runSummary;
+        public RunTelemetry Telemetry => _runTelemetry;
         public event System.Action<int> ViewRotationChanged;
         public event System.Action<int> ActiveFloorChanged;
         public event System.Action<DungeonViewMode> ViewModeChanged;
@@ -226,6 +227,7 @@ namespace ProjectC.Gameplay
         private int _stageIndex = 1;
         private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
+        private RunTelemetry _runTelemetry;
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
@@ -317,6 +319,7 @@ namespace ProjectC.Gameplay
         {
             if (_grid == null) _grid = GetComponent<GridManager>();
             if (_input == null) _input = GetComponent<IsoTapInput>();
+            RunTelemetry previousTelemetry = _runTelemetry;
 
             // 이전 8×8 프로토타입 씬을 열어도 세 방 레이아웃의 최소 규격으로 자동 이행한다.
             roomSize = Mathf.Max(9, roomSize);
@@ -393,6 +396,30 @@ namespace ProjectC.Gameplay
             BuildRoomData();
             CreateRoomVisuals();
             CreateActorsAndProps();
+            if (Application.isPlaying && !hubMode)
+            {
+                int floorIndex = GlobalFloorIndex(_activeFloorIndex);
+                if (continueData != null && continueData.telemetry != null)
+                {
+                    _runTelemetry = continueData.telemetry;
+                }
+                else if (_stageIndex > 1 && previousTelemetry != null && !previousTelemetry.Ended)
+                {
+                    _runTelemetry = previousTelemetry;
+                }
+                else
+                {
+                    _runTelemetry = RunTelemetry.Begin(
+                        DungeonSelection.Selected.Id,
+                        _hero != null ? _hero.Id : HeroSelection.SelectedId,
+                        dungeonSeed,
+                        floorIndex,
+                        System.DateTime.UtcNow);
+                }
+
+                if (_runTelemetry.currentFloorIndex != floorIndex)
+                    _runTelemetry.RecordFloorEntered(floorIndex);
+            }
             if (continueData != null)
                 ApplyContinueData(continueData);
             else if (Application.isPlaying && !hubMode && _hero != null && _stageIndex == 1)
@@ -437,11 +464,24 @@ namespace ProjectC.Gameplay
             BossStateChanged?.Invoke();
         }
 
+        private void Update()
+        {
+            if (!Application.isPlaying || hubMode || _dungeon == null ||
+                _runTelemetry == null || _runTelemetry.Ended)
+                return;
+
+            _runTelemetry.RecordElapsed(
+                Time.unscaledDeltaTime,
+                GlobalFloorIndex(_activeFloorIndex));
+        }
+
         // ── 디버그 창 전용 API (에디터/개발빌드에서 DebugPanelController 가 호출) ──
 
         public bool DebugGodMode => _godMode;
         public int DebugSeed => dungeonSeed;
         public int DebugTurnNumber => _turns.TurnNumber;
+        public string DebugTelemetrySummary =>
+            _runTelemetry != null ? _runTelemetry.FormatCompactSummary() : "RUN TELEMETRY --";
 
         public int DebugLivingEnemiesOnFloor()
         {
@@ -459,6 +499,7 @@ namespace ProjectC.Gameplay
         public void DebugToggleGodMode()
         {
             if (!Application.isPlaying) return;
+            MarkTelemetryCheat();
             _godMode = !_godMode;
             InteractionFeedback?.Invoke(_godMode ? "CHEAT: GOD MODE ON" : "CHEAT: GOD MODE OFF");
         }
@@ -466,6 +507,7 @@ namespace ProjectC.Gameplay
         public void DebugHealFull()
         {
             if (!Application.isPlaying || _playerState == null) return;
+            MarkTelemetryCheat();
             _playerState.OverrideHpForDebug(_playerState.MaxHp);
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
@@ -475,6 +517,7 @@ namespace ProjectC.Gameplay
         public void DebugDamageSelf(int amount)
         {
             if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive) return;
+            MarkTelemetryCheat();
             int dealt = _playerState.TakeDamage(amount);
             StartCoroutine(ShowPlayerHit(dealt, "Debug"));
         }
@@ -482,6 +525,7 @@ namespace ProjectC.Gameplay
         public void DebugApplyStatusToSelf(StatusKind kind)
         {
             if (!Application.isPlaying || _playerState == null || !_playerState.IsAlive) return;
+            MarkTelemetryCheat();
             ApplyStatusWithPresentation(_playerState, kind, 3);
             InteractionFeedback?.Invoke(
                 kind == StatusKind.Burn
@@ -492,6 +536,7 @@ namespace ProjectC.Gameplay
         public void DebugGiveItem(ItemKind kind)
         {
             if (!Application.isPlaying) return;
+            MarkTelemetryCheat();
             if (!_inventory.TryAdd(kind, out int count))
             {
                 InteractionFeedback?.Invoke(
@@ -506,6 +551,7 @@ namespace ProjectC.Gameplay
         public void DebugKillAllOnFloor()
         {
             if (!Application.isPlaying || _dungeon == null) return;
+            MarkTelemetryCheat();
             int killed = 0;
             foreach (EnemyAgent enemy in _enemies)
             {
@@ -524,6 +570,7 @@ namespace ProjectC.Gameplay
         public void DebugDefeatBoss()
         {
             if (!Application.isPlaying || _boss == null || !_boss.State.IsAlive) return;
+            MarkTelemetryCheat();
             _boss.State.TakeDamage(9999);
             UpdateHealthBar(_boss.HpFill, _boss.State);
             RecordEnemyDeath(_boss, IsEnemyVisibleToPlayer(_boss));
@@ -539,6 +586,7 @@ namespace ProjectC.Gameplay
                 !floor.DownStairs.HasValue)
                 return false;
 
+            MarkTelemetryCheat();
             GridPos exit = floor.DownStairs.Value;
             _playerState.MoveTo(exit);
             _player.transform.position = _grid.GridToWorld(exit);
@@ -557,6 +605,7 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            MarkTelemetryCheat();
             _playerState.MoveTo(floor.Entry);
             _player.transform.position = _grid.GridToWorld(floor.Entry);
             SyncPlayerView(floor.Entry, floorChanged: true);
@@ -569,6 +618,24 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying) return;
             RunSaveStore.Clear();
             InteractionFeedback?.Invoke("CHEAT: 세이브 삭제");
+        }
+
+        public void DebugSaveTelemetryReport()
+        {
+            if (!Application.isPlaying || _runTelemetry == null) return;
+            string path = RunTelemetryStore.Save(_runTelemetry);
+            InteractionFeedback?.Invoke(
+                string.IsNullOrEmpty(path)
+                    ? "TELEMETRY: 개발 빌드에서만 저장 가능"
+                    : $"TELEMETRY SAVED · {System.IO.Path.GetFileName(path)}");
+            if (!string.IsNullOrEmpty(path))
+                Debug.Log($"[Telemetry] 리포트 저장: {path}");
+        }
+
+        private void MarkTelemetryCheat()
+        {
+            if (_runTelemetry != null)
+                _runTelemetry.cheatsUsed = true;
         }
 
         /// <summary>이어하기 데이터의 HP·인벤토리·전적을 새로 만든 판에 덧입힌다.</summary>
@@ -606,6 +673,8 @@ namespace ProjectC.Gameplay
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
             _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+            if (data.telemetry != null)
+                _runTelemetry = data.telemetry;
             InteractionFeedback?.Invoke(feedback);
         }
 
@@ -642,7 +711,8 @@ namespace ProjectC.Gameplay
                 powders = ItemCount(ItemKind.BlastPowder),
                 frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
-                deepestFloorIndex = _runSummary.DeepestFloorIndex
+                deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                telemetry = _runTelemetry
             });
         }
 
@@ -1331,6 +1401,7 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
                 return;
 
+            if (_runTelemetry != null) _runTelemetry.waitActions++;
             InteractionFeedback?.Invoke("대기 — 주변을 살핀다");
             _moveRoutine = StartCoroutine(RunPlayerAction(ResolveEnemyPhase()));
         }
@@ -1339,6 +1410,7 @@ namespace ProjectC.Gameplay
         public void AbandonRun()
         {
             if (!Application.isPlaying || hubMode) return;
+            FinishRunTelemetry(RunTelemetryOutcome.Abandoned, "Abandoned");
             RunSaveStore.Clear();
             Debug.Log("[Run] 게임 포기 — 소지품 소실, 허브 복귀");
             UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
@@ -1576,6 +1648,7 @@ namespace ProjectC.Gameplay
                         : _grid.GridToWorld(enemy.State.Position));
                 if (CombatRules.TryMelee(_playerState, enemy.State, out int damage))
                 {
+                    if (_runTelemetry != null) _runTelemetry.meleeAttacks++;
                     yield return ShowEnemyHit(enemy, damage, "Melee");
                     yield return ResolveEnemyPhase();
                 }
@@ -1592,6 +1665,7 @@ namespace ProjectC.Gameplay
                     out int damage,
                     rangedAttackDamage))
             {
+                if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
                 yield return AnimateProjectile(_playerPos, enemy.State.Position);
                 InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
                 yield return ShowEnemyHit(enemy, damage, "Ranged");
@@ -1630,6 +1704,7 @@ namespace ProjectC.Gameplay
                         _playerState, enemy.State, _grid.Map, rangedAttackRange,
                         out int approachDamage, rangedAttackDamage))
                 {
+                    if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
                     yield return AnimateProjectile(_playerPos, enemy.State.Position);
                     InteractionFeedback?.Invoke($"RANGED HIT · {approachDamage} DAMAGE");
                     yield return ShowEnemyHit(enemy, approachDamage, "Ranged");
@@ -1641,6 +1716,7 @@ namespace ProjectC.Gameplay
         private IEnumerator DrinkPotion()
         {
             _inventory.TryUse(ItemKind.Potion);
+            _runTelemetry?.RecordItemUsed(ItemKind.Potion);
             InventoryChanged?.Invoke();
 
             int healed = _playerState.Heal(potionHealAmount);
@@ -1658,6 +1734,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.OilFlask);
+            _runTelemetry?.RecordItemUsed(ItemKind.OilFlask);
             InventoryChanged?.Invoke();
 
             yield return AnimateProjectile(_playerPos, target);
@@ -1673,6 +1750,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.ThrowingKnife);
+            _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife);
             InventoryChanged?.Invoke();
 
             if (CombatRules.TryRanged(
@@ -1715,6 +1793,7 @@ namespace ProjectC.Gameplay
         private IEnumerator CraftAction(Recipe recipe)
         {
             CraftingRules.TryCraft(_inventory, recipe);
+            _runTelemetry?.RecordItemCrafted(recipe.Output);
             InventoryChanged?.Invoke();
             InteractionFeedback?.Invoke(
                 $"조합: {ItemCatalog.DisplayName(recipe.Output)} 완성!");
@@ -1743,6 +1822,7 @@ namespace ProjectC.Gameplay
         private IEnumerator RecallToEntry()
         {
             _inventory.TryUse(ItemKind.RecallScroll);
+            _runTelemetry?.RecordItemUsed(ItemKind.RecallScroll);
             InventoryChanged?.Invoke();
 
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor);
@@ -1774,6 +1854,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(kind);
+            _runTelemetry?.RecordItemUsed(kind);
             InventoryChanged?.Invoke();
 
             bool fiery = kind != ItemKind.FrostBomb;
@@ -1855,6 +1936,7 @@ namespace ProjectC.Gameplay
                     yield break;
                 }
                 yield return SetDoorState(door, nextKind);
+                if (_runTelemetry != null) _runTelemetry.doorInteractions++;
                 RefreshFloorVisibility();
                 string feedback = nextKind == TileKind.DoorOpen ? "DOOR OPENED" : "DOOR CLOSED";
                 InteractionFeedback?.Invoke(feedback);
@@ -2061,6 +2143,7 @@ namespace ProjectC.Gameplay
                 if (nextFloor != _activeFloorIndex)
                 {
                     _activeFloorIndex = nextFloor;
+                    _runTelemetry?.RecordFloorEntered(GlobalFloorIndex(_activeFloorIndex));
                     UpdateInputFloorRange();
                     RefreshFloorVisibility();
                     PositionSelection(next);
@@ -2226,6 +2309,10 @@ namespace ProjectC.Gameplay
         /// </summary>
         private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
         {
+            _runTelemetry?.RecordDamageDealt(
+                source,
+                damage,
+                GlobalFloorIndex(_activeFloorIndex));
             UpdateHealthBar(enemy.HpFill, enemy.State);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
@@ -2269,6 +2356,11 @@ namespace ProjectC.Gameplay
 
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
+            _runTelemetry?.RecordDamageTaken(
+                source,
+                damage,
+                !_playerState.IsAlive,
+                GlobalFloorIndex(_activeFloorIndex));
             CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
             FloatingText?.ShowDamage(
                 _player.transform.position,
@@ -2284,6 +2376,7 @@ namespace ProjectC.Gameplay
             {
                 _playerRenderer.color = new Color32(120, 42, 42, 220);
                 _runSummary.EndInDefeat(source);
+                FinishRunTelemetry(RunTelemetryOutcome.Defeat, source);
                 RunSaveStore.Clear();
                 Debug.Log($"[Combat] 플레이어 사망 — 사인 {source}, " +
                           $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
@@ -2505,6 +2598,7 @@ namespace ProjectC.Gameplay
             int victoryGold = BankInventoryToStash();
             RunSaveStore.Clear();
             _runSummary.EndInVictory(victoryGold);
+            FinishRunTelemetry(RunTelemetryOutcome.Victory, "");
             InteractionFeedback?.Invoke("DUNGEON CONQUERED!");
             Debug.Log(
                 $"[Run] {DungeonSelection.Selected.DisplayName} 정복 — " +
@@ -2523,11 +2617,24 @@ namespace ProjectC.Gameplay
             int gold = BankInventoryToStash();
             RunSaveStore.Clear();
             _runSummary.EndInExtraction(gold);
+            FinishRunTelemetry(RunTelemetryOutcome.Extraction, "");
             InteractionFeedback?.Invoke($"생환 — +{ItemCatalog.FormatGold(gold)} 적립");
             Debug.Log(
                 $"[Run] 생환: +{ItemCatalog.FormatGold(gold)}, " +
                 $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
             RunEnded?.Invoke(_runSummary);
+        }
+
+        private void FinishRunTelemetry(RunTelemetryOutcome outcome, string cause)
+        {
+            if (_runTelemetry == null || _runTelemetry.Ended) return;
+
+            _runTelemetry.End(outcome, cause, System.DateTime.UtcNow);
+            string path = RunTelemetryStore.Save(_runTelemetry);
+            Debug.Log(
+                string.IsNullOrEmpty(path)
+                    ? $"[Telemetry] {outcome} · 개발 리포트 저장 생략"
+                    : $"[Telemetry] {outcome} 리포트 저장: {path}");
         }
 
         /// <summary>
@@ -2581,7 +2688,8 @@ namespace ProjectC.Gameplay
                 powders = ItemCount(ItemKind.BlastPowder),
                 frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
-                deepestFloorIndex = _runSummary.DeepestFloorIndex
+                deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                telemetry = _runTelemetry
             };
 
             _stageIndex++;
@@ -2792,6 +2900,9 @@ namespace ProjectC.Gameplay
                 }
 
                 item.Collected = true;
+                _runTelemetry?.RecordItemCollected(
+                    item.Spawn.Kind,
+                    GlobalFloorIndex(_activeFloorIndex));
                 if (item.Root != null) item.Root.SetActive(false);
                 InventoryChanged?.Invoke();
 

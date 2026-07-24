@@ -91,6 +91,7 @@ namespace ProjectC.Gameplay
             Register("층 몬스터 전멸", demo.DebugKillAllOnFloor);
             Register("한 층 위로", () => demo.DebugJumpFloor(1));
             Register("한 층 아래로", () => demo.DebugJumpFloor(-1));
+            Register("리포트 저장", demo.DebugSaveTelemetryReport);
             Register("세이브 삭제", demo.DebugClearSave);
         }
 
@@ -158,7 +159,8 @@ namespace ProjectC.Gameplay
                 $"{demo.LocationLabel}\n" +
                 $"HP {hp} · GOD {(demo.DebugGodMode ? "ON" : "off")} · " +
                 $"층 몬스터 {demo.DebugLivingEnemiesOnFloor()} · " +
-                $"SAVE {(DevelopmentSaveProfile.IsEnabled ? "TEMP" : "REAL")}";
+                $"SAVE {(DevelopmentSaveProfile.IsEnabled ? "TEMP" : "REAL")}\n" +
+                demo.DebugTelemetrySummary;
         }
 
         private void HandleLogMessage(string condition, string stackTrace, LogType type)

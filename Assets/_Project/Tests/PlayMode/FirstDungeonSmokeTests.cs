@@ -1,4 +1,5 @@
 using System.Collections;
+using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using ProjectC.Core;
@@ -56,6 +57,8 @@ namespace ProjectC.Tests.PlayMode
             Assert.AreEqual(DungeonCatalog.DefaultId, dungeon.DungeonId);
             Assert.AreEqual(10, dungeon.FloorCount);
             Assert.AreEqual("B1", dungeon.ActiveFloorLabel);
+            Assert.NotNull(dungeon.Telemetry);
+            Assert.AreEqual(RunTelemetryOutcome.InProgress, dungeon.Telemetry.outcome);
 
             dungeon.DebugJumpFloor(-9);
             yield return null;
@@ -87,6 +90,8 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsTrue(RunSaveStore.TryLoad(out RunSaveData checkpoint));
             Assert.IsTrue(checkpoint.bossDefeated);
             Assert.AreEqual(-9, checkpoint.currentFloorIndex);
+            Assert.NotNull(checkpoint.telemetry);
+            Assert.AreEqual(-9, checkpoint.telemetry.currentFloorIndex);
 
             Assert.IsTrue(dungeon.DebugRequestBossExit());
             Assert.AreEqual(1, exitRequests);
@@ -94,6 +99,13 @@ namespace ProjectC.Tests.PlayMode
             yield return null;
 
             Assert.IsTrue(dungeon.RunSummary.Victory);
+            Assert.IsTrue(dungeon.Telemetry.Ended);
+            Assert.AreEqual(RunTelemetryOutcome.Victory, dungeon.Telemetry.outcome);
+            Assert.AreEqual(1, dungeon.Telemetry.bossKills);
+            Assert.IsTrue(dungeon.Telemetry.cheatsUsed);
+            Assert.AreEqual(
+                1,
+                Directory.GetFiles(RunTelemetryStore.ReportDirectoryPath, "*.json").Length);
             Assert.IsFalse(RunSaveStore.HasSave);
         }
 

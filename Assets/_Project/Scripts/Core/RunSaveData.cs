@@ -35,6 +35,7 @@ namespace ProjectC.Core
         public int frostShards;
         public int kills;
         public int deepestFloorIndex;
+        public RunTelemetry telemetry;
     }
 
     /// <summary>새 판과 이어하기가 시작할 던전 내부 깊이를 결정한다.</summary>
