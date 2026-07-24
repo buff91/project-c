@@ -70,6 +70,8 @@ namespace ProjectC.Core
         private readonly MonsterArchetype _archetype;
         private GridPos _home;
         private readonly Random _random;
+        private readonly BehaviorNode<MonsterBrainContext, MonsterAction> _tree;
+        private bool _seesPlayer;
 
         public MonsterMood Mood { get; private set; } = MonsterMood.Patrol;
         public GridPos? LastSeenPlayerAt { get; private set; }
@@ -79,6 +81,42 @@ namespace ProjectC.Core
             _archetype = archetype ?? throw new ArgumentNullException(nameof(archetype));
             _home = home;
             _random = new Random(seed);
+            _tree = BuildTree();
+        }
+
+        /// <summary>
+        /// 행동 트리(BT): 위에서 아래로 우선순위 Selector. 새 행동은 여기에 가지(When/Do)를
+        /// 선언적으로 추가·재배치한다 — 콘텐츠가 늘어도 분기 가독성을 유지한다. (FSM → BT)
+        /// </summary>
+        private BehaviorNode<MonsterBrainContext, MonsterAction> BuildTree()
+        {
+            Selector<MonsterBrainContext, MonsterAction> Sel(
+                params BehaviorNode<MonsterBrainContext, MonsterAction>[] children) =>
+                new Selector<MonsterBrainContext, MonsterAction>(children);
+            Condition<MonsterBrainContext, MonsterAction> When(
+                Func<MonsterBrainContext, bool> predicate,
+                BehaviorNode<MonsterBrainContext, MonsterAction> child) =>
+                new Condition<MonsterBrainContext, MonsterAction>(predicate, child);
+            Leaf<MonsterBrainContext, MonsterAction> Do(Func<MonsterBrainContext, MonsterAction?> behavior) =>
+                new Leaf<MonsterBrainContext, MonsterAction>(behavior);
+
+            return Sel(
+                // 죽었으면 대기.
+                When(c => !c.Self.IsAlive, Do(_ => MonsterAction.Wait())),
+
+                // 불이 붙으면 물을 찾아 끈다(정상 행동보다 우선). 갈 물이 없으면 이 가지는 결정하지 않는다.
+                When(c => c.Self.Statuses.Has(StatusKind.Burn),
+                    Sel(
+                        When(c => c.Map.Get(c.Self.Position)?.wet == true, Do(_ => MonsterAction.Wait())),
+                        Do(TrySeekWater))),
+
+                // 지각·기분(FSM 상태) 갱신 — 부수효과 후 항상 다음 가지로 흘려보낸다.
+                Do(c => { UpdatePerception(c); return null; }),
+
+                // 기분별 행동: 도주 → 추격 → 순찰.
+                When(c => Mood == MonsterMood.Flee, Do(c => DecideFlee(c))),
+                When(c => Mood == MonsterMood.Chase, Do(c => ChaseOrRelent(c))),
+                Do(c => DecidePatrol(c)));
         }
 
         /// <summary>
@@ -92,19 +130,15 @@ namespace ProjectC.Core
             if (context == null) throw new ArgumentNullException(nameof(context));
             if (context.Map == null || context.Height == null || context.Self == null)
                 throw new ArgumentException("Map/Height/Self 는 필수입니다.", nameof(context));
-            if (!context.Self.IsAlive) return MonsterAction.Wait();
 
-            // 불이 붙으면 물을 찾아 끄려 한다 — 정상 행동보다 우선(자기 보존). (요소 반응 셋업)
-            if (context.Self.Statuses.Has(StatusKind.Burn))
-            {
-                if (context.Map.Get(context.Self.Position)?.wet == true)
-                    return MonsterAction.Wait();              // 물 위 — 서서 끈다
-                MonsterAction douse = TrySeekWater(context);
-                if (douse.Kind == MonsterActionKind.Step) return douse;
-            }
+            return _tree.Tick(context) ?? MonsterAction.Wait();
+        }
 
-            bool seesPlayer = PerceivesPlayer(context);
-            if (seesPlayer)
+        /// <summary>지각과 기분(FSM 상태)을 갱신한다 — 트리의 부수효과 노드가 매 틱 호출한다.</summary>
+        private void UpdatePerception(MonsterBrainContext context)
+        {
+            _seesPlayer = PerceivesPlayer(context);
+            if (_seesPlayer)
             {
                 // HP가 도주 임계 미만이면 추격 대신 도주. (GDD §5.7 순찰→추격→공격→도주)
                 bool shouldFlee = _archetype.FleeThreshold > 0f &&
@@ -118,24 +152,18 @@ namespace ProjectC.Core
                 Mood = MonsterMood.Patrol;
                 LastSeenPlayerAt = null;
             }
+        }
 
-            if (Mood == MonsterMood.Flee)
-                return DecideFlee(context);
-
-            if (Mood == MonsterMood.Chase)
-            {
-                MonsterAction action = DecideChase(context, seesPlayer);
-                if (action.Kind != MonsterActionKind.Wait || seesPlayer)
-                    return action;
-                // 마지막 목격 지점까지 갔거나 길이 없으면 순찰로 복귀.
-                // 복귀 전환 턴은 관망한다 — 같은 턴에 순찰 걸음까지 하면
-                // 수색 종착지에서 한 칸 벗어나 "지점 도달" 계약이 깨진다.
-                Mood = MonsterMood.Patrol;
-                LastSeenPlayerAt = null;
-                return MonsterAction.Wait();
-            }
-
-            return DecidePatrol(context);
+        /// <summary>추격 걸음을 내되, 목격 지점 도달/막힘이면 순찰로 복귀하고 이번 턴은 관망한다.</summary>
+        private MonsterAction ChaseOrRelent(MonsterBrainContext context)
+        {
+            MonsterAction action = DecideChase(context, _seesPlayer);
+            if (action.Kind != MonsterActionKind.Wait || _seesPlayer)
+                return action;
+            // 복귀 전환 턴은 관망 — 같은 턴에 순찰 걸음까지 하면 "지점 도달" 계약이 깨진다.
+            Mood = MonsterMood.Patrol;
+            LastSeenPlayerAt = null;
+            return MonsterAction.Wait();
         }
 
         private bool PerceivesPlayer(MonsterBrainContext context)
@@ -213,8 +241,8 @@ namespace ProjectC.Core
 
         private const int WaterSeekRadius = 6;
 
-        /// <summary>불붙은 몬스터가 같은 층의 가장 가까운(도달 가능한) 젖은 칸으로 한 걸음. 없으면 Wait.</summary>
-        private MonsterAction TrySeekWater(MonsterBrainContext context)
+        /// <summary>불붙은 몬스터가 같은 층의 가장 가까운(도달 가능한) 젖은 칸으로 한 걸음. 없으면 null(결정 안 함).</summary>
+        private MonsterAction? TrySeekWater(MonsterBrainContext context)
         {
             GridPos self = context.Self.Position;
 
@@ -242,7 +270,7 @@ namespace ProjectC.Core
                     return MonsterAction.Step(path[1]);
             }
 
-            return MonsterAction.Wait();
+            return null;
         }
 
         /// <summary>플레이어와의 거리(체비셰프)를 가장 크게 벌리는 이웃 칸으로 물러난다.</summary>
