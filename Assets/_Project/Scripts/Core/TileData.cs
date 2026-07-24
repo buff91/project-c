@@ -17,7 +17,9 @@ namespace ProjectC.Core
         DoorOpen,   // 열린 문. 일반 바닥처럼 이동·시야 통과.
         Ladder,     // 같은 던전 층 안의 떨어진 elevation을 잇는 명시적 사다리 링크.
         SecretDoor, // 벽으로 위장한 비밀문. 조사/폭발 전에는 이동·시야를 모두 차단한다.
-        SecretPassage // 공개되어 무너진 비밀 통로. 이동·시야 통과, 다시 닫을 수 없다.
+        SecretPassage, // 공개되어 무너진 비밀 통로. 이동·시야 통과, 다시 닫을 수 없다.
+        Window,        // 창문(유리). 이동은 막지만 시야는 통과(수평 시야 포털). 깨면 WindowBroken. (GDD §5.2)
+        WindowBroken   // 깨진 창문 = 통로. 이동·시야 통과, 다시 못 닫는다. 창밖이 허공이면 낙하로 이어진다. (GDD §5.3)
     }
 
     /// <summary>
@@ -48,7 +50,8 @@ namespace ProjectC.Core
                                      kind == TileKind.DoorClosed ||
                                      kind == TileKind.DoorOpen ||
                                      kind == TileKind.SecretDoor ||
-                                     kind == TileKind.SecretPassage;
+                                     kind == TileKind.SecretPassage ||
+                                     kind == TileKind.WindowBroken;
 
         /// <summary>이동으로 진입 가능한가.</summary>
         public bool IsWalkable => (IsSolidGround &&
@@ -64,6 +67,9 @@ namespace ProjectC.Core
 
         public bool CanOpen => kind == TileKind.DoorClosed;
         public bool CanClose => kind == TileKind.DoorOpen;
+
+        /// <summary>깨서 통로로 만들 수 있는가. (온전한 창문, GDD §5.2)</summary>
+        public bool CanBreak => kind == TileKind.Window;
 
         /// <summary>이 칸에 발을 디디면 아래로 떨어지는가. (TryFall 트리거 근거, GDD §5.3)</summary>
         public bool CausesFall => kind == TileKind.Empty || kind == TileKind.Hole;
