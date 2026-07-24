@@ -239,8 +239,8 @@ tileFloor == activeFloor → visible || explored
 
 ### 8.1 FallRules — 모든 낙하의 수렴점
 - **낙뎀 공식**: `floors≤0 ? 0 : floors·(floors+1)` → 1층 **2**, 2층 **6**, 3층 **12**, 4층 20, 5층 30. 플레이어/몬스터 동일.
-  - **향후(확정): 높이 기반으로 전환** — `데미지 = max(0, 낙차칸 − SafeFallHeight)`(기본 SafeFallHeight 1·칸당 1)
-    → 1층 3·2층 7·3층 11. 층 안 발판 낙하도 데미지. `ROADMAP.md` "향후 기술 과제 — 3D 시야선" 참조.
+  - **향후(확정): 높이 기반으로 전환(가속 곡선)** — 지금 층 값(1층 2·2층 6·3층 12)을 유지하되 층 안 낙하도 데미지.
+    `eff = max(0, 낙차칸 − SafeFallHeight)`, `데미지 = round(eff/4 × (eff/4+1))`, 기본 SafeFallHeight 0. `ROADMAP.md` 참조.
 - `TryFall` 파이프라인: `FindLandingBelow`(없으면 null·낙하 안 함) → `floorsFallen` → 낙뎀 →
   **착지 충돌**(착지칸 산 점유자에 같은 피해, `CrushedOccupant`) → 점유자 생존 시 낙하자는 인접 빈 칸으로 밀림.
 - **연쇄 낙하는 재귀 아님** — 한 호출은 첫 단단한 바닥까지. 여러 층 관통은 `floorsFallen>1`로 표현(void 컬럼 위 낙하).
