@@ -117,5 +117,34 @@ namespace ProjectC.Tests
             Assert.AreEqual(b, path[path.Count - 1]);
             CollectionAssert.Contains(path, new GridPos(2, 0, 0), "경로가 깨진 창문을 지난다");
         }
+
+        [Test]
+        public void Generator_PlacesFallOutWindows_OnValidEdges()
+        {
+            int totalWindows = 0;
+            for (int seed = 0; seed < 24; seed++)
+            {
+                var map = new GridMap();
+                DungeonLayout layout = DungeonGenerator.Generate(map, 13, 13, floorCount: 10, seed: seed);
+                int bottom = layout.Height.Elevation(layout.BottomFloorIndex);
+
+                foreach (DungeonFloorInfo floor in layout.Floors)
+                foreach (GridPos w in floor.Windows)
+                {
+                    totalWindows++;
+                    TileData tile = map.Get(w);
+                    Assert.AreEqual(TileKind.Window, tile.kind);
+                    Assert.IsFalse(tile.IsWalkable, "온전한 창문은 이동 차단");
+                    Assert.IsFalse(tile.BlocksSight, "창문은 시야 투과");
+                    Assert.AreEqual(TileKind.Floor, map.Get(new GridPos(w.x + 1, w.y, w.elevation))?.kind,
+                        "창문 안쪽은 방 바닥");
+                    Assert.IsNull(map.Get(new GridPos(w.x - 1, w.y, w.elevation)), "창밖은 허공(void)");
+                    GridPos? landing = map.FindLandingBelow(new GridPos(w.x - 1, w.y, w.elevation), bottom);
+                    Assert.IsTrue(landing.HasValue && map.Get(landing.Value).IsWalkable,
+                        "창밖은 한 층 아래 걷는 바닥으로 떨어진다");
+                }
+            }
+            Assert.Greater(totalWindows, 0, "여러 seed에 걸쳐 낙하형 창문이 배치된다");
+        }
     }
 }

@@ -12,6 +12,7 @@ namespace ProjectC.Core
         public GridPos? Hole { get; }
         public GridPos? RestSite { get; }
         public GridPos? Landmark { get; }
+        public IReadOnlyList<GridPos> Windows { get; }
         public IReadOnlyList<GridPos> EnemySpawns { get; }
         public IReadOnlyList<ItemSpawn> Items { get; }
         public IReadOnlyList<GridPos> Doors { get; }
@@ -36,7 +37,8 @@ namespace ProjectC.Core
             GridPos? secretDoor = null,
             IReadOnlyList<GridPos> secretRoomTiles = null,
             GridPos? secretReward = null,
-            GridPos? landmark = null)
+            GridPos? landmark = null,
+            IReadOnlyList<GridPos> windows = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -52,6 +54,7 @@ namespace ProjectC.Core
             SecretRoomTiles = secretRoomTiles ?? Array.Empty<GridPos>();
             SecretReward = secretReward;
             Landmark = landmark;
+            Windows = windows ?? Array.Empty<GridPos>();
         }
     }
 
@@ -144,6 +147,7 @@ namespace ProjectC.Core
                 PickEnemySpawns(map, random, plan, floorCount);
                 PlaceItems(map, random, plan);
                 PlaceBossLandmark(map, plan, floorCount);
+                PlaceWindows(map, heightModel, plan, bottomElevation);
             }
 
             var floors = new List<DungeonFloorInfo>(floorCount);
@@ -162,7 +166,8 @@ namespace ProjectC.Core
                     plan.SecretDoor,
                     plan.SecretRoomTiles,
                     plan.SecretReward,
-                    plan.Landmark));
+                    plan.Landmark,
+                    plan.Windows));
             }
 
             return new DungeonLayout(heightModel, floors);
@@ -485,6 +490,37 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 건물형 수직성(v0.3): 북쪽 방 왼쪽 외벽에 낙하형 창문 하나(위치 잠정, RNG 미사용).
+        /// 유리는 이동을 막지만 시야는 통과하고, 깨고 넘어(넉백) 창밖이 한 층 아래 바닥이면
+        /// 낙하로 이어진다. 창문 자리는 원래 void(벽)라 이동·도달성 불변 — 시야만 바깥으로 연다.
+        /// 창밖(outward)이 실제 한 층 아래 걷는 바닥으로 떨어지는(구멍과 같은 검증) 자리에만 둔다.
+        /// </summary>
+        private static void PlaceWindows(
+            GridMap map, DungeonHeightModel heightModel, FloorPlan p, int bottomElevation)
+        {
+            if (p.UpperMinX < 2) return;
+            int wallX = p.UpperMinX - 1;   // 방 왼쪽 바로 바깥(문 반대쪽 외벽)
+            int outX = p.UpperMinX - 2;    // 창밖(허공)
+
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                var inside = new GridPos(p.UpperMinX, y, p.BaseElevation);
+                var wall = new GridPos(wallX, y, p.BaseElevation);
+                var outward = new GridPos(outX, y, p.BaseElevation);
+
+                if (map.Get(inside)?.kind != TileKind.Floor) continue; // 안쪽이 방 바닥
+                if (map.Get(wall) != null) continue;                   // 창 자리가 void(벽)
+                if (map.Get(outward) != null) continue;                // 창밖도 허공
+                if (!LandsOneFloorBelow(map, heightModel, outward, bottomElevation, p.FloorIndex))
+                    continue;                                          // 창밖이 한 층 아래로 떨어짐
+
+                map.Set(wall, TileKind.Window);
+                p.Windows.Add(wall);
+                return; // 층당 하나(잠정)
+            }
+        }
+
+        /// <summary>
         /// 물 웅덩이 배치 (GDD §5.5 — 물+빙결 광역 결빙의 무대).
         /// 층마다 절반 확률로 남쪽 방 평지에 2~4칸짜리 이어진 웅덩이 하나를 만든다.
         /// 입구·계단·특수 타일은 피하고 순수 Floor 만 적신다.
@@ -671,6 +707,7 @@ namespace ProjectC.Core
             public readonly List<ItemSpawn> Items = new List<ItemSpawn>();
             public readonly List<GridPos> Doors = new List<GridPos>();
             public readonly List<GridPos> SecretRoomTiles = new List<GridPos>();
+            public readonly List<GridPos> Windows = new List<GridPos>();
 
             public GridPos At(int x, int y)
             {
