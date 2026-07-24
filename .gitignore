@@ -59,3 +59,7 @@ crashlog.txt
 
 # OS
 .DS_Store
+
+# Python bytecode (art pipeline tooling)
+__pycache__/
+*.pyc

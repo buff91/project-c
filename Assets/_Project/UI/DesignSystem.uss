@@ -1,8 +1,12 @@
 /* ============================================================
-   Project-C UI 디자인 시스템 "Torchstone" v1.2 — USS 토큰 + 공통 컴포넌트
+   Project-C UI 디자인 시스템 "Torchstone" v1.6 — USS 토큰 + 공통 컴포넌트
    SSOT: docs/UI_DESIGN_SYSTEM.md (근거·사용 규칙은 문서 참조)
-   근거: 아트 컨셉(project-c-artstyle-concept-v1.png) 픽셀 실측.
-   공식: 차가운 청흑 바탕 + 횃불에 데워진 돌 프레임 + 토치 골드 포인트.
+   근거: 아트 컨셉(project-c-artstyle-concept-v1.png) 픽셀 실측
+         + postapoc 레퍼런스(project-c-postapoc-ref-01~05, integrated-...-target-v2) 도출.
+   공식(테마 무관 유지): 차가운 청흑 바탕 + 국소 앰버 광원 + 틸 신호색 1개.
+     판타지("횃불에 데워진 돌 프레임 + 토치 골드")→포스트아포("비상등에 데워진 콘크리트
+     + 앰버 신호등")는 재료 어휘만 바뀌고 토큰 값·구조는 그대로다. 코어 토큰은 리네임 금지
+     (런타임 카탈로그/테스트가 값을 단언). 신규는 postapoc 재료색으로 추가만 한다.
 
    사용법: UXML에서 화면별 USS보다 먼저 로드한다.
      <ui:Style src="DesignSystem.uss" />
@@ -50,6 +54,18 @@
     --pc-teal-bg: rgb(20, 52, 58);
     --pc-teal-bg-hover: rgb(27, 68, 75);
     --pc-xp: rgb(127, 178, 65);          /* 경험치·중독 */
+
+    /* --- 색: POSTAPOC 재료 (refs 01~05·target-v2 도출. .gpl 인덱스 18~와 1:1) ---
+       코어 원리(청흑 void+국소 앰버+틸 신호)는 유지. 폐허 재료 어휘만 확장.
+       stone(웜·조명면)과 달리 concrete는 냉·비조명 그림자면이다. */
+    --pc-concrete: rgb(107, 113, 120);
+    --pc-concrete-dim: rgb(59, 63, 69);
+    --pc-rust: rgb(156, 90, 46);         /* 녹 — 드럼통·철골·간판·방폭문 */
+    --pc-rust-dark: rgb(90, 46, 27);
+    --pc-moss: rgb(110, 138, 60);        /* 이끼·담쟁이(자연 잠식) — xp 그린보다 올리브 */
+    --pc-moss-dim: rgb(62, 74, 36);
+    --pc-hazard: rgb(224, 166, 43);      /* 흑황 위험 스트라이프의 황 (diegetic) */
+    --pc-warning: rgb(240, 73, 42);      /* 붉은 신호/봉인 네온 — HP와 역할 분리 */
 
     /* --- 색: 버튼 바탕 --- */
     --pc-btn-bg: rgb(22, 27, 35);
