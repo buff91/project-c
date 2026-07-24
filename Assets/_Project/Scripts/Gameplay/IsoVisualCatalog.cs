@@ -10,10 +10,55 @@ namespace ProjectC.Gameplay
     [CreateAssetMenu(fileName = "IsoVisualCatalog", menuName = "Project-C/Isometric Visual Catalog")]
     public class IsoVisualCatalog : ScriptableObject
     {
+        [Header("던전 공통 톤 (Torchstone 18색의 런타임 역할)")]
+        [Tooltip("pc-void — 월드 바깥과 깊은 개구부")]
+        public Color32 dungeonVoid = new Color32(5, 7, 12, 255);
+        [Tooltip("pc-inset — 미탐색 영역의 청흑 안개")]
+        public Color32 dungeonFog = new Color32(7, 9, 14, 210);
+        [Tooltip("pc-panel — 안개 외곽")]
+        public Color32 dungeonFogEdge = new Color32(10, 13, 19, 228);
+        [Tooltip("pc-void — 모든 던전 환경 실루엣의 최암부")]
+        public Color32 dungeonOutline = new Color32(5, 7, 12, 255);
+        [Tooltip("pc-panel — 바닥 줄눈과 얇은 경계")]
+        public Color32 dungeonSeam = new Color32(10, 13, 19, 255);
+        public Color32 dungeonStoneShadow = new Color32(10, 13, 19, 255);
+        [Tooltip("pc-stone-dim — 횃불에 데워진 공통 석재 기준색")]
+        public Color32 dungeonStone = new Color32(74, 64, 56, 255);
+        [Tooltip("pc-stone — 같은 층 안 단차의 밝은 면")]
+        public Color32 dungeonStoneLight = new Color32(152, 134, 111, 255);
+        public Color32 dungeonWallShadow = new Color32(10, 13, 19, 255);
+        public Color32 dungeonWall = new Color32(74, 64, 56, 255);
+        public Color32 dungeonWallLight = new Color32(207, 192, 174, 255);
+        public Color32 dungeonMoss = new Color32(127, 178, 65, 255);
+        public Color32 dungeonWood = new Color32(74, 64, 56, 255);
+        public Color32 dungeonWoodLight = new Color32(154, 107, 34, 255);
+        public Color32 dungeonIron = new Color32(10, 13, 19, 255);
+        [Tooltip("pc-torch — 횃불·안전 경로의 국소 물리광")]
+        public Color32 dungeonAmber = new Color32(255, 189, 65, 255);
+        [Tooltip("pc-gold — 불꽃 중심과 현재 목표")]
+        public Color32 dungeonAmberCore = new Color32(255, 213, 84, 255);
+        [Tooltip("pc-teal — Hole·포탈·마법 경로의 국소 신호색")]
+        public Color32 dungeonMagic = new Color32(79, 167, 160, 255);
+
         [Header("타일")]
+        [Tooltip("B1~B3 기본 높이 바닥")]
         public Sprite floor;
+        [Tooltip("B1~B3 단차 바닥")]
         public Sprite raisedFloor;
+        [Tooltip("이전 카탈로그 호환용 깊은 층 공용 바닥")]
         public Sprite lowerFloor;
+        [Tooltip("B4~B6 기본 높이 바닥")]
+        public Sprite midFloor;
+        [Tooltip("B4~B6 단차 바닥")]
+        public Sprite midRaisedFloor;
+        [Tooltip("B7~B9 기본 높이 바닥")]
+        public Sprite deepFloor;
+        [Tooltip("B7~B9 단차 바닥")]
+        public Sprite deepRaisedFloor;
+        [Tooltip("B10 기본 높이 바닥")]
+        public Sprite bossFloor;
+        [Tooltip("B10 단차 바닥")]
+        public Sprite bossRaisedFloor;
         public Sprite stairs;
         public Sprite ladder;
         public Sprite stairsUp;
@@ -112,6 +157,15 @@ namespace ProjectC.Gameplay
             }
         }
 
+        /// <summary>
+        /// 모든 던전의 공통 석재색. 단차는 색상군을 바꾸지 않고 같은 색의 명도만 올린다.
+        /// 깊이별 변주는 이 공통값 위에 제한된 보정으로 별도 적용한다.
+        /// </summary>
+        public Color32 DungeonSurfaceFor(DungeonVisualContext context)
+        {
+            return context.IsRaised ? dungeonStoneLight : dungeonStone;
+        }
+
         public Sprite TileFor(TileKind kind, DungeonVisualContext context)
         {
             switch (kind)
@@ -125,14 +179,39 @@ namespace ProjectC.Gameplay
                 case TileKind.DoorClosed: return doorClosed;
                 case TileKind.DoorOpen: return doorOpen != null ? doorOpen : floor;
                 default:
-                    if (context.IsRaised)
-                        return raisedFloor != null
-                            ? raisedFloor
-                            : context.DepthIndex > 0 ? lowerFloor : floor;
-                    if (context.DepthIndex > 0)
-                        return lowerFloor != null ? lowerFloor : floor;
-                    return floor;
+                    return FloorFor(context);
             }
+        }
+
+        private Sprite FloorFor(DungeonVisualContext context)
+        {
+            Sprite flat;
+            Sprite raised;
+            switch (context.DepthBand)
+            {
+                case DungeonDepthBand.Mid:
+                    flat = midFloor != null ? midFloor : lowerFloor != null ? lowerFloor : floor;
+                    raised = midRaisedFloor;
+                    break;
+                case DungeonDepthBand.Deep:
+                    flat = deepFloor != null ? deepFloor : lowerFloor != null ? lowerFloor : floor;
+                    raised = deepRaisedFloor;
+                    break;
+                case DungeonDepthBand.Boss:
+                    flat = bossFloor != null
+                        ? bossFloor
+                        : deepFloor != null
+                            ? deepFloor
+                            : lowerFloor != null ? lowerFloor : floor;
+                    raised = bossRaisedFloor;
+                    break;
+                default:
+                    flat = floor;
+                    raised = raisedFloor;
+                    break;
+            }
+
+            return context.IsRaised && raised != null ? raised : flat;
         }
 
         public Sprite StairsFor(TileKind kind, bool risesRight)

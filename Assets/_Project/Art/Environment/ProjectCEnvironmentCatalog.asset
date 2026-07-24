@@ -12,6 +12,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa5f2ff1350f04556b040ab71d932274, type: 3}
   m_Name: ProjectCEnvironmentCatalog
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoVisualCatalog
+  dungeonVoid:
+    serializedVersion: 2
+    rgba: 4278978309
+  dungeonFog:
+    serializedVersion: 2
+    rgba: 3524135175
+  dungeonFogEdge:
+    serializedVersion: 2
+    rgba: 3826453770
+  dungeonOutline:
+    serializedVersion: 2
+    rgba: 4278978309
+  dungeonSeam:
+    serializedVersion: 2
+    rgba: 4279438602
+  dungeonStoneShadow:
+    serializedVersion: 2
+    rgba: 4279438602
+  dungeonStone:
+    serializedVersion: 2
+    rgba: 4281876554
+  dungeonStoneLight:
+    serializedVersion: 2
+    rgba: 4285499032
+  dungeonWallShadow:
+    serializedVersion: 2
+    rgba: 4279438602
+  dungeonWall:
+    serializedVersion: 2
+    rgba: 4281876554
+  dungeonWallLight:
+    serializedVersion: 2
+    rgba: 4289642703
+  dungeonMoss:
+    serializedVersion: 2
+    rgba: 4282495615
+  dungeonWood:
+    serializedVersion: 2
+    rgba: 4281876554
+  dungeonWoodLight:
+    serializedVersion: 2
+    rgba: 4280445850
+  dungeonIron:
+    serializedVersion: 2
+    rgba: 4279438602
+  dungeonAmber:
+    serializedVersion: 2
+    rgba: 4282498559
+  dungeonAmberCore:
+    serializedVersion: 2
+    rgba: 4283749887
+  dungeonMagic:
+    serializedVersion: 2
+    rgba: 4288718671
   floor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   raisedFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   lowerFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}

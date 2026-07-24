@@ -91,7 +91,7 @@ public Sprite StatusFx(StatusKind kind) =>
 - `Tests/EditMode/IsoVisualCatalogTests.cs`에 신규 슬롯 매핑 검증 추가
   (`ImpactFx(Fire)==fxImpactFire` 등, null 폴백 경로 포함).
 - `CombatPresentationRulesTests`는 분류 로직이라 변경 불필요(그대로 통과 확인).
-- 회귀: EditMode 646(+신규) / PlayMode 1.
+- 회귀: EditMode 673 / PlayMode 1.
 
 ## 단계별 착수 순서 (안전)
 

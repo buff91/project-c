@@ -140,6 +140,6 @@
 3. 프레임/태그 작성 — 애니면 발 위치 고정 + 태그 Repeat 설정 + Layer UUID
 4. **정식 파일명**으로 `Art/Source/Aseprite/`에 저장
 5. Unity 복귀 → 자동 임포트·카탈로그 연결 → `Validate Sources`
-6. MCP Play 캡처(모바일 세로·PC 가로) → EditMode 646 / PlayMode 1 회귀
+6. MCP Play 캡처(모바일 세로·PC 가로) → EditMode 673 / PlayMode 1 회귀
 
 > ⚠️ 캔버스 크기·피벗을 바꾸면 `CustomPivots`(코드)도 함께 고쳐야 한다. 이 표는 현재 코드 기준.

@@ -95,8 +95,8 @@ namespace ProjectC.Gameplay
         [Header("안개 / 맵 경계")]
         [Tooltip("실제 방 구조는 숨기고, 현재 층이 놓이는 전체 영역만 어두운 안개로 구분한다.")]
         public bool showDungeonFogBackdrop = true;
-        public Color32 unknownFogColor = new Color32(8, 13, 20, 210);
-        public Color32 unknownFogEdge = new Color32(18, 27, 38, 228);
+        public Color32 unknownFogColor = new Color32(7, 9, 14, 210);
+        public Color32 unknownFogEdge = new Color32(10, 13, 19, 228);
 
         [Header("플레이어 가림 처리")]
         [Tooltip("플레이어와 화면상 겹치는 앞쪽 타일·벽을 자동으로 투명하게 만든다.")]
@@ -112,12 +112,14 @@ namespace ProjectC.Gameplay
         public IsoVisualCatalog visualCatalog;
 
         [Header("팔레트")]
-        public Color32 floorTop = new Color32(72, 78, 82, 255);
-        public Color32 raisedTop = new Color32(102, 88, 70, 255);
-        public Color32 lowerTop = new Color32(43, 55, 59, 255);
-        public Color32 tileSeam = new Color32(31, 38, 42, 255);
-        public Color32 outline = new Color32(12, 16, 20, 255);
-        public Color32 accent = new Color32(84, 211, 197, 255);
+        [Tooltip("카탈로그가 없는 편집 미리보기용 던전 석재 기준색")]
+        public Color32 floorTop = new Color32(74, 64, 56, 255);
+        [Tooltip("카탈로그가 없는 편집 미리보기용 단차 명도색")]
+        public Color32 raisedTop = new Color32(152, 134, 111, 255);
+        public Color32 lowerTop = new Color32(10, 13, 19, 255);
+        public Color32 tileSeam = new Color32(10, 13, 19, 255);
+        public Color32 outline = new Color32(5, 7, 12, 255);
+        public Color32 accent = new Color32(79, 167, 160, 255);
 
         public GridPos PlayerPos => _playerPos;
         public int ActiveFloorIndex => _activeFloorIndex;
@@ -2971,7 +2973,7 @@ namespace ProjectC.Gameplay
             _lastCameraAspect = camera.aspect;
             camera.backgroundColor = hubMode
                 ? new Color32(9, 7, 14, 255)
-                : new Color32(6, 9, 13, 255);
+                : DungeonVoidColor;
             camera.clearFlags = CameraClearFlags.SolidColor;
         }
 

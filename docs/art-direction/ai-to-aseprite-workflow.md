@@ -77,7 +77,7 @@
 
 - **Unity MCP**로 실제 Play 캡처: 모바일 세로 + PC 가로 각각.
   FOV 3상태(Unknown/Explored/Visible)에서 톤이 유지되는지, 발/피벗이 타일에 정확히 앉는지 확인.
-- 회귀: EditMode `ProjectC.Tests.EditMode` **646** / PlayMode `ProjectC.Tests.PlayMode` **1**.
+- 회귀: EditMode `ProjectC.Tests.EditMode` **673** / PlayMode `ProjectC.Tests.PlayMode` **1**.
 
 ---
 

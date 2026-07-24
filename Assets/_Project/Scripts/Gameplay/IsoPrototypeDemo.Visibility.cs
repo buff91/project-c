@@ -853,7 +853,12 @@ namespace ProjectC.Gameplay
                 : null;
             renderer.sprite = hubMode
                 ? GetHubWallSprite(torch, decoration)
-                : mapped != null ? mapped : GetWallSprite(torch);
+                : mapped != null
+                    ? GetToneMappedEnvironmentSprite(
+                        mapped,
+                        DungeonWallColor,
+                        torch ? EnvironmentAccentMode.Signal : EnvironmentAccentMode.None)
+                    : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             Color wallTint = ElevationTint(pos);

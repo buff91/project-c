@@ -75,9 +75,14 @@
   벽처럼 이동·FOV를 막고, 인접 균열의 `수상한 벽 조사` 또는 폭발로 `SecretPassage`가 된다.
   `SecretRoomRules`와 `DungeonFloorInfo.SecretDoor/SecretReward`를 우회해 별도 판정을 만들지 않는다.
 - **아트 방향**: 허브는 `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`를
-  기준으로 자주빛 석재 + 호박색 모닥불/횃불 + 청록 포탈의 웜 다크 판타지 디오라마를 사용한다.
+  기준으로 횃불에 데워진 석재 + 토치 골드 모닥불/횃불 + 틸 포탈의 웜 다크 판타지 디오라마를 사용한다.
   `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
   FOV·상태 색은 건드리지 않는다. 광원 타일과 허브 소품은 시점 회전 때 같은 GridPos로 다시 투영한다.
+- **던전 공통 톤**: 모든 깊이는 `project-c-torchstone.gpl`의 18색 마스터 팔레트와
+  `ProjectCEnvironmentCatalog`의 런타임 역할색을 공유한다. 기본 환경은 청흑 void와
+  횃불에 데워진 웜 그레이·토프 석재, 물리 광원은 토치 골드, 마법/출구는 틸로 읽히게 한다.
+  깊이별 변주는 이 공통 톤 위에서만
+  제한적으로 적용하며, 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도와 전면 두께로 구분한다.
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
   최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.
   `ProjectCAsepritePipeline`이 Point/PPU 64/Canvas Pivot/무압축/AnimationClip을 강제하고
@@ -88,7 +93,7 @@
   허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의
   이동·영웅 기본 지급품·초과분 복귀를 담당한다. 허브에서 선택한 물품만 던전 진입 시 반입하고
   나머지는 창고에 보존한다. 모바일은 선택 후 반대편 탭, PC는 버튼/드래그를 사용한다.
-- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **646/646 통과**,
+- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **673/673 통과**,
   PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**. 변경 후에는 숫자를 맹신하지 말고 둘 다 다시 실행한다.
 - **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
   작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.
