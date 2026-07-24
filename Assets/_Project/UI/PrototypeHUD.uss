@@ -1,16 +1,19 @@
 :root {
-    --ink: rgb(15, 12, 8);
-    --stone: rgba(28, 22, 15, 0.94);
-    --stone-raised: rgba(36, 29, 20, 0.96);
-    --bronze: rgb(74, 58, 34);
-    --bronze-lit: rgb(122, 92, 49);
-    --parchment: rgb(233, 220, 192);
-    --muted: rgb(157, 140, 109);
-    --torch: rgb(232, 173, 78);
-    --blood: rgb(200, 73, 59);
-    --mana: rgb(91, 127, 208);
-    --freeze: rgb(103, 198, 221);
-    --herb: rgb(104, 143, 77);
+    /* 레거시 별칭 — 판타지 브라운을 Torchstone postapoc 토큰값으로 수렴한다.
+       요소 이름/구조/레이아웃은 불변, 잔존 var() 참조의 '색만' 이관한다.
+       신규 코드는 이 별칭 대신 --pc-* 를 직접 쓴다. (SSOT: DesignSystem.uss) */
+    --ink: rgb(5, 7, 12);             /* → --pc-void */
+    --stone: rgba(10, 13, 19, 0.94);  /* → --pc-panel */
+    --stone-raised: rgb(34, 42, 53);  /* → --pc-btn-bg-hover */
+    --bronze: rgb(74, 64, 56);        /* → --pc-stone-dim */
+    --bronze-lit: rgb(152, 134, 111); /* → --pc-stone */
+    --parchment: rgb(234, 223, 200);  /* → --pc-text */
+    --muted: rgb(151, 144, 126);      /* → --pc-dim */
+    --torch: rgb(255, 189, 65);       /* → --pc-torch (판타지 주황 → postapoc 앰버) */
+    --blood: rgb(216, 69, 42);        /* → --pc-hp */
+    --mana: rgb(79, 167, 160);        /* → --pc-teal (마나 개념 없음 → 시스템 틸) */
+    --freeze: rgb(154, 223, 232);     /* → --pc-ice */
+    --herb: rgb(110, 138, 60);        /* → --pc-moss */
 }
 
 .hud-root {
@@ -201,15 +204,15 @@
 
 .map-room {
     position: absolute;
-    background-color: rgb(60, 46, 26);
+    background-color: var(--pc-stone-dim);
     border-left-width: 1px;
     border-right-width: 1px;
     border-top-width: 1px;
     border-bottom-width: 1px;
-    border-left-color: rgb(98, 73, 39);
-    border-right-color: rgb(98, 73, 39);
-    border-top-color: rgb(98, 73, 39);
-    border-bottom-color: rgb(98, 73, 39);
+    border-left-color: var(--pc-stone);
+    border-right-color: var(--pc-stone);
+    border-top-color: var(--pc-stone);
+    border-bottom-color: var(--pc-stone);
 }
 
 .map-room-a {
