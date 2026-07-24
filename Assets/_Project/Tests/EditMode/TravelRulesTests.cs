@@ -161,9 +161,9 @@ namespace ProjectC.Tests
             Assert.IsTrue(summary.Extracted);
         }
 
-        [TestCase("Goblin B2-1", "고블린")]
-        [TestCase("Skeleton B3-2", "해골")]
-        [TestCase("Slime B1-1", "슬라임")]
+        [TestCase("Goblin B2-1", "약탈자")]
+        [TestCase("Skeleton B3-2", "낡은 경비 드론")]
+        [TestCase("Slime B1-1", "누출 오염 슬러지")]
         [TestCase("Burn", "화상")]
         [TestCase("Fall", "낙하")]
         [TestCase("Crush", "낙하 충돌")]

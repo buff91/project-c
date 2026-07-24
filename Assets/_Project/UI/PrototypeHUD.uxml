@@ -44,7 +44,7 @@
 
         <ui:VisualElement name="boss-panel" class="artifact-panel boss-panel" picking-mode="Ignore">
             <ui:Label text="B10 · FINAL GUARDIAN" class="boss-kicker" />
-            <ui:Label name="boss-name" text="묘지기" class="boss-name" />
+            <ui:Label name="boss-name" text="감시자" class="boss-name" />
             <ui:VisualElement class="boss-health-track">
                 <ui:VisualElement name="boss-health-fill" class="boss-health-fill" />
             </ui:VisualElement>

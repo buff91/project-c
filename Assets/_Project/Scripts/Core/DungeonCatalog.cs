@@ -59,14 +59,14 @@ namespace ProjectC.Core
         {
             new DungeonDefinition(
                 DefaultId,
-                "잊힌 지하묘지",
-                "지하 10층을 내려가 최심층의 묘지기를 쓰러뜨리고 출구를 연다.",
-                "B1~B10 · B10 보스: 묘지기 · 권장: 기사",
+                "무너진 환승역",
+                "붕괴한 지하 10층을 내려가 최심층의 감시자를 쓰러뜨리고 출구를 연다.",
+                "B1~B10 · B10 보스: 감시자 · 권장: 기사",
                 seed: 1977,
                 floorCount: 10,
                 boss: new DungeonBossDefinition(
                     "grave-warden",
-                    "묘지기",
+                    "감시자",
                     MonsterRoster.GraveWarden),
                 isAvailable: true),
             new DungeonDefinition(

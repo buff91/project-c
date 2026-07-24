@@ -8,29 +8,29 @@ namespace ProjectC.Core
     /// </summary>
     public static class MonsterRoster
     {
-        /// <summary>고블린: 기준 몬스터. 아프게 물지만 겁이 많아 빈사가 되면 도망친다.</summary>
+        /// <summary>약탈자(코드 ID Goblin): 기준 몬스터. 아프게 공격하지만 겁이 많아 빈사가 되면 도망친다.</summary>
         public static readonly MonsterArchetype Goblin =
             new MonsterArchetype("Goblin", maxHp: 5, attackPower: 2,
                 aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f);
 
-        /// <summary>해골: 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.</summary>
+        /// <summary>낡은 경비 드론(코드 ID Skeleton): 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.</summary>
         public static readonly MonsterArchetype Skeleton =
             new MonsterArchetype("Skeleton", maxHp: 8, attackPower: 2,
                 aggroRange: 5, patrolRadius: 1, fleeThreshold: 0f);
 
-        /// <summary>슬라임: 약하고 흔하다. 넓게 배회하며 겁 없이 달려든다.</summary>
+        /// <summary>누출 오염 슬러지(코드 ID Slime): 약하고 흔하다. 넓게 배회하며 겁 없이 달려든다.</summary>
         public static readonly MonsterArchetype Slime =
             new MonsterArchetype("Slime", maxHp: 3, attackPower: 1,
                 aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f);
 
-        /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 묘지기.</summary>
+        /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
         public static readonly MonsterArchetype GraveWarden =
             new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
                 aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
 
         /// <summary>
-        /// 깊이 비례 혼합 (depth 0 = 최상층 B1): 얕은 층은 슬라임/고블린,
-        /// 깊어질수록 해골 비중이 커진다. (GDD §5.7 난이도·깊이 연동)
+        /// 깊이 비례 혼합 (depth 0 = 최상층 B1): 얕은 층은 슬러지/약탈자,
+        /// 깊어질수록 경비 드론(Skeleton) 비중이 커진다. (GDD §5.7 난이도·깊이 연동)
         /// </summary>
         public static MonsterArchetype PickForDepth(int depth, Random random)
         {

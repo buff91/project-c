@@ -57,9 +57,9 @@ namespace ProjectC.Core
         public static string FormatCause(string source)
         {
             if (string.IsNullOrWhiteSpace(source)) return "알 수 없음";
-            if (source.StartsWith("Goblin", StringComparison.Ordinal)) return "고블린";
-            if (source.StartsWith("Skeleton", StringComparison.Ordinal)) return "해골";
-            if (source.StartsWith("Slime", StringComparison.Ordinal)) return "슬라임";
+            if (source.StartsWith("Goblin", StringComparison.Ordinal)) return "약탈자";
+            if (source.StartsWith("Skeleton", StringComparison.Ordinal)) return "낡은 경비 드론";
+            if (source.StartsWith("Slime", StringComparison.Ordinal)) return "누출 오염 슬러지";
 
             switch (source)
             {

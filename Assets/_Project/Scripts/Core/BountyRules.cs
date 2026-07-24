@@ -119,8 +119,8 @@ namespace ProjectC.Core
                 "폭발통을 3번 밀어 활용한다.",
                 BountyMetric.BarrelPushes, target: 3, rewardGold: 35),
             new BountyDefinition(
-                "warden", "묘지기 사냥",
-                "최심층 보스 묘지기를 처치한다.",
+                "warden", "감시자 사냥",
+                "최심층 보스 감시자를 처치한다.",
                 BountyMetric.BossKills, target: 1, rewardGold: 100)
         };
 
