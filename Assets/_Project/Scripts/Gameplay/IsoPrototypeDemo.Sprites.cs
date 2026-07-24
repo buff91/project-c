@@ -10,9 +10,18 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
+        private enum EnvironmentAccentMode
+        {
+            None,
+            Wood,
+            Signal,
+        }
+
         private Sprite GetDungeonFogBackdropSprite()
         {
-            string key = $"fog-backdrop-{unknownFogColor}-{unknownFogEdge}";
+            Color32 fog = DungeonFogColor;
+            Color32 fogEdge = DungeonFogEdgeColor;
+            string key = $"fog-backdrop-{fog}-{fogEdge}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             const int width = 128;
@@ -31,10 +40,9 @@ namespace ProjectC.Gameplay
                 }
 
                 bool edge = diamond > 0.985f;
-                int noise = px * 73856093 ^ py * 19349663;
                 Color32 color = edge
-                    ? unknownFogEdge
-                    : Shift(unknownFogColor, (noise & 31) == 0 ? 2 : 0);
+                    ? fogEdge
+                    : fog;
                 texture.SetPixel(px, py, color);
             }
 
@@ -62,7 +70,11 @@ namespace ProjectC.Gameplay
                 if (visualCatalog != null)
                 {
                     Sprite mapped = visualCatalog.DoorFor(kind, DoorPlaneRisesRight(pos));
-                    if (mapped != null) return mapped;
+                    if (mapped != null)
+                        return GetToneMappedEnvironmentSprite(
+                            mapped,
+                            DungeonStoneColor,
+                            EnvironmentAccentMode.Wood);
                 }
 
                 return GetDoorSprite(kind, pos);
@@ -75,7 +87,11 @@ namespace ProjectC.Gameplay
                 if (visualCatalog != null)
                 {
                     Sprite mapped = visualCatalog.StairsFor(kind, StairPlaneRisesRight(pos));
-                    if (mapped != null) return mapped;
+                    if (mapped != null)
+                        return GetToneMappedEnvironmentSprite(
+                            mapped,
+                            DungeonStoneColor,
+                            EnvironmentAccentMode.Signal);
                 }
             }
 
@@ -88,7 +104,7 @@ namespace ProjectC.Gameplay
             {
                 Sprite mapped = visualCatalog.TileFor(kind, context);
                 if (mapped != null)
-                    return extruded ? GetExtrudedMappedTileSprite(mapped, baseColor) : mapped;
+                    return GetMappedTileSprite(mapped, baseColor, extruded);
             }
 
             string key =
@@ -115,48 +131,48 @@ namespace ProjectC.Gameplay
                 }
 
                 bool border = diamond > 0.88f;
-                int noise = ((px / 7) + (py / 4) * 3 + variant) % 4;
-                Color32 color = border ? tileSeam : Shift(baseColor, noise == 0 ? 5 : noise == 1 ? 0 : -4);
+                Color32 color = border
+                    ? DungeonSeamColor
+                    : baseColor;
 
                 bool stoneJoint = diamond < 0.72f &&
                                   ((px + py * 3 + variant * 11) % 29 == 0 ||
                                    (px * 2 - py + variant * 7) % 37 == 0);
-                if (stoneJoint) color = Shift(baseColor, -14);
+                if (stoneJoint) color = DungeonStoneShadowColor;
 
-                bool moss = context.DepthIndex > 0 &&
-                            variant == 2 &&
+                bool moss = variant == 2 &&
                             py < 15 &&
                             px > 9 &&
                             px < 23;
                 if (moss && (px + py) % 5 < 2)
-                    color = new Color32(54, 78, 55, 255);
+                    color = DungeonMossColor;
 
                 if (kind == TileKind.DoorClosed)
                 {
                     bool band = (px + py * 2) % 13 < 3;
                     bool iron = Mathf.Abs(px - 32) < 2 || Mathf.Abs(py - 16) < 2;
                     color = border || iron
-                        ? outline
-                        : band ? new Color32(164, 91, 43, 255) : new Color32(103, 57, 35, 255);
+                        ? DungeonOutlineColor
+                        : band ? DungeonWoodLightColor : DungeonWoodColor;
                 }
                 else if (kind == TileKind.DoorOpen)
                 {
                     bool threshold = py > 11 && py < 20 && Mathf.Abs(px - 32) < 22;
                     color = border
-                        ? outline
-                        : threshold ? new Color32(177, 111, 52, 255) : color;
+                        ? DungeonOutlineColor
+                        : threshold ? DungeonWoodLightColor : color;
                 }
                 else if (kind == TileKind.Hole)
-                    color = border ? accent : new Color32(4, 8, 11, 190);
+                    color = border ? DungeonMagicColor : WithAlpha(DungeonVoidColor, 190);
                 else if (kind == TileKind.WeakFloor && IsCrackPixel(px, py))
-                    color = new Color32(24, 20, 19, 255);
+                    color = DungeonOutlineColor;
                 else if (kind == TileKind.Stairs && ((px + py * 2) % 12 < 3))
-                    color = border ? outline : Shift(baseColor, 25);
+                    color = border ? DungeonOutlineColor : DungeonStoneLightColor;
                 // Ladder는 바닥 문양이 아니라 두 발판 사이에 세워진 별도 월드 오브젝트로 그린다.
                 else if (kind == TileKind.StairsDown && ((px + py) % 10 < 3))
-                    color = border ? outline : new Color32(220, 119, 47, 255);
+                    color = border ? DungeonOutlineColor : DungeonAmberColor;
                 else if (kind == TileKind.StairsUp && ((px + py) % 10 < 3))
-                    color = border ? outline : new Color32(74, 181, 219, 255);
+                    color = border ? DungeonOutlineColor : DungeonMagicColor;
 
                 texture.SetPixel(px, py + topOffset, color);
             }
@@ -223,7 +239,10 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetExtrudedMappedTileSprite(Sprite topSprite, Color32 baseColor)
+        private Sprite GetMappedTileSprite(
+            Sprite topSprite,
+            Color32 baseColor,
+            bool extruded)
         {
             Texture2D source = topSprite.texture;
             Rect sourceRect = topSprite.rect;
@@ -232,11 +251,15 @@ namespace ProjectC.Gameplay
                 Mathf.RoundToInt(sourceRect.height) != TilePixelHeight)
                 return topSprite;
 
-            string key = $"mapped-extruded-{topSprite.name}-{baseColor.r}-{baseColor.g}-{baseColor.b}";
+            string key =
+                $"mapped-tile-{topSprite.name}-{baseColor.r}-{baseColor.g}-{baseColor.b}-x{extruded}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-            var texture = NewTexture(TilePixelWidth, 48);
-            DrawExtrudedSides(texture, baseColor);
+            int textureHeight = extruded ? 48 : TilePixelHeight;
+            int topOffset = extruded ? 16 : 0;
+            var texture = NewTexture(TilePixelWidth, textureHeight);
+            if (extruded)
+                DrawExtrudedSides(texture, baseColor);
 
             Color[] pixels = source.GetPixels(
                 Mathf.RoundToInt(sourceRect.x),
@@ -248,19 +271,119 @@ namespace ProjectC.Gameplay
             {
                 Color pixel = pixels[py * TilePixelWidth + px];
                 if (pixel.a > 0f)
-                    texture.SetPixel(px, py + 16, pixel);
+                    texture.SetPixel(px, py + topOffset, ToneMapEnvironmentPixel(pixel, baseColor));
             }
 
             texture.Apply(false, true);
-            cached = CreateSprite(texture, new Vector2(0.5f, 32f / 48f));
+            cached = CreateSprite(
+                texture,
+                extruded ? new Vector2(0.5f, 32f / 48f) : new Vector2(0.5f, 0.5f));
             _spriteCache[key] = cached;
             return cached;
         }
 
+        private Sprite GetToneMappedEnvironmentSprite(
+            Sprite sourceSprite,
+            Color32 target,
+            EnvironmentAccentMode accentMode = EnvironmentAccentMode.None)
+        {
+            Texture2D source = sourceSprite.texture;
+            Rect sourceRect = sourceSprite.rect;
+            if (source == null || !source.isReadable) return sourceSprite;
+
+            int width = Mathf.RoundToInt(sourceRect.width);
+            int height = Mathf.RoundToInt(sourceRect.height);
+            string key =
+                $"mapped-env-{sourceSprite.name}-{target.r}-{target.g}-{target.b}-{accentMode}-{width}x{height}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(width, height);
+            Color[] pixels = source.GetPixels(
+                Mathf.RoundToInt(sourceRect.x),
+                Mathf.RoundToInt(sourceRect.y),
+                width,
+                height);
+            for (int py = 0; py < height; py++)
+            for (int px = 0; px < width; px++)
+            {
+                Color pixel = pixels[py * width + px];
+                if (pixel.a > 0f)
+                    texture.SetPixel(px, py, ToneMapEnvironmentPixel(pixel, target, accentMode));
+            }
+
+            texture.Apply(false, true);
+            Vector2 pivot = new Vector2(
+                sourceSprite.pivot.x / sourceRect.width,
+                sourceSprite.pivot.y / sourceRect.height);
+            cached = CreateSprite(texture, pivot);
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Color ToneMapEnvironmentPixel(
+            Color source,
+            Color32 target,
+            EnvironmentAccentMode accentMode = EnvironmentAccentMode.None)
+        {
+            float luminance =
+                source.r * 0.2126f +
+                source.g * 0.7152f +
+                source.b * 0.0722f;
+            float chroma =
+                Mathf.Max(source.r, Mathf.Max(source.g, source.b)) -
+                Mathf.Min(source.r, Mathf.Min(source.g, source.b));
+
+            if (accentMode != EnvironmentAccentMode.None &&
+                chroma >= 0.16f &&
+                luminance >= 0.14f)
+            {
+                bool teal =
+                    source.g > source.r * 1.12f &&
+                    source.b > source.r * 1.12f;
+                if (teal)
+                    return ToRuntimeColor(DungeonMagicColor, source.a);
+
+                bool warm =
+                    source.r > source.b * 1.15f &&
+                    source.g > source.b * 1.05f;
+                if (warm)
+                {
+                    Color32 accent = accentMode == EnvironmentAccentMode.Wood
+                        ? luminance >= 0.46f ? DungeonWoodLightColor : DungeonWoodColor
+                        : luminance >= 0.58f ? DungeonAmberCoreColor : DungeonAmberColor;
+                    return ToRuntimeColor(accent, source.a);
+                }
+            }
+
+            Color32 wall = DungeonWallColor;
+            bool wallRamp =
+                target.r == wall.r &&
+                target.g == wall.g &&
+                target.b == wall.b;
+            Color32 stoneLight = DungeonStoneLightColor;
+            bool raisedSurfaceRamp =
+                target.r == stoneLight.r &&
+                target.g == stoneLight.g &&
+                target.b == stoneLight.b;
+            Color32 mapped = luminance < 0.16f
+                ? DungeonOutlineColor
+                : luminance < 0.28f
+                    ? wallRamp ? DungeonWallShadowColor : DungeonStoneShadowColor
+                    : luminance < 0.5f
+                        ? wallRamp
+                            ? DungeonWallColor
+                            : raisedSurfaceRamp ? DungeonStoneLightColor : DungeonStoneColor
+                        : wallRamp ? DungeonWallLightColor : DungeonStoneLightColor;
+            return ToRuntimeColor(mapped, source.a);
+        }
+
+        private static Color ToRuntimeColor(Color32 color, float alpha) =>
+            new Color(color.r / 255f, color.g / 255f, color.b / 255f, alpha);
+
         private void DrawExtrudedSides(Texture2D texture, Color32 baseColor)
         {
-            Color32 leftFace = Shift(baseColor, -24);
-            Color32 rightFace = Shift(baseColor, -38);
+            Color32 leftFace = hubMode ? Shift(baseColor, -24) : DungeonStoneShadowColor;
+            Color32 rightFace = hubMode ? Shift(baseColor, -38) : DungeonWallShadowColor;
             for (int py = 0; py < 32; py++)
             {
                 int leftMin = py < 16 ? 32 - py * 2 : 0;
@@ -271,12 +394,12 @@ namespace ProjectC.Gameplay
                 for (int px = Mathf.Max(0, leftMin); px <= Mathf.Min(31, leftMax); px++)
                 {
                     bool mortar = py % 7 == 0 || (px + (py / 7) * 8) % 19 == 0;
-                    texture.SetPixel(px, py, mortar ? outline : leftFace);
+                    texture.SetPixel(px, py, mortar ? DungeonOutlineColor : leftFace);
                 }
                 for (int px = Mathf.Max(32, rightMin); px <= Mathf.Min(63, rightMax); px++)
                 {
                     bool mortar = py % 7 == 0 || (px - (py / 7) * 7) % 21 == 0;
-                    texture.SetPixel(px, py, mortar ? outline : rightFace);
+                    texture.SetPixel(px, py, mortar ? DungeonOutlineColor : rightFace);
                 }
             }
         }
@@ -301,14 +424,14 @@ namespace ProjectC.Gameplay
             {
                 float diamond = Mathf.Abs((px - 31.5f) / 32f) + Mathf.Abs((py - 15.5f) / 16f);
                 if (diamond > 1f) continue;
-                texture.SetPixel(px, py, diamond > 0.88f ? tileSeam : baseColor);
+                texture.SetPixel(px, py, diamond > 0.88f ? DungeonSeamColor : baseColor);
             }
 
-            Color32 stone = new Color32(70, 76, 77, 255);
-            Color32 stoneLight = new Color32(102, 105, 99, 255);
-            Color32 wood = new Color32(118, 66, 37, 255);
-            Color32 woodLight = new Color32(170, 97, 48, 255);
-            Color32 iron = new Color32(39, 43, 44, 255);
+            Color32 stone = DungeonStoneColor;
+            Color32 stoneLight = DungeonStoneLightColor;
+            Color32 wood = DungeonWoodColor;
+            Color32 woodLight = DungeonWoodLightColor;
+            Color32 iron = DungeonIronColor;
 
             // 통로 축에 수직인 아이소 평면을 사용한다. 회전해도 문짝이 벽의 사선과 맞는다.
             int leftBase = risesRight ? 9 : 25;
@@ -324,9 +447,9 @@ namespace ProjectC.Gameplay
                 rightX,
                 rightBase,
                 frameHeight,
-                new Color32(6, 9, 11, 255),
-                new Color32(10, 14, 16, 255),
-                outline);
+                DungeonVoidColor,
+                DungeonFogColor,
+                DungeonOutlineColor);
 
             if (closed)
             {
@@ -336,7 +459,7 @@ namespace ProjectC.Gameplay
                 DrawThickLine(texture, 20, innerLeftY + 11, 44, innerRightY + 11, 2, iron);
                 DrawThickLine(texture, 20, innerLeftY + 24, 44, innerRightY + 24, 2, iron);
                 FillRect(texture, risesRight ? 37 : 24, risesRight ? 31 : 27, 3, 3,
-                    new Color32(227, 173, 70, 255));
+                    DungeonAmberCoreColor);
             }
             else
             {
@@ -344,11 +467,12 @@ namespace ProjectC.Gameplay
                 int foldedLeftY = Mathf.RoundToInt(Mathf.Lerp(leftBase, rightBase, 25f / 34f)) + 3;
                 int foldedRightY = rightBase + 3;
                 FillSlantedPanel(texture, 40, foldedLeftY, 47, foldedRightY, 31,
-                    Shift(wood, -12), woodLight, iron);
+                    wood, woodLight, iron);
             }
 
             DrawThickLine(texture, leftX, leftBase, leftX, leftBase + frameHeight, 5, stone);
-            DrawThickLine(texture, rightX, rightBase, rightX, rightBase + frameHeight, 5, Shift(stone, -9));
+            DrawThickLine(texture, rightX, rightBase, rightX, rightBase + frameHeight, 5,
+                DungeonStoneShadowColor);
             DrawThickLine(texture, leftX, leftBase + frameHeight, rightX, rightBase + frameHeight, 6, stone);
             DrawThickLine(texture, leftX + 2, leftBase + frameHeight + 1,
                 rightX - 2, rightBase + frameHeight + 1, 2, stoneLight);
@@ -387,14 +511,14 @@ namespace ProjectC.Gameplay
                 float diamond = Mathf.Abs((px - 31.5f) / 32f) +
                                 Mathf.Abs((py - 15.5f) / 16f);
                 if (diamond > 1f) continue;
-                texture.SetPixel(px, py, diamond > 0.88f ? tileSeam : baseColor);
+                texture.SetPixel(px, py, diamond > 0.88f ? DungeonSeamColor : baseColor);
             }
 
             int leftBase = risesRight ? 9 : 25;
             int rightBase = risesRight ? 25 : 9;
-            Color32 stone = new Color32(62, 66, 67, 255);
-            Color32 stoneLight = new Color32(86, 88, 83, 255);
-            Color32 mortar = new Color32(28, 31, 32, 255);
+            Color32 stone = DungeonWallColor;
+            Color32 stoneLight = DungeonWallLightColor;
+            Color32 mortar = DungeonSeamColor;
             FillSlantedPanel(
                 texture,
                 13,
@@ -404,7 +528,7 @@ namespace ProjectC.Gameplay
                 42,
                 stone,
                 stoneLight,
-                outline);
+                DungeonOutlineColor);
 
             // 일반 벽과 같은 큰 석재 줄눈. 네모 문짝/손잡이는 의도적으로 그리지 않는다.
             for (int row = 1; row <= 3; row++)
@@ -432,16 +556,16 @@ namespace ProjectC.Gameplay
 
             // 한 칸 옆에서만 읽히는 작은 균열. 금색 발광은 색이 아니라 상호작용 가능성의 보조 신호다.
             Color32 crack = hinted
-                ? new Color32(241, 184, 68, 255)
-                : new Color32(37, 39, 38, 255);
+                ? DungeonAmberCoreColor
+                : DungeonWallShadowColor;
             int centerY = (leftBase + rightBase) / 2 + 21;
             DrawThickLine(texture, 32, centerY + 13, 29, centerY + 7, hinted ? 2 : 1, crack);
             DrawThickLine(texture, 29, centerY + 7, 34, centerY + 2, hinted ? 2 : 1, crack);
             DrawThickLine(texture, 34, centerY + 2, 31, centerY - 4, hinted ? 2 : 1, crack);
             if (hinted)
             {
-                FillRect(texture, 26, centerY + 5, 2, 2, new Color32(255, 220, 112, 255));
-                FillRect(texture, 35, centerY, 2, 2, new Color32(255, 220, 112, 255));
+                FillRect(texture, 26, centerY + 5, 2, 2, DungeonAmberCoreColor);
+                FillRect(texture, 35, centerY, 2, 2, DungeonAmberCoreColor);
             }
 
             texture.Apply(false, true);
@@ -455,12 +579,88 @@ namespace ProjectC.Gameplay
                 ? DungeonVisualContext.From(_dungeon.Height, pos.elevation)
                 : DungeonVisualContext.Preview(pos.elevation);
 
+        private Color32 DungeonVoidColor =>
+            visualCatalog != null ? visualCatalog.dungeonVoid : new Color32(5, 7, 12, 255);
+
+        private Color32 DungeonFogColor =>
+            visualCatalog != null ? visualCatalog.dungeonFog : unknownFogColor;
+
+        private Color32 DungeonFogEdgeColor =>
+            visualCatalog != null ? visualCatalog.dungeonFogEdge : unknownFogEdge;
+
+        private Color32 DungeonOutlineColor =>
+            visualCatalog != null ? visualCatalog.dungeonOutline : outline;
+
+        private Color32 DungeonSeamColor =>
+            visualCatalog != null ? visualCatalog.dungeonSeam : tileSeam;
+
+        private Color32 DungeonStoneColor =>
+            visualCatalog != null ? visualCatalog.dungeonStone : floorTop;
+
+        private Color32 DungeonStoneShadowColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonStoneShadow
+                : new Color32(10, 13, 19, 255);
+
+        private Color32 DungeonStoneLightColor =>
+            visualCatalog != null ? visualCatalog.dungeonStoneLight : raisedTop;
+
+        private Color32 DungeonWallShadowColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonWallShadow
+                : new Color32(10, 13, 19, 255);
+
+        private Color32 DungeonWallColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonWall
+                : new Color32(74, 64, 56, 255);
+
+        private Color32 DungeonWallLightColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonWallLight
+                : new Color32(207, 192, 174, 255);
+
+        private Color32 DungeonMossColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonMoss
+                : new Color32(127, 178, 65, 255);
+
+        private Color32 DungeonWoodColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonWood
+                : new Color32(74, 64, 56, 255);
+
+        private Color32 DungeonWoodLightColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonWoodLight
+                : new Color32(154, 107, 34, 255);
+
+        private Color32 DungeonIronColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonIron
+                : new Color32(10, 13, 19, 255);
+
+        private Color32 DungeonAmberColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonAmber
+                : new Color32(255, 189, 65, 255);
+
+        private Color32 DungeonAmberCoreColor =>
+            visualCatalog != null
+                ? visualCatalog.dungeonAmberCore
+                : new Color32(255, 213, 84, 255);
+
+        private Color32 DungeonMagicColor =>
+            visualCatalog != null ? visualCatalog.dungeonMagic : accent;
+
         private Color32 DungeonSurfaceColor(DungeonVisualContext context)
         {
-            if (context.IsRaised) return raisedTop;
-            return context.DepthIndex > 0
-                ? Shift(lowerTop, -context.DepthIndex * 5)
-                : floorTop;
+            if (visualCatalog != null)
+                return visualCatalog.DungeonSurfaceFor(context);
+
+            if (!context.IsRaised) return floorTop;
+            float amount = Mathf.Clamp01(0.18f + context.LocalHeight * 0.08f);
+            return Blend(floorTop, raisedTop, amount);
         }
 
         private bool DoorPlaneRisesRight(GridPos pos)
@@ -503,9 +703,9 @@ namespace ProjectC.Gameplay
             const int height = 56;
             const int wallHeight = 40;
             var texture = NewTexture(width, height);
-            Color32 stone = new Color32(46, 52, 56, 255);
-            Color32 stoneLight = new Color32(63, 68, 70, 255);
-            Color32 stoneDark = new Color32(30, 36, 41, 255);
+            Color32 stone = DungeonWallColor;
+            Color32 stoneLight = DungeonWallLightColor;
+            Color32 stoneDark = DungeonWallShadowColor;
 
             // 바닥 모서리와 같은 2:1 경사를 가진 평행사변형 벽 패널.
             // 인접 타일의 패널 끝점이 이어져 회전해도 하나의 석벽처럼 보인다.
@@ -522,8 +722,8 @@ namespace ProjectC.Gameplay
                                   (localY >= 26 && px == 16);
                     bool topCap = localY >= wallHeight - 5;
                     Color32 color = edge || mortar
-                        ? outline
-                        : topCap ? stoneLight : ((px + localY) % 11 == 0 ? Shift(stone, 7) : stone);
+                        ? DungeonOutlineColor
+                        : topCap ? stoneLight : ((px + localY) % 11 == 0 ? stoneLight : stone);
                     texture.SetPixel(px, py, color);
                 }
             }
@@ -531,10 +731,10 @@ namespace ProjectC.Gameplay
             if (torch)
             {
                 FillRect(texture, 13, 20, 6, 3, stoneDark);
-                FillRect(texture, 15, 15, 3, 12, new Color32(79, 53, 34, 255));
-                FillRect(texture, 11, 27, 11, 5, new Color32(235, 116, 35, 255));
-                FillRect(texture, 13, 30, 7, 8, new Color32(255, 202, 72, 255));
-                FillRect(texture, 15, 34, 3, 7, new Color32(255, 238, 143, 255));
+                FillRect(texture, 15, 15, 3, 12, DungeonWoodColor);
+                FillRect(texture, 11, 27, 11, 5, DungeonAmberColor);
+                FillRect(texture, 13, 30, 7, 8, DungeonAmberCoreColor);
+                FillRect(texture, 15, 34, 3, 7, DungeonAmberCoreColor);
             }
 
             texture.Apply(false, true);
@@ -1542,6 +1742,19 @@ namespace ProjectC.Gameplay
                 (byte)Mathf.Clamp(color.g + amount, 0, 255),
                 (byte)Mathf.Clamp(color.b + amount, 0, 255),
                 color.a);
+        }
+
+        private static Color32 WithAlpha(Color32 color, byte alpha) =>
+            new Color32(color.r, color.g, color.b, alpha);
+
+        private static Color32 Blend(Color32 from, Color32 to, float amount)
+        {
+            float t = Mathf.Clamp01(amount);
+            return new Color32(
+                (byte)Mathf.RoundToInt(Mathf.Lerp(from.r, to.r, t)),
+                (byte)Mathf.RoundToInt(Mathf.Lerp(from.g, to.g, t)),
+                (byte)Mathf.RoundToInt(Mathf.Lerp(from.b, to.b, t)),
+                (byte)Mathf.RoundToInt(Mathf.Lerp(from.a, to.a, t)));
         }
     }
 }

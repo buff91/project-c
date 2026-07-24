@@ -46,6 +46,30 @@ namespace ProjectC.Tests
             Assert.AreEqual(expectedLocalHeight, context.LocalHeight);
             Assert.AreEqual(expectedLocalHeight > 0, context.IsRaised);
         }
+
+        [TestCase(0, DungeonDepthBand.Shallow)]
+        [TestCase(2, DungeonDepthBand.Shallow)]
+        [TestCase(3, DungeonDepthBand.Mid)]
+        [TestCase(5, DungeonDepthBand.Mid)]
+        [TestCase(6, DungeonDepthBand.Deep)]
+        [TestCase(8, DungeonDepthBand.Deep)]
+        [TestCase(9, DungeonDepthBand.Boss)]
+        public void DepthBand_UsesDungeonProgress_NotElevationOrLocalHeight(
+            int depthIndex,
+            DungeonDepthBand expected)
+        {
+            var height = new DungeonHeightModel(4);
+            int floorIndex = -depthIndex;
+            DungeonVisualContext flat = DungeonVisualContext.From(
+                height,
+                height.Elevation(floorIndex, 0));
+            DungeonVisualContext raised = DungeonVisualContext.From(
+                height,
+                height.Elevation(floorIndex, 1));
+
+            Assert.AreEqual(expected, flat.DepthBand);
+            Assert.AreEqual(expected, raised.DepthBand);
+        }
     }
 
     public class DungeonGeneratorTests

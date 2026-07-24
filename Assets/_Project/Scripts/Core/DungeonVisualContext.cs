@@ -3,6 +3,33 @@ using System;
 namespace ProjectC.Core
 {
     /// <summary>
+    /// 첫 던전의 진행 깊이를 콘텐츠/비주얼 구간으로 묶는다.
+    /// 같은 구간 안의 elevation과 LocalHeight는 이 값에 영향을 주지 않는다.
+    /// </summary>
+    public enum DungeonDepthBand
+    {
+        Shallow,
+        Mid,
+        Deep,
+        Boss
+    }
+
+    public static class DungeonDepthBandRules
+    {
+        public static DungeonDepthBand ForDepth(int depthIndex)
+        {
+            int depth = Math.Max(0, depthIndex);
+            if (depth <= 2) return DungeonDepthBand.Shallow;
+            if (depth <= 5) return DungeonDepthBand.Mid;
+            if (depth <= 8) return DungeonDepthBand.Deep;
+            return DungeonDepthBand.Boss;
+        }
+
+        public static DungeonDepthBand ForFloor(int floorIndex) =>
+            ForDepth(Math.Max(0, -floorIndex));
+    }
+
+    /// <summary>
     /// 던전 타일의 시각적 의미를 해석할 때 쓰는 명시적 공간 컨텍스트.
     /// 진행 깊이(FloorIndex/DepthIndex), 연속 공간 좌표(Elevation),
     /// 같은 던전 층 안의 단차(LocalHeight)를 서로 다른 값으로 제공한다.
@@ -11,6 +38,7 @@ namespace ProjectC.Core
     {
         public int FloorIndex { get; }
         public int DepthIndex { get; }
+        public DungeonDepthBand DepthBand => DungeonDepthBandRules.ForDepth(DepthIndex);
         public int Elevation { get; }
         public int LocalHeight { get; }
         public bool IsRaised => LocalHeight > 0;

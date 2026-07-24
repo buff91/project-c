@@ -64,6 +64,11 @@
   - `TileKind.Floor` = 걸을 수 있는 바닥 타일 타입이며 던전 층(floor)과 다른 개념이다.
 - `DungeonVisualContext`가 위 값을 함께 제공한다. 비주얼 카탈로그는 raw elevation의 부호로
   깊이/단차를 추론하지 않고 `DepthIndex`와 `LocalHeight`를 각각 사용한다.
+  - `DepthBand`는 B1~B3 `Shallow`, B4~B6 `Mid`, B7~B9 `Deep`, B10 `Boss`로 고정한다.
+    깊이별 변주 슬롯을 고르는 축이며 공통 톤 자체를 대체하지 않는다.
+  - 모든 깊이의 기준 표면색은 `project-c-torchstone.gpl` 18색의
+    `ProjectCEnvironmentCatalog` 런타임 역할색이다.
+    같은 구간 안 단차는 `LocalHeight`로만 돌출 두께와 같은 석재군의 명도 신호를 더한다.
 - 구현 규칙: `DungeonHeightModel`이 **elevation 4칸을 던전 한 층**으로 묶는다.
   - B1(floor 0) = e0..e3, B2(floor -1) = e-4..e-1, B3(floor -2) = e-8..e-5.
   - 음수 elevation도 floor/local height 왕복 변환이 정확해야 한다.

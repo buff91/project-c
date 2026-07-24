@@ -78,32 +78,82 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void TileFor_UsesLocalHeightBeforeDungeonDepth()
+        public void TileFor_SelectsDepthBandAndLocalHeightIndependently()
         {
-            Sprite surface = MakeSprite();
-            Sprite raised = MakeSprite();
-            Sprite lower = MakeSprite();
-            _catalog.floor = surface;
-            _catalog.raisedFloor = raised;
-            _catalog.lowerFloor = lower;
+            Sprite shallow = MakeSprite();
+            Sprite shallowRaised = MakeSprite();
+            Sprite mid = MakeSprite();
+            Sprite midRaised = MakeSprite();
+            Sprite deep = MakeSprite();
+            Sprite boss = MakeSprite();
+            _catalog.floor = shallow;
+            _catalog.raisedFloor = shallowRaised;
+            _catalog.midFloor = mid;
+            _catalog.midRaisedFloor = midRaised;
+            _catalog.deepFloor = deep;
+            _catalog.bossFloor = boss;
             var height = new DungeonHeightModel(4);
 
             Assert.AreSame(
-                surface,
+                shallow,
                 _catalog.TileFor(
                     TileKind.Floor,
                     DungeonVisualContext.From(height, elevation: 0)));
             Assert.AreSame(
-                lower,
+                shallowRaised,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -4)));
+                    DungeonVisualContext.From(height, elevation: 1)));
             Assert.AreSame(
-                raised,
+                mid,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -3)),
-                "B2의 e-3은 음수여도 B2 내부 local height 1이므로 raised 아트여야 합니다.");
+                    DungeonVisualContext.From(height, elevation: -12)));
+            Assert.AreSame(
+                midRaised,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -11)));
+            Assert.AreSame(
+                deep,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -24)));
+            Assert.AreSame(
+                boss,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -36)));
+        }
+
+        [Test]
+        public void DungeonSurfaceFor_UsesOneCommonToneAcrossDepths_AndHeightOnlyChangesValue()
+        {
+            var height = new DungeonHeightModel(4);
+            DungeonVisualContext b1 = DungeonVisualContext.From(height, height.Elevation(0, 0));
+            DungeonVisualContext b4 = DungeonVisualContext.From(height, height.Elevation(-3, 0));
+            DungeonVisualContext b7 = DungeonVisualContext.From(height, height.Elevation(-6, 0));
+            DungeonVisualContext b10 = DungeonVisualContext.From(height, height.Elevation(-9, 0));
+            DungeonVisualContext raised = DungeonVisualContext.From(height, height.Elevation(-6, 1));
+
+            Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b1));
+            Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b4));
+            Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b7));
+            Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b10));
+            Assert.AreNotEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(raised));
+        }
+
+        [Test]
+        public void DungeonPalette_DefaultRolesUseTorchstoneTokens()
+        {
+            Assert.AreEqual(new Color32(5, 7, 12, 255), _catalog.dungeonVoid);
+            Assert.AreEqual(new Color32(10, 13, 19, 255), _catalog.dungeonSeam);
+            Assert.AreEqual(new Color32(74, 64, 56, 255), _catalog.dungeonStone);
+            Assert.AreEqual(new Color32(152, 134, 111, 255), _catalog.dungeonStoneLight);
+            Assert.AreEqual(new Color32(207, 192, 174, 255), _catalog.dungeonWallLight);
+            Assert.AreEqual(new Color32(255, 189, 65, 255), _catalog.dungeonAmber);
+            Assert.AreEqual(new Color32(255, 213, 84, 255), _catalog.dungeonAmberCore);
+            Assert.AreEqual(new Color32(79, 167, 160, 255), _catalog.dungeonMagic);
         }
 
         [Test]
