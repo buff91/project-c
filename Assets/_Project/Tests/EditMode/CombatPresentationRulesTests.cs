@@ -62,6 +62,11 @@ namespace ProjectC.Tests
                 CombatPresentationRules.StatusCue(
                     StatusKind.Freeze,
                     StatusApplyResult.CancelledOpposite));
+            Assert.AreEqual(
+                "POISON",
+                CombatPresentationRules.StatusCue(
+                    StatusKind.Poison,
+                    StatusApplyResult.Applied));
         }
     }
 }

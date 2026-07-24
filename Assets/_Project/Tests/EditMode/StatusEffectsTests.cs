@@ -63,6 +63,50 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Poison_TicksDamageIndependently_AndExpires()
+        {
+            var statuses = new StatusEffects();
+            statuses.Apply(StatusKind.Poison, 2);
+
+            StatusTick first = statuses.Tick();
+            Assert.AreEqual(StatusEffects.PoisonDamagePerTurn, first.PoisonDamage);
+            Assert.AreEqual(0, first.BurnDamage, "독은 화상과 별개");
+            Assert.IsFalse(first.Frozen);
+
+            statuses.Tick(); // 남은 1턴 소진
+            Assert.IsFalse(statuses.Has(StatusKind.Poison), "지속 턴 소진 후 해제");
+            Assert.AreEqual(0, statuses.Tick().PoisonDamage);
+        }
+
+        [Test]
+        public void BurnAndPoison_StackTheirDamage()
+        {
+            var statuses = new StatusEffects();
+            statuses.Apply(StatusKind.Burn, 2);
+            statuses.Apply(StatusKind.Poison, 2);
+
+            StatusTick tick = statuses.Tick();
+            Assert.AreEqual(StatusEffects.BurnDamagePerTurn, tick.BurnDamage);
+            Assert.AreEqual(StatusEffects.PoisonDamagePerTurn, tick.PoisonDamage);
+            Assert.AreEqual(tick.BurnDamage + tick.PoisonDamage, tick.TotalDamage);
+        }
+
+        [Test]
+        public void Freeze_DoesNotCancelPoison()
+        {
+            var statuses = new StatusEffects();
+            statuses.Apply(StatusKind.Poison, 3);
+            statuses.Apply(StatusKind.Freeze, 2); // 화상은 상쇄하지만 독은 못 지운다
+
+            Assert.IsTrue(statuses.Has(StatusKind.Poison), "빙결은 독을 지우지 않는다");
+            Assert.IsTrue(statuses.Has(StatusKind.Freeze));
+
+            StatusTick tick = statuses.Tick();
+            Assert.IsTrue(tick.Frozen);
+            Assert.AreEqual(StatusEffects.PoisonDamagePerTurn, tick.PoisonDamage, "얼어도 독 피해는 들어간다");
+        }
+
+        [Test]
         public void Combatant_CarriesStatuses()
         {
             var state = new CombatantState("hero", new GridPos(0, 0, 0), 10, 1);

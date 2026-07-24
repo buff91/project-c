@@ -5,8 +5,9 @@ namespace ProjectC.Core
 {
     public enum StatusKind
     {
-        Burn = 0,   // 화상: 매 턴 틱 피해
-        Freeze = 1  // 빙결: 해당 턴 행동 불가
+        Burn = 0,    // 화상: 매 턴 틱 피해 (빙결과 상쇄)
+        Freeze = 1,  // 빙결: 해당 턴 행동 불가
+        Poison = 2   // 중독: 매 턴 틱 피해. 화염/빙결과 무관하게 독립 지속. (GDD §5.5, 포스트아포 독성)
     }
 
     public enum StatusApplyResult
@@ -20,13 +21,18 @@ namespace ProjectC.Core
     public readonly struct StatusTick
     {
         public readonly int BurnDamage;
+        public readonly int PoisonDamage;
         public readonly bool Frozen;
 
-        public StatusTick(int burnDamage, bool frozen)
+        public StatusTick(int burnDamage, int poisonDamage, bool frozen)
         {
             BurnDamage = burnDamage;
+            PoisonDamage = poisonDamage;
             Frozen = frozen;
         }
+
+        /// <summary>이번 틱의 총 지속 피해(화상+중독) — Gameplay가 한 번에 적용하기 편하도록.</summary>
+        public int TotalDamage => BurnDamage + PoisonDamage;
     }
 
     /// <summary>
@@ -51,6 +57,7 @@ namespace ProjectC.Core
     public sealed class StatusEffects
     {
         public const int BurnDamagePerTurn = 1;
+        public const int PoisonDamagePerTurn = 1;
 
         private readonly Dictionary<StatusKind, int> _remainingTurns =
             new Dictionary<StatusKind, int>();
@@ -86,9 +93,10 @@ namespace ProjectC.Core
         public StatusTick Tick()
         {
             int burnDamage = Has(StatusKind.Burn) ? BurnDamagePerTurn : 0;
+            int poisonDamage = Has(StatusKind.Poison) ? PoisonDamagePerTurn : 0;
             bool frozen = Has(StatusKind.Freeze);
 
-            foreach (StatusKind kind in new[] { StatusKind.Burn, StatusKind.Freeze })
+            foreach (StatusKind kind in new[] { StatusKind.Burn, StatusKind.Freeze, StatusKind.Poison })
             {
                 int remaining = RemainingTurns(kind);
                 if (remaining <= 0) continue;
@@ -96,7 +104,7 @@ namespace ProjectC.Core
                 else _remainingTurns[kind] = remaining - 1;
             }
 
-            return new StatusTick(burnDamage, frozen);
+            return new StatusTick(burnDamage, poisonDamage, frozen);
         }
 
         public void Clear() => _remainingTurns.Clear();

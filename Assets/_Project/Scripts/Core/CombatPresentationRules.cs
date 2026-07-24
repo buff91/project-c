@@ -62,7 +62,15 @@ namespace ProjectC.Core
         {
             if (result == StatusApplyResult.CancelledOpposite)
                 return kind == StatusKind.Burn ? "THAWED" : "QUENCHED";
-            string label = kind == StatusKind.Burn ? "BURN" : "FROZEN";
+
+            string label;
+            switch (kind)
+            {
+                case StatusKind.Burn: label = "BURN"; break;
+                case StatusKind.Freeze: label = "FROZEN"; break;
+                case StatusKind.Poison: label = "POISON"; break;
+                default: label = kind.ToString().ToUpperInvariant(); break;
+            }
             return result == StatusApplyResult.Refreshed ? $"{label} +" : label;
         }
     }
