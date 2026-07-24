@@ -139,8 +139,12 @@
   횃불에 데워진 석재, 토치 골드 물리광, 틸 마법 신호의 18색 마스터 팔레트를 고정하고
   공용 `ProjectCEnvironmentCatalog`에 런타임 역할색으로 미러한다.
   바닥·벽·문·방향형 이동 스프라이트에 같은 톤 매핑을 적용하고 허브 전용 팔레트는 분리한다.
-- [ ] 깊이 구간 변주 — B1~B3 / B4~B6 / B7~B9의 적 조합·방 구조·소품·팔레트 차이.
-- [ ] B10 전조와 보스 공간 — 일반 층과 구분되는 진입 연출·랜드마크·전투 공간 구성.
+- [~] 깊이 구간 변주 — 적 조합·방 구조는 완료(`DungeonBandProfile` 밴드 테이블: Shallow/Mid/Deep로
+  드론 비중·분기/웅덩이 확률·적 수 조정, 기존 `DungeonDepthBandRules` 경계 재사용). **소품·팔레트 변주는 후속**
+  (`DungeonSurfaceFor` 공통 톤 불변 유지, 밴드 스프라이트 슬롯 위에서만). Core 테스트 `DungeonBandProfileTests`.
+- [~] B10 전조와 보스 공간 — 전투 공간(최심층 하행 경비병 무리 생략=1:1 결투감)과 랜드마크 데이터
+  (`DungeonFloorInfo.Landmark`, 뒤쪽 단에 결정론적 배치, `DungeonBossArenaRules`)는 완료+테스트.
+  **랜드마크 스프라이트 렌더·B9 접근 전조 메시지는 후속(Gameplay, Unity 시각 검증 필요).**
 - [ ] 각 변주의 텔레메트리 태그 — 휴식 사용·숨은 방 발견 계측은 완료. 구간별 체류/피해를
   같은 리포트에서 비교 가능하게 한다.
 
@@ -173,13 +177,18 @@
 - **컬럼당 여러 솔리드 구간(천장/공중)** 인식 — B2 위에 B1 바닥이 얹히므로 단순 높이맵이 아니라 span-aware 판정.
 
 단계 (작은 것 → 큰 것, 눈에 보이는 순서 — 뒤 단계가 앞 단계 함수를 재사용):
-- [ ] **1단계 — 전투 LoS 높이 인식**: `HasLineOfSight`를 높이 반영 판정으로 교체. 국소·테스트 용이,
-  화면/FOV 무영향. 원거리 카이팅 밸런스(고지대 이점에 반드시 비용 붙이기) 주의.
+- [x] **1단계 — 전투 LoS 높이 인식**: `HasLineOfSight`를 높이 보간(복셀 차폐) 판정으로 교체 —
+  평면(from.e==to.e)은 기존과 완전히 동일, void=불투명 유지, 같은 컬럼 수직 투시는 2단계로 보류.
+  높이차 사격 개방 + `RangedReachCost`(맨해튼+|Δe|)로 고지대에 사거리 비용 부과(카이팅 억제).
+  Core 테스트 `LineOfSight3DTests` + `FiringPositionTests` 갱신.
 - [ ] **2단계 — 근접·마법 재사용**: 1단계 함수를 근접 단차 타격·마법 판정이 공유. `VerticalOpeningRules` 흡수.
 - [ ] **3단계 — FOV/안개까지 높이 반영**: `GridVisibility` 셰도우캐스팅을 높이 인식으로. 제일 큰 작업, 마지막.
 - 상세 개념: `docs/ARCHITECTURE.md` §5(시야).
 
 관련 향후 과제(방향만, 미확정):
+- [x] 낙하 데미지 **높이 기반화** (층 안 발판 낙하도 데미지) — **구현 완료**: `FallRules.DamageForDrop`
+  (`eff=max(0,dropCells−SafeFallHeight)`, `round((eff/EPF)(eff/EPF+1))`, EPF로 나눠 2/6/12 재현), `TryFall`이
+  실제 칸수로 계산, `SafeFallHeight` 파라미터 자리 확보. `FallRulesTests` 곡선·EPF·층 안 낙하 케이스. 이하 원안:
 - 낙하 데미지 **높이 기반화** (층 안 발판 낙하도 데미지) — **확정 곡선(가속)**: 지금 층 기반 값
   (1층 **2**·2층 **6**·3층 **12**)을 그대로 유지하되 층 안 낙하도 작게 데미지. `eff = max(0, 낙차칸 − SafeFallHeight)`,
   `데미지 = round(eff/4 × (eff/4 + 1))`, 기본 SafeFallHeight `0`(곡선이 1칸을 무료로 만듦) → 1칸 0·2칸 1·1층 2·2층 6·3층 12.
