@@ -89,9 +89,13 @@ namespace ProjectC.Core
             return alreadyActive ? StatusApplyResult.Refreshed : StatusApplyResult.Applied;
         }
 
-        /// <summary>턴 시작 틱: 화상 피해량과 빙결 여부를 반환하고 지속 턴을 줄인다.</summary>
-        public StatusTick Tick()
+        /// <summary>턴 시작 틱: 화상/독 피해와 빙결 여부를 반환하고 지속 턴을 줄인다.</summary>
+        /// <param name="onWetTile">젖은 칸 위인가 — 참이면 화상이 꺼진다(요소 반응: 물+불). (GDD §5.5)</param>
+        public StatusTick Tick(bool onWetTile = false)
         {
+            if (onWetTile && Has(StatusKind.Burn))
+                _remainingTurns.Remove(StatusKind.Burn); // 젖은 칸에서 화상 소화
+
             int burnDamage = Has(StatusKind.Burn) ? BurnDamagePerTurn : 0;
             int poisonDamage = Has(StatusKind.Poison) ? PoisonDamagePerTurn : 0;
             bool frozen = Has(StatusKind.Freeze);

@@ -107,6 +107,32 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void WetTile_ExtinguishesBurn_NoBurnDamageThatTurn()
+        {
+            var statuses = new StatusEffects();
+            statuses.Apply(StatusKind.Burn, 3);
+
+            StatusTick tick = statuses.Tick(onWetTile: true);
+
+            Assert.AreEqual(0, tick.BurnDamage, "젖은 칸에서 화상이 꺼져 피해 없음");
+            Assert.IsFalse(statuses.Has(StatusKind.Burn), "화상 해제");
+        }
+
+        [Test]
+        public void WetTile_DoesNotExtinguishPoisonOrFreeze()
+        {
+            var statuses = new StatusEffects();
+            statuses.Apply(StatusKind.Poison, 3);
+            statuses.Apply(StatusKind.Freeze, 3);
+
+            StatusTick tick = statuses.Tick(onWetTile: true);
+
+            Assert.IsTrue(statuses.Has(StatusKind.Poison), "물은 독을 씻지 못한다");
+            Assert.IsTrue(tick.Frozen);
+            Assert.AreEqual(StatusEffects.PoisonDamagePerTurn, tick.PoisonDamage);
+        }
+
+        [Test]
         public void Combatant_CarriesStatuses()
         {
             var state = new CombatantState("hero", new GridPos(0, 0, 0), 10, 1);
