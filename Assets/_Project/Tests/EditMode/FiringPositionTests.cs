@@ -118,7 +118,8 @@ namespace ProjectC.Tests
         }
 
         [TestCase(0, 0, 0, 10, 0, 0, 4, RangedBlockReason.OutOfRange)]
-        [TestCase(0, 0, 0, 2, 0, 1, 4, RangedBlockReason.ElevationMismatch)]
+        [TestCase(0, 0, 0, 2, 0, 1, 4, RangedBlockReason.Blocked)]     // 높이차 사선 위 빈 칸(void)=불투명
+        [TestCase(0, 0, 0, 3, 0, 1, 3, RangedBlockReason.OutOfRange)]  // 높이차가 사거리 예산을 깎는다(3+1>3)
         [TestCase(0, 0, 0, 3, 0, 0, 4, RangedBlockReason.None)]
         public void DiagnoseRanged_ReportsFirstFailure(
             int sx, int sy, int se, int tx, int ty, int te, int range, RangedBlockReason expected)

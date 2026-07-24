@@ -103,8 +103,7 @@ namespace ProjectC.Core
             if (attacker == null || target == null || map == null || maxRange < 1 ||
                 !attacker.IsAlive || !target.IsAlive)
                 return false;
-            if (attacker.Position.elevation != target.Position.elevation ||
-                attacker.Position.ManhattanTo(target.Position) > maxRange ||
+            if (RangedReachCost(attacker.Position, target.Position) > maxRange ||
                 !HasLineOfSight(map, attacker.Position, target.Position))
                 return false;
 
@@ -112,21 +111,26 @@ namespace ProjectC.Core
             return true;
         }
 
-        /// <summary>이 칸에서 target 을 쏠 수 있는가 — 같은 elevation·사거리·시야선. (SPD식 접근 사격의 판정 코어)</summary>
+        /// <summary>
+        /// 원거리 도달 비용: 수평 맨해튼 + 높이차 1칸당 1. 고지대는 새 사선을 얻지만 사거리
+        /// 예산을 깎아 카이팅을 억제한다(밸런스: 높이 이점엔 비용). Δe=0이면 평면 맨해튼과 같다.
+        /// </summary>
+        public static int RangedReachCost(GridPos from, GridPos target) =>
+            from.ManhattanTo(target) + Math.Abs(from.elevation - target.elevation);
+
+        /// <summary>이 칸에서 target 을 쏠 수 있는가 — 도달 비용·시야선. 높이차는 비용으로 흡수한다.</summary>
         public static bool CanFireFrom(GridMap map, GridPos from, GridPos target, int maxRange)
         {
             return map != null &&
                    from != target &&
-                   from.elevation == target.elevation &&
-                   from.ManhattanTo(target) <= maxRange &&
+                   RangedReachCost(from, target) <= maxRange &&
                    HasLineOfSight(map, from, target);
         }
 
-        /// <summary>원거리가 안 되는 첫 번째 이유. 높이 > 사거리 > 시야선 순으로 진단한다.</summary>
+        /// <summary>원거리가 안 되는 첫 번째 이유. 도달 비용(사거리+높이) > 시야선 순으로 진단한다.</summary>
         public static RangedBlockReason DiagnoseRanged(GridMap map, GridPos from, GridPos target, int maxRange)
         {
-            if (from.elevation != target.elevation) return RangedBlockReason.ElevationMismatch;
-            if (from.ManhattanTo(target) > maxRange) return RangedBlockReason.OutOfRange;
+            if (RangedReachCost(from, target) > maxRange) return RangedBlockReason.OutOfRange;
             if (!HasLineOfSight(map, from, target)) return RangedBlockReason.Blocked;
             return RangedBlockReason.None;
         }
@@ -181,9 +185,17 @@ namespace ProjectC.Core
             return true;
         }
 
+        /// <summary>
+        /// 높이 인식 시야선(3D 1단계). from→to를 2D 브레젠험으로 걷되, 각 중간 칸에서
+        /// 시선의 elevation을 진행 비율로 보간해 그 복셀의 차폐를 본다. void(빈 칸)=불투명 루트를
+        /// 지키고, from.elevation == to.elevation이면 상수 보간이라 기존 평면 판정과 완전히 같다.
+        /// 같은 컬럼(x==to.x && y==to.y) 수직 투시는 아직 열지 않는다(2단계, VerticalOpeningRules).
+        /// </summary>
         public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to)
         {
-            if (map == null || from.elevation != to.elevation) return false;
+            if (map == null) return false;
+            // 같은 칸: 수직 시야선은 2단계로 미룬다 — 같은 elevation일 때만 자기 자신이 보인다.
+            if (from.x == to.x && from.y == to.y) return from.elevation == to.elevation;
 
             int x = from.x;
             int y = from.y;
@@ -193,14 +205,22 @@ namespace ProjectC.Core
             int sy = from.y < to.y ? 1 : -1;
             int error = dx - dy;
 
+            int steps = Math.Max(dx, dy); // 체비셰프 단계 수 = elevation 보간 분모(>=1)
+            int k = 0;
+
             while (x != to.x || y != to.y)
             {
                 int twiceError = error * 2;
                 if (twiceError > -dy) { error -= dy; x += sx; }
                 if (twiceError < dx) { error += dx; y += sy; }
+                k++;
                 if (x == to.x && y == to.y) break;
 
-                TileData tile = map.Get(new GridPos(x, y, from.elevation));
+                int e = (int)Math.Round(
+                    from.elevation + (to.elevation - from.elevation) * (double)k / steps,
+                    MidpointRounding.AwayFromZero);
+
+                TileData tile = map.Get(new GridPos(x, y, e));
                 if (tile == null || tile.BlocksSight) return false;
             }
 

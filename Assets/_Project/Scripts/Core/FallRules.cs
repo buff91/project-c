@@ -27,6 +27,26 @@ namespace ProjectC.Core
         public static int DamageForFloors(int floorsFallen) =>
             floorsFallen <= 0 ? 0 : floorsFallen * (floorsFallen + 1);
 
+        /// <summary>안전 낙하 높이 기본값(0) — 곡선 자체가 1칸을 무료로 만든다. 이후 액터 스탯으로 상향.</summary>
+        public const int DefaultSafeFallHeight = 0;
+
+        /// <summary>
+        /// 낙하 칸수 기반 가속 곡선. eff = max(0, dropCells − safeFallHeight),
+        /// 데미지 = round( (eff/EPF) × (eff/EPF + 1) ). EPF로 나누므로 한 층 낙하값(2/6/12)을
+        /// 그대로 재현하고(EPF=4: 4칸=2·8칸=6·12칸=12), 층 안 낙하(2~3칸)도 작게 반영한다.
+        /// 정수 반올림(round-half-up)이라 float 오차가 없다.
+        /// </summary>
+        public static int DamageForDrop(int dropCells, int elevationsPerFloor,
+            int safeFallHeight = DefaultSafeFallHeight)
+        {
+            if (elevationsPerFloor < 1) throw new ArgumentOutOfRangeException(nameof(elevationsPerFloor));
+            int eff = Math.Max(0, dropCells - safeFallHeight);
+            if (eff <= 0) return 0;
+            long numerator = (long)eff * (eff + elevationsPerFloor);        // eff·(eff+EPF)
+            long denom = 2L * elevationsPerFloor * elevationsPerFloor;      // 2·EPF²
+            return (int)((2 * numerator + (long)elevationsPerFloor * elevationsPerFloor) / denom);
+        }
+
         /// <summary>
         /// from 칸(구멍/허공)에서 낙하를 처리한다. 착지점이 없으면(무저갱) null.
         /// faller 의 위치·HP, 착지점 점유자의 HP 를 여기서 직접 갱신한다 — 연출은 호출부가.
@@ -37,7 +57,8 @@ namespace ProjectC.Core
             CombatantState faller,
             GridPos from,
             int minElevation,
-            IReadOnlyList<CombatantState> others)
+            IReadOnlyList<CombatantState> others,
+            int safeFallHeight = DefaultSafeFallHeight)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (height == null) throw new ArgumentNullException(nameof(height));
@@ -47,8 +68,10 @@ namespace ProjectC.Core
             if (!landingOrNull.HasValue) return null;
 
             GridPos landing = landingOrNull.Value;
+            // 낙뎀은 실제 낙하 칸수(가속 곡선) 기준. FloorsFallen은 연출·텔레메트리용으로 남긴다.
+            int dropCells = from.elevation - landing.elevation;
             int floorsFallen = height.FloorIndex(from.elevation) - height.FloorIndex(landing.elevation);
-            int damage = DamageForFloors(floorsFallen);
+            int damage = DamageForDrop(dropCells, height.ElevationsPerFloor, safeFallHeight);
 
             var result = new FallResult
             {

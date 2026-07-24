@@ -16,6 +16,53 @@ namespace ProjectC.Tests
             Assert.AreEqual(expected, FallRules.DamageForFloors(floors));
         }
 
+        // 가속 곡선(칸 기준, EPF=4): 1칸 무료, 층 낙하(4/8/12칸)는 2/6/12로 DamageForFloors와 일치.
+        [TestCase(0, 0)]
+        [TestCase(1, 0)]
+        [TestCase(2, 1)]
+        [TestCase(3, 1)]
+        [TestCase(4, 2)]
+        [TestCase(5, 3)]
+        [TestCase(8, 6)]
+        [TestCase(12, 12)]
+        public void DamageForDrop_AcceleratingCurve_MatchesFloorValues(int dropCells, int expected)
+        {
+            Assert.AreEqual(expected, FallRules.DamageForDrop(dropCells, 4));
+        }
+
+        [Test]
+        public void DamageForDrop_RespectsSafeFallHeight()
+        {
+            // eff = 4 - 2 = 2 → 1
+            Assert.AreEqual(1, FallRules.DamageForDrop(4, 4, safeFallHeight: 2));
+            Assert.AreEqual(0, FallRules.DamageForDrop(2, 4, safeFallHeight: 2));
+        }
+
+        [Test]
+        public void DamageForDrop_ScalesWithElevationsPerFloor()
+        {
+            // EPF로 나누므로 하드코딩 /4 를 막는다: EPF=5에서 한 층(5칸)=2, 두 층(10칸)=6.
+            Assert.AreEqual(2, FallRules.DamageForDrop(5, 5));
+            Assert.AreEqual(6, FallRules.DamageForDrop(10, 5));
+        }
+
+        [Test]
+        public void TryFall_InFloorDrop_AppliesSmallDamage_ButZeroFloorsFallen()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(2, 2, 3), TileKind.Hole);
+            map.Set(new GridPos(2, 2, 0), TileKind.Floor); // 같은 B1(floor 0) 안, 3칸 아래
+            var faller = new CombatantState("hero", new GridPos(2, 2, 3), 10, 1);
+
+            FallResult result = FallRules.TryFall(
+                map, Height, faller, new GridPos(2, 2, 3), 0, null);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.FloorsFallen, "같은 층 낙하라 층수는 0");
+            Assert.AreEqual(1, result.Damage, "3칸 낙하는 가속 곡선상 1");
+            Assert.AreEqual(9, faller.Hp);
+        }
+
         [Test]
         public void TryFall_LandsOneFloorBelow_AndAppliesDamage()
         {
