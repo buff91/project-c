@@ -174,7 +174,7 @@ tileFloor == activeFloor → visible || explored
 
 ## 7. 절차적 던전 생성 (Procedural Generation)
 
-`DungeonGenerator.Generate(map, w, h, floorCount, elevationsPerFloor=4, seed=1977)` — **BSP도 랜덤워크도 아니다.**
+`DungeonGenerator.Generate(map, w, h, floorCount, elevationsPerFloor=4, seed=1977)` — **아직 BSP도 랜덤워크도 아니다 — 의도된 발판(§7.4).**
 **축 정렬 3방 고정 템플릿 + 1칸 복도**를 유지한 채 단일 `System.Random(seed)`가 모든 치수를 흔든다.
 같은 seed = 같은 던전(그리기 순서가 고정이라 재현 보장).
 
@@ -211,6 +211,22 @@ tileFloor == activeFloor → visible || explored
 - **DungeonBossRules** — `TrySelectSpawn`(입구에서 맨해튼 최대 후보), `CanUseExit`(보스 없거나 처치 시). B10 묘지기.
 - **DungeonCatalog** — `잊힌 지하묘지`(seed 1977, 10층, 묘지기)만 available. `ById`는 없으면 `All[0]` 폴백.
 - **AreaSpawnBonus** = `max(0,(w·h−121)/60)` — 면적 비례 스폰 스케일.
+
+### 7.4 발판 → BSP 전환 (확정 목표)
+
+현재의 3방 고정 템플릿은 **버릴 임시 코드가 아니라, 다층 던전의 생성 불변식을 먼저 못박기 위한 발판**이다.
+최종 목표는 `GDD.md` §5.8의 **진짜 룸-앤-코리더/BSP 생성기**이며(근거: `DungeonLayout.cs:82` 주석,
+`SYSTEMS.md`의 "이후 확장(진짜 룸-앤-코리더/BSP)에서도 이 연결 그래프와 생성 불변식을 유지한다"),
+교체되는 것은 **생성 알고리즘뿐**이다.
+
+- **불변식이 계약이다.** BSP로 갈아끼워도 아래는 `ProceduralDungeonTests`가 그대로 강제해야 한다 —
+  문 밀봉(열면 도달·닫으면 북쪽 방 차단), Hole은 정확히 한 층 아래 walkable 착지(2층 관통 금지),
+  층 간 기둥 겹침으로 착지 컬럼 보존, 적은 문 뒤에만·하행 계단 경비·분기/비밀 방 보상.
+- **난도 핵심은 층-간 정렬.** 각 층을 독립 BSP로 돌리면 "구멍이 아래층 진짜 바닥에 떨어진다"가 공짜로 나오지
+  않는다. 낙하·층간 시야·비밀방·AI가 전부 이 정렬에 의존하므로, BSP 분할 결과 위에서 이 정렬을 보장하는
+  방식이 전환 설계의 핵심이다.
+- **권장 선행 작업**: 불변식 테스트를 제너레이터 구현과 분리(계약 테스트화)해 안전망을 먼저 확보.
+- 추적: `ROADMAP.md` → "향후 기술 과제 — 던전 생성기 BSP/룸-앤-코리더 전환".
 
 ---
 
