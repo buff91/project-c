@@ -17,7 +17,8 @@
 - **엔진/언어**: Unity 2D (Isometric Tilemap) · C# · Unity 6000.5.4f1
 - **플랫폼**: iOS / Android (PC 동시 지원 고려 → 입력 추상화 필수)
 - **개발 인원**: 1인
-- **한 판 목표**: 최심층 도달 (로그라이트 메타 프로그레션, 정통 판타지 테마) — 상세 `docs/ROADMAP.md`.
+- **한 판 목표**: 최심층 도달 (로그라이트 메타 프로그레션, **포스트 아포칼립스/이상 미궁 테마** —
+  판타지에서 전환, 리스킨 진행 예정) — 상세 `docs/ROADMAP.md`, GDD §10 v0.3.
 
 ## 핵심 설계 기둥 (모든 결정의 기준)
 
@@ -74,8 +75,13 @@
 - **숨은 방**: B1~B9 중 seed로 고른 3개 층에 `SecretDoor` 막다른 방이 생긴다. 공개 전에는
   벽처럼 이동·FOV를 막고, 인접 균열의 `수상한 벽 조사` 또는 폭발로 `SecretPassage`가 된다.
   `SecretRoomRules`와 `DungeonFloorInfo.SecretDoor/SecretReward`를 우회해 별도 판정을 만들지 않는다.
-- **아트 방향**: 허브는 `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`를
-  기준으로 자주빛 석재 + 호박색 모닥불/횃불 + 청록 포탈의 웜 다크 판타지 디오라마를 사용한다.
+- **아트 방향(전환 중)**: 테마를 **포스트 아포칼립스/이상 미궁**으로 전환 확정(GDD §10 v0.3).
+  방향·레퍼런스 SSOT는 `docs/art-direction/project-c-postapoc-art-direction-v1.md`, 리스킨 표는
+  `...postapoc-reskin-table-v1.md`. 팔레트 *원리*(청흑 바탕+국소 호박 광원+신호색 1개)는 유지하고
+  재료 어휘(석재→콘크리트/벽돌/녹, 횃불→비상등/네온, 마법 포탈→이상 균열)만 바꾼다.
+  **현재 구현은 아직 판타지 웜 다크 디오라마**다 — 허브는
+  `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
+  기준으로 자주빛 석재 + 호박색 모닥불/횃불 + 청록 포탈을 사용한다.
   `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
   FOV·상태 색은 건드리지 않는다. 광원 타일과 허브 소품은 시점 회전 때 같은 GridPos로 다시 투영한다.
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
