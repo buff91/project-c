@@ -299,6 +299,7 @@ namespace ProjectC.Core
     {
         public readonly List<CombatantState> Damaged = new List<CombatantState>();
         public readonly List<GridPos> CollapsedWeakFloors = new List<GridPos>();
+        public readonly List<GridPos> ShatteredWindows = new List<GridPos>();
     }
 
     /// <summary>
@@ -352,7 +353,19 @@ namespace ProjectC.Core
             for (int dy = -BlastRadius; dy <= BlastRadius; dy++)
             {
                 GridPos pos = center.Offset(dx, dy);
-                if (map.Get(pos)?.kind != TileKind.WeakFloor) continue;
+                TileData tile = map.Get(pos);
+                if (tile == null) continue;
+
+                // 폭발은 유리를 깬다(포스트아포: 폭풍·파편) — 창문은 통로가 된다. (GDD §5.2)
+                if (tile.CanBreak)
+                {
+                    if (WindowRules.TryBreak(map, pos))
+                        result.ShatteredWindows.Add(pos);
+                    continue;
+                }
+
+                // (죽었거나 비어서) 아무도 없는 약한 바닥은 구멍으로 붕괴한다.
+                if (tile.kind != TileKind.WeakFloor) continue;
                 if (IsOccupiedByLiving(combatants, pos)) continue;
                 map.Set(pos, TileKind.Hole);
                 result.CollapsedWeakFloors.Add(pos);

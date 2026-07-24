@@ -114,6 +114,22 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Detonate_ShattersWindowsInBlast_ButNotOutside()
+        {
+            GridMap map = FlatMap(9);
+            var inBlast = new GridPos(4, 5, 0);   // 중심(4,4) 3×3 안
+            var outside = new GridPos(8, 8, 0);
+            map.Set(inBlast, TileKind.Window);
+            map.Set(outside, TileKind.Window);
+
+            BombResult result = BombRules.Detonate(map, new GridPos(4, 4, 0), null, damage: 3);
+
+            Assert.AreEqual(TileKind.WindowBroken, map.Get(inBlast).kind, "블라스트 안 창문은 깨져 통로가 된다");
+            CollectionAssert.Contains(result.ShatteredWindows, inBlast);
+            Assert.AreEqual(TileKind.Window, map.Get(outside).kind, "블라스트 밖 창문은 온전");
+        }
+
+        [Test]
         public void Detonate_KeepsWeakFloor_UnderLivingCombatant()
         {
             GridMap map = FlatMap(9);
