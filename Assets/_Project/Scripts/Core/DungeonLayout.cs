@@ -306,6 +306,16 @@ namespace ProjectC.Core
             map.Set(ladderTop, TileKind.Ladder);
             map.Connect(ladderBottom, ladderTop);
 
+            // 건물형 수직성(v0.3): 깊은 층(Mid+)의 사다리 위에 +2단 캐치워크 한 칸(위치·연출 잠정).
+            // 높이 인식 FOV가 실제로 차폐를 발동하는 큰 단차이자 내려치기·사격 고지대. 사다리
+            // 링크로 도달 가능 → 도달성 불변식 유지. RNG 미사용이라 생성 스트림도 불변.
+            if (-p.FloorIndex >= 3)
+            {
+                var catwalk = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 2);
+                map.Set(catwalk, TileKind.Floor);
+                map.Connect(ladderTop, catwalk);
+            }
+
             if (p.Up.HasValue) map.Set(p.Up.Value, TileKind.StairsUp);
             if (p.Down.HasValue) map.Set(p.Down.Value, TileKind.StairsDown);
         }
