@@ -20,7 +20,7 @@
         <ui:VisualElement class="status-zone hub-status-zone">
             <ui:VisualElement class="status-chip feedback-chip">
                 <ui:VisualElement class="chip-dot feedback-dot" />
-                <ui:Label name="hub-status" text="상인·영웅·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
+                <ui:Label name="hub-status" text="상인·대장간·의뢰·영웅·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -87,6 +87,41 @@
                     <ui:Label name="hub-shop-feedback" text="" class="hub-feedback hub-shop-feedback" />
                     <ui:Button name="hub-shop-buy" text="구매" class="settings-done" />
                 </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-smith-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="대장간" class="settings-title" />
+                        <ui:Label text="영구 장비 강화 — 판을 넘어 유지된다" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="hub-header-right">
+                        <ui:Label name="hub-smith-gold" text="$0" class="hub-modal-gold" />
+                        <ui:Button name="hub-smith-close" text="×" class="settings-close" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="hub-smith-list" class="hub-smith-list" />
+                <ui:VisualElement class="settings-actions">
+                    <ui:Label name="hub-smith-feedback" text="" class="hub-feedback" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hub-bounty-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="의뢰 게시판" class="settings-title" />
+                        <ui:Label text="생환하면 완료한 계약의 보상을 받는다" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="hub-header-right">
+                        <ui:Label name="hub-bounty-gold" text="$0" class="hub-modal-gold" />
+                        <ui:Button name="hub-bounty-close" text="×" class="settings-close" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="hub-bounty-list" class="hub-bounty-list" />
             </ui:VisualElement>
         </ui:VisualElement>
 

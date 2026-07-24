@@ -57,6 +57,13 @@ namespace ProjectC.Gameplay
             new System.Collections.Generic.Dictionary<ItemKind, Button>();
         private readonly System.Collections.Generic.Dictionary<ItemKind, Label> _shopCounts =
             new System.Collections.Generic.Dictionary<ItemKind, Label>();
+        private VisualElement _smithModal;
+        private VisualElement _smithList;
+        private Label _smithGold;
+        private Label _smithFeedback;
+        private VisualElement _bountyModal;
+        private VisualElement _bountyList;
+        private Label _bountyGold;
         private VisualElement _heroModal;
         private Label _heroName;
         private Label _heroDesc;
@@ -121,6 +128,13 @@ namespace ProjectC.Gameplay
             _shopName = root.Q<Label>("hub-shop-name");
             _shopDesc = root.Q<Label>("hub-shop-desc");
             _shopBuy = root.Q<Button>("hub-shop-buy");
+            _smithModal = root.Q<VisualElement>("hub-smith-modal");
+            _smithList = root.Q<VisualElement>("hub-smith-list");
+            _smithGold = root.Q<Label>("hub-smith-gold");
+            _smithFeedback = root.Q<Label>("hub-smith-feedback");
+            _bountyModal = root.Q<VisualElement>("hub-bounty-modal");
+            _bountyList = root.Q<VisualElement>("hub-bounty-list");
+            _bountyGold = root.Q<Label>("hub-bounty-gold");
             _heroModal = root.Q<VisualElement>("hub-hero-modal");
             _heroName = root.Q<Label>("hub-hero-name");
             _heroDesc = root.Q<Label>("hub-hero-desc");
@@ -143,6 +157,8 @@ namespace ProjectC.Gameplay
             _toStash = root.Q<Button>("hub-to-stash");
 
             Bind(root.Q<Button>("hub-shop-close"), CloseModals);
+            Bind(root.Q<Button>("hub-smith-close"), CloseModals);
+            Bind(root.Q<Button>("hub-bounty-close"), CloseModals);
             Bind(root.Q<Button>("hub-hero-close"), CloseModals);
             Bind(root.Q<Button>("hub-stash-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-close"), CloseModals);
@@ -256,6 +272,8 @@ namespace ProjectC.Gameplay
             CloseModals();
             if (id == "merchant") { RefreshShop(); SelectShopItem(_shopSelected); _shopModal?.AddToClassList("is-open"); }
             else if (id == "stash") OpenStash();
+            else if (id == "smith") OpenSmith();
+            else if (id == "bounty") OpenBounty();
             else if (id.StartsWith("hero:")) OpenHero(id.Substring(5));
             else if (id == "dungeon-select") OpenDungeonSelect();
         }
@@ -272,6 +290,8 @@ namespace ProjectC.Gameplay
             _dungeonModal?.RemoveFromClassList("is-open");
             _menuModal?.RemoveFromClassList("is-open");
             _shopModal?.RemoveFromClassList("is-open");
+            _smithModal?.RemoveFromClassList("is-open");
+            _bountyModal?.RemoveFromClassList("is-open");
             _heroModal?.RemoveFromClassList("is-open");
             _stashModal?.RemoveFromClassList("is-open");
         }
@@ -407,6 +427,140 @@ namespace ProjectC.Gameplay
                 _shopFeedback.text = $"{ItemCatalog.DisplayName(_shopSelected)} 구매 완료";
             RefreshShop();
             SelectShopItem(_shopSelected);
+            UpdateGoldLabel();
+        }
+
+        // ── 대장간 ───────────────────────────────────────────
+
+        private void OpenSmith()
+        {
+            _meta = MetaStore.LoadOrNew();
+            RefreshSmith();
+            _smithModal?.BringToFront();
+            _smithModal?.AddToClassList("is-open");
+        }
+
+        private void RefreshSmith()
+        {
+            if (_smithGold != null) _smithGold.text = ItemCatalog.FormatGold(_meta.gold);
+            if (_smithFeedback != null) _smithFeedback.text = "";
+            BuildSmithRows();
+            UpdateGoldLabel();
+        }
+
+        private void BuildSmithRows()
+        {
+            if (_smithList == null) return;
+            _smithList.Clear();
+
+            foreach (SmithyUpgrade upgrade in SmithyRules.All)
+            {
+                int tier = _meta.GetSmithyTier(upgrade.Id);
+                bool maxed = tier >= upgrade.MaxTier;
+                int cost = SmithyRules.NextTierCost(_meta, upgrade.Id);
+
+                var row = new VisualElement { name = $"smith-row-{upgrade.Id}" };
+                row.AddToClassList("hub-smith-row");
+
+                var info = new VisualElement();
+                info.AddToClassList("hub-smith-info");
+                var title = new Label($"{upgrade.DisplayName}  ·  Lv {tier}/{upgrade.MaxTier}");
+                title.AddToClassList("hub-row-title");
+                var desc = new Label(upgrade.Description);
+                desc.AddToClassList("hub-row-desc");
+                info.Add(title);
+                info.Add(desc);
+                row.Add(info);
+
+                string upgradeId = upgrade.Id;
+                var buy = new Button(() => BuyUpgrade(upgradeId))
+                {
+                    name = $"smith-buy-{upgrade.Id}",
+                    text = maxed ? "최대 강화" : $"강화 ({ItemCatalog.FormatGold(cost)})"
+                };
+                buy.AddToClassList("settings-done");
+                buy.AddToClassList("hub-smith-buy");
+                buy.SetEnabled(!maxed && _meta.gold >= cost);
+                row.Add(buy);
+
+                _smithList.Add(row);
+            }
+        }
+
+        private void BuyUpgrade(string upgradeId)
+        {
+            SmithyPurchaseResult result = SmithyRules.TryPurchase(_meta, upgradeId);
+            SmithyUpgrade upgrade = SmithyRules.ById(upgradeId);
+            string label = upgrade != null ? upgrade.DisplayName : upgradeId;
+
+            switch (result)
+            {
+                case SmithyPurchaseResult.Success:
+                    MetaStore.Save(_meta);
+                    if (_smithFeedback != null) _smithFeedback.text = $"{label} 강화 완료";
+                    break;
+                case SmithyPurchaseResult.InsufficientGold:
+                    if (_smithFeedback != null)
+                        _smithFeedback.text = "소지금이 부족하다 — 생환해서 벌어오자";
+                    break;
+                case SmithyPurchaseResult.MaxedOut:
+                    if (_smithFeedback != null) _smithFeedback.text = $"{label}은(는) 이미 최대 강화";
+                    break;
+            }
+
+            BuildSmithRows();
+            if (_smithGold != null) _smithGold.text = ItemCatalog.FormatGold(_meta.gold);
+            UpdateGoldLabel();
+        }
+
+        // ── 의뢰 게시판 ──────────────────────────────────────
+
+        private void OpenBounty()
+        {
+            _meta = MetaStore.LoadOrNew();
+            if (!BountyRules.HasActiveBounties(_meta))
+            {
+                BountyRules.AssignOffers(_meta, System.Environment.TickCount);
+                MetaStore.Save(_meta);
+            }
+            RefreshBounty();
+            _bountyModal?.BringToFront();
+            _bountyModal?.AddToClassList("is-open");
+        }
+
+        private void RefreshBounty()
+        {
+            if (_bountyGold != null) _bountyGold.text = ItemCatalog.FormatGold(_meta.gold);
+            if (_bountyList == null) return;
+            _bountyList.Clear();
+
+            List<BountyDefinition> active = BountyRules.ActiveBounties(_meta);
+            if (active.Count == 0)
+            {
+                var empty = new Label("걸린 의뢰가 없다. 다음 원정에서 새 계약이 걸린다.");
+                empty.AddToClassList("hub-bounty-empty");
+                _bountyList.Add(empty);
+            }
+
+            foreach (BountyDefinition bounty in active)
+            {
+                var row = new VisualElement { name = $"bounty-row-{bounty.Id}" };
+                row.AddToClassList("hub-bounty-row");
+
+                var title = new Label(bounty.DisplayName);
+                title.AddToClassList("hub-row-title");
+                var desc = new Label(bounty.Description);
+                desc.AddToClassList("hub-row-desc");
+                var reward = new Label(
+                    $"보상 {ItemCatalog.FormatGold(bounty.RewardGold)} · 생환 시 지급");
+                reward.AddToClassList("hub-bounty-reward");
+
+                row.Add(title);
+                row.Add(desc);
+                row.Add(reward);
+                _bountyList.Add(row);
+            }
+
             UpdateGoldLabel();
         }
 

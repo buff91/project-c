@@ -31,6 +31,14 @@ namespace ProjectC.Core
         public int loadoutPowders;
         public int loadoutFrostShards;
 
+        // 대장간 영구 강화 티어. 판을 넘어 유지된다 (메타 프로그레션).
+        public int weaponTier;
+        public int armorTier;
+        public int toolTier;
+
+        // 현재 원정에 걸린 의뢰 id 목록. 생환/승리 정산 때 비워지고 허브에서 다시 채운다.
+        public string[] activeBountyIds = new string[0];
+
         public int GetCount(ItemKind kind)
         {
             switch (kind)
@@ -152,6 +160,29 @@ namespace ProjectC.Core
             unlockedHeroes?.CopyTo(next, 0);
             next[next.Length - 1] = heroId;
             unlockedHeroes = next;
+        }
+
+        /// <summary>대장간 강화 티어 조회. 알 수 없는 id 는 0. (SmithyRules 가 유일한 소유자)</summary>
+        public int GetSmithyTier(string upgradeId)
+        {
+            switch (upgradeId)
+            {
+                case "weapon": return weaponTier;
+                case "armor": return armorTier;
+                case "tools": return toolTier;
+                default: return 0;
+            }
+        }
+
+        public void SetSmithyTier(string upgradeId, int tier)
+        {
+            int clamped = tier < 0 ? 0 : tier;
+            switch (upgradeId)
+            {
+                case "weapon": weaponTier = clamped; break;
+                case "armor": armorTier = clamped; break;
+                case "tools": toolTier = clamped; break;
+            }
         }
     }
 }

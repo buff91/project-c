@@ -357,9 +357,11 @@ namespace ProjectC.Gameplay
             if (Application.isPlaying)
             {
                 _hero = HeroRoster.ById(continueData != null ? continueData.heroId : HeroSelection.SelectedId);
-                playerMaxHp = _hero.MaxHp;
-                playerAttack = _hero.Attack;
-                rangedAttackDamage = _hero.RangedDamage;
+                // 대장간 영구 강화를 영웅 기본 스탯 위에 얹는다 (티어 0 이면 기본값 그대로).
+                MetaSaveData heroMeta = MetaStore.LoadOrNew();
+                playerMaxHp = SmithyRules.EffectiveMaxHp(_hero, heroMeta);
+                playerAttack = SmithyRules.EffectiveAttack(_hero, heroMeta);
+                rangedAttackDamage = SmithyRules.EffectiveRangedDamage(_hero, heroMeta);
             }
 
             if (Application.isPlaying && _moveRoutine != null)
@@ -1453,7 +1455,11 @@ namespace ProjectC.Gameplay
                 if (hubMode && _hubInteractables.TryGetValue(candidate, out string hubId))
                 {
                     target = candidate;
-                    label = hubId == "merchant" ? "상인" : hubId == "stash" ? "창고" : "영웅";
+                    label = hubId == "merchant" ? "상인"
+                        : hubId == "stash" ? "창고"
+                        : hubId == "smith" ? "대장간"
+                        : hubId == "bounty" ? "의뢰 게시판"
+                        : "영웅";
                     return true;
                 }
                 if (!hubMode && TryGetRestSiteAt(candidate, out RestSiteAgent restSite))
@@ -2544,6 +2550,12 @@ namespace ProjectC.Gameplay
             CreateHubProp("Stash", stash != null ? stash : GetHubPropSprite("stash"), HubLayout.Stash);
             _hubInteractables[HubLayout.Stash] = "stash";
 
+            CreateHubProp("Smith", GetHubPropSprite("smith"), HubLayout.Smith);
+            _hubInteractables[HubLayout.Smith] = "smith";
+
+            CreateHubProp("BountyBoard", GetHubPropSprite("bounty"), HubLayout.BountyBoard);
+            _hubInteractables[HubLayout.BountyBoard] = "bounty";
+
             for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
             {
                 HeroArchetype hero = HeroRoster.All[i];
@@ -2782,10 +2794,17 @@ namespace ProjectC.Gameplay
                 else meta.AddCount(kind, count);
             }
             meta.gold += gold;
+
+            // 의뢰 정산: 무사 귀환한 계약의 완료분 보상을 지급한다 (활성 의뢰가 없으면 무동작).
+            BountyClaimResult bounties = BountyRules.Settle(meta, _runTelemetry);
             MetaStore.Save(meta);
             _inventory.Clear();
             InventoryChanged?.Invoke();
-            return gold;
+            if (bounties.CompletedCount > 0)
+                Debug.Log(
+                    $"[Bounty] 의뢰 완료 {bounties.CompletedCount}건 · " +
+                    $"+{ItemCatalog.FormatGold(bounties.TotalReward)}");
+            return gold + bounties.TotalReward;
         }
 
         /// <summary>
