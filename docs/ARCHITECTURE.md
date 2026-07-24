@@ -283,14 +283,27 @@ tileFloor == activeFloor → visible || explored
 - **엄격 2단계**(에너지/속도 없음): `Player` → `Enemies`. `TurnNumber`는 적 페이즈 완료 시 +1.
 - 전체 파이프라인: **활성화 → 상태이상 틱 → Decide → 실행**. 휴면(컬링) 중이면 틱도 멈춘다.
 
-### 9.4 몬스터 AI (MonsterBrain)
-- 상태기계 `MonsterMood { Patrol, Chase, Flee }`. `Decide`는 **의도**(`Wait/Step/OpenDoor/Attack`)만 반환.
-- **지각 = 플레이어 FOV의 대칭**(`SeenByPlayer` 콜백) + 어그로 반경(체비셰프). `HasLineOfSight`를 안 쓰는 이유:
-  elevation이 다르면 false라 계단 위 플레이어에 눈이 멀기 때문.
-- **Chase**: 인접이면 Attack, 아니면 공격 위치로 경로(보이면)/마지막 목격점으로 수색(안 보이면).
-  **추격 중에만 닫힌 문 개방**(`OpenDoor`). 크로스-층 스텝은 방어적으로 거부.
-- **Flee**: `FleeThreshold`(HP 비율) 아래면 플레이어에서 체비셰프 최대화로 후퇴, 궁지면 반격.
-- **Patrol**: 결정적 RNG(항상 1회 draw), `PatrolRadius` 내 walkable 칸으로 배회.
+### 9.4 몬스터 AI (MonsterBrain) — Behavior Tree
+- **아키텍처: Behavior Tree** (2026-07-25, 손으로 쓴 FSM에서 이관 — 콘텐츠가 늘어도 분기 가독성 유지).
+  경량 프리미티브 `BehaviorNode/Selector/Condition/Leaf`(즉시 결정형: `Tick` → 행동 or null,
+  `BehaviorTree.cs`). `Decide`는 우선순위 Selector 트리를 돌고 **의도**(`Wait/Step/OpenDoor/Attack`)만
+  반환. 새 행동은 `When/Do` 가지로 선언적으로 추가한다. FSM 상태 `MonsterMood { Patrol, Chase, Flee }`는
+  블랙보드로 유지(트리의 부수효과 노드가 매 틱 갱신). 공개 API·동작은 이관 전후 완전 동일(테스트가 오라클).
+- **트리 우선순위**: 사망→대기 · **불붙으면 물로 도주해 소화**(정상보다 우선) · 지각/기분 갱신 · 도주 · 추격 · 순찰.
+- **지각 = 플레이어 FOV의 대칭**(`SeenByPlayer` 콜백) + 어그로 반경(체비셰프). 높이 인식 `HasLineOfSight`가
+  아니라 FOV 대칭을 쓰는 이유: 계단/단차 위 플레이어에도 지각이 끊기지 않게.
+- **Chase**: 인접(높이차 ≤ `MeleeReachHeight` 단차 포함)이면 Attack, 아니면 공격 위치 경로(보이면)/마지막
+  목격점 수색(안 보이면). **추격 중에만 닫힌 문 개방**. 크로스-층 스텝 거부.
+- **Flee**: `FleeThreshold` 아래면 체비셰프 최대화 후퇴, 궁지(안전한 후퇴 없음)면 반격.
+- **Patrol**: 결정적 RNG(항상 1회 draw), `PatrolRadius` 내 배회.
+- **위험 회피(공통)**: 순찰·도주·추격 경로 모두 **약한 바닥(밟으면 붕괴→낙하)을 자진 회피** — 낙하는
+  플레이어의 밀기/넉백으로 유도하는 게 정석(GDD §5.3).
+
+> **프레젠테이션 아키텍처 결정 (2026-07-25, 구현은 Unity 세션):**
+> - **캐릭터 애니메이션 = Aseprite 클립 파이프라인** (현행 절차적 트윈 `CombatStatusFxAnimator`를 정식 `.aseprite`
+>   애니 프레임 → `AnimationClip` → Animator로 대체). 상태 FX 정도의 미세 연출은 절차적 유지 가능.
+> - **UI 인터랙션 = DOTween** — 단 화면 UI는 **UI Toolkit**이라 DOTween이 직접 안 붙는다: UGUI/월드 UI엔
+>   DOTween, UI Toolkit VisualElement엔 `experimental.animation`/USS transition을 쓴다.
 
 ### 9.5 로스터·활성화
 - **MonsterRoster** — 고블린(HP5·공2·도주0.3)/해골(HP8·공2·비도주)/슬라임(HP3·공1·넓은 배회)/묘지기(HP20·공3).
