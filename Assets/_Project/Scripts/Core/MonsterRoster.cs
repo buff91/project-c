@@ -29,17 +29,20 @@ namespace ProjectC.Core
                 aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
 
         /// <summary>
-        /// 깊이 비례 혼합 (depth 0 = 최상층 B1): 얕은 층은 슬러지/약탈자,
-        /// 깊어질수록 경비 드론(Skeleton) 비중이 커진다. (GDD §5.7 난이도·깊이 연동)
+        /// 깊이 구간(밴드)별 혼합 (depth 0 = 최상층 B1). 얕은 밴드는 슬러지/약탈자만,
+        /// 깊어질수록 경비 드론(Skeleton) 비중이 커진다. 가중치는 <see cref="DungeonBandProfiles"/>가
+        /// 소유한다(밴드 경계 SSOT는 <see cref="DungeonDepthBandRules"/>). 롤은 한 번만 —
+        /// 같은 seed·depth는 항상 같은 결과. (GDD §5.7 난이도·깊이 연동)
         /// </summary>
         public static MonsterArchetype PickForDepth(int depth, Random random)
         {
             if (random == null) throw new ArgumentNullException(nameof(random));
 
-            int roll = random.Next(0, 100);
-            if (depth <= 0) return roll < 50 ? Slime : Goblin;
-            if (depth == 1) return roll < 30 ? Slime : roll < 75 ? Goblin : Skeleton;
-            return roll < 15 ? Slime : roll < 55 ? Goblin : Skeleton;
+            DungeonBandProfile profile = DungeonBandProfiles.ForDepth(depth);
+            int roll = random.Next(0, profile.TotalWeight);
+            if (roll < profile.SlimeWeight) return Slime;
+            if (roll < profile.SlimeWeight + profile.GoblinWeight) return Goblin;
+            return Skeleton;
         }
     }
 }

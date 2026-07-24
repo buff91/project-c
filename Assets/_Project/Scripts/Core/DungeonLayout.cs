@@ -11,6 +11,7 @@ namespace ProjectC.Core
         public GridPos? DownStairs { get; }
         public GridPos? Hole { get; }
         public GridPos? RestSite { get; }
+        public GridPos? Landmark { get; }
         public IReadOnlyList<GridPos> EnemySpawns { get; }
         public IReadOnlyList<ItemSpawn> Items { get; }
         public IReadOnlyList<GridPos> Doors { get; }
@@ -34,7 +35,8 @@ namespace ProjectC.Core
             IReadOnlyList<GridPos> doors,
             GridPos? secretDoor = null,
             IReadOnlyList<GridPos> secretRoomTiles = null,
-            GridPos? secretReward = null)
+            GridPos? secretReward = null,
+            GridPos? landmark = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -49,6 +51,7 @@ namespace ProjectC.Core
             SecretDoor = secretDoor;
             SecretRoomTiles = secretRoomTiles ?? Array.Empty<GridPos>();
             SecretReward = secretReward;
+            Landmark = landmark;
         }
     }
 
@@ -138,8 +141,9 @@ namespace ProjectC.Core
             {
                 PlaceRestSite(map, random, plan, floorCount);
                 PlacePuddle(map, random, plan);
-                PickEnemySpawns(map, random, plan);
+                PickEnemySpawns(map, random, plan, floorCount);
                 PlaceItems(map, random, plan);
+                PlaceBossLandmark(map, plan, floorCount);
             }
 
             var floors = new List<DungeonFloorInfo>(floorCount);
@@ -157,7 +161,8 @@ namespace ProjectC.Core
                     plan.Doors,
                     plan.SecretDoor,
                     plan.SecretRoomTiles,
-                    plan.SecretReward));
+                    plan.SecretReward,
+                    plan.Landmark));
             }
 
             return new DungeonLayout(heightModel, floors);
@@ -210,7 +215,9 @@ namespace ProjectC.Core
             p.Doors.Add(new GridPos(p.VerticalX, p.LowerMaxY + 1, p.BaseElevation));
 
             // 확률적 막다른 분기 방: 북서쪽 빈 공간이 충분할 때만 문 하나로 매달린다.
-            bool wantBranch = forceSecretBranch || random.Next(0, 2) == 1;
+            // 분기 확률은 깊이 밴드별로 다르다(깊을수록 파밍 방이 잦다).
+            int branchChance = DungeonBandProfiles.ForDepth(depth).BranchChancePercent;
+            bool wantBranch = forceSecretBranch || random.Next(0, 100) < branchChance;
             int branchDoorCap = Math.Min(p.LeftMaxX, p.UpperMinX - 2);
             if (wantBranch && p.UpperMinX >= 3 && branchDoorCap >= 0)
             {
@@ -404,7 +411,7 @@ namespace ProjectC.Core
         /// 적 스폰은 문 뒤(북쪽 방)에만 둔다 — 입구·동쪽 방에 두면 층 진입 즉시 인접 전투가
         /// 강제되고, "문을 열기 전에는 차단" 불변식도 깨진다. 수는 깊이에 따라 1~4.
         /// </summary>
-        private static void PickEnemySpawns(GridMap map, Random random, FloorPlan p)
+        private static void PickEnemySpawns(GridMap map, Random random, FloorPlan p, int floorCount)
         {
             var candidates = new List<GridPos>();
             for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
@@ -418,7 +425,8 @@ namespace ProjectC.Core
             }
 
             int depth = -p.FloorIndex;
-            int desired = 1 + random.Next(0, 2) + depth / 2 + AreaSpawnBonus(p.Width, p.Height);
+            int bandExtra = DungeonBandProfiles.ForDepth(depth).ExtraEnemies;
+            int desired = 1 + random.Next(0, 2) + depth / 2 + bandExtra + AreaSpawnBonus(p.Width, p.Height);
             p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
 
             // 하행 계단 경비병: 완주 동선(남쪽 방→하행 계단)이 전투를 완전히
@@ -426,7 +434,9 @@ namespace ProjectC.Core
             // 수는 1+depth 로 깊을수록 무거운 관문. 샤프트 교대 규칙상 하행 방은 도착
             // 방과 항상 다르고 입구에서 수평 문 뒤라 "문 열기 전 차단" 불변식 유지.
             // (밸런스 시뮬 600판 근거 — 직행 정책 완주율 94%)
-            if (p.Down.HasValue)
+            // 최심층(아레나)은 경비병 무리 대신 보스 1:1을 위해 하행 경비를 생략한다.
+            bool arenaFloor = DungeonBossArenaRules.IsArenaFloor(depth, floorCount);
+            if (p.Down.HasValue && !arenaFloor)
             {
                 bool eastRoom = p.Down.Value.x != 1;
                 int guardMinX = eastRoom ? p.RightMinX : 0;
@@ -452,13 +462,38 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 최심층 보스 아레나의 랜드마크(제단) 한 칸. 뒤쪽 올라온 단(dais)의 후면-중앙
+        /// Floor 타일을 결정론적으로 고른다 — RNG를 쓰지 않아 생성 스트림을 흔들지 않는다.
+        /// 적·아이템은 낮은 북쪽 방(BaseElevation)에만 스폰되므로 올라온 단과 겹치지 않는다.
+        /// </summary>
+        private static void PlaceBossLandmark(GridMap map, FloorPlan p, int floorCount)
+        {
+            if (!DungeonBossArenaRules.IsArenaFloor(-p.FloorIndex, floorCount)) return;
+
+            for (int y = p.Height - 1; y >= p.RaisedY; y--)
+            for (int dx = 0; dx <= p.UpperMaxX - p.UpperMinX; dx++)
+            {
+                foreach (int x in new[] { p.StairX - dx, p.StairX + dx })
+                {
+                    if (x < p.UpperMinX || x > p.UpperMaxX) continue;
+                    var pos = new GridPos(x, y, p.BaseElevation + 1);
+                    if (map.Get(pos)?.kind != TileKind.Floor) continue;
+                    p.Landmark = pos;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
         /// 물 웅덩이 배치 (GDD §5.5 — 물+빙결 광역 결빙의 무대).
         /// 층마다 절반 확률로 남쪽 방 평지에 2~4칸짜리 이어진 웅덩이 하나를 만든다.
         /// 입구·계단·특수 타일은 피하고 순수 Floor 만 적신다.
         /// </summary>
         private static void PlacePuddle(GridMap map, Random random, FloorPlan p)
         {
-            if (random.Next(0, 2) == 0) return;
+            // 웅덩이 확률도 깊이 밴드별(깊을수록 물+빙결 무대 증가).
+            int puddleChance = DungeonBandProfiles.ForDepth(-p.FloorIndex).PuddleChancePercent;
+            if (random.Next(0, 100) >= puddleChance) return;
 
             var seeds = new List<GridPos>();
             for (int x = 0; x <= p.LeftMaxX; x++)
@@ -628,6 +663,7 @@ namespace ProjectC.Core
             public GridPos? Down;
             public GridPos? Hole;
             public GridPos? RestSite;
+            public GridPos? Landmark;
             public GridPos? SecretDoor;
             public GridPos? SecretReward;
             public GridPos Entry;
