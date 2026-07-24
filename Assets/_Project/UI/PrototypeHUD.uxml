@@ -21,17 +21,28 @@
             <ui:VisualElement class="minimap-header">
                 <ui:Label text="DUNGEON MAP" class="micro-caption" />
                 <ui:VisualElement class="minimap-header-buttons">
-                    <ui:Button name="settings-button" text="⚙︎" class="settings-button icon-button" tooltip="화면 설정" />
-                    <ui:Button name="game-menu-button" text="☰" class="settings-button icon-button" tooltip="게임 메뉴 (ESC)" />
+                    <ui:Button name="mode-button" class="settings-button hud-mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환">
+                        <ui:Label name="mode-label" text="FOV" class="hud-mode-label" />
+                    </ui:Button>
+                    <ui:Button name="settings-button" class="settings-button icon-button" tooltip="화면 설정">
+                        <ui:VisualElement class="ui-icon ui-settings-icon" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="game-menu-button" class="settings-button icon-button" tooltip="게임 메뉴 (ESC)">
+                        <ui:VisualElement class="ui-icon ui-menu-icon" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="minimap-grid">
                 <ui:VisualElement name="minimap-view" class="minimap-view" />
             </ui:VisualElement>
             <ui:VisualElement class="view-controls">
-                <ui:Button name="rotate-left" text="◀" class="rotate-button" tooltip="왼쪽 회전 (Q)" />
+                <ui:Button name="rotate-left" class="rotate-button icon-button" tooltip="왼쪽 회전 (Q)">
+                    <ui:VisualElement class="ui-icon ui-rotate-left-icon" picking-mode="Ignore" />
+                </ui:Button>
                 <ui:Label name="view-label" text="VIEW 1/4" class="view-label" />
-                <ui:Button name="rotate-right" text="▶" class="rotate-button" tooltip="오른쪽 회전 (E)" />
+                <ui:Button name="rotate-right" class="rotate-button icon-button" tooltip="오른쪽 회전 (E)">
+                    <ui:VisualElement class="ui-icon ui-rotate-right-icon" picking-mode="Ignore" />
+                </ui:Button>
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -73,26 +84,35 @@
             <ui:VisualElement class="resources">
                 <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="물약 사용 — HP 회복, 행동 1회 소비">
                     <ui:VisualElement class="resource-icon potion-icon" />
-                    <ui:Label name="potion-count" text="POTION ×0" class="resource-value" />
+                    <ui:Label name="potion-count" text="물약 ×0" class="resource-value" />
                 </ui:Button>
                 <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발+화상+넉백">
                     <ui:VisualElement class="resource-icon bomb-icon" />
-                    <ui:Label name="bomb-count" text="BOMB ×0" class="resource-value" />
+                    <ui:Label name="bomb-count" text="폭탄 ×0" class="resource-value" />
                 </ui:Button>
                 <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉기 폭탄 투척 — 낮은 피해 + 빙결">
                     <ui:VisualElement class="resource-icon frost-icon" />
-                    <ui:Label name="frost-count" text="FROST ×0" class="resource-value" />
+                    <ui:Label name="frost-count" text="냉기 ×0" class="resource-value" />
                 </ui:Button>
-                <ui:Button name="bag-button" class="artifact-panel resource-pill item-button bag-button" tooltip="인벤토리 열기">
-                    <ui:Label text="BAG" class="resource-value" />
+                <ui:Button name="bag-button" class="artifact-panel resource-pill item-button bag-button" tooltip="백팩 열기 (I)">
+                    <ui:VisualElement class="ui-icon ui-backpack-icon" picking-mode="Ignore" />
+                    <ui:Label text="백팩" class="resource-value" />
                 </ui:Button>
             </ui:VisualElement>
 
             <ui:VisualElement class="action-cluster">
-                <ui:Button name="mode-button" text="MODE: PLAY FOV" class="mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환" />
-                <ui:Button name="combat-button" text="ATTACK: MELEE" class="combat-button" tooltip="근접 / 원거리 공격 전환" />
-                <ui:Button name="wait-button" text="대기 (X)" class="mode-button wait-button" tooltip="이동 없이 한 턴을 보낸다" />
-                <ui:Button name="interact-button" text="OPEN" class="interact-button" tooltip="인접한 문 열기/닫기 · 폭발통 밀기" />
+                <ui:Button name="combat-button" class="combat-button action-label-button" tooltip="근접 / 원거리 공격 전환">
+                    <ui:VisualElement name="combat-icon" class="ui-icon ui-melee-icon" picking-mode="Ignore" />
+                    <ui:Label name="combat-label" text="근접" class="action-button-label" />
+                </ui:Button>
+                <ui:Button name="wait-button" class="mode-button wait-button action-label-button" tooltip="이동 없이 한 턴을 보낸다 (X)">
+                    <ui:VisualElement class="ui-icon ui-wait-icon" picking-mode="Ignore" />
+                    <ui:Label text="대기  X" class="action-button-label" />
+                </ui:Button>
+                <ui:Button name="interact-button" class="interact-button action-label-button" tooltip="현재 문맥 행동 실행">
+                    <ui:VisualElement class="ui-icon ui-interact-icon" picking-mode="Ignore" />
+                    <ui:Label name="interact-label" text="상호작용" class="action-button-label" />
+                </ui:Button>
                 <ui:VisualElement class="artifact-panel turn-pill">
                     <ui:VisualElement class="turn-dot" />
                     <ui:Label text="내 턴" class="turn-label" />

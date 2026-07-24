@@ -259,6 +259,11 @@
     bottom: 8px;
 }
 
+.hub-icon-button {
+    align-items: center;
+    justify-content: center;
+}
+
 .hud-root.is-narrow .hub-status-zone .status-chip {
     max-width: 100%;
 }

@@ -35,6 +35,13 @@
 
 > 상호작용 UI의 입력 소비 지점은 `Assets/_Project/Scripts/Gameplay/IsoTapInput.cs`의 `OnTileTapped`(현재 `TODO(M1)`). 게임 로직은 어떤 UI 시스템인지 몰라도 되게 유지.
 
+현재 `PrototypeHUD`의 `action-wheel`은 플레이어 화면 좌표를 따라가는 UI Toolkit
+프로토타입이다. v1.5에서는 창 형태의 2×3 팔레트를 쓰지 않고, 플레이어 중심을 비운
+6방향 육각 아이콘+짧은 동사 링으로 표시한다. 문맥에 없는 행동은 해당 방향을 비운다.
+M4의 오브젝트별 문맥 팝업을 구현할 때는 동일한 데이터 계약과 육각 셀 시각 슬롯을
+UGUI View로 옮긴다.
+화면 고정 하단 `interact-button`은 키보드/포인터용 현재 행동 단축 도크로 유지한다.
+
 ## Claude 디자인 워크플로
 
 1. **시안 생성** — Claude가 `artifact-design` 스킬로 HTML/CSS 디자인 시안(아티팩트) 생성. 정통 판타지 던전 + 픽셀아트 톤, 라이트/다크 대응, 모바일 세로 기준(+PC 와이드 확장).

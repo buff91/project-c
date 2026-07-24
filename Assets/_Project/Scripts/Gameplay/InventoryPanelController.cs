@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.UIElements;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace ProjectC.Gameplay
 {
@@ -23,6 +26,7 @@ namespace ProjectC.Gameplay
 
         public IsoPrototypeDemo demo;
 
+        private VisualElement _root;
         private VisualElement _modal;
         private VisualElement _grid;
         private VisualElement _craftList;
@@ -52,6 +56,7 @@ namespace ProjectC.Gameplay
         {
             UnbindDocument();
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            _root = root;
             _modal = root.Q<VisualElement>("inventory-modal");
             _grid = root.Q<VisualElement>("inventory-grid");
             _craftList = root.Q<VisualElement>("craft-list");
@@ -79,11 +84,21 @@ namespace ProjectC.Gameplay
             if (demo != null) demo.InventoryChanged -= RefreshCounts;
         }
 
+        private void Update()
+        {
+            if (!Application.isPlaying || !InventoryPressed()) return;
+            if (_modal != null && _modal.ClassListContains("is-open"))
+                Close();
+            else if (!AnyOtherModalOpen())
+                Open();
+        }
+
         private void UnbindDocument()
         {
             if (_bagButton != null) _bagButton.clicked -= Open;
             if (_closeButton != null) _closeButton.clicked -= Close;
             if (_useButton != null) _useButton.clicked -= UseSelected;
+            _root = null;
             _modal = null;
             _grid = null;
             _craftList = null;
@@ -95,6 +110,29 @@ namespace ProjectC.Gameplay
             _bagButton = null;
             _closeButton = null;
             _slots.Clear();
+        }
+
+        private static bool InventoryPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.iKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.I);
+#endif
+        }
+
+        private bool AnyOtherModalOpen()
+        {
+            if (_root == null) return false;
+            List<VisualElement> modals =
+                _root.Query<VisualElement>(className: "settings-modal").ToList();
+            foreach (VisualElement modal in modals)
+            {
+                if (modal != _modal && modal.ClassListContains("is-open"))
+                    return true;
+            }
+            return false;
         }
 
         private void RebuildSlots()
@@ -258,6 +296,7 @@ namespace ProjectC.Gameplay
 
         private void Open()
         {
+            _hudController?.CloseTransientOverlays();
             RefreshInventory();
             _modal?.BringToFront();
             _modal?.AddToClassList("is-open");

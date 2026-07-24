@@ -373,3 +373,42 @@
     font-size: var(--pc-fs-1);
     color: var(--pc-text);
 }
+
+/* 교체 가능한 24px Torchstone UI 스프라이트.
+   의미는 UXML의 버튼/레이블 계약이 소유하고 그림만 이 클래스로 교체한다. */
+.ui-icon {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    margin-right: 6px;
+    flex-shrink: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.icon-button .ui-icon,
+.hub-icon-button .ui-icon {
+    margin-right: 0;
+}
+
+.ui-settings-icon { background-image: url("../Art/Runtime/ui-settings.png"); }
+.ui-menu-icon { background-image: url("../Art/Runtime/ui-menu.png"); }
+.ui-rotate-left-icon { background-image: url("../Art/Runtime/ui-rotate-left.png"); }
+.ui-rotate-right-icon { background-image: url("../Art/Runtime/ui-rotate-right.png"); }
+.ui-backpack-icon { background-image: url("../Art/Runtime/ui-backpack.png"); }
+.ui-wait-icon { background-image: url("../Art/Runtime/ui-wait.png"); }
+.ui-melee-icon { background-image: url("../Art/Runtime/ui-melee.png"); }
+.ui-ranged-icon { background-image: url("../Art/Runtime/ui-ranged.png"); }
+.ui-interact-icon { background-image: url("../Art/Runtime/ui-interact.png"); }
+
+.icon-label-button {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-label {
+    color: var(--pc-text);
+    font-size: inherit;
+    -unity-font-style: bold;
+}

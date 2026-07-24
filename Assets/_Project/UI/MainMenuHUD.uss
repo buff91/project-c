@@ -195,3 +195,10 @@
 .main-menu-root.is-short.is-landscape .main-menu-utility {
     margin-top: 6px;
 }
+
+.main-utility-button.icon-label-button .ui-icon {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+}

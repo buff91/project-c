@@ -36,6 +36,10 @@ namespace ProjectC.Gameplay
         private Label _potionCountLabel;
         private Label _bombCountLabel;
         private Label _frostCountLabel;
+        private Label _modeLabel;
+        private Label _combatLabel;
+        private Label _interactLabel;
+        private VisualElement _combatIcon;
         private DisplaySettingsPanelController _displaySettings;
         private Label _viewLabel;
         private Label _depthLabel;
@@ -235,6 +239,10 @@ namespace ProjectC.Gameplay
             _potionCountLabel = root.Q<Label>("potion-count");
             _bombCountLabel = root.Q<Label>("bomb-count");
             _frostCountLabel = root.Q<Label>("frost-count");
+            _modeLabel = root.Q<Label>("mode-label");
+            _combatLabel = root.Q<Label>("combat-label");
+            _interactLabel = root.Q<Label>("interact-label");
+            _combatIcon = root.Q<VisualElement>("combat-icon");
             _hpValueLabel = root.Q<Label>("hp-value");
             _hpHearts = root.Q<VisualElement>("hp-hearts");
             _gameoverOverlay = root.Q<VisualElement>("gameover-overlay");
@@ -507,6 +515,17 @@ namespace ProjectC.Gameplay
 
             if (EscapePressed())
             {
+                if (_wheelPinned || IsOpen(_actionWheel))
+                {
+                    _wheelPinned = false;
+                    _actionWheel?.RemoveFromClassList("is-open");
+                    return;
+                }
+                if (IsOpen(_inventoryModal))
+                {
+                    _inventoryModal.RemoveFromClassList("is-open");
+                    return;
+                }
                 if (_displaySettings != null && _displaySettings.IsOpen)
                 {
                     _displaySettings.Close();
@@ -576,10 +595,11 @@ namespace ProjectC.Gameplay
 
         private void CloseGameMenu() => _gameMenuModal?.RemoveFromClassList("is-open");
 
-        private void CloseTransientOverlays()
+        public void CloseTransientOverlays()
         {
             _wheelPinned = false;
             _actionWheel?.RemoveFromClassList("is-open");
+            _inventoryModal?.RemoveFromClassList("is-open");
             CloseGameMenu();
         }
 
@@ -612,6 +632,8 @@ namespace ProjectC.Gameplay
         private struct WheelSlot
         {
             public string Label;
+            public string Tooltip;
+            public string IconClass;
             public Action Action;
             public bool Enabled;
         }
@@ -624,8 +646,13 @@ namespace ProjectC.Gameplay
             {
                 var button = new Button { name = $"wheel-{i}" };
                 button.AddToClassList("wheel-button");
+                var icon = new VisualElement { name = $"wheel-icon-{i}" };
+                icon.AddToClassList("wheel-button-icon");
+                icon.pickingMode = PickingMode.Ignore;
+                button.Add(icon);
                 var label = new Label { name = $"wheel-label-{i}" };
                 label.AddToClassList("wheel-button-label");
+                label.pickingMode = PickingMode.Ignore;
                 button.Add(label);
                 _actionWheel.Add(button);
             }
@@ -639,32 +666,58 @@ namespace ProjectC.Gameplay
             bool hasInteraction = demo.TryFindAdjacentInteraction(out _, out string interactLabel);
             var slots = new[]
             {
-                new WheelSlot { Label = "대기", Action = () => demo.WaitTurn(), Enabled = true },
                 new WheelSlot
                 {
-                    Label = hasInteraction ? interactLabel : "상호작용 없음",
+                    Label = "대기",
+                    Tooltip = "한 턴 대기",
+                    IconClass = "ui-wait-icon",
+                    Action = () => demo.WaitTurn(),
+                    Enabled = true
+                },
+                new WheelSlot
+                {
+                    Label = hasInteraction ? interactLabel : "주변 행동 없음",
+                    Tooltip = hasInteraction ? interactLabel : "현재 가능한 주변 행동 없음",
+                    IconClass = "ui-interact-icon",
                     Action = () => demo.InteractAdjacent(),
                     Enabled = hasInteraction
                 },
                 new WheelSlot
                 {
-                    Label = $"물약 {demo.PotionCount}",
+                    Label = $"물약 ×{demo.PotionCount}",
+                    Tooltip = $"회복 물약 사용 · 보유 {demo.PotionCount}",
+                    IconClass = "potion-icon",
                     Action = () => demo.UsePotion(),
                     Enabled = demo.PotionCount > 0
                 },
                 new WheelSlot
                 {
-                    Label = $"폭탄 조준 {demo.BombCount}",
+                    Label = $"폭탄 ×{demo.BombCount}",
+                    Tooltip = $"폭탄 조준 · 보유 {demo.BombCount}",
+                    IconClass = "bomb-icon",
                     Action = () => demo.ToggleBombAim(),
                     Enabled = demo.BombCount > 0
                 },
                 new WheelSlot
                 {
-                    Label = demo.CombatMode == CombatActionMode.Melee ? "원거리로" : "근접으로",
+                    Label = $"냉기 ×{demo.FrostBombCount}",
+                    Tooltip = $"냉기 폭탄 조준 · 보유 {demo.FrostBombCount}",
+                    IconClass = "frost-icon",
+                    Action = () => demo.ToggleFrostBombAim(),
+                    Enabled = demo.FrostBombCount > 0
+                },
+                new WheelSlot
+                {
+                    Label = demo.CombatMode == CombatActionMode.Melee ? "원거리" : "근접",
+                    Tooltip = demo.CombatMode == CombatActionMode.Melee
+                        ? "원거리 전투로 전환"
+                        : "근접 전투로 전환",
+                    IconClass = demo.CombatMode == CombatActionMode.Melee
+                        ? "ui-ranged-icon"
+                        : "ui-melee-icon",
                     Action = () => demo.ToggleCombatMode(),
                     Enabled = true
-                },
-                new WheelSlot { Label = "메뉴", Action = OpenGameMenu, Enabled = true }
+                }
             };
 
             for (int i = 0; i < 6 && i < _actionWheel.childCount; i++)
@@ -673,16 +726,37 @@ namespace ProjectC.Gameplay
                 WheelSlot slot = slots[i];
                 Label label = button.Q<Label>($"wheel-label-{i}");
                 if (label != null) label.text = slot.Label;
+                VisualElement icon = button.Q<VisualElement>($"wheel-icon-{i}");
+                ApplyWheelIcon(icon, slot.IconClass);
+                button.tooltip = slot.Tooltip;
                 button.SetEnabled(slot.Enabled);
+                button.EnableInClassList(
+                    "is-context-missing",
+                    i == 1 && !hasInteraction);
                 button.clickable = new Clickable(() =>
                 {
                     _wheelPinned = false;
+                    _actionWheel?.RemoveFromClassList("is-open");
                     slot.Action();
                 });
             }
         }
 
-        /// <summary>플레이어 머리 위를 중심으로 6방향 원형 배치.</summary>
+        private static void ApplyWheelIcon(VisualElement icon, string iconClass)
+        {
+            if (icon == null) return;
+            icon.RemoveFromClassList("ui-wait-icon");
+            icon.RemoveFromClassList("ui-interact-icon");
+            icon.RemoveFromClassList("potion-icon");
+            icon.RemoveFromClassList("bomb-icon");
+            icon.RemoveFromClassList("frost-icon");
+            icon.RemoveFromClassList("ui-melee-icon");
+            icon.RemoveFromClassList("ui-ranged-icon");
+            if (!string.IsNullOrEmpty(iconClass))
+                icon.AddToClassList(iconClass);
+        }
+
+        /// <summary>플레이어를 중심으로 여섯 문맥 행동 셀을 방사형 배치한다.</summary>
         private void PositionActionWheel()
         {
             if (_actionWheel == null || demo == null || Camera.main == null) return;
@@ -695,13 +769,49 @@ namespace ProjectC.Gameplay
             Vector2 panelPoint = RuntimePanelUtils.ScreenToPanel(
                 panel, new Vector2(world.x, Screen.height - world.y));
 
-            const float radius = 96f;
+            // 셀 크기는 Desktop/Touch USS가 다르게 결정한다. 실제 resolved size에서
+            // 반지름과 화면 clamp를 파생해 스타일 교체 뒤에도 배치가 어긋나지 않게 한다.
+            const float fallbackButtonWidth = 72f;
+            const float fallbackButtonHeight = 64f;
+            VisualElement firstButton = _actionWheel.childCount > 0 ? _actionWheel[0] : null;
+            float resolvedWidth = firstButton != null
+                ? firstButton.resolvedStyle.width
+                : fallbackButtonWidth;
+            float resolvedHeight = firstButton != null
+                ? firstButton.resolvedStyle.height
+                : fallbackButtonHeight;
+            float buttonWidth = float.IsNaN(resolvedWidth) || resolvedWidth <= 0f
+                ? fallbackButtonWidth
+                : resolvedWidth;
+            float buttonHeight = float.IsNaN(resolvedHeight) || resolvedHeight <= 0f
+                ? fallbackButtonHeight
+                : resolvedHeight;
+            float radius = Mathf.Max(buttonWidth, buttonHeight) +
+                           (ActivePresentation == HudPresentationMode.Mobile ? 12f : 8f);
+            float buttonHalfWidth = buttonWidth * 0.5f;
+            float buttonHalfHeight = buttonHeight * 0.5f;
+            const float screenMargin = 12f;
+            float panelWidth = panel.visualTree.layout.width;
+            float panelHeight = panel.visualTree.layout.height;
+            float horizontalInset = radius + buttonHalfWidth + screenMargin;
+            float verticalInset = radius + buttonHalfHeight + screenMargin;
+            float centerX = Mathf.Clamp(
+                panelPoint.x,
+                horizontalInset,
+                Mathf.Max(horizontalInset, panelWidth - horizontalInset));
+            float centerY = Mathf.Clamp(
+                panelPoint.y,
+                verticalInset,
+                Mathf.Max(verticalInset, panelHeight - verticalInset));
+            _actionWheel.style.left = centerX;
+            _actionWheel.style.top = centerY;
+
             for (int i = 0; i < _actionWheel.childCount; i++)
             {
-                float angle = Mathf.Deg2Rad * (90f - i * 60f); // 위에서 시계 방향 6등분
-                var button = _actionWheel[i];
-                button.style.left = panelPoint.x + Mathf.Cos(angle) * radius;
-                button.style.top = panelPoint.y - Mathf.Sin(angle) * radius;
+                float angle = Mathf.Deg2Rad * (90f - i * 60f);
+                VisualElement button = _actionWheel[i];
+                button.style.left = Mathf.Cos(angle) * radius;
+                button.style.top = -Mathf.Sin(angle) * radius;
             }
         }
 
@@ -819,7 +929,8 @@ namespace ProjectC.Gameplay
             if (_interactButton == null) return;
             string label = demo != null ? demo.ContextInteractionLabel : null;
             _interactButton.EnableInClassList("is-available", label != null);
-            if (label != null) _interactButton.text = label;
+            if (_interactLabel != null)
+                _interactLabel.text = label ?? "상호작용";
         }
 
         private void PerformInteraction()
@@ -830,11 +941,11 @@ namespace ProjectC.Gameplay
         private void UpdateItemLabels()
         {
             if (_potionCountLabel != null)
-                _potionCountLabel.text = $"POTION ×{(demo != null ? demo.PotionCount : 0)}";
+                _potionCountLabel.text = $"물약 ×{(demo != null ? demo.PotionCount : 0)}";
             if (_bombCountLabel != null)
-                _bombCountLabel.text = $"BOMB ×{(demo != null ? demo.BombCount : 0)}";
+                _bombCountLabel.text = $"폭탄 ×{(demo != null ? demo.BombCount : 0)}";
             if (_frostCountLabel != null)
-                _frostCountLabel.text = $"FROST ×{(demo != null ? demo.FrostBombCount : 0)}";
+                _frostCountLabel.text = $"냉기 ×{(demo != null ? demo.FrostBombCount : 0)}";
             UpdateAimHighlights();
         }
 
@@ -865,21 +976,31 @@ namespace ProjectC.Gameplay
 
         private void UpdateModeLabel()
         {
+            bool debugAll = demo != null && demo.ViewMode == DungeonViewMode.DebugAll;
+            if (_modeLabel != null)
+                _modeLabel.text = debugAll ? "ALL" : "FOV";
             if (_modeButton != null)
-                _modeButton.text = demo != null && demo.ViewMode == DungeonViewMode.DebugAll
-                    ? "MODE: DEBUG ALL"
-                    : "MODE: PLAY FOV";
+                _modeButton.tooltip = debugAll
+                    ? "전체 구조 표시 중 — 플레이 시야로 전환"
+                    : "플레이 시야 표시 중 — 전체 구조 디버그로 전환";
         }
 
         private void UpdateCombatLabel()
         {
-            if (_combatButton != null)
+            if (_combatButton != null || _combatLabel != null || _combatIcon != null)
             {
                 bool ranged = demo != null && demo.CombatMode == CombatActionMode.Ranged;
-                _combatButton.text = ranged
-                    ? $"ATTACK: RANGED · RANGE {demo.RangedAttackRange}"
-                    : "ATTACK: MELEE";
-                _combatButton.EnableInClassList("ranged", ranged);
+                if (_combatLabel != null)
+                    _combatLabel.text = ranged
+                        ? $"원거리 {demo.RangedAttackRange}"
+                        : "근접";
+                if (_combatButton != null)
+                    _combatButton.EnableInClassList("ranged", ranged);
+                if (_combatIcon != null)
+                {
+                    _combatIcon.EnableInClassList("ui-melee-icon", !ranged);
+                    _combatIcon.EnableInClassList("ui-ranged-icon", ranged);
+                }
             }
         }
 

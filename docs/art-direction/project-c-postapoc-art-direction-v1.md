@@ -1,8 +1,11 @@
 # Project-C 포스트 아포칼립스 아트 디렉션 (초안 v1)
 
-> **상태**: 방향 탐색용 초안. 아직 GDD §6/§10 SSOT에 반영하지 않았다.
-> 테마 확정 시 이 문서의 규칙을 GDD로 승격하고, 카탈로그/에셋 발주에 연결한다.
+> **상태**: 테마 확정. GDD §10 v0.3과 함께 포스트 아포칼립스/이상 미궁 방향의 SSOT.
 > **레퍼런스 SSOT**: 아래 5장 (사용자 제공, `docs/art-direction/project-c-postapoc-ref-*.jpeg`).
+> **통합 플레이 화면 타깃**:
+> `project-c-integrated-postapoc-gameplay-target-v2.png` — **월드 스케일·재료·캐릭터
+> 실루엣만** 참고한다. 이미지에 생성된 HUD의 배치·크기는 구현 기준에서 제외한다.
+> UI 배치 SSOT는 `docs/UI_ARCHITECTURE.md`와 실제 PC Game View 캡처다.
 
 ## 0. 한 줄 방향
 

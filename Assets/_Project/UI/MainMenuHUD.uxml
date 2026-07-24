@@ -21,7 +21,10 @@
             </ui:VisualElement>
 
             <ui:VisualElement class="main-menu-utility">
-                <ui:Button name="main-settings-button" text="⚙︎  설정" class="main-utility-button" />
+                <ui:Button name="main-settings-button" class="main-utility-button icon-label-button">
+                    <ui:VisualElement class="ui-icon ui-settings-icon" picking-mode="Ignore" />
+                    <ui:Label text="설정" class="icon-label" />
+                </ui:Button>
                 <ui:Button name="main-quit-button" text="게임 종료" class="main-utility-button" />
             </ui:VisualElement>
         </ui:VisualElement>

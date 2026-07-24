@@ -12,8 +12,12 @@
             </ui:VisualElement>
             <ui:VisualElement class="hub-top-actions">
                 <ui:Button name="hub-continue" text="이어하기" class="artifact-panel hub-pill hub-continue" />
-                <ui:Button name="hub-settings-button" text="⚙︎" class="artifact-panel hub-icon-button icon-button" tooltip="화면 설정" />
-                <ui:Button name="hub-menu-button" text="☰" class="artifact-panel hub-icon-button icon-button" tooltip="캠프 메뉴 (ESC)" />
+                <ui:Button name="hub-settings-button" class="artifact-panel hub-icon-button icon-button" tooltip="화면 설정">
+                    <ui:VisualElement class="ui-icon ui-settings-icon" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:Button name="hub-menu-button" class="artifact-panel hub-icon-button icon-button" tooltip="캠프 메뉴 (ESC)">
+                    <ui:VisualElement class="ui-icon ui-menu-icon" picking-mode="Ignore" />
+                </ui:Button>
             </ui:VisualElement>
         </ui:VisualElement>
 

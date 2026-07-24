@@ -129,7 +129,16 @@
 |--------|--------|------|
 | `ui-heart-full` | 24×21 | HP 하트(채움) |
 | `ui-heart-empty` | 24×21 | HP 하트(빈) |
-| *(확장 예정)* | 24×21 계열 | 검·장화 등 액션 아이콘, 9-slice 창 모서리, 다이아 글로우 |
+| `ui-settings` / `ui-menu` | 24×24 | 아이콘 전용 전역 도구 |
+| `ui-rotate-left` / `ui-rotate-right` | 24×24 | 아이콘 전용 시점 회전 |
+| `ui-backpack` / `ui-wait` | 24×24 | 아이콘+텍스트 행동 |
+| `ui-melee` / `ui-ranged` | 24×24 | 전투 자세 토글 |
+| `ui-interact` | 24×24 | 문맥 행동의 공용 손 아이콘 |
+| `ui-action-hex` / `ui-action-hex-hover` | 72×64 | 방사형 문맥 메뉴의 기본/호버 육각 프레임 |
+| *(확장 예정)* | 24×24 계열 | 행동별 문맥 아이콘, 9-slice 창 모서리, 다이아 글로우 |
+
+UI 아이콘은 의미를 파일명/UXML이 소유하고 `DesignSystem.uss`가 Sprite만 연결한다.
+설명·경고·층/높이 같은 정보까지 아이콘화하지 않는다.
 
 ---
 

@@ -2,6 +2,7 @@ using NUnit.Framework;
 using ProjectC.Core;
 using ProjectC.Gameplay;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace ProjectC.Tests
@@ -36,9 +37,13 @@ namespace ProjectC.Tests
             "frost-count",
             "bag-button",
             "mode-button",
+            "mode-label",
             "combat-button",
+            "combat-icon",
+            "combat-label",
             "wait-button",
             "interact-button",
+            "interact-label",
             "settings-modal",
             "settings-scroll",
             "development-viewport",
@@ -112,8 +117,14 @@ namespace ProjectC.Tests
             foreach (string elementName in RequiredNames)
                 Assert.IsNotNull(tree.Q(elementName), $"{assetPath} missing #{elementName}");
 
-            Assert.AreEqual("⚙︎", tree.Q<Button>("settings-button").text);
-            Assert.AreEqual("☰", tree.Q<Button>("game-menu-button").text);
+            Assert.IsTrue(string.IsNullOrEmpty(tree.Q<Button>("settings-button").text));
+            Assert.IsTrue(string.IsNullOrEmpty(tree.Q<Button>("game-menu-button").text));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-settings-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-menu-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-rotate-left-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-rotate-right-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-backpack-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-wait-icon"));
         }
 
         [Test]
@@ -127,8 +138,10 @@ namespace ProjectC.Tests
             foreach (string elementName in HubRequiredNames)
                 Assert.IsNotNull(tree.Q(elementName), $"{assetPath} missing #{elementName}");
 
-            Assert.AreEqual("⚙︎", tree.Q<Button>("hub-settings-button").text);
-            Assert.AreEqual("☰", tree.Q<Button>("hub-menu-button").text);
+            Assert.IsTrue(string.IsNullOrEmpty(tree.Q<Button>("hub-settings-button").text));
+            Assert.IsTrue(string.IsNullOrEmpty(tree.Q<Button>("hub-menu-button").text));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-settings-icon"));
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-menu-icon"));
         }
 
         [Test]
@@ -143,6 +156,51 @@ namespace ProjectC.Tests
                 Assert.IsNotNull(tree.Q(elementName), $"{assetPath} missing #{elementName}");
 
             Assert.AreEqual("게임 시작", tree.Q<Button>("main-start-button").text);
+            Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-settings-icon"));
+            Assert.AreEqual(
+                "설정",
+                tree.Q<Button>("main-settings-button")
+                    .Q<Label>(className: "icon-label").text);
+        }
+
+        [Test]
+        public void TorchstoneActionIcons_AreCrispTwentyFourPixelSprites()
+        {
+            string[] names =
+            {
+                "settings",
+                "menu",
+                "rotate-left",
+                "rotate-right",
+                "backpack",
+                "wait",
+                "melee",
+                "ranged",
+                "interact"
+            };
+
+            foreach (string name in names)
+            {
+                string path = $"Assets/_Project/Art/Runtime/ui-{name}.png";
+                Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                Assert.IsNotNull(icon, $"UI icon missing: {path}");
+                Assert.AreEqual(24, icon.width, $"{path} width");
+                Assert.AreEqual(24, icon.height, $"{path} height");
+            }
+        }
+
+        [TestCase("ui-action-hex", 72, 64)]
+        [TestCase("ui-action-hex-hover", 72, 64)]
+        public void ActionWheelFrames_AreCrispSwapReadySprites(
+            string name,
+            int expectedWidth,
+            int expectedHeight)
+        {
+            string path = $"Assets/_Project/Art/Runtime/{name}.png";
+            Texture2D frame = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Assert.IsNotNull(frame, $"Action wheel frame missing: {path}");
+            Assert.AreEqual(expectedWidth, frame.width, $"{path} width");
+            Assert.AreEqual(expectedHeight, frame.height, $"{path} height");
         }
 
         [Test]
