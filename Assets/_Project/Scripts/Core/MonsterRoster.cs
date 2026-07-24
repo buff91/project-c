@@ -23,6 +23,11 @@ namespace ProjectC.Core
             new MonsterArchetype("Slime", maxHp: 3, attackPower: 1,
                 aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f);
 
+        /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 묘지기.</summary>
+        public static readonly MonsterArchetype GraveWarden =
+            new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
+                aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
+
         /// <summary>
         /// 깊이 비례 혼합 (depth 0 = 최상층 B1): 얕은 층은 슬라임/고블린,
         /// 깊어질수록 해골 비중이 커진다. (GDD §5.7 난이도·깊이 연동)

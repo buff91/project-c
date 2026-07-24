@@ -47,13 +47,13 @@ Window > General > **Test Runner** > EditMode > Run All.
 - 플레이어, 고블린, 폭발 배럴
 - 탭한 타일까지 A* 4방향 이동
 - 화면 우상단 UI Toolkit 회전 HUD (`VIEW 1/4`)
-- HUD 층 표시 (`▲ B1 [B2] ▼ B3`)
+- HUD 층 표시 (`▲ B9 · B10 · ▼ --`)와 B10 보스 전용 체력/출구 봉인 상태
 - HUD `MODE: PLAY FOV / MODE: DEBUG ALL` 버튼으로 표시 모드 전환
 - HUD `ATTACK: MELEE / RANGED` 버튼으로 자동 접근 근접과 사거리 6 원거리를 전환
 - HUD 현재 위치는 `던전 층 · 층 내부 높이 · 격자 좌표`로 표시하고, 월드에는 청록 발판과 머리 위 화살표를 유지
 - PLAY: 닫힌 문 뒤와 미발견 방 숨김, 발견한 Hole/계단 주변 인접층만 표시
 - `VERTICAL ROUTES` HUD에 현재 보이는 계단/Hole의 목적지 층과 탭 행동 표시
-- DEBUG: B1/B2/B3 전체를 가까운 간격으로 표시해 생성·정렬 검사
+- DEBUG: B1~B10 전체를 가까운 간격으로 표시해 생성·정렬 검사
 - `Q`/`E` 또는 HUD 좌우 버튼으로 4방향 아이소 시점 회전
 - 시점에 따라 후면 두 변의 석벽·횃불을 다시 만들고, 타일/액터 정렬과 탭 역변환을 갱신
 - `docs/art-direction/iso-prototype-room.png` 세로 캡처

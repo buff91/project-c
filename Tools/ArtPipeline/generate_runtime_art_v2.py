@@ -30,6 +30,9 @@ P = {
     "blue_dark": (24, 42, 57, 255),
     "blue": (39, 70, 96, 255),
     "blue_lit": (66, 108, 137, 255),
+    "purple_dark": (48, 28, 52, 255),
+    "purple": (82, 43, 82, 255),
+    "purple_lit": (126, 62, 105, 255),
     "goblin_dark": (43, 61, 31, 255),
     "goblin": (82, 105, 46, 255),
     "goblin_lit": (132, 142, 62, 255),
@@ -244,7 +247,7 @@ def slime():
 
 def merchant():
     im, d = canvas()
-    # Large pack establishes a distinct, non-combat silhouette.
+    # Large pack + purple hood establish a distinct, non-combat alchemist silhouette.
     d.polygon([(4, 20), (13, 13), (20, 18), (19, 46), (7, 51), (3, 42)], fill=P["outline"])
     d.polygon([(6, 21), (13, 16), (18, 20), (17, 43), (8, 48), (5, 40)], fill=P["brown"])
     d.line([(7, 29), (17, 26)], fill=P["brown_lit"], width=2)
@@ -256,12 +259,15 @@ def merchant():
     d.rectangle((19, 51, 23, 57), fill=P["brown"])
     d.polygon([(29, 50), (33, 51), (34, 56), (29, 58)], fill=P["brown_dark"])
     d.polygon([(13, 28), (21, 23), (33, 25), (39, 36), (34, 51), (19, 51), (12, 43)], fill=P["outline"])
-    d.polygon([(15, 30), (22, 25), (31, 27), (37, 36), (32, 49), (20, 49), (14, 42)], fill=P["brown_dark"])
-    d.polygon([(16, 31), (22, 26), (21, 46), (17, 47), (14, 41)], fill=P["brown_lit"])
+    d.polygon([(15, 30), (22, 25), (31, 27), (37, 36), (32, 49), (20, 49), (14, 42)], fill=P["purple_dark"])
+    d.polygon([(16, 31), (22, 26), (21, 46), (17, 47), (14, 41)], fill=P["purple_lit"])
+    d.line([(18, 43), (33, 43)], fill=P["gold_dark"], width=2)
     d.polygon([(13, 17), (18, 7), (31, 6), (38, 17), (34, 29), (18, 30), (12, 24)], fill=P["outline"])
-    d.polygon([(15, 18), (19, 9), (29, 8), (36, 17), (32, 27), (19, 28), (14, 23)], fill=P["brown_dark"])
-    d.polygon([(17, 18), (20, 11), (25, 10), (20, 26), (16, 23)], fill=P["brown_lit"])
-    d.polygon([(21, 14), (30, 15), (32, 23), (27, 27), (20, 23)], fill=P["goblin"])
+    d.polygon([(15, 18), (19, 9), (29, 8), (36, 17), (32, 27), (19, 28), (14, 23)], fill=P["purple"])
+    d.polygon([(17, 18), (20, 11), (25, 10), (20, 26), (16, 23)], fill=P["purple_lit"])
+    d.line([(18, 11), (30, 9), (35, 17)], fill=P["gold_dark"], width=2)
+    d.polygon([(21, 14), (30, 15), (32, 23), (27, 27), (20, 23)], fill=P["skin"])
+    d.polygon([(21, 15), (24, 14), (23, 23), (21, 22)], fill=P["skin_lit"])
     d.rectangle((27, 19, 29, 20), fill=P["outline"])
     d.point((28, 19), fill=P["gold_lit"])
     # Potion offered in hand.

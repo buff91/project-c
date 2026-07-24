@@ -58,17 +58,17 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
 3. 16~24색 마스터 팔레트에서만 색을 고른다.
 4. 타일 경계 픽셀을 복사해 이웃 타일과 맞춘다.
 5. 캐릭터 발 중앙을 동일한 좌표에 둔다.
-6. `.aseprite` 원본과 PNG export를 함께 보관한다.
+6. `.aseprite` 원본을 Unity에 직접 임포트한다. PNG export는 외부 전달/검수용일 때만 만든다.
 7. Unity 테스트 룸에서 100%와 실제 모바일 크기로 확인한다.
 
 권장 폴더:
 
 ```text
 Assets/_Project/Art/
-  Source/Aseprite/
-  Sprites/Tiles/
-  Sprites/Characters/
-  Sprites/Props/
+  Source/Aseprite/      # 런타임 아트 SSOT, Unity가 직접 임포트
+  Sprites/Tiles/        # 외부 전달/검수용 export만
+  Sprites/Characters/   # 외부 전달/검수용 export만
+  Sprites/Props/        # 외부 전달/검수용 export만
   Palettes/
   Runtime/              # 게임에 연결된 64 PPU 검증 세트(재생성 가능)
 ```
@@ -104,9 +104,32 @@ not a ready-to-slice sprite sheet.
 
 Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선택하고 완성한 스프라이트를 슬롯에 넣은 뒤, `IsoPrototypeDemo.visualCatalog`에 연결한다. 일부 슬롯만 연결해도 나머지는 임시 아트로 표시되므로 한 에셋씩 교체하며 비교할 수 있다.
 
+### Unity 2D Aseprite Importer 직접 연결
+
+프로젝트에는 `com.unity.2d.aseprite 5.0.3`이 설치되어 있다.
+`Assets/_Project/Art/Source/Aseprite` 아래에 정식 이름의 `.aseprite`/`.ase` 원본을 저장하면
+`ProjectCAsepritePipeline`이 다음을 자동 처리한다.
+
+- Animated Sprite + Merge Frame
+- Point filter, PPU 64, Full Rect, Mip Map Off, Clamp
+- Standalone/iOS/Android 무압축
+- 프레임 사이에서 흔들리지 않는 Canvas 기준 Pivot
+- Aseprite Tag 기반 AnimationClip 생성
+- 첫 프레임 Sprite를 공용 `ProjectCEnvironmentCatalog` 슬롯에 자동 연결
+
+원본 파일명은 Catalog 계약이다. 예를 들어 `actor-knight.aseprite`는 `knight`,
+`env-floor.aseprite`는 `floor`, `prop-campfire.aseprite`는 `hubCampfire` 슬롯을 교체한다.
+전체 목록과 Tag 규칙은 `Assets/_Project/Art/Source/Aseprite/README.md`를 따른다.
+메뉴 `Project-C > Art > Aseprite > Validate Sources`로 중복 이름, 미지원 이름,
+임포트 규격과 Sprite 생성 여부를 검사한다. `.aseprite`가 없는 슬롯은 현재 PNG를 유지한다.
+
 ## 7. 현재 레퍼런스
 
 - 전체 게임 화면 방향: `docs/art-direction/project-c-artstyle-concept-v1.png`
+- 허브 웜 다크 판타지 디오라마 타깃:
+  `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
+- 허브 1차 런타임 적용 캡처:
+  `docs/art-direction/project-c-warm-diorama-hub-runtime-v1.png`
 - 현재 캐릭터·허브·아이템 통합 제작 보드: `docs/art-direction/project-c-runtime-asset-board-v2.png`
 - 첫 모듈형 아트 키트 방향: `docs/art-direction/project-c-starter-art-kit-v1.png`
 - 회전 가능한 던전의 최종 밀도 타깃: `docs/art-direction/project-c-rotatable-dungeon-target-v1.png`
@@ -120,4 +143,16 @@ Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선�
 
 AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하지 않는다. `project-c-starter-art-kit-v1.png`와 `project-c-runtime-asset-board-v2.png`를 형태 참고로 삼아 바닥/벽/코너/계단/캐릭터를 각각 최종 픽셀 해상도에 다시 그린 뒤 Catalog 슬롯으로 교체한다.
 
-현재 `Assets/_Project/Art/Runtime` 세트는 `Tools/ArtPipeline/generate_runtime_art_v2.py`로 결정론적으로 재생성한다. `ProjectCArtImporter`가 이 폴더에 Point filter, PPU 64, 무압축, Mip Map Off, 발 중앙 Pivot을 강제한다. 허브와 전투 씬은 반드시 같은 `ProjectCEnvironmentCatalog`를 참조하며, 씬별 독자 카탈로그나 캐릭터 색조 복제는 만들지 않는다.
+현재 `Assets/_Project/Art/Runtime` 세트는 실제 Aseprite 원본이 없는 슬롯의 폴백이다.
+`Tools/ArtPipeline/generate_runtime_art_v2.py`로 결정론적으로 재생성하며,
+`ProjectCArtImporter`가 Point filter, PPU 64, 무압축, Mip Map Off, 발 중앙 Pivot을 강제한다.
+최종 아트의 SSOT는 `Art/Source/Aseprite`이고, PNG를 수정해 최종본처럼 유지하지 않는다.
+허브와 전투 씬은 반드시 같은 `ProjectCEnvironmentCatalog`를 참조하며,
+씬별 독자 카탈로그나 캐릭터 색조 복제는 만들지 않는다.
+
+허브 웜 디오라마 패스는 `IsoPrototypeDemo`의 허브 모드에서만 적용한다. 64×32 투영과
+공용 액터/소품 카탈로그는 유지하고, 바닥·후면 벽의 자주빛 석재 팔레트와 모닥불/포탈 타일
+광원 오버레이를 분기한다. 전면 경계 타일은 16px 석재 측면을 그려 디오라마 두께를 만들고,
+후면 벽은 횃불/배너/연금술 선반/무기 장식 모듈을 조합한다. 광원 오버레이는 정렬 오프셋 `-1`,
+바닥은 `-2`, 액터/소품은 `+1`을 사용하며 시점 회전 시 모두 같은 `GridPos`로 재투영한다.
+이 분리를 없애고 던전 바닥에 따뜻한 광원색을 굽지 말 것. FOV·기름·물·화상·빙결 색 판독이 우선이다.

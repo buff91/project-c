@@ -10,6 +10,8 @@ namespace ProjectC.Core
         public string Description { get; }
         public string RouteLabel { get; }
         public int Seed { get; }
+        public int FloorCount { get; }
+        public DungeonBossDefinition Boss { get; }
         public bool IsAvailable { get; }
 
         public DungeonDefinition(
@@ -18,6 +20,8 @@ namespace ProjectC.Core
             string description,
             string routeLabel,
             int seed,
+            int floorCount,
+            DungeonBossDefinition boss,
             bool isAvailable)
         {
             Id = id;
@@ -25,7 +29,24 @@ namespace ProjectC.Core
             Description = description;
             RouteLabel = routeLabel;
             Seed = seed;
+            FloorCount = floorCount;
+            Boss = boss;
             IsAvailable = isAvailable;
+        }
+    }
+
+    /// <summary>던전 최심층을 지키는 보스 데이터. 전투 수치는 MonsterRoster에서 공유한다.</summary>
+    public sealed class DungeonBossDefinition
+    {
+        public string Id { get; }
+        public string DisplayName { get; }
+        public MonsterArchetype Archetype { get; }
+
+        public DungeonBossDefinition(string id, string displayName, MonsterArchetype archetype)
+        {
+            Id = id;
+            DisplayName = displayName;
+            Archetype = archetype;
         }
     }
 
@@ -39,9 +60,14 @@ namespace ProjectC.Core
             new DungeonDefinition(
                 DefaultId,
                 "잊힌 지하묘지",
-                "제한된 시야 속에서 세 구역을 내려가 최심층에 도달한다.",
-                "3개 구역 · 권장: 기사",
+                "지하 10층을 내려가 최심층의 묘지기를 쓰러뜨리고 출구를 연다.",
+                "B1~B10 · B10 보스: 묘지기 · 권장: 기사",
                 seed: 1977,
+                floorCount: 10,
+                boss: new DungeonBossDefinition(
+                    "grave-warden",
+                    "묘지기",
+                    MonsterRoster.GraveWarden),
                 isAvailable: true),
             new DungeonDefinition(
                 "flooded-vault",
@@ -49,6 +75,8 @@ namespace ProjectC.Core
                 "물과 빙결 반응이 중심인 다음 원정지.",
                 "준비 중",
                 seed: 2718,
+                floorCount: 10,
+                boss: null,
                 isAvailable: false),
             new DungeonDefinition(
                 "ember-keep",
@@ -56,6 +84,8 @@ namespace ProjectC.Core
                 "불·기름 연쇄 반응이 중심인 고난도 원정지.",
                 "준비 중",
                 seed: 3141,
+                floorCount: 10,
+                boss: null,
                 isAvailable: false)
         };
 

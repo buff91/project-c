@@ -4,6 +4,7 @@
     "references": [
         "ProjectC.Core",
         "ProjectC.Gameplay",
+        "ProjectC.ArtPipeline.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

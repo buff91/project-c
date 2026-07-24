@@ -46,6 +46,11 @@ namespace ProjectC.Gameplay
 
         private Sprite GetTileSprite(TileKind kind, GridPos pos)
         {
+            // 허브는 던전용 카탈로그 바닥을 공유하지 않는다. 같은 64×32 투영을 유지하되
+            // 따뜻한 자주빛 석재와 낮은 대비의 줄눈으로 휴식 공간의 온도를 분리한다.
+            if (hubMode && kind == TileKind.Floor)
+                return GetHubFloorSprite(pos);
+
             if (kind == TileKind.DoorClosed || kind == TileKind.DoorOpen)
             {
                 if (visualCatalog != null)
@@ -144,6 +149,60 @@ namespace ProjectC.Gameplay
                     color = border ? outline : new Color32(220, 119, 47, 255);
                 else if (kind == TileKind.StairsUp && ((px + py) % 10 < 3))
                     color = border ? outline : new Color32(74, 181, 219, 255);
+
+                texture.SetPixel(px, py + topOffset, color);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(
+                texture,
+                extruded ? new Vector2(0.5f, 32f / 48f) : new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetHubFloorSprite(GridPos pos)
+        {
+            int variant = Mathf.Abs(pos.x * 19 + pos.y * 37) % 5;
+            bool extruded = IsFrontEdge(pos);
+            string key = $"hub-floor-v{variant}-x{extruded}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            int textureHeight = extruded ? 48 : TilePixelHeight;
+            int topOffset = extruded ? 16 : 0;
+            var texture = NewTexture(TilePixelWidth, textureHeight);
+            Color32 stone = new Color32(72, 55, 54, 255);
+            Color32 stoneLight = new Color32(87, 65, 57, 255);
+            Color32 stoneShadow = new Color32(60, 47, 50, 255);
+            Color32 seam = new Color32(29, 25, 31, 255);
+
+            if (extruded)
+                DrawExtrudedSides(texture, stoneShadow);
+
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond = Mathf.Abs((px - 31.5f) / 32f) +
+                                Mathf.Abs((py - 15.5f) / 16f);
+                if (diamond > 1f) continue;
+
+                bool border = diamond > 0.94f;
+                int cluster = (px / 8 + py / 4 + variant * 3) % 7;
+                Color32 color = border
+                    ? seam
+                    : cluster == 0 ? stoneLight
+                    : cluster == 1 ? stoneShadow
+                    : stone;
+
+                // 넓은 색 노이즈 대신 드문 픽셀 군집만 두어 캐릭터 실루엣을 방해하지 않는다.
+                bool chip = diamond < 0.72f &&
+                            ((px + py * 5 + variant * 13) % 47 == 0 ||
+                             (px * 3 - py + variant * 11) % 59 == 0);
+                if (chip) color = Shift(stoneShadow, -7);
+
+                // 좌상단 광원을 모든 타일에 동일하게 유지한다.
+                if (!border && px < 31 && py > 15 && (px + py + variant) % 17 == 0)
+                    color = Shift(stoneLight, 5);
 
                 texture.SetPixel(px, py + topOffset, color);
             }
@@ -321,6 +380,9 @@ namespace ProjectC.Gameplay
 
         private Sprite GetWallSprite(bool torch)
         {
+            if (hubMode)
+                return GetHubWallSprite(torch);
+
             string key = torch ? "rear-wall-torch" : "rear-wall";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
@@ -368,6 +430,142 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        private Sprite GetHubWallSprite(bool torch)
+        {
+            return GetHubWallSprite(torch, 0);
+        }
+
+        private Sprite GetHubWallSprite(bool torch, int decoration)
+        {
+            string key = $"hub-rear-wall-t{torch}-d{decoration}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            const int width = 32;
+            const int height = 68;
+            const int wallHeight = 52;
+            var texture = NewTexture(width, height);
+            Color32 mortar = new Color32(24, 21, 28, 255);
+            Color32 stone = new Color32(58, 42, 48, 255);
+            Color32 stoneLight = new Color32(84, 57, 54, 255);
+            Color32 stoneDark = new Color32(40, 33, 40, 255);
+
+            for (int px = 0; px < width; px++)
+            {
+                int bottom = 14 - px / 2;
+                for (int localY = 0; localY < wallHeight; localY++)
+                {
+                    int py = bottom + localY;
+                    int course = localY / 9;
+                    int courseY = localY % 9;
+                    int jointOffset = course % 2 == 0 ? 0 : 8;
+                    bool edge = px == 0 || px == width - 1 ||
+                                localY <= 1 || localY >= wallHeight - 2;
+                    bool joint = courseY <= 1 || (px + jointOffset) % 16 <= 1;
+                    bool cap = localY >= wallHeight - 5;
+                    bool torchGlow = torch &&
+                                      Mathf.Abs(px - 16) + Mathf.Abs(localY - 31) < 15;
+
+                    Color32 color = edge || joint
+                        ? mortar
+                        : cap ? stoneLight
+                        : ((px + localY * 3) % 17 == 0 ? Shift(stone, 8) : stone);
+                    if (!edge && !joint && torchGlow)
+                        color = localY > 20
+                            ? new Color32(111, 65, 43, 255)
+                            : new Color32(82, 51, 45, 255);
+                    if (!edge && localY < 5)
+                        color = stoneDark;
+
+                    texture.SetPixel(px, py, color);
+                }
+            }
+
+            if (torch)
+            {
+                FillRect(texture, 13, 25, 7, 3, new Color32(32, 25, 27, 255));
+                FillRect(texture, 15, 22, 3, 11, new Color32(102, 61, 34, 255));
+                FillRect(texture, 11, 33, 11, 5, new Color32(225, 76, 30, 255));
+                FillRect(texture, 13, 36, 7, 8, new Color32(255, 155, 44, 255));
+                FillRect(texture, 15, 39, 3, 8, new Color32(255, 226, 118, 255));
+                texture.SetPixel(11, 44, new Color32(255, 190, 61, 255));
+                texture.SetPixel(22, 41, new Color32(255, 190, 61, 255));
+            }
+            else if (decoration == 1)
+            {
+                // 자주색 길드 배너: 장면의 큰 색 덩어리이자 허브/던전 구분 표식.
+                FillRect(texture, 8, 24, 17, 3, mortar);
+                FillRect(texture, 10, 22, 13, 22, new Color32(37, 25, 39, 255));
+                FillRect(texture, 11, 23, 11, 19, new Color32(73, 39, 72, 255));
+                FillRect(texture, 12, 24, 3, 16, new Color32(105, 52, 87, 255));
+                FillRect(texture, 15, 30, 3, 9, new Color32(218, 145, 45, 255));
+                FillRect(texture, 13, 33, 7, 3, new Color32(218, 145, 45, 255));
+                texture.SetPixel(11, 21, new Color32(233, 183, 75, 255));
+                texture.SetPixel(22, 21, new Color32(233, 183, 75, 255));
+            }
+            else if (decoration == 2)
+            {
+                // 작은 연금술 선반. 바닥을 점유하지 않으면서 시안의 생활감만 추가한다.
+                FillRect(texture, 5, 26, 23, 4, new Color32(43, 27, 25, 255));
+                FillRect(texture, 7, 30, 19, 3, new Color32(129, 75, 38, 255));
+                FillRect(texture, 8, 34, 4, 7, new Color32(19, 63, 66, 255));
+                FillRect(texture, 9, 35, 2, 5, new Color32(71, 191, 181, 255));
+                FillRect(texture, 14, 33, 4, 8, new Color32(81, 28, 31, 255));
+                FillRect(texture, 15, 35, 2, 5, new Color32(215, 67, 44, 255));
+                FillRect(texture, 21, 35, 4, 6, new Color32(116, 83, 36, 255));
+                FillRect(texture, 9, 41, 2, 2, new Color32(214, 187, 137, 255));
+                FillRect(texture, 15, 41, 2, 2, new Color32(214, 187, 137, 255));
+            }
+            else if (decoration == 3)
+            {
+                // 방패와 교차 검: 작은 화면에서도 무기고 벽으로 읽히는 강한 실루엣.
+                DrawThickLine(texture, 8, 24, 24, 43, 2, new Color32(177, 168, 153, 255));
+                DrawThickLine(texture, 24, 24, 8, 43, 2, new Color32(92, 91, 91, 255));
+                FillRect(texture, 13, 29, 7, 12, mortar);
+                FillRect(texture, 14, 30, 5, 9, new Color32(69, 74, 77, 255));
+                FillRect(texture, 15, 31, 2, 7, new Color32(170, 124, 48, 255));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 7f / height));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 실제 2D Light 대신 바닥 타일 단위의 반투명 색층을 사용한다.
+        /// 픽셀 경계와 SpriteRenderer 정렬을 보존하고 던전 FOV/상태 색과도 섞이지 않는다.
+        /// </summary>
+        private Sprite GetHubLightTileSprite(string kind, int strength)
+        {
+            string key = $"hub-light-{kind}-{strength}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            Color32 source = kind == "portal"
+                ? new Color32(44, 218, 216, 255)
+                : new Color32(255, 145, 48, 255);
+            int alphaBase = strength == 3 ? 64 : strength == 2 ? 40 : 20;
+
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond = Mathf.Abs((px - 31.5f) / 32f) +
+                                Mathf.Abs((py - 15.5f) / 16f);
+                if (diamond > 0.96f) continue;
+
+                int dither = (px + py * 3) & 3;
+                int alpha = diamond > 0.78f && dither > 1
+                    ? alphaBase / 2
+                    : alphaBase;
+                texture.SetPixel(px, py, new Color32(source.r, source.g, source.b, (byte)alpha));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetSelectionSprite()
         {
             const string key = "selection";
@@ -380,6 +578,48 @@ namespace ProjectC.Gameplay
                 float diamond = Mathf.Abs((px - 31.5f) / 32f) + Mathf.Abs((py - 15.5f) / 16f);
                 bool ring = diamond > 0.77f && diamond <= 0.94f;
                 texture.SetPixel(px, py, ring ? new Color32(255, 177, 72, 230) : new Color32(0, 0, 0, 0));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private Sprite GetBossExitSealSprite(bool unlocked)
+        {
+            string key = unlocked ? "boss-exit-unlocked" : "boss-exit-locked";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            Color32 transparent = new Color32(0, 0, 0, 0);
+            Color32 outer = unlocked
+                ? new Color32(103, 241, 218, 245)
+                : new Color32(222, 69, 52, 245);
+            Color32 inner = unlocked
+                ? new Color32(255, 220, 104, 230)
+                : new Color32(126, 24, 28, 230);
+
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond =
+                    Mathf.Abs((px - 31.5f) / 32f) +
+                    Mathf.Abs((py - 15.5f) / 16f);
+                bool outerRing = diamond > 0.68f && diamond <= 0.92f;
+                bool innerRing = diamond > 0.38f && diamond <= 0.48f;
+                texture.SetPixel(px, py, outerRing ? outer : innerRing ? inner : transparent);
+            }
+
+            if (unlocked)
+            {
+                DrawThickLine(texture, 24, 15, 30, 9, 2, inner);
+                DrawThickLine(texture, 30, 9, 41, 21, 2, inner);
+            }
+            else
+            {
+                DrawThickLine(texture, 24, 10, 40, 22, 3, inner);
+                DrawThickLine(texture, 40, 10, 24, 22, 3, inner);
             }
 
             texture.Apply(false, true);

@@ -1,0 +1,22 @@
+{
+    "name": "ProjectC.Tests.PlayMode",
+    "rootNamespace": "ProjectC.Tests.PlayMode",
+    "references": [
+        "ProjectC.Core",
+        "ProjectC.Gameplay"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

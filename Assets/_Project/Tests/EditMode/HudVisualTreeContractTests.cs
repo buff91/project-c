@@ -52,7 +52,16 @@ namespace ProjectC.Tests
             "inventory-detail-name",
             "inventory-use",
             "game-menu-modal",
+            "boss-panel",
+            "boss-name",
+            "boss-health-fill",
+            "boss-health-value",
+            "boss-objective",
             "exit-modal",
+            "exit-title",
+            "exit-desc",
+            "exit-extract",
+            "exit-advance",
             "action-wheel",
             "gameover-overlay"
         };

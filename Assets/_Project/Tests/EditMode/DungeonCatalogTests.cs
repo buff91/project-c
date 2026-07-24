@@ -15,6 +15,9 @@ namespace ProjectC.Tests
             DungeonDefinition selected = DungeonCatalog.ById(DungeonCatalog.DefaultId);
             Assert.IsTrue(selected.IsAvailable);
             Assert.Greater(selected.Seed, 0);
+            Assert.AreEqual(10, selected.FloorCount);
+            Assert.NotNull(selected.Boss);
+            Assert.AreSame(MonsterRoster.GraveWarden, selected.Boss.Archetype);
         }
 
         [Test]
@@ -23,6 +26,30 @@ namespace ProjectC.Tests
             Assert.AreSame(
                 DungeonCatalog.ById(DungeonCatalog.DefaultId),
                 DungeonCatalog.ById("missing-dungeon"));
+        }
+
+        [Test]
+        public void FirstDungeonExit_RequiresBossDefeat()
+        {
+            DungeonDefinition dungeon = DungeonCatalog.ById(DungeonCatalog.DefaultId);
+
+            Assert.IsFalse(DungeonBossRules.CanUseExit(dungeon, bossDefeated: false));
+            Assert.IsTrue(DungeonBossRules.CanUseExit(dungeon, bossDefeated: true));
+        }
+
+        [Test]
+        public void BossSpawn_UsesCandidateFarthestFromEntry()
+        {
+            var entry = new GridPos(1, 1, 0);
+            var candidates = new[]
+            {
+                new GridPos(2, 1, 0),
+                new GridPos(8, 8, 0),
+                new GridPos(4, 5, 0)
+            };
+
+            Assert.IsTrue(DungeonBossRules.TrySelectSpawn(entry, candidates, out GridPos spawn));
+            Assert.AreEqual(candidates[1], spawn);
         }
     }
 }

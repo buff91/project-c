@@ -42,6 +42,16 @@
             <ui:Label name="floor-label" text="▲ B1 · ▼ B3" class="floor-label" />
         </ui:VisualElement>
 
+        <ui:VisualElement name="boss-panel" class="artifact-panel boss-panel" picking-mode="Ignore">
+            <ui:Label text="B10 · FINAL GUARDIAN" class="boss-kicker" />
+            <ui:Label name="boss-name" text="묘지기" class="boss-name" />
+            <ui:VisualElement class="boss-health-track">
+                <ui:VisualElement name="boss-health-fill" class="boss-health-fill" />
+            </ui:VisualElement>
+            <ui:Label name="boss-health-value" text="20 / 20" class="boss-health-value" />
+            <ui:Label name="boss-objective" text="보스를 쓰러뜨려 출구의 봉인을 해제하라" class="boss-objective" />
+        </ui:VisualElement>
+
         <ui:VisualElement name="vertical-route-discovery" class="artifact-panel vertical-route-discovery" picking-mode="Ignore">
             <ui:Label text="새로운 길을 발견했다" class="route-discovery-kicker" />
             <ui:Label name="route-discovery-title" text="하층 계단 · B2" class="route-discovery-title" />
@@ -143,7 +153,7 @@
 
         <ui:VisualElement name="exit-modal" class="settings-modal">
             <ui:VisualElement class="artifact-panel settings-card gameover-card">
-                <ui:Label text="던전 출구" class="gameover-title" />
+                <ui:Label name="exit-title" text="던전 출구" class="gameover-title" />
                 <ui:Label name="exit-desc" text="" class="gameover-detail" />
                 <ui:Label text="죽으면 전부 잃는다 — 생환만이 전리품을 지킨다" class="gameover-detail" />
                 <ui:VisualElement class="settings-actions">

@@ -58,9 +58,15 @@ namespace ProjectC.Gameplay
         private Button _restartButton;
         private Button _menuButton;
         private VisualElement _exitModal;
+        private Label _exitTitle;
         private Label _exitDesc;
         private Button _exitAdvance;
         private Button _exitExtract;
+        private VisualElement _bossPanel;
+        private Label _bossName;
+        private VisualElement _bossHealthFill;
+        private Label _bossHealthValue;
+        private Label _bossObjective;
         private VisualElement _minimapView;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
@@ -100,6 +106,7 @@ namespace ProjectC.Gameplay
                 demo.InventoryChanged += HandleInventoryChanged;
                 demo.BombAimingChanged += HandleBombAimingChanged;
                 demo.PlayerHpChanged += HandlePlayerHpChanged;
+                demo.BossStateChanged += HandleBossStateChanged;
                 demo.RunEnded += HandleRunEnded;
                 demo.ExitChoiceRequested += HandleExitChoiceRequested;
                 demo.PlayerTapped += HandlePlayerTapped;
@@ -146,6 +153,7 @@ namespace ProjectC.Gameplay
                 demo.InventoryChanged -= HandleInventoryChanged;
                 demo.BombAimingChanged -= HandleBombAimingChanged;
                 demo.PlayerHpChanged -= HandlePlayerHpChanged;
+                demo.BossStateChanged -= HandleBossStateChanged;
                 demo.RunEnded -= HandleRunEnded;
                 demo.ExitChoiceRequested -= HandleExitChoiceRequested;
                 demo.PlayerTapped -= HandlePlayerTapped;
@@ -245,9 +253,15 @@ namespace ProjectC.Gameplay
             _actionWheel = root.Q<VisualElement>("action-wheel");
             BuildActionWheel();
             _exitModal = root.Q<VisualElement>("exit-modal");
+            _exitTitle = root.Q<Label>("exit-title");
             _exitDesc = root.Q<Label>("exit-desc");
             RebindButton(ref _exitAdvance, root.Q<Button>("exit-advance"), HandleExitAdvance);
             RebindButton(ref _exitExtract, root.Q<Button>("exit-extract"), HandleExitExtract);
+            _bossPanel = root.Q<VisualElement>("boss-panel");
+            _bossName = root.Q<Label>("boss-name");
+            _bossHealthFill = root.Q<VisualElement>("boss-health-fill");
+            _bossHealthValue = root.Q<Label>("boss-health-value");
+            _bossObjective = root.Q<Label>("boss-objective");
             UpdateMinimap();
             UpdateHpDisplay();
             UpdateViewLabel();
@@ -257,6 +271,7 @@ namespace ProjectC.Gameplay
             UpdateLocationLabel();
             UpdateVerticalHintLabel();
             UpdateItemLabels();
+            UpdateBossPanel();
         }
 
         private void ApplyPresentation()
@@ -349,6 +364,7 @@ namespace ProjectC.Gameplay
         {
             UpdateFloorLabel();
             UpdateMinimap();
+            UpdateBossPanel();
         }
 
         private void HandleViewModeChanged(DungeonViewMode _)
@@ -700,15 +716,51 @@ namespace ProjectC.Gameplay
         {
             if (_exitModal == null || demo == null) return;
             CloseTransientOverlays();
+            bool finalExit = !demo.HasNextStage;
+            if (_exitTitle != null)
+                _exitTitle.text = finalExit ? "봉인 해제된 출구" : "던전 출구";
             if (_exitDesc != null)
             {
                 int gold = demo.CarriedTreasureGold();
                 _exitDesc.text =
-                    $"들고 있는 전리품 가치: {ItemCatalog.FormatGold(gold)} · " +
-                    $"다음은 던전 {demo.StageIndex + 1}";
+                    finalExit
+                        ? $"{demo.BossName} 처치 완료 · 전리품 가치 " +
+                          $"{ItemCatalog.FormatGold(gold)} · 정복을 확정할 수 있다"
+                        : $"들고 있는 전리품 가치: {ItemCatalog.FormatGold(gold)} · " +
+                          $"다음은 던전 {demo.StageIndex + 1}";
             }
+            if (_exitAdvance != null)
+                _exitAdvance.text = finalExit ? "던전 정복" : "더 깊이";
             _exitModal.BringToFront();
             _exitModal.AddToClassList("is-open");
+        }
+
+        private void HandleBossStateChanged() => UpdateBossPanel();
+
+        private void UpdateBossPanel()
+        {
+            if (_bossPanel == null) return;
+
+            bool show = demo != null && demo.IsBossFloor;
+            _bossPanel.EnableInClassList("is-open", show);
+            if (!show) return;
+
+            if (_bossName != null)
+                _bossName.text = demo.BossDefeated
+                    ? $"{demo.BossName} · 처치 완료"
+                    : demo.BossName;
+
+            int maxHp = Mathf.Max(1, demo.BossMaxHp);
+            int hp = Mathf.Clamp(demo.BossHp, 0, maxHp);
+            if (_bossHealthFill != null)
+                _bossHealthFill.style.width =
+                    new Length(hp * 100f / maxHp, LengthUnit.Percent);
+            if (_bossHealthValue != null)
+                _bossHealthValue.text = demo.BossDefeated ? "EXIT UNSEALED" : $"{hp} / {maxHp}";
+            if (_bossObjective != null)
+                _bossObjective.text = demo.BossDefeated
+                    ? "출구의 붉은 봉인이 청록빛으로 변했다 — 출구(▼)로 향하라"
+                    : "보스를 쓰러뜨려 출구의 봉인을 해제하라";
         }
 
         private void HandleExitAdvance()

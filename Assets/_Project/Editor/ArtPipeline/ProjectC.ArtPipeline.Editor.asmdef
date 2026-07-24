@@ -1,0 +1,19 @@
+{
+    "name": "ProjectC.ArtPipeline.Editor",
+    "rootNamespace": "ProjectC.EditorTools",
+    "references": [
+        "ProjectC.Gameplay",
+        "Unity.2D.Aseprite.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -61,16 +61,29 @@
   - PLAY에서는 현재 층만 기본 표시하며 다른 층은 Hole 국소 미리보기 외에는 숨긴다.
 - **FOV/전투 정보**: Unknown/Explored/Visible 3상태. 시야 밖 적의 피해·사망 UI는
   공개하지 않으며, 시체는 기본 3턴 뒤 월드와 탭 대상에서 제거한다.
+- **첫 던전/보스**: `forgotten-catacombs`는 B1~B10 단일 던전이다. B10의 `묘지기`를
+  처치하기 전에는 최심층 출구가 붉게 봉인되고, 처치 후 청록 해금 연출과 전용 HUD가 갱신된다.
+  최심층 도착만으로 승리하지 않으며 출구 모달의 `던전 정복`을 선택해야 정산·런 종료가 확정된다.
+  체크포인트는 `dungeonId/stageCount/bossDefeated`를 보존한다.
 - **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
   근접 돌진·스쿼시/플래시·픽셀 버스트·감쇠 카메라 흔들림을 적용한다. 화상은 주황 불꽃 고리,
   빙결은 청록 결정 고리이며 부여/연장/상쇄를 구분한다. 적 FX도 반드시 FOV를 따른다.
+- **아트 방향**: 허브는 `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`를
+  기준으로 자주빛 석재 + 호박색 모닥불/횃불 + 청록 포탈의 웜 다크 판타지 디오라마를 사용한다.
+  `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
+  FOV·상태 색은 건드리지 않는다. 광원 타일과 허브 소품은 시점 회전 때 같은 GridPos로 다시 투영한다.
+- **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
+  최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.
+  `ProjectCAsepritePipeline`이 Point/PPU 64/Canvas Pivot/무압축/AnimationClip을 강제하고
+  정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다.
+  `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이며 최종본으로 직접 수정하지 않는다.
 - **백팩/창고**: 던전 백팩은 `BackpackRules` 6×4 멀티슬롯(1×1/1×2/2×2)이며
   `BackpackLayout` 자동 배치를 UI가 그대로 그린다. 공간 부족 시 월드 아이템은 남고,
   허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의
   이동·영웅 기본 지급품·초과분 복귀를 담당한다. 허브에서 선택한 물품만 던전 진입 시 반입하고
   나머지는 창고에 보존한다. 모바일은 선택 후 반대편 탭, PC는 버튼/드래그를 사용한다.
-- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **529/529 통과**,
-  Unity 콘솔 오류 0건. 변경 후에는 숫자를 맹신하지 말고 전체 테스트를 다시 실행한다.
+- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **541/541 통과**,
+  PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**. 변경 후에는 숫자를 맹신하지 말고 둘 다 다시 실행한다.
 - **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
   작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.
 
@@ -78,6 +91,8 @@
 
 ```
 Assets/_Project/
+  Art/Source/Aseprite/ # 최종 픽셀아트 SSOT. Unity 2D Aseprite Importer 직접 임포트
+  Editor/ArtPipeline/  # Aseprite 임포트 규격·Catalog 자동 연결·검증 메뉴
   Scripts/Core/       # 순수 C# 로직 — 격자(GridPos/TileData/GridMap/IsoGrid), 시야(GridVisibility),
                       # 경로(GridPathfinder), 절차 생성(DungeonLayout), 전투/상태(CombatantState/StatusEffects),
                       # 낙하·넉백(FallRules), AI(MonsterBrain/MonsterRoster/MonsterActivation), 아이템(Items)
@@ -85,6 +100,7 @@ Assets/_Project/
                       # IsoPrototypeDemo(partial 5개: 본체/Enemies/Falls/Visibility/Sprites),
                       # MainMenuController, HubHudController, ResponsiveUiLayout
   Tests/EditMode/     # EditMode 테스트 (규칙별 *Tests.cs)
+  Tests/PlayMode/     # 실제 씬 흐름 통합 스모크 테스트
   Scenes/             # MainMenu.unity, Hub.unity, IsoPrototype.unity
   UI/                 # MainMenuHUD, HubHUD, PrototypeHUD.Mobile/Desktop, DisplaySettings
   M0_SETUP.md         # 씬 연결 가이드
@@ -92,14 +108,16 @@ docs/                 # ROADMAP, SYSTEMS, UI_ARCHITECTURE (에이전트 참조 �
 GDD.md                # 게임 기획서 (SSOT)
 ```
 
-asmdef 3개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.Tests.EditMode`.
+asmdef 5개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`,
+`ProjectC.Tests.EditMode`, `ProjectC.Tests.PlayMode`.
 
 ## Unity MCP
 
 - 이 리포는 MCP for Unity 자동화 경로를 사용한다 (**연결됨**). 씬 셋업/테스트/스크린샷 검증을 MCP로.
 - 스크립트 생성/수정 후에는 `read_console`로 컴파일 에러 확인.
 - 씬/UI 변경은 가능하면 실제 Play와 모바일 세로·PC 가로 Game View에서 각각 캡처 검증.
-- 전체 회귀 테스트는 EditMode assembly `ProjectC.Tests.EditMode`를 실행한다.
+- 전체 회귀 테스트는 EditMode `ProjectC.Tests.EditMode`와 PlayMode
+  `ProjectC.Tests.PlayMode`를 모두 실행한다.
 
 ## 작업 컨벤션
 

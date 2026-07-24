@@ -391,6 +391,71 @@
     align-items: center;
 }
 
+.boss-panel {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    translate: -50% 0;
+    width: 330px;
+    padding: 8px 12px;
+    align-items: center;
+    background-color: rgba(20, 12, 15, 0.96);
+    border-left-color: rgb(133, 46, 43);
+    border-top-color: rgb(211, 92, 56);
+}
+
+.boss-panel.is-open {
+    display: flex;
+}
+
+.boss-kicker {
+    color: rgb(226, 129, 75);
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+.boss-name {
+    color: rgb(255, 218, 143);
+    font-size: 17px;
+    -unity-font-style: bold;
+    margin-top: 1px;
+}
+
+.boss-health-track {
+    width: 100%;
+    height: 9px;
+    margin-top: 5px;
+    background-color: rgb(47, 13, 17);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(105, 46, 46);
+    border-top-color: rgb(105, 46, 46);
+    border-right-color: rgb(27, 9, 11);
+    border-bottom-color: rgb(27, 9, 11);
+}
+
+.boss-health-fill {
+    width: 100%;
+    height: 100%;
+    background-color: rgb(201, 52, 42);
+}
+
+.boss-health-value {
+    color: rgb(242, 211, 180);
+    font-size: 9px;
+    margin-top: 2px;
+}
+
+.boss-objective {
+    color: rgb(190, 161, 132);
+    font-size: 9px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
 .status-chip {
     min-height: 25px;
     flex-direction: row;
@@ -1679,6 +1744,27 @@
     right: 8px;
     bottom: 154px;
     translate: 0 0;
+}
+
+.hud-root.is-narrow .boss-panel {
+    top: 66px;
+    width: 76%;
+    max-width: 330px;
+    padding: 6px 9px;
+}
+
+.hud-root.is-narrow .boss-name {
+    font-size: 14px;
+}
+
+.hud-root.is-short .boss-panel {
+    top: 6px;
+    width: 280px;
+}
+
+.hud-root.is-short .boss-objective,
+.hud-root.is-short .boss-kicker {
+    display: none;
 }
 
 .hud-root.is-narrow .vertical-route-discovery {

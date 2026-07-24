@@ -84,6 +84,7 @@ namespace ProjectC.Gameplay
                 _barrel.transform.position = VisualPosition(_barrelPos);
             }
 
+            RefreshBossExitSeal();
             RebuildRearWalls();
             RebuildVerticalShafts();
             RebuildElevationEdgeMarkers();
@@ -307,7 +308,9 @@ namespace ProjectC.Gameplay
 
             if (landmark.Kind == TileKind.StairsDown &&
                 _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _dungeon.BottomFloorIndex)
-                return _stageIndex < stageCount ? "NEXT" : "EXIT";
+                return !BossExitUnlocked
+                    ? "SEALED"
+                    : HasNextStage ? "NEXT" : "EXIT";
 
             return "--";
         }
@@ -831,10 +834,22 @@ namespace ProjectC.Gameplay
 
             var renderer = wall.AddComponent<SpriteRenderer>();
             bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % 5 == 0;
-            Sprite mapped = visualCatalog != null
+            int decoration = torch
+                ? 0
+                : Mathf.Abs(
+                    pos.x * 11 +
+                    pos.y * 17 +
+                    outward.x * 23 +
+                    outward.y * 31 +
+                    _grid.iso.viewQuarterTurns * 7) % 8;
+            // 허브 벽은 휴식 공간 전용 따뜻한 팔레트를 사용한다. 던전 카탈로그는
+            // 회전/계단/FOV 가독성 규칙을 보존하기 위해 그대로 둔다.
+            Sprite mapped = !hubMode && visualCatalog != null
                 ? visualCatalog.RearWallFor(torch, risesRight: flip)
                 : null;
-            renderer.sprite = mapped != null ? mapped : GetWallSprite(torch);
+            renderer.sprite = hubMode
+                ? GetHubWallSprite(torch, decoration)
+                : mapped != null ? mapped : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             Color wallTint = ElevationTint(pos);

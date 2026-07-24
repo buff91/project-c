@@ -93,13 +93,22 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>몬스터 한 마리를 만들어 씬과 목록에 붙인다. 초기 배치와 런타임 스폰이 공유.</summary>
-        private EnemyAgent SpawnEnemy(MonsterArchetype archetype, GridPos spawn, int floorIndex)
+        private EnemyAgent SpawnEnemy(
+            MonsterArchetype archetype,
+            GridPos spawn,
+            int floorIndex,
+            bool isBoss = false,
+            string displayName = null)
         {
             var enemy = new EnemyAgent
             {
                 Archetype = archetype,
+                IsBoss = isBoss,
+                DisplayName = string.IsNullOrWhiteSpace(displayName) ? archetype.Id : displayName,
                 State = new CombatantState(
-                    $"{archetype.Id} {FloorLabel(floorIndex)}-{_enemies.Count + 1}",
+                    isBoss
+                        ? displayName
+                        : $"{archetype.Id} {FloorLabel(floorIndex)}-{_enemies.Count + 1}",
                     spawn,
                     archetype.MaxHp,
                     archetype.AttackPower),
@@ -112,6 +121,11 @@ namespace ProjectC.Gameplay
             enemy.HpBackground = enemy.Root.transform.Find($"{enemy.State.Id} HP Background");
             UpdateHealthBar(enemy.HpFill, enemy.State);
             enemy.MoodIcon = CreateMoodIcon(enemy.Root);
+            if (isBoss)
+            {
+                enemy.Root.transform.localScale = Vector3.one * 1.3f;
+                enemy.BossMarker = CreateBossMarker(enemy.Root);
+            }
             enemy.LastMood = enemy.Brain.Mood;
             _enemies.Add(enemy);
             ApplyEnemyVisuals(enemy);
@@ -132,6 +146,7 @@ namespace ProjectC.Gameplay
         {
             if (_turns.TurnNumber - _lastTrickleSpawnTurn < TrickleSpawnIntervalTurns) return;
             if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor)) return;
+            if (IsBossFloor) return;
 
             int living = 0;
             foreach (EnemyAgent enemy in _enemies)
@@ -264,6 +279,9 @@ namespace ProjectC.Gameplay
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
             Color elevationTint = ElevationTint(pos);
             Color tint = CombatantTint(enemy.State);
+            Color bossTint = enemy.IsBoss
+                ? new Color(1f, 0.76f, 0.42f, 1f)
+                : Color.white;
             float alpha = enemy.State.IsAlive
                 ? tint.a
                 : EnemyPresentationRules.CorpseAlpha(
@@ -271,7 +289,10 @@ namespace ProjectC.Gameplay
                     enemy.DeathTurn,
                     corpseLifetimeTurns);
             enemy.Renderer.color = new Color(
-                tint.r * elevationTint.r, tint.g * elevationTint.g, tint.b * elevationTint.b, alpha);
+                tint.r * elevationTint.r * bossTint.r,
+                tint.g * elevationTint.g * bossTint.g,
+                tint.b * elevationTint.b * bossTint.b,
+                alpha);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
             SyncEnemyStatusVisuals(enemy, visibleToPlayer);
@@ -280,6 +301,8 @@ namespace ProjectC.Gameplay
                 enemy.HpFill.gameObject.SetActive(showHealthBar);
             if (enemy.HpBackground != null)
                 enemy.HpBackground.gameObject.SetActive(showHealthBar);
+            if (enemy.BossMarker != null)
+                enemy.BossMarker.gameObject.SetActive(showHealthBar);
             UpdateMoodIcon(enemy, visibleToPlayer);
         }
 
@@ -330,6 +353,109 @@ namespace ProjectC.Gameplay
             renderer.sortingOrder = 30003;
             icon.SetActive(false);
             return text;
+        }
+
+        private static TextMesh CreateBossMarker(GameObject owner)
+        {
+            var marker = new GameObject("Boss Marker");
+            marker.transform.SetParent(owner.transform, false);
+            marker.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+
+            var text = marker.AddComponent<TextMesh>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = 38;
+            text.characterSize = 0.045f;
+            text.fontStyle = FontStyle.Bold;
+            text.anchor = TextAnchor.LowerCenter;
+            text.alignment = TextAlignment.Center;
+            text.text = "◆ BOSS ◆";
+            text.color = new Color32(255, 194, 72, 255);
+
+            var renderer = marker.GetComponent<MeshRenderer>();
+            renderer.material = text.font.material;
+            renderer.sortingOrder = 30004;
+            return text;
+        }
+
+        private void CreateBossExitSeal()
+        {
+            if (hubMode || _dungeon == null || DungeonSelection.Selected.Boss == null ||
+                !_dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo bottom) ||
+                !bottom.DownStairs.HasValue)
+                return;
+
+            _bossExitPos = bottom.DownStairs.Value;
+            _bossExitSeal = new GameObject("Boss Exit Seal");
+            _bossExitSeal.transform.SetParent(_visualRoot, false);
+            _bossExitSeal.transform.position = _grid.GridToWorld(_bossExitPos) + Vector3.up * 0.08f;
+            _bossExitSealRenderer = _bossExitSeal.AddComponent<SpriteRenderer>();
+            _bossExitSealRenderer.sortingOrder = _grid.iso.SortingOrder(_bossExitPos, 2);
+            RefreshBossExitSeal();
+        }
+
+        private void RefreshBossExitSeal()
+        {
+            if (_bossExitSealRenderer == null || _dungeon == null) return;
+
+            _bossExitSealRenderer.sprite = GetBossExitSealSprite(_bossDefeated);
+            bool onFloor = _activeFloorIndex == _dungeon.BottomFloorIndex;
+            bool seen = viewMode == DungeonViewMode.DebugAll ||
+                        _visibleTiles.Contains(_bossExitPos) ||
+                        _verticalPreviewTiles.Contains(_bossExitPos);
+            _bossExitSeal.SetActive(onFloor && seen);
+            _bossExitSeal.transform.localScale = _bossDefeated
+                ? Vector3.one * 1.15f
+                : Vector3.one;
+        }
+
+        private IEnumerator AnimateBossExitSealUnlock()
+        {
+            RefreshBossExitSeal();
+            if (_bossExitSeal == null || !_bossExitSeal.activeInHierarchy) yield break;
+
+            Vector3 baseScale = Vector3.one * 1.15f;
+            for (int pulse = 0; pulse < 3; pulse++)
+            {
+                float elapsed = 0f;
+                while (elapsed < 0.18f)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / 0.18f);
+                    _bossExitSeal.transform.localScale =
+                        baseScale * Mathf.Lerp(1f, 1.45f, Mathf.Sin(t * Mathf.PI));
+                    yield return null;
+                }
+            }
+            _bossExitSeal.transform.localScale = baseScale;
+        }
+
+        private bool RecordEnemyDeath(EnemyAgent enemy, bool visibleToPlayer)
+        {
+            if (enemy == null || enemy.State.IsAlive || enemy.DeathTurn >= 0) return false;
+
+            enemy.DeathTurn = _turns.TurnNumber;
+            _runSummary.RecordKill();
+            Debug.Log($"[Combat] {enemy.State.Id} 처치");
+
+            if (enemy.IsBoss)
+            {
+                _bossDefeated = true;
+                InteractionFeedback?.Invoke("BOSS DEFEATED — 출구의 봉인이 풀렸다!");
+                FloatingText?.Show(
+                    _grid.GridToWorld(_bossExitPos),
+                    "EXIT UNSEALED",
+                    FloatingTextKind.Alert);
+                RefreshBossExitSeal();
+                BossStateChanged?.Invoke();
+                SaveCheckpoint();
+                StartCoroutine(AnimateBossExitSealUnlock());
+            }
+            else if (visibleToPlayer)
+            {
+                InteractionFeedback?.Invoke("ENEMY DEFEATED");
+            }
+
+            return true;
         }
 
         private void UpdateMoodIcon(EnemyAgent enemy, bool visibleToPlayer)

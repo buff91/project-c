@@ -11,12 +11,15 @@ namespace ProjectC.Core
     public class RunSaveData
     {
         public string heroId;
+        public string dungeonId;
         public int seed;
         public int roomSize;
         public int floorCount;
         public int elevationsPerFloor;
+        public int stageCount = 1;
         public int stageIndex = 1;
         public int currentFloorIndex;
+        public bool bossDefeated;
         public int hp;
         public int potions;
         public int bombs;

@@ -166,8 +166,8 @@ MonoBehaviour:
   frostBombDamage: 1
   bombThrowRange: 4
   knifeDamage: 3
-  stageCount: 3
-  floorCount: 3
+  stageCount: 1
+  floorCount: 10
   elevationsPerFloor: 4
   dungeonSeed: 1977
   previewStartDepth: 0

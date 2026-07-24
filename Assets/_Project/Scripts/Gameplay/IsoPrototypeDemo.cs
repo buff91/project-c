@@ -43,8 +43,10 @@ namespace ProjectC.Gameplay
         [Header("카메라 구도")]
         [Range(4f, 7f)] public float playCameraSize = 5.2f;
         [Range(7f, 16f)] public float debugCameraSize = 8.8f;
-        [Min(0f)] public float hubCameraHorizontalPadding = 0.75f;
-        [Min(0f)] public float hubCameraVerticalPadding = 1.5f;
+        [Tooltip("허브 가로 화면에서 방이 지나치게 작아지지 않도록 하는 전용 최소 크기.")]
+        [Min(2.2f)] public float hubCameraMinimumSize = 2.55f;
+        [Min(0f)] public float hubCameraHorizontalPadding = 0.6f;
+        [Min(0f)] public float hubCameraVerticalPadding = 1.2f;
 
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
@@ -65,20 +67,20 @@ namespace ProjectC.Gameplay
         [Min(1)] public int knifeDamage = 3;
 
         [Header("던전 체인")]
-        [Tooltip("한 판에 완주해야 하는 던전 수. 각 던전의 최심층 출구가 다음 던전으로 이어진다.")]
-        [Range(1, 5)] public int stageCount = 3;
+        [Tooltip("한 판에 완주해야 하는 던전 수. 첫 목적지는 B1~B10 단일 던전이며 이후 체인 확장용으로 남긴다.")]
+        [Range(1, 5)] public int stageCount = 1;
 
         [Header("허브 모드")]
         [Tooltip("켜면 던전 대신 허브 캠프(상인/영웅/창고/포탈)를 만든다. Hub 씬 전용.")]
         public bool hubMode;
 
         [Header("M3 다층 던전")]
-        [Range(2, 5)] public int floorCount = 3;
+        [Range(2, 20)] public int floorCount = 10;
         [Range(3, 6)] public int elevationsPerFloor = 4;
         [Tooltip("절차 생성 seed. 같은 값이면 같은 던전이 재현된다.")]
         public int dungeonSeed = 1977;
         [Tooltip("검증 장면에서 시작할 깊이. 1이면 B2에서 시작한다.")]
-        [Range(0, 2)] public int previewStartDepth = 0;
+        [Range(0, 19)] public int previewStartDepth = 0;
         public DungeonViewMode viewMode = DungeonViewMode.Play;
         [Range(3, 10)] public int fieldOfViewRadius = 6;
         [Range(1, 2)] public int verticalPreviewRadius = 2;
@@ -149,7 +151,25 @@ namespace ProjectC.Gameplay
             return gold;
         }
         public int StageIndex => _stageIndex;
+        public int FloorCount => floorCount;
+        public string DungeonId => DungeonSelection.Selected.Id;
         public string StageLabel => $"던전 {_stageIndex}/{stageCount}";
+        public bool HasNextStage => _stageIndex < stageCount;
+        public bool IsBossFloor =>
+            !hubMode &&
+            _dungeon != null &&
+            _activeFloorIndex == _dungeon.BottomFloorIndex &&
+            DungeonSelection.Selected.Boss != null;
+        public bool BossDefeated => _bossDefeated;
+        public bool BossExitUnlocked =>
+            !hubMode &&
+            DungeonBossRules.CanUseExit(DungeonSelection.Selected, _bossDefeated);
+        public string BossName => DungeonSelection.Selected.Boss?.DisplayName ?? "--";
+        public int BossHp => _boss != null && _boss.State != null ? _boss.State.Hp : 0;
+        public int BossMaxHp =>
+            _boss != null && _boss.State != null
+                ? _boss.State.MaxHp
+                : DungeonSelection.Selected.Boss?.Archetype.MaxHp ?? 0;
         public bool BombAiming => _bombAiming;
         public ItemKind AimedBombKind => _bombAimKind;
         public CombatantState PlayerState => _playerState;
@@ -165,6 +185,7 @@ namespace ProjectC.Gameplay
         public event System.Action InventoryChanged;
         public event System.Action<bool> BombAimingChanged;
         public event System.Action PlayerHpChanged;
+        public event System.Action BossStateChanged;
         public event System.Action<RunSummary> RunEnded;
         /// <summary>던전 출구 도착 — HUD 가 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
         public event System.Action ExitChoiceRequested;
@@ -214,6 +235,10 @@ namespace ProjectC.Gameplay
             new Dictionary<string, SpriteRenderer>();
         private readonly Dictionary<string, GridPos> _hubHeroPositions =
             new Dictionary<string, GridPos>();
+        private readonly Dictionary<SpriteRenderer, GridPos> _hubPropPositions =
+            new Dictionary<SpriteRenderer, GridPos>();
+        private readonly Dictionary<SpriteRenderer, GridPos> _hubLightPositions =
+            new Dictionary<SpriteRenderer, GridPos>();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -229,6 +254,11 @@ namespace ProjectC.Gameplay
         private readonly HashSet<VerticalRouteRole> _discoveredVerticalRoutes =
             new HashSet<VerticalRouteRole>();
         private SpriteRenderer _dungeonFogBackdrop;
+        private EnemyAgent _boss;
+        private bool _bossDefeated;
+        private GameObject _bossExitSeal;
+        private SpriteRenderer _bossExitSealRenderer;
+        private GridPos _bossExitPos;
         private Camera _configuredCamera;
         private float _lastCameraAspect = -1f;
 
@@ -298,17 +328,27 @@ namespace ProjectC.Gameplay
                 RunSaveStore.ContinueRequested = false;
                 if (RunSaveStore.TryLoad(out continueData))
                 {
+                    DungeonSelection.SelectedId = string.IsNullOrWhiteSpace(continueData.dungeonId)
+                        ? DungeonCatalog.DefaultId
+                        : continueData.dungeonId;
+                    DungeonDefinition selected = DungeonSelection.Selected;
                     dungeonSeed = continueData.seed;
                     roomSize = Mathf.Max(9, continueData.roomSize);
-                    floorCount = continueData.floorCount;
+                    floorCount = selected.FloorCount;
                     elevationsPerFloor = continueData.elevationsPerFloor;
+                    stageCount = Mathf.Max(1, continueData.stageCount);
                     _stageIndex = Mathf.Max(1, continueData.stageIndex);
                 }
             }
             if (Application.isPlaying && !hubMode)
                 previewStartDepth = RunStartRules.ResolvePreviewDepth(continueData);
             if (Application.isPlaying && !hubMode && continueData == null && _stageIndex == 1)
-                dungeonSeed = DungeonSelection.Selected.Seed;
+            {
+                DungeonDefinition selected = DungeonSelection.Selected;
+                dungeonSeed = selected.Seed;
+                floorCount = selected.FloorCount;
+                stageCount = 1;
+            }
 
             // 영웅 프리셋: 새 판은 메뉴 선택, 이어하기는 저장된 영웅. 편집 모드 미리보기는 인스펙터 값 유지.
             if (Application.isPlaying)
@@ -333,6 +373,10 @@ namespace ProjectC.Gameplay
             _enemies.Clear();
             _items.Clear();
             _inventory.Clear();
+            _boss = null;
+            _bossExitSeal = null;
+            _bossExitSealRenderer = null;
+            _bossDefeated = continueData != null && continueData.bossDefeated;
             _bombAiming = false;
             _barrelExploded = false;
             _lastTrickleSpawnTurn = 0;
@@ -390,6 +434,7 @@ namespace ProjectC.Gameplay
             InventoryChanged?.Invoke();
             BombAimingChanged?.Invoke(false);
             PlayerHpChanged?.Invoke();
+            BossStateChanged?.Invoke();
         }
 
         // ── 디버그 창 전용 API (에디터/개발빌드에서 DebugPanelController 가 호출) ──
@@ -469,10 +514,36 @@ namespace ProjectC.Gameplay
                     continue;
                 enemy.State.TakeDamage(9999);
                 UpdateHealthBar(enemy.HpFill, enemy.State);
+                RecordEnemyDeath(enemy, IsEnemyVisibleToPlayer(enemy));
                 ApplyEnemyVisuals(enemy);
                 killed++;
             }
             InteractionFeedback?.Invoke($"CHEAT: 몬스터 {killed}마리 제거");
+        }
+
+        public void DebugDefeatBoss()
+        {
+            if (!Application.isPlaying || _boss == null || !_boss.State.IsAlive) return;
+            _boss.State.TakeDamage(9999);
+            UpdateHealthBar(_boss.HpFill, _boss.State);
+            RecordEnemyDeath(_boss, IsEnemyVisibleToPlayer(_boss));
+            ApplyEnemyVisuals(_boss);
+        }
+
+        public void DebugSaveCheckpoint() => SaveCheckpoint();
+
+        public bool DebugRequestBossExit()
+        {
+            if (!Application.isPlaying || _dungeon == null ||
+                !_dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo floor) ||
+                !floor.DownStairs.HasValue)
+                return false;
+
+            GridPos exit = floor.DownStairs.Value;
+            _playerState.MoveTo(exit);
+            _player.transform.position = _grid.GridToWorld(exit);
+            SyncPlayerView(exit, floorChanged: true);
+            return TryRequestExitChoice();
         }
 
         public void DebugJumpFloor(int delta)
@@ -504,6 +575,8 @@ namespace ProjectC.Gameplay
         private void ApplyContinueData(RunSaveData data)
         {
             ApplyCarriedState(data, $"이어하기 — {FloorLabel(_activeFloorIndex)} 입구에서 재개");
+            RefreshBossExitSeal();
+            BossStateChanged?.Invoke();
             Debug.Log($"[Save] 이어하기: {StageLabel} {FloorLabel(_activeFloorIndex)}, " +
                       $"HP {_playerState.Hp}, 처치 {data.kills}");
         }
@@ -546,12 +619,15 @@ namespace ProjectC.Gameplay
             RunSaveStore.Save(new RunSaveData
             {
                 heroId = _hero != null ? _hero.Id : null,
+                dungeonId = DungeonSelection.Selected.Id,
                 seed = dungeonSeed,
                 roomSize = roomSize,
                 floorCount = floorCount,
                 elevationsPerFloor = elevationsPerFloor,
+                stageCount = stageCount,
                 stageIndex = _stageIndex,
                 currentFloorIndex = _activeFloorIndex,
+                bossDefeated = _bossDefeated,
                 hp = _playerState.Hp,
                 potions = PotionCount,
                 bombs = BombCount,
@@ -700,11 +776,36 @@ namespace ProjectC.Gameplay
             _spawnRng = new System.Random(dungeonSeed * 17);
             foreach (DungeonFloorInfo floor in _dungeon.Floors)
             {
+                bool bossFloor =
+                    floor.FloorIndex == _dungeon.BottomFloorIndex &&
+                    DungeonSelection.Selected.Boss != null;
+                GridPos bossSpawn = default;
+                bool hasBossSpawn = bossFloor &&
+                    DungeonBossRules.TrySelectSpawn(
+                        floor.Entry,
+                        floor.EnemySpawns,
+                        out bossSpawn);
+
                 foreach (GridPos spawn in floor.EnemySpawns)
+                {
+                    if (hasBossSpawn && spawn == bossSpawn)
+                        continue;
                     SpawnEnemy(
                         MonsterRoster.PickForDepth(GlobalDepth(floor.FloorIndex), _spawnRng),
                         spawn,
                         floor.FloorIndex);
+                }
+
+                if (hasBossSpawn && !_bossDefeated)
+                {
+                    DungeonBossDefinition boss = DungeonSelection.Selected.Boss;
+                    _boss = SpawnEnemy(
+                        boss.Archetype,
+                        bossSpawn,
+                        floor.FloorIndex,
+                        isBoss: true,
+                        displayName: boss.DisplayName);
+                }
 
                 foreach (ItemSpawn itemSpawn in floor.Items)
                 {
@@ -720,6 +821,7 @@ namespace ProjectC.Gameplay
                     _items.Add(item);
                 }
             }
+            CreateBossExitSeal();
 
             _barrelPos = FindPreviewPropPosition();
             _barrel = CreateStandingSprite("Explosive Barrel", barrelSprite, _barrelPos, out _barrelRenderer);
@@ -953,6 +1055,19 @@ namespace ProjectC.Gameplay
             if (_selection != null)
                 PositionSelection(_selectionPos);
 
+            foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubPropPositions)
+            {
+                if (pair.Key == null) continue;
+                pair.Key.transform.position = _grid.GridToWorld(pair.Value);
+                pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, 1);
+            }
+            foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubLightPositions)
+            {
+                if (pair.Key == null) continue;
+                pair.Key.transform.position = _grid.GridToWorld(pair.Value);
+                pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, -1);
+            }
+
             RefreshFloorVisibility();
         }
 
@@ -1112,12 +1227,13 @@ namespace ProjectC.Gameplay
 
             if (kind == TileKind.StairsDown)
             {
-                bool hasDestination = _grid.Map.LinksFrom(_playerPos).Count > 0 ||
-                                      (_activeFloorIndex == _dungeon.BottomFloorIndex &&
-                                       _stageIndex < stageCount);
+                bool bottomExit = IsBottomExit(_playerPos);
+                bool hasDestination = _grid.Map.LinksFrom(_playerPos).Count > 0 || bottomExit;
                 if (!hasDestination) return false;
-                label = _activeFloorIndex == _dungeon.BottomFloorIndex && _stageIndex < stageCount
-                    ? "다음 던전으로"
+                label = bottomExit
+                    ? !BossExitUnlocked
+                        ? "출구 봉인됨 — 보스를 처치하라"
+                        : HasNextStage ? "다음 던전으로" : "던전 정복"
                     : $"{BelowFloorLabel}로 이동";
                 return true;
             }
@@ -1147,10 +1263,14 @@ namespace ProjectC.Gameplay
                 return true;
             }
 
-            if (kind == TileKind.StairsDown &&
-                _activeFloorIndex == _dungeon.BottomFloorIndex &&
-                _stageIndex < stageCount)
+            if (kind == TileKind.StairsDown && IsBottomExit(_playerPos))
             {
+                if (!BossExitUnlocked)
+                {
+                    InteractionFeedback?.Invoke($"{BossName}의 봉인이 출구를 막고 있다");
+                    return true;
+                }
+
                 var path = new List<GridPos> { _playerPos };
                 InteractionFeedback?.Invoke(label);
                 StartPlayerAction(_playerPos, MoveAndAdvanceStage(path, _playerPos));
@@ -1364,10 +1484,9 @@ namespace ProjectC.Gameplay
                     path.Add(links[0]);
                 }
                 else if (targetTile.kind == TileKind.StairsDown &&
-                         _activeFloorIndex == _dungeon.BottomFloorIndex &&
-                         _stageIndex < stageCount)
+                         IsBottomExit(target))
                 {
-                    // 링크 없는 최심층 하행 계단 = 다음 던전 출구.
+                    // 링크 없는 최심층 하행 계단 = 보스 봉인 출구.
                     StartPlayerAction(target, MoveAndAdvanceStage(path, target));
                     return;
                 }
@@ -2128,17 +2247,11 @@ namespace ProjectC.Gameplay
                     enemy.Renderer,
                     impact);
 
-            bool newlyDead = !enemy.State.IsAlive && enemy.DeathTurn < 0;
-            if (newlyDead)
-            {
-                enemy.DeathTurn = _turns.TurnNumber;
-                _runSummary.RecordKill();
-                Debug.Log($"[Combat] {enemy.State.Id} 처치");
-                if (visibleToPlayer)
-                    InteractionFeedback?.Invoke("ENEMY DEFEATED");
-            }
+            RecordEnemyDeath(enemy, visibleToPlayer);
 
             ApplyEnemyVisuals(enemy);
+            if (enemy.IsBoss)
+                BossStateChanged?.Invoke();
         }
 
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
@@ -2186,11 +2299,16 @@ namespace ProjectC.Gameplay
             _hubInteractables.Clear();
             _hubHeroProps.Clear();
             _hubHeroPositions.Clear();
+            _hubPropPositions.Clear();
+            _hubLightPositions.Clear();
 
             Sprite campfire = visualCatalog != null ? visualCatalog.hubCampfire : null;
             Sprite portal = visualCatalog != null ? visualCatalog.hubPortal : null;
             Sprite merchantSprite = visualCatalog != null ? visualCatalog.merchant : null;
             Sprite stash = visualCatalog != null ? visualCatalog.hubStash : null;
+
+            CreateHubLightPatch("campfire", HubLayout.Campfire, 2);
+            CreateHubLightPatch("portal", HubLayout.Portal, 1);
 
             CreateHubProp("Campfire", campfire != null ? campfire : GetHubPropSprite("campfire"), HubLayout.Campfire);
             CreateHubProp("Portal", portal != null ? portal : GetHubPropSprite("portal"), HubLayout.Portal);
@@ -2219,9 +2337,32 @@ namespace ProjectC.Gameplay
             RefreshHubHeroLocks();
         }
 
+        private void CreateHubLightPatch(string kind, GridPos origin, int radius)
+        {
+            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
+            {
+                GridPos pos = pair.Key;
+                if (!pair.Value.IsWalkable || pos.elevation != origin.elevation)
+                    continue;
+
+                int distance = pos.ManhattanTo(origin);
+                if (distance > radius) continue;
+
+                int strength = distance == 0 ? 3 : distance == 1 ? 2 : 1;
+                var lightTile = new GameObject($"{kind} Light {pos.x},{pos.y}");
+                lightTile.transform.SetParent(_visualRoot, false);
+                lightTile.transform.position = _grid.GridToWorld(pos);
+                var renderer = lightTile.AddComponent<SpriteRenderer>();
+                renderer.sprite = GetHubLightTileSprite(kind, strength);
+                renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
+                _hubLightPositions[renderer] = pos;
+            }
+        }
+
         private SpriteRenderer CreateHubProp(string objectName, Sprite sprite, GridPos pos)
         {
             CreateStandingSprite(objectName, sprite, pos, out SpriteRenderer renderer);
+            _hubPropPositions[renderer] = pos;
             return renderer;
         }
 
@@ -2304,35 +2445,47 @@ namespace ProjectC.Gameplay
         /// <summary>스테이지 누적 층 인덱스(기록/표시용, 아래로 갈수록 음수).</summary>
         private int GlobalFloorIndex(int floorIndex) => floorIndex - (_stageIndex - 1) * floorCount;
 
-        /// <summary>
-        /// 마지막 던전의 최심층에 살아서 도달했으면 승리. (GDD: 한 판 목표 = 최심층 도달)
-        /// 앞 던전에서는 출구 계단 안내만 한다 — 다음 던전 진입은 출구 탭으로.
-        /// </summary>
+        /// <summary>최심층 도착은 보스와 봉인 출구를 안내할 뿐, 즉시 승리시키지 않는다.</summary>
         private void TryDeclareVictory()
         {
             if (hubMode || _runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
             if (_activeFloorIndex != _dungeon.BottomFloorIndex) return;
 
-            if (_stageIndex < stageCount)
-            {
-                InteractionFeedback?.Invoke($"{StageLabel} 최심층 — 출구 계단(▼)을 찾아라");
-                return;
-            }
-
-            int victoryGold = BankInventoryToStash();
-            _runSummary.EndInVictory(victoryGold);
-            RunSaveStore.Clear();
-            InteractionFeedback?.Invoke("DEEPEST FLOOR REACHED!");
-            Debug.Log($"[Run] 최심층 {FloorLabel(GlobalFloorIndex(_activeFloorIndex))} 도달 — 승리");
-            RunEnded?.Invoke(_runSummary);
+            InteractionFeedback?.Invoke(
+                BossExitUnlocked
+                    ? "최심층 출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
+                    : $"최심층 도달 — {BossName}를 쓰러뜨려 출구를 열어라");
+            BossStateChanged?.Invoke();
         }
 
-        /// <summary>출구 계단까지 걸어간 뒤 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
+        private bool IsBottomExit(GridPos pos) =>
+            _dungeon != null &&
+            _activeFloorIndex == _dungeon.BottomFloorIndex &&
+            _dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo floor) &&
+            floor.DownStairs.HasValue &&
+            floor.DownStairs.Value == pos;
+
+        private bool TryRequestExitChoice()
+        {
+            if (!IsBottomExit(_playerPos)) return false;
+            if (!BossExitUnlocked)
+            {
+                InteractionFeedback?.Invoke($"{BossName}의 봉인이 출구를 막고 있다");
+                return false;
+            }
+
+            InteractionFeedback?.Invoke(
+                HasNextStage ? "다음 던전으로 향할 수 있다" : "정복한 던전을 떠날 시간이다");
+            ExitChoiceRequested?.Invoke();
+            return true;
+        }
+
+        /// <summary>출구 계단까지 걸어간 뒤 "정복/다음 던전 vs 생환" 선택지를 띄운다.</summary>
         private IEnumerator MoveAndAdvanceStage(IReadOnlyList<GridPos> path, GridPos exit)
         {
             yield return MovePlayerPath(path);
             if (_playerState.IsAlive && _playerPos == exit)
-                ExitChoiceRequested?.Invoke();
+                TryRequestExitChoice();
         }
 
         /// <summary>출구 선택지 — 다음 던전으로. (HUD 버튼이 호출)</summary>
@@ -2341,7 +2494,23 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction || _runSummary.Ended ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
-            AdvanceToNextStage();
+            if (!BossExitUnlocked) return;
+
+            if (HasNextStage)
+            {
+                AdvanceToNextStage();
+                return;
+            }
+
+            int victoryGold = BankInventoryToStash();
+            RunSaveStore.Clear();
+            _runSummary.EndInVictory(victoryGold);
+            InteractionFeedback?.Invoke("DUNGEON CONQUERED!");
+            Debug.Log(
+                $"[Run] {DungeonSelection.Selected.DisplayName} 정복 — " +
+                $"{FloorLabel(GlobalFloorIndex(_activeFloorIndex))}, " +
+                $"+{ItemCatalog.FormatGold(victoryGold)}");
+            RunEnded?.Invoke(_runSummary);
         }
 
         /// <summary>출구 선택지 — 생환. 전리품 환산 + 소모품 창고 보관 후 판 종료.</summary>
@@ -2543,7 +2712,9 @@ namespace ProjectC.Gameplay
                 }
             }
             _lastCameraAspect = camera.aspect;
-            camera.backgroundColor = new Color32(6, 9, 13, 255);
+            camera.backgroundColor = hubMode
+                ? new Color32(9, 7, 14, 255)
+                : new Color32(6, 9, 13, 255);
             camera.clearFlags = CameraClearFlags.SolidColor;
         }
 
@@ -2568,7 +2739,7 @@ namespace ProjectC.Gameplay
             frame = OrthographicCameraFraming.Fit(
                 minX, maxX, minY, maxY,
                 aspect,
-                playCameraSize,
+                hubCameraMinimumSize,
                 hubCameraHorizontalPadding,
                 hubCameraVerticalPadding);
             return true;
@@ -2635,6 +2806,8 @@ namespace ProjectC.Gameplay
         private sealed class EnemyAgent
         {
             public MonsterArchetype Archetype;
+            public bool IsBoss;
+            public string DisplayName;
             public CombatantState State;
             public MonsterBrain Brain;
             public GameObject Root;
@@ -2643,6 +2816,7 @@ namespace ProjectC.Gameplay
             public Transform HpBackground;
             public MonsterMood LastMood;
             public TextMesh MoodIcon;
+            public TextMesh BossMarker;
             public int DeathTurn = -1;
         }
 
