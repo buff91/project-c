@@ -145,3 +145,7 @@
   `MainMenuController.StartNewGame()`의 다음 목적지를 별도 스토리 씬으로 바꿔 삽입한다.
 - 던전 게임 메뉴의 `로비로 가기`는 체크포인트를 보존하고 `Hub`로, 게임오버의
   `메뉴로`는 `MainMenu`로 돌아간다.
+- 에디터/개발 빌드는 공용 설정에서 `DevelopmentSaveProfile`을 켤 수 있다.
+  이때 `MetaStore`와 `RunSaveStore`는 실제 저장 루트가 아닌
+  `persistentDataPath/development-profile/`만 사용한다. 던전 진행 중에는 프로필
+  변경과 초기화를 잠가 현재 런과 저장 목적지가 섞이지 않게 한다.

@@ -832,6 +832,33 @@
     border-top-color: rgb(57, 43, 25);
 }
 
+.development-save-profile {
+    display: none;
+    flex-shrink: 0;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top-width: 1px;
+    border-top-color: rgb(57, 43, 25);
+}
+
+.development-save-controls {
+    min-height: 42px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.development-save-toggle {
+    flex-grow: 1;
+    min-width: 190px;
+    margin-right: 6px;
+}
+
+.development-save-reset {
+    min-height: 36px;
+}
+
 .development-title {
     color: var(--pc-gold);
     font-size: 9px;

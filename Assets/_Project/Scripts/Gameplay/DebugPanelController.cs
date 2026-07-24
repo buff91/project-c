@@ -157,7 +157,8 @@ namespace ProjectC.Gameplay
                 $"seed {demo.DebugSeed} · 턴 {demo.DebugTurnNumber} · FPS {fps:0}\n" +
                 $"{demo.LocationLabel}\n" +
                 $"HP {hp} · GOD {(demo.DebugGodMode ? "ON" : "off")} · " +
-                $"층 몬스터 {demo.DebugLivingEnemiesOnFloor()}";
+                $"층 몬스터 {demo.DebugLivingEnemiesOnFloor()} · " +
+                $"SAVE {(DevelopmentSaveProfile.IsEnabled ? "TEMP" : "REAL")}";
         }
 
         private void HandleLogMessage(string condition, string stackTrace, LogType type)

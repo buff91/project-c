@@ -7,7 +7,9 @@ namespace ProjectC.Gameplay
     /// <summary>메타 창고 파일 입출력. 판 종료(사망 포함)에도 유지된다.</summary>
     public static class MetaStore
     {
-        private static string SavePath => Path.Combine(Application.persistentDataPath, "meta-stash.json");
+        private static string SavePath => Path.Combine(
+            DevelopmentSaveProfile.ActiveRootPath,
+            DevelopmentSaveProfile.MetaFileName);
 
         public static MetaSaveData LoadOrNew()
         {
@@ -23,7 +25,10 @@ namespace ProjectC.Gameplay
             }
         }
 
-        public static void Save(MetaSaveData data) =>
+        public static void Save(MetaSaveData data)
+        {
+            Directory.CreateDirectory(DevelopmentSaveProfile.ActiveRootPath);
             File.WriteAllText(SavePath, JsonUtility.ToJson(data));
+        }
     }
 }

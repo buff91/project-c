@@ -10,12 +10,15 @@ namespace ProjectC.Gameplay
         /// <summary>메인 메뉴의 "이어하기"가 켠다. 게임 씬이 소비 후 끈다.</summary>
         public static bool ContinueRequested;
 
-        private static string SavePath => Path.Combine(Application.persistentDataPath, "run-save.json");
+        private static string SavePath => Path.Combine(
+            DevelopmentSaveProfile.ActiveRootPath,
+            DevelopmentSaveProfile.RunFileName);
 
         public static bool HasSave => File.Exists(SavePath);
 
         public static void Save(RunSaveData data)
         {
+            Directory.CreateDirectory(DevelopmentSaveProfile.ActiveRootPath);
             File.WriteAllText(SavePath, JsonUtility.ToJson(data));
         }
 

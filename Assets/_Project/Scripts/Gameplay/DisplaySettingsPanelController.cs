@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 namespace ProjectC.Gameplay
@@ -23,9 +24,14 @@ namespace ProjectC.Gameplay
         private readonly DropdownField _viewportResolution;
         private readonly Button _viewportApply;
         private readonly Label _viewportStatus;
+        private readonly VisualElement _developmentSaveProfile;
+        private readonly Toggle _saveProfileToggle;
+        private readonly Button _saveProfileReset;
+        private readonly Label _saveProfileStatus;
         private readonly VisualElement _templateHost;
         private readonly Action _beforeOpen;
         private DisplaySettingsData _settings;
+        private bool _saveProfileSwitchLocked;
         private bool _disposed;
 
         public bool IsOpen => _modal != null && _modal.ClassListContains("is-open");
@@ -54,6 +60,10 @@ namespace ProjectC.Gameplay
             _viewportResolution = root.Q<DropdownField>("viewport-resolution");
             _viewportApply = root.Q<Button>("viewport-apply");
             _viewportStatus = root.Q<Label>("viewport-status");
+            _developmentSaveProfile = root.Q<VisualElement>("development-save-profile");
+            _saveProfileToggle = root.Q<Toggle>("development-save-toggle");
+            _saveProfileReset = root.Q<Button>("development-save-reset");
+            _saveProfileStatus = root.Q<Label>("development-save-status");
             _templateHost = _modal?.parent;
 
             if (_openButton != null) _openButton.clicked += Open;
@@ -61,15 +71,18 @@ namespace ProjectC.Gameplay
             if (_doneButton != null) _doneButton.clicked += Close;
             if (_resetButton != null) _resetButton.clicked += Reset;
             if (_viewportApply != null) _viewportApply.clicked += ApplyDevelopmentViewport;
+            if (_saveProfileReset != null) _saveProfileReset.clicked += ResetDevelopmentSave;
             _occlusionToggle?.RegisterValueChangedCallback(HandleOcclusionToggle);
             _rearWallsToggle?.RegisterValueChangedCallback(HandleRearWallsToggle);
             _occlusionAlpha?.RegisterValueChangedCallback(HandleOcclusionAlpha);
             _verticalAlpha?.RegisterValueChangedCallback(HandleVerticalAlpha);
             _exploredAlpha?.RegisterValueChangedCallback(HandleExploredAlpha);
+            _saveProfileToggle?.RegisterValueChangedCallback(HandleDevelopmentSaveToggle);
 
             _settings = DisplaySettingsStore.Load();
             Apply();
             ConfigureDevelopmentViewport();
+            ConfigureDevelopmentSaveProfile();
             SyncControls();
         }
 
@@ -100,11 +113,13 @@ namespace ProjectC.Gameplay
             if (_doneButton != null) _doneButton.clicked -= Close;
             if (_resetButton != null) _resetButton.clicked -= Reset;
             if (_viewportApply != null) _viewportApply.clicked -= ApplyDevelopmentViewport;
+            if (_saveProfileReset != null) _saveProfileReset.clicked -= ResetDevelopmentSave;
             _occlusionToggle?.UnregisterValueChangedCallback(HandleOcclusionToggle);
             _rearWallsToggle?.UnregisterValueChangedCallback(HandleRearWallsToggle);
             _occlusionAlpha?.UnregisterValueChangedCallback(HandleOcclusionAlpha);
             _verticalAlpha?.UnregisterValueChangedCallback(HandleVerticalAlpha);
             _exploredAlpha?.UnregisterValueChangedCallback(HandleExploredAlpha);
+            _saveProfileToggle?.UnregisterValueChangedCallback(HandleDevelopmentSaveToggle);
         }
 
         private void Reset()
@@ -206,6 +221,57 @@ namespace ProjectC.Gameplay
             _viewportStatus.text = $"현재: {DevelopmentViewportService.ModeLabel(DevelopmentViewportService.SelectedMode)} · {preset.Label}";
         }
 
+        private void ConfigureDevelopmentSaveProfile()
+        {
+            if (_developmentSaveProfile == null) return;
+
+            _developmentSaveProfile.style.display = DevelopmentSaveProfile.IsAvailable
+                ? DisplayStyle.Flex
+                : DisplayStyle.None;
+            if (!DevelopmentSaveProfile.IsAvailable) return;
+
+            // 진행 중인 던전에서 프로필을 바꾸면 현재 런과 저장 목적지가 섞인다.
+            _saveProfileSwitchLocked = _demo != null && !_demo.hubMode;
+            _saveProfileToggle?.SetEnabled(!_saveProfileSwitchLocked);
+            UpdateDevelopmentSaveStatus();
+        }
+
+        private void HandleDevelopmentSaveToggle(ChangeEvent<bool> evt)
+        {
+            if (_saveProfileSwitchLocked)
+            {
+                _saveProfileToggle?.SetValueWithoutNotify(DevelopmentSaveProfile.IsEnabled);
+                return;
+            }
+            if (evt.newValue == DevelopmentSaveProfile.IsEnabled) return;
+
+            DevelopmentSaveProfile.SetEnabled(evt.newValue);
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private void ResetDevelopmentSave()
+        {
+            DevelopmentSaveProfile.ClearDevelopmentData();
+            if (DevelopmentSaveProfile.IsEnabled && !_saveProfileSwitchLocked)
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                return;
+            }
+            UpdateDevelopmentSaveStatus();
+        }
+
+        private void UpdateDevelopmentSaveStatus()
+        {
+            if (_saveProfileStatus == null) return;
+
+            string data = DevelopmentSaveProfile.HasDevelopmentData ? "데이터 있음" : "비어 있음";
+            _saveProfileStatus.text = _saveProfileSwitchLocked
+                ? $"{DevelopmentSaveProfile.ActiveLabel} · 던전 진행 중 변경 불가"
+                : $"{DevelopmentSaveProfile.ActiveLabel} · 임시 저장 {data}";
+            _saveProfileReset?.SetEnabled(
+                !_saveProfileSwitchLocked && DevelopmentSaveProfile.HasDevelopmentData);
+        }
+
         private static HudPresentationMode ModeFromChoice(string choice)
         {
             if (choice == "모바일") return HudPresentationMode.Mobile;
@@ -221,6 +287,8 @@ namespace ProjectC.Gameplay
             _verticalAlpha?.SetValueWithoutNotify(_settings.VerticalPreviewAlpha);
             _exploredAlpha?.SetValueWithoutNotify(_settings.ExploredAlpha);
             _occlusionAlpha?.SetEnabled(_settings.FadePlayerOccluders);
+            _saveProfileToggle?.SetValueWithoutNotify(DevelopmentSaveProfile.IsEnabled);
+            UpdateDevelopmentSaveStatus();
         }
     }
 }

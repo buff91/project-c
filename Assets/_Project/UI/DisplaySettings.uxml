@@ -55,6 +55,16 @@
                         </ui:VisualElement>
                         <ui:Label name="viewport-status" text="현재 화면을 확인하는 중" class="viewport-status" />
                     </ui:VisualElement>
+
+                    <ui:VisualElement name="development-save-profile" class="development-save-profile">
+                        <ui:Label text="DEVELOPMENT SAVE PROFILE" class="development-title" />
+                        <ui:Label text="실제 창고·체크포인트와 분리된 테스트 저장을 사용합니다" class="development-help" />
+                        <ui:VisualElement class="development-save-controls">
+                            <ui:Toggle name="development-save-toggle" label="격리된 임시 프로필 사용" class="settings-toggle development-save-toggle" />
+                            <ui:Button name="development-save-reset" text="임시 데이터 초기화" class="settings-reset development-save-reset" />
+                        </ui:VisualElement>
+                        <ui:Label name="development-save-status" text="저장 프로필을 확인하는 중" class="viewport-status" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:ScrollView>
 
