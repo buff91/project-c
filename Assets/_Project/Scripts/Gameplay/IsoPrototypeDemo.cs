@@ -1853,7 +1853,18 @@ namespace ProjectC.Gameplay
             {
                 GridPos next = path[i];
                 if (IsLivingEnemyAt(next))
+                {
+                    // 자동 이동 경로에 적이 들어오면 조용히 멈추지 않는다.
+                    // 특히 계단/사다리를 탭했을 때 멈춘 이유를 이동 장치 고장으로 오해하기 쉽다.
+                    bool blockerVisible =
+                        viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(next);
+                    FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
+                    InteractionFeedback?.Invoke(
+                        blockerVisible
+                            ? "적이 길을 막아 이동을 멈췄다 — 적을 먼저 처치하라"
+                            : "앞길이 막혀 이동을 멈췄다");
                     yield break;
+                }
 
                 // 스텝 전 스냅샷 — 이 스텝(내 이동+적 턴)으로 "새로" 보이게 된 것만 인터럽트한다.
                 SnapshotTravelSight();
