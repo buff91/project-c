@@ -169,6 +169,7 @@ namespace ProjectC.Core
             foreach (GridPos candidate in new[] { player.North, player.East, player.South, player.West })
             {
                 if (!context.Map.IsWalkable(candidate)) continue;
+                if (IsFallHazard(context.Map, candidate)) continue; // 약한 바닥 위에서 때리려 서지 않는다
                 if (context.IsOccupied != null && candidate != context.Self.Position &&
                     context.IsOccupied(candidate))
                     continue;
@@ -188,9 +189,18 @@ namespace ProjectC.Core
                 context.Map,
                 self,
                 goal,
-                pos => pos != self && context.IsOccupied != null && context.IsOccupied(pos),
+                pos => pos != self &&
+                       (IsFallHazard(context.Map, pos) ||
+                        (context.IsOccupied != null && context.IsOccupied(pos))),
                 openClosedDoors: true);
         }
+
+        /// <summary>
+        /// 이 칸에 발을 디디면 낙하하는가(약한 바닥). 몬스터는 궁지가 아니면 자진해서 밟지 않는다 —
+        /// 낙하는 플레이어의 밀기/넉백으로 유도하는 게 정석이다. (GDD §5.3 넉백→낙하)
+        /// </summary>
+        private static bool IsFallHazard(GridMap map, GridPos pos) =>
+            map.Get(pos)?.kind == TileKind.WeakFloor;
 
         /// <summary>플레이어와의 거리(체비셰프)를 가장 크게 벌리는 이웃 칸으로 물러난다.</summary>
         private MonsterAction DecideFlee(MonsterBrainContext context)
@@ -203,6 +213,7 @@ namespace ProjectC.Core
             foreach (GridPos candidate in new[] { self.North, self.East, self.South, self.West })
             {
                 if (!context.Map.IsWalkable(candidate)) continue;
+                if (IsFallHazard(context.Map, candidate)) continue; // 도망치다 스스로 약한 바닥에 안 떨어진다
                 if (context.IsOccupied != null && context.IsOccupied(candidate)) continue;
                 int distance = candidate.ChebyshevTo(player);
                 if (distance > bestDistance)
@@ -230,6 +241,7 @@ namespace ProjectC.Core
             foreach (GridPos candidate in new[] { self.North, self.East, self.South, self.West })
             {
                 if (!context.Map.IsWalkable(candidate)) continue;
+                if (IsFallHazard(context.Map, candidate)) continue; // 순찰 중 약한 바닥엔 들어가지 않는다
                 if (_home.ChebyshevTo(candidate) > _archetype.PatrolRadius) continue;
                 if (context.IsOccupied != null && context.IsOccupied(candidate)) continue;
                 options.Add(candidate);

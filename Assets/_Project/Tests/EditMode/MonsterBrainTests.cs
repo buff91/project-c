@@ -219,6 +219,59 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Patrol_DoesNotWanderOntoWeakFloor()
+        {
+            GridMap map = Flat(11);
+            map.Set(new GridPos(6, 5, 0), TileKind.WeakFloor);
+            var self = new CombatantState("g", new GridPos(5, 5, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(0, 0, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 7);
+
+            for (int i = 0; i < 40; i++)
+            {
+                MonsterAction action = brain.Decide(Context(map, self, player, playerSeesMonster: false));
+                if (action.Kind == MonsterActionKind.Step)
+                {
+                    Assert.AreNotEqual(new GridPos(6, 5, 0), action.Target, "순찰이 약한 바닥에 들어가지 않는다");
+                    self.MoveTo(action.Target);
+                }
+            }
+        }
+
+        [Test]
+        public void Flee_DoesNotBackOntoWeakFloor_StandsInstead()
+        {
+            GridMap map = Flat(11);
+            map.Set(new GridPos(6, 5, 0), TileKind.WeakFloor); // 유일한 후퇴 방향이 약한 바닥
+            var coward = new MonsterArchetype("Coward", 5, 1, aggroRange: 6, patrolRadius: 2, fleeThreshold: 1f);
+            var self = new CombatantState("g", new GridPos(5, 5, 0), 5, 1);
+            self.TakeDamage(1); // Hp 4 < Max → 도주 발동
+            var player = new CombatantState("p", new GridPos(0, 5, 0), 8, 2);
+            var brain = new MonsterBrain(coward, self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterMood.Flee, brain.Mood);
+            Assert.AreNotEqual(new GridPos(6, 5, 0), action.Target, "도망치다 약한 바닥으로 자멸하지 않는다");
+        }
+
+        [Test]
+        public void Chase_RoutesAroundWeakFloor_DoesNotStepOnIt()
+        {
+            GridMap map = Flat(11);
+            map.Set(new GridPos(4, 5, 0), TileKind.WeakFloor); // 추격 직선 경로 위
+            var self = new CombatantState("g", new GridPos(5, 5, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(2, 5, 0), 8, 2);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 1);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterMood.Chase, brain.Mood);
+            if (action.Kind == MonsterActionKind.Step)
+                Assert.AreNotEqual(new GridPos(4, 5, 0), action.Target, "추격이 약한 바닥을 우회한다");
+        }
+
+        [Test]
         public void ClosedDoorOnChasePath_ReturnsOpenDoor()
         {
             var map = new GridMap();
