@@ -301,7 +301,16 @@ namespace ProjectC.Core
         /// 아이템 스폰. 막다른 분기 방이 있으면 보상 아이템 하나를 보장하고,
         /// 나머지는 북쪽·동쪽 방의 빈 바닥에 1~2개 흩뿌린다. 적 스폰과는 겹치지 않는다.
         /// </summary>
-        private static void PlaceItems(GridMap map, Random random, FloorPlan p)
+        /// <summary>
+        /// 아이템 배치. <paramref name="meta"/>가 게이트를 들고 있으면 미해금 도구는
+        /// <b>롤 결과만 형제로 치환</b>된다 — 풀을 다시 짜지 않는 이유는 RNG 스트림을 보존해
+        /// "같은 seed + 같은 해금 상태 = 같은 던전"을 유지하기 위해서다.
+        /// </summary>
+        private static void PlaceItems(
+            GridMap map,
+            Random random,
+            FloorPlan p,
+            DungeonMetaContext meta)
         {
             ItemKind RollKind()
             {
@@ -310,6 +319,12 @@ namespace ProjectC.Core
                 // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
                 // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
                 int roll = random.Next(0, 23);
+                return meta.Resolve(RollRaw(roll));
+            }
+
+            // 분배 자체는 해금 상태와 무관하다 — 게이트는 결과를 치환할 뿐이다.
+            ItemKind RollRaw(int roll)
+            {
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;

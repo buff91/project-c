@@ -228,7 +228,8 @@ namespace ProjectC.Core
             int elevationsPerFloor = 4,
             int seed = 1977,
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
-            int firstBuildingFloor = -1)
+            int firstBuildingFloor = -1,
+            DungeonMetaContext meta = default)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (width < 9) throw new ArgumentOutOfRangeException(nameof(width));
@@ -316,7 +317,7 @@ namespace ProjectC.Core
                 PlaceRestSite(map, random, plan, floorCount);
                 PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan, floorCount);
-                PlaceItems(map, random, plan);
+                PlaceItems(map, random, plan, meta);
                 PlaceEquipment(map, random, plan);
                 PlaceExtractionPoint(map, plan, floorCount);
                 PlaceBossLandmark(map, plan, floorCount);

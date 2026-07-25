@@ -30,6 +30,13 @@ namespace ProjectC.Core
         // 현재 원정에 걸린 의뢰 id 목록. 생환/승리 정산 때 비워지고 허브에서 다시 채운다.
         public string[] activeBountyIds = new string[0];
 
+        /// <summary>
+        /// 조건을 달성해 드랍 풀에 들어온 도구들((int)<see cref="ItemKind"/>).
+        /// <b>죽어도 남는다</b> — 실패한 판도 전진이어야 한다(<see cref="ItemUnlockRules"/>).
+        /// 옛 세이브는 빈 목록으로 들어와 "아직 아무것도 안 열림"이 되므로 마이그레이션이 없다.
+        /// </summary>
+        public List<int> unlockedItems = new List<int>();
+
         public int GetCount(ItemKind kind) => ItemStorage.Count(stash, kind);
 
         /// <summary>
@@ -111,6 +118,32 @@ namespace ProjectC.Core
             unlockedHeroes?.CopyTo(next, 0);
             next[next.Length - 1] = heroId;
             unlockedHeroes = next;
+        }
+
+        public bool IsItemUnlocked(ItemKind kind)
+        {
+            if (unlockedItems == null) return false;
+            foreach (int id in unlockedItems)
+                if (id == (int)kind) return true;
+            return false;
+        }
+
+        /// <summary>새로 열렸으면 true. 이미 열려 있으면 아무것도 하지 않는다(중복 방지).</summary>
+        public bool UnlockItem(ItemKind kind)
+        {
+            if (IsItemUnlocked(kind)) return false;
+            unlockedItems ??= new List<int>();
+            unlockedItems.Add((int)kind);
+            return true;
+        }
+
+        /// <summary>해금된 종류 목록 — 생성기에 넘기는 형태.</summary>
+        public List<ItemKind> UnlockedItemKinds()
+        {
+            var kinds = new List<ItemKind>();
+            if (unlockedItems == null) return kinds;
+            foreach (int id in unlockedItems) kinds.Add((ItemKind)id);
+            return kinds;
         }
 
     }
