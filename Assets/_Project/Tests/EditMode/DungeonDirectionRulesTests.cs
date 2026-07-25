@@ -42,11 +42,59 @@ namespace ProjectC.Tests
                 DungeonDirectionRules.BackStair(DungeonProgressDirection.Ascend));
         }
 
+        /// <summary>
+        /// 고도가 축이 아닌 던전(<c>Inward</c>). 층은 여전히 쌓이지만 그건 렌더·컬링을 위한
+        /// 엔진 사정이고, 플레이어에게 진행은 "얼마나 깊이 들어왔는가"다.
+        /// </summary>
+        [Test]
+        public void Inward_DoesNotUseVerticalProgress_ButStillStacksFloors()
+        {
+            Assert.IsFalse(DungeonDirectionRules.UsesVerticalProgress(DungeonProgressDirection.Inward));
+            Assert.IsTrue(DungeonDirectionRules.UsesVerticalProgress(DungeonProgressDirection.Descend));
+            Assert.IsTrue(DungeonDirectionRules.UsesVerticalProgress(DungeonProgressDirection.Ascend));
+
+            // 층 인덱스는 여전히 서로 달라야 한다 — 같으면 구역들이 공간에서 겹친다.
+            var seen = new System.Collections.Generic.HashSet<int>();
+            for (int progress = 0; progress < 10; progress++)
+            {
+                int floorIndex =
+                    DungeonDirectionRules.FloorIndexFor(DungeonProgressDirection.Inward, progress);
+                Assert.IsTrue(seen.Add(floorIndex),
+                    $"진행 {progress}의 층 인덱스가 중복됐다 — 구역이 공간에서 겹친다");
+            }
+        }
+
+        /// <summary>진입 깊이 던전은 층 라벨을 쓰지 않는다 — B1/1F 는 화면에서 거짓이 된다.</summary>
+        [TestCase(0, "1구역")]
+        [TestCase(1, "2구역")]
+        [TestCase(7, "8구역")]
+        public void FloorLabel_InwardDungeon_UsesSectionNumbering(int progressIndex, string expected)
+        {
+            Assert.AreEqual(
+                expected,
+                DungeonDirectionRules.FloorLabelFor(
+                    DungeonProgressDirection.Inward,
+                    firstBuildingFloor: -1, // 무시돼야 한다
+                    progressIndex));
+        }
+
+        /// <summary>낙하는 하강 던전에서만 진행을 앞당긴다. 진입 깊이 던전에선 그냥 지형 위험이다.</summary>
+        [Test]
+        public void Fall_IsUnrelatedToProgress_InInwardDungeons()
+        {
+            Assert.IsFalse(DungeonDirectionRules.FallAdvancesProgress(DungeonProgressDirection.Inward));
+        }
+
         [Test]
         public void OnwardAndBackStairs_AreNeverTheSameTile()
         {
             foreach (DungeonProgressDirection direction in
-                     new[] { DungeonProgressDirection.Descend, DungeonProgressDirection.Ascend })
+                     new[]
+                     {
+                         DungeonProgressDirection.Descend,
+                         DungeonProgressDirection.Ascend,
+                         DungeonProgressDirection.Inward
+                     })
             {
                 Assert.AreNotEqual(
                     DungeonDirectionRules.OnwardStair(direction),
