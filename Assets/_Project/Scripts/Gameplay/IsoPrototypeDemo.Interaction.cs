@@ -286,6 +286,11 @@ namespace ProjectC.Gameplay
             {
                 if (combatMode == CombatActionMode.Ranged)
                     StartPlayerAction(target, RangedAttack(tappedEnemy));
+                // 긴 사거리 근접 장비(창)는 이미 닿으면 걸어 붙지 않고 그 자리에서 찌른다.
+                else if (CombatRules.CanMelee(
+                             _grid.Map, _playerState, tappedEnemy.State, _playerLoadout.MeleeReach))
+                    StartPlayerAction(
+                        target, ApproachAndAttack(new List<GridPos> { _playerPos }, tappedEnemy));
                 else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
                     StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
                 return;

@@ -124,17 +124,22 @@ namespace ProjectC.Gameplay
             yield return MovePlayerPath(path);
 
             if (_playerState.IsAlive && enemy.State.IsAlive &&
-                CombatRules.AreAdjacent(_playerState, enemy.State))
+                CombatRules.CanMelee(_grid.Map, _playerState, enemy.State, _playerLoadout.MeleeReach))
             {
                 yield return AnimateMeleeLunge(
                     _player.transform,
                     enemy.Root != null
                         ? enemy.Root.transform.position
                         : _grid.GridToWorld(enemy.State.Position));
-                if (CombatRules.TryMelee(_playerState, enemy.State, out int damage))
+                if (CombatRules.TryMelee(
+                        _playerState, enemy.State, out int damage,
+                        _grid.Map, _playerLoadout.MeleeReach))
                 {
                     if (_runTelemetry != null) _runTelemetry.meleeAttacks++;
                     yield return ShowEnemyHit(enemy, damage, "Melee");
+                    // 둔기 장비: 때린 대상을 밀어낸다 — 구멍·창문 앞이면 그대로 낙하로 이어진다.
+                    if (_playerLoadout.KnockbackOnHit && enemy.State.IsAlive)
+                        yield return KnockbackCombatant(_playerState.Position, enemy.State);
                     yield return ResolveEnemyPhase();
                 }
             }

@@ -121,59 +121,76 @@ namespace ProjectC.Gameplay
             if (_smithList == null) return;
             _smithList.Clear();
 
-            foreach (SmithyUpgrade upgrade in SmithyRules.All)
+            foreach (EquipmentDefinition equipment in EquipmentCatalog.All)
             {
-                int tier = _meta.GetSmithyTier(upgrade.Id);
-                bool maxed = tier >= upgrade.MaxTier;
-                int cost = SmithyRules.NextTierCost(_meta, upgrade.Id);
+                bool owned = _meta.OwnsEquipment(equipment);
+                bool equipped = ForgeRules.IsEquipped(_meta, equipment);
+                string slotLabel = equipment.Slot == EquipmentSlot.Weapon ? "무기" : "보조";
 
-                var row = new VisualElement { name = $"smith-row-{upgrade.Id}" };
+                var row = new VisualElement { name = $"smith-row-{equipment.Id}" };
                 row.AddToClassList("hub-smith-row");
 
                 var info = new VisualElement();
                 info.AddToClassList("hub-smith-info");
-                var title = new Label($"{upgrade.DisplayName}  ·  Lv {tier}/{upgrade.MaxTier}");
+                var title = new Label(
+                    $"{equipment.DisplayName}  ·  {slotLabel}{(equipped ? "  ·  장착 중" : "")}");
                 title.AddToClassList("hub-row-title");
-                var desc = new Label(upgrade.Description);
+                var desc = new Label(equipment.Description);
                 desc.AddToClassList("hub-row-desc");
                 info.Add(title);
                 info.Add(desc);
                 row.Add(info);
 
-                string upgradeId = upgrade.Id;
-                var buy = new Button(() => BuyUpgrade(upgradeId))
+                string equipmentId = equipment.Id;
+                var action = new Button(() => ForgeAction(equipmentId))
                 {
-                    name = $"smith-buy-{upgrade.Id}",
-                    text = maxed ? "최대 강화" : $"강화 ({ItemCatalog.FormatGold(cost)})"
+                    name = $"smith-buy-{equipment.Id}",
+                    text = owned
+                        ? equipped ? "해제" : "장착"
+                        : $"제작 ({ItemCatalog.FormatGold(equipment.CraftCost)})"
                 };
-                buy.AddToClassList("settings-done");
-                buy.AddToClassList("hub-smith-buy");
-                buy.SetEnabled(!maxed && _meta.gold >= cost);
-                row.Add(buy);
+                action.AddToClassList("settings-done");
+                action.AddToClassList("hub-smith-buy");
+                action.SetEnabled(owned || _meta.gold >= equipment.CraftCost);
+                row.Add(action);
 
                 _smithList.Add(row);
             }
         }
 
-        private void BuyUpgrade(string upgradeId)
+        /// <summary>보유 전이면 제작, 보유 후면 장착/해제 토글 — 버튼 하나로 장비를 관리한다.</summary>
+        private void ForgeAction(string equipmentId)
         {
-            SmithyPurchaseResult result = SmithyRules.TryPurchase(_meta, upgradeId);
-            SmithyUpgrade upgrade = SmithyRules.ById(upgradeId);
-            string label = upgrade != null ? upgrade.DisplayName : upgradeId;
+            EquipmentDefinition equipment = EquipmentCatalog.ById(equipmentId);
+            string label = equipment != null ? equipment.DisplayName : equipmentId;
 
-            switch (result)
+            if (equipment != null && _meta.OwnsEquipment(equipment))
             {
-                case SmithyPurchaseResult.Success:
+                if (ForgeRules.TryToggleEquip(_meta, equipmentId))
+                {
                     MetaStore.Save(_meta);
-                    if (_smithFeedback != null) _smithFeedback.text = $"{label} 강화 완료";
-                    break;
-                case SmithyPurchaseResult.InsufficientGold:
                     if (_smithFeedback != null)
-                        _smithFeedback.text = "소지금이 부족하다 — 생환해서 벌어오자";
-                    break;
-                case SmithyPurchaseResult.MaxedOut:
-                    if (_smithFeedback != null) _smithFeedback.text = $"{label}은(는) 이미 최대 강화";
-                    break;
+                        _smithFeedback.text = ForgeRules.IsEquipped(_meta, equipment)
+                            ? $"{label} 장착"
+                            : $"{label} 해제";
+                }
+            }
+            else
+            {
+                switch (ForgeRules.TryCraft(_meta, equipmentId))
+                {
+                    case ForgeResult.Crafted:
+                        MetaStore.Save(_meta);
+                        if (_smithFeedback != null) _smithFeedback.text = $"{label} 제작 완료 — 장착했다";
+                        break;
+                    case ForgeResult.InsufficientGold:
+                        if (_smithFeedback != null)
+                            _smithFeedback.text = "소지금이 부족하다 — 생환해서 벌어오자";
+                        break;
+                    case ForgeResult.AlreadyOwned:
+                        if (_smithFeedback != null) _smithFeedback.text = $"{label}은(는) 이미 가지고 있다";
+                        break;
+                }
             }
 
             BuildSmithRows();

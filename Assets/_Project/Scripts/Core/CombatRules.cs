@@ -25,18 +25,39 @@ namespace ProjectC.Core
         /// 기하 판정 자체는 <see cref="SightRules.CanReachAcross"/>가 소유한다 — 마법·특수
         /// 사거리가 생겨도 "높이차를 얼마까지 넘어 닿는가"를 한 곳에서만 정의하기 위해서다.
         /// </summary>
-        public static bool AreAdjacent(CombatantState first, CombatantState second)
+        public static bool AreAdjacent(CombatantState first, CombatantState second) =>
+            CanMelee(null, first, second);
+
+        /// <summary>
+        /// 근접이 닿는가. 사거리 2 이상(창)은 직선이면서 사이가 뚫려 있어야 한다 —
+        /// 벽·닫힌 문 너머로 찌를 수 없다. 사거리 1이면 맵 없이도 판정이 같다(기존 동작).
+        /// </summary>
+        public static bool CanMelee(
+            GridMap map, CombatantState attacker, CombatantState target, int meleeReach = 1)
         {
-            if (first == null || second == null) return false;
-            return SightRules.CanReachAcross(first.Position, second.Position, MeleeReachHeight);
+            if (attacker == null || target == null) return false;
+            if (!SightRules.CanReachAcross(
+                    attacker.Position, target.Position, MeleeReachHeight, meleeReach))
+                return false;
+            if (meleeReach <= 1 || map == null) return true;
+            return SightRules.HasLineOfSight(map, attacker.Position, target.Position);
         }
 
-        public static bool TryMelee(CombatantState attacker, CombatantState target, out int damage)
+        /// <param name="map">사거리 2 이상일 때 사이 차폐를 보기 위해 필요하다. 사거리 1이면 무시된다.</param>
+        /// <param name="meleeReach">장비가 주는 평면 근접 사거리(<see cref="CombatLoadout.MeleeReach"/>).</param>
+        /// <param name="targetArmor">대상의 방어(장비). 물리 피해만 줄이며 최소 1은 남는다.</param>
+        public static bool TryMelee(
+            CombatantState attacker,
+            CombatantState target,
+            out int damage,
+            GridMap map = null,
+            int meleeReach = 1,
+            int targetArmor = 0)
         {
             damage = 0;
             if (attacker == null || target == null || !attacker.IsAlive || !target.IsAlive)
                 return false;
-            if (!AreAdjacent(attacker, target))
+            if (!CanMelee(map, attacker, target, meleeReach))
                 return false;
 
             // 위에서 내려치면 추가 피해 — 높이 이점을 근접에도 부여한다.
@@ -44,9 +65,17 @@ namespace ProjectC.Core
             if (attacker.Position.elevation > target.Position.elevation)
                 power += DownStrikeBonus;
 
-            damage = target.TakeDamage(power);
+            damage = target.TakeDamage(Mitigate(power, targetArmor));
             return true;
         }
+
+        /// <summary>
+        /// 방어로 물리 피해를 줄이되 최소 1은 남긴다 — 방어 장비가 약한 공격을 완전히
+        /// 무효화하면 저티어 적이 무의미해지고 스탯 크리프와 같은 문제가 생긴다.
+        /// 상태이상 틱(화상·중독)은 이 경로를 타지 않는다.
+        /// </summary>
+        public static int Mitigate(int power, int armor) =>
+            armor <= 0 ? power : Math.Max(1, power - armor);
 
         /// <param name="attackPower">
         /// 원거리 전용 공격력. 생략하면 근접과 같은 AttackPower.
@@ -58,7 +87,8 @@ namespace ProjectC.Core
             GridMap map,
             int maxRange,
             out int damage,
-            int? attackPower = null)
+            int? attackPower = null,
+            int targetArmor = 0)
         {
             damage = 0;
             if (attacker == null || target == null || map == null || maxRange < 1 ||
@@ -68,7 +98,7 @@ namespace ProjectC.Core
                 !HasLineOfSight(map, attacker.Position, target.Position))
                 return false;
 
-            damage = target.TakeDamage(attackPower ?? attacker.AttackPower);
+            damage = target.TakeDamage(Mitigate(attackPower ?? attacker.AttackPower, targetArmor));
             return true;
         }
 

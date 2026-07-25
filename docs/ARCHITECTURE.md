@@ -369,6 +369,10 @@ tileFloor == activeFloor → visible || explored
 - **MetaSaveData**(`[Serializable]`) — 판 종료(사망 포함)에도 유지되는 은행. `gold`, `unlockedHeroes`,
   창고 9종 + 로드아웃 9종(전리품 필드 없음). `TrySpend`(상점/해금), `IsHeroUnlocked/UnlockHero`.
 - **HeroRoster** — 기사(HP10·공3, 무료)/사냥꾼(HP8·원2, 80G)/연금술사(HP8·공3, 120G). `ById`는 없으면 기사 폴백.
+- **Equipment / ForgeRules** — 무기 1 + 보조 1 슬롯. 장비는 **공격력을 올리지 않고** 규칙만 바꾼다
+  (사거리 2·명중 넉백·피해 -1·안전 낙하 +2). 대장간이 골드로 제작하고 슬롯에 끼우며,
+  옛 영구 스탯 강화(`SmithyRules`)는 제거했다. 전투 보정은 `CombatLoadout` 한 구조체로 모아
+  `CombatRules.TryMelee/TryRanged`가 파라미터로 받는다. 장착 장비는 백팩 공간을 쓰지 않는다.
 
 ### 10.6 텔레메트리 (RunTelemetry)
 - 순수 데이터/집계(Unity 시간·파일 모름, 스키마 v4). Gameplay가 이벤트+unscaled delta를 먹인다.

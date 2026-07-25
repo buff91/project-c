@@ -119,6 +119,10 @@
   `ProjectCAsepritePipeline`이 Point/PPU 64/Canvas Pivot/무압축/AnimationClip을 강제하고
   정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다.
   `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이며 최종본으로 직접 수정하지 않는다.
+- **장비**: 무기 1 + 보조 1 슬롯. **어떤 장비도 공격력을 올리지 않는다** — 사거리 2(긴 파이프),
+  명중 넉백(대형 렌치), 피해 -1(표지판 방패), 안전 낙하 +2(완충 부츠)처럼 규칙만 바꾼다.
+  대장간이 골드로 제작·장착을 관리하고(`ForgeRules`), 옛 영구 스탯 강화는 제거했다(GDD §11).
+  장착 장비는 백팩 공간을 쓰지 않으며 출정 준비 격자에도 나오지 않는다.
 - **백팩/창고**: 던전 백팩은 `BackpackRules` 6×4 멀티슬롯(1×1/1×2/2×2)이며
   `BackpackLayout` 자동 배치를 UI가 그대로 그린다. 공간 부족 시 월드 아이템은 남고,
   허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의

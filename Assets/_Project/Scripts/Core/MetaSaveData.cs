@@ -31,10 +31,16 @@ namespace ProjectC.Core
         public int loadoutPowders;
         public int loadoutFrostShards;
 
-        // 대장간 영구 강화 티어. 판을 넘어 유지된다 (메타 프로그레션).
-        public int weaponTier;
-        public int armorTier;
-        public int toolTier;
+        // 장비 창고 (대장간에서 제작해 보관한다).
+        public int pipeSpears;
+        public int heavyWrenches;
+        public int signShields;
+        public int paddedBoots;
+
+        // 장착 중인 장비 id (EquipmentCatalog). 빈 문자열이면 맨손이다.
+        // 장착 장비는 백팩 공간을 쓰지 않으며 판을 넘어 유지된다 — 잃는 것은 소모품 쪽이다.
+        public string equippedWeaponId = "";
+        public string equippedGearId = "";
 
         // 현재 원정에 걸린 의뢰 id 목록. 생환/승리 정산 때 비워지고 허브에서 다시 채운다.
         public string[] activeBountyIds = new string[0];
@@ -52,6 +58,10 @@ namespace ProjectC.Core
                 case ItemKind.Herb: return herbs;
                 case ItemKind.BlastPowder: return powders;
                 case ItemKind.FrostShard: return frostShards;
+                case ItemKind.PipeSpear: return pipeSpears;
+                case ItemKind.HeavyWrench: return heavyWrenches;
+                case ItemKind.SignShield: return signShields;
+                case ItemKind.PaddedBoots: return paddedBoots;
                 default: return 0; // 전리품은 보관하지 않는다 — 항상 골드로 환산
             }
         }
@@ -69,6 +79,10 @@ namespace ProjectC.Core
                 case ItemKind.Herb: herbs += amount; break;
                 case ItemKind.BlastPowder: powders += amount; break;
                 case ItemKind.FrostShard: frostShards += amount; break;
+                case ItemKind.PipeSpear: pipeSpears += amount; break;
+                case ItemKind.HeavyWrench: heavyWrenches += amount; break;
+                case ItemKind.SignShield: signShields += amount; break;
+                case ItemKind.PaddedBoots: paddedBoots += amount; break;
             }
         }
 
@@ -136,6 +150,31 @@ namespace ProjectC.Core
             ClearLoadout();
         }
 
+        /// <summary>장비를 하나라도 보유하고 있는가(제작 후 창고에 남아 있는 것).</summary>
+        public bool OwnsEquipment(EquipmentDefinition definition) =>
+            definition != null && GetCount(definition.Item) > 0;
+
+        /// <summary>슬롯에 장착된 장비 id. 없으면 빈 문자열.</summary>
+        public string GetEquipped(EquipmentSlot slot) =>
+            slot == EquipmentSlot.Weapon ? equippedWeaponId ?? "" : equippedGearId ?? "";
+
+        public void SetEquipped(EquipmentSlot slot, string equipmentId)
+        {
+            string value = equipmentId ?? "";
+            if (slot == EquipmentSlot.Weapon) equippedWeaponId = value;
+            else equippedGearId = value;
+        }
+
+        /// <summary>현재 장착 조합의 전투 보정. 보유하지 않은 장비는 장착으로 치지 않는다.</summary>
+        public CombatLoadout EquippedLoadout()
+        {
+            EquipmentDefinition weapon = EquipmentCatalog.ById(equippedWeaponId);
+            EquipmentDefinition gear = EquipmentCatalog.ById(equippedGearId);
+            return EquipmentRules.LoadoutFor(
+                OwnsEquipment(weapon) ? weapon.Id : null,
+                OwnsEquipment(gear) ? gear.Id : null);
+        }
+
         /// <summary>골드가 충분하면 차감하고 true. 상점 구매/해금 공통 경로.</summary>
         public bool TrySpend(int cost)
         {
@@ -162,27 +201,5 @@ namespace ProjectC.Core
             unlockedHeroes = next;
         }
 
-        /// <summary>대장간 강화 티어 조회. 알 수 없는 id 는 0. (SmithyRules 가 유일한 소유자)</summary>
-        public int GetSmithyTier(string upgradeId)
-        {
-            switch (upgradeId)
-            {
-                case "weapon": return weaponTier;
-                case "armor": return armorTier;
-                case "tools": return toolTier;
-                default: return 0;
-            }
-        }
-
-        public void SetSmithyTier(string upgradeId, int tier)
-        {
-            int clamped = tier < 0 ? 0 : tier;
-            switch (upgradeId)
-            {
-                case "weapon": weaponTier = clamped; break;
-                case "armor": armorTier = clamped; break;
-                case "tools": toolTier = clamped; break;
-            }
-        }
     }
 }

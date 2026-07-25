@@ -321,6 +321,9 @@ namespace ProjectC.Gameplay
         private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
         private RunTelemetry _runTelemetry;
+
+        /// <summary>장착 장비가 주는 전투 보정(사거리·넉백·방어·안전 낙하). 판 시작 때 메타에서 읽는다.</summary>
+        private CombatLoadout _playerLoadout = CombatLoadout.Unarmed;
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
@@ -450,11 +453,12 @@ namespace ProjectC.Gameplay
             if (Application.isPlaying)
             {
                 _hero = HeroRoster.ById(continueData != null ? continueData.heroId : HeroSelection.SelectedId);
-                // 대장간 영구 강화를 영웅 기본 스탯 위에 얹는다 (티어 0 이면 기본값 그대로).
-                MetaSaveData heroMeta = MetaStore.LoadOrNew();
-                playerMaxHp = SmithyRules.EffectiveMaxHp(_hero, heroMeta);
-                playerAttack = SmithyRules.EffectiveAttack(_hero, heroMeta);
-                rangedAttackDamage = SmithyRules.EffectiveRangedDamage(_hero, heroMeta);
+                // 스탯은 영웅 프리셋 그대로다 — 영구 강화는 없앴고, 장비는 숫자가 아니라
+                // 행동 규칙(사거리·넉백·방어·안전 낙하)을 바꾼다.
+                playerMaxHp = _hero.MaxHp;
+                playerAttack = _hero.Attack;
+                rangedAttackDamage = _hero.RangedDamage;
+                _playerLoadout = MetaStore.LoadOrNew().EquippedLoadout();
             }
 
             if (Application.isPlaying && _moveRoutine != null)

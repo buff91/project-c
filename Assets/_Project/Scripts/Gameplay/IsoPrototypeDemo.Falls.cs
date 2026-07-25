@@ -51,7 +51,8 @@ namespace ProjectC.Gameplay
         private IEnumerator FallPlayer(GridPos from, string cause)
         {
             FallResult fall = FallRules.TryFall(
-                _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants());
+                _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants(),
+                _playerLoadout.SafeFallHeight);
             if (fall == null) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
 
             _runTelemetry?.RecordFall(

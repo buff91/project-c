@@ -88,6 +88,9 @@
 | 깊이 구간 경계·라벨 | `DungeonDepthBandRules` (판정과 `RangeLabel`이 같은 상수 사용) |
 | 텔레메트리 구간 롤업 | `RunTelemetry.RefreshBands` (파생 값 — 저장·요약 직전 재계산) |
 | 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` |
+| 장비 정의·효과 | `EquipmentCatalog` (전투 보정은 `CombatLoadout`) |
+| 장비 제작·장착 | `ForgeRules` (+ `MetaSaveData.equippedWeaponId/GearId`) |
+| 아이템 백팩 면적 | `BackpackRules.Footprint` |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 검증 필요)
 

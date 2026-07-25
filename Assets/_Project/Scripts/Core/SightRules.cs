@@ -11,17 +11,6 @@ namespace ProjectC.Core
     }
 
     /// <summary>
-    /// 시야·도달 판정의 단일 출처(3D 시야선 2단계). 원거리 사격·근접 단차 타격·개구부 투시가
-    /// 모두 이 함수들을 공유한다. 판정이 세 곳(전투/개구부/FOV)으로 흩어지지 않게 하는 자리다.
-    ///
-    /// - 수평·경사 시선: 2D 브레젠험으로 걷되 각 중간 칸에서 시선 elevation 을 보간해
-    ///   그 복셀의 차폐를 본다. void(타일 부재)=불투명 — 이 던전의 벽은 타일 부재로 표현된다.
-    /// - 수직 시선(같은 컬럼): 실제 개구부(Hole)만 통과한다. 허공(타일 없음)은 통로다 —
-    ///   "void=불투명"은 컬럼을 벽으로 읽는 수평 규칙이라 위·아래 판정에는 적용하지 않는다.
-    ///
-    /// FOV(<see cref="GridVisibility"/>) 셰도우캐스팅까지 이 규칙으로 합치는 것은 3단계 과제다.
-    /// </summary>
-    /// <summary>
     /// 한 컬럼(x, y)을 관찰자의 눈높이에서 본 결과. 컬럼에는 솔리드 구간이 여럿 있을 수 있으므로
     /// (예: 올라온 단 위에 얹힌 캐치워크) 단순 높이맵이 아니라 <b>지면</b>과 <b>머리 위 구조물</b>을
     /// 나눠 들고, 너머로 시야가 이어지는지도 함께 답한다.
@@ -54,6 +43,17 @@ namespace ProjectC.Core
             new ColumnView(false, default, false, default, true);
     }
 
+    /// <summary>
+    /// 시야·도달 판정의 단일 출처(3D 시야선 1~3단계). 원거리 사격·근접 단차 타격·개구부 투시·
+    /// FOV 컬럼 해석이 모두 이 함수들을 공유한다 — 판정이 전투/개구부/FOV 세 곳으로
+    /// 흩어지지 않게 하는 자리다.
+    ///
+    /// - 수평·경사 시선: 2D 브레젠험으로 걷되 각 중간 칸에서 시선 elevation 을 보간해
+    ///   그 복셀의 차폐를 본다. void(타일 부재)=불투명 — 이 던전의 벽은 타일 부재로 표현된다.
+    /// - 수직 시선(같은 컬럼): 실제 개구부(Hole)만 통과한다. 허공(타일 없음)은 통로다 —
+    ///   "void=불투명"은 컬럼을 벽으로 읽는 수평 규칙이라 위·아래 판정에는 적용하지 않는다.
+    /// - 컬럼 span 해석(<see cref="ViewColumn"/>): FOV 셰도우캐스팅이 쓰는 지면/머리 위 구분.
+    /// </summary>
     public static class SightRules
     {
         /// <summary>
@@ -174,10 +174,19 @@ namespace ProjectC.Core
         /// <summary>
         /// 옆칸에 높이차를 감수하고 닿는가 — 근접 단차 타격의 기하 판정.
         /// 마법·특수 사거리도 같은 함수를 쓰도록 순수 기하(맵 비의존)로 둔다.
+        ///
+        /// <paramref name="maxPlanarReach"/>가 2 이상이면 창처럼 **직선으로만** 뻗는다
+        /// (대각 비인접 규칙을 사거리가 길어져도 유지). 사이가 뚫려 있는지는 호출부가
+        /// <see cref="HasLineOfSight"/>로 함께 본다 — 기하와 차폐를 섞지 않는다.
         /// </summary>
-        public static bool CanReachAcross(GridPos from, GridPos to, int maxStepHeight) =>
-            from.ManhattanTo(to) == 1 &&
-            Math.Abs(from.elevation - to.elevation) <= maxStepHeight;
+        public static bool CanReachAcross(
+            GridPos from, GridPos to, int maxStepHeight, int maxPlanarReach = 1)
+        {
+            int planar = from.ManhattanTo(to);
+            if (planar < 1 || planar > (maxPlanarReach < 1 ? 1 : maxPlanarReach)) return false;
+            if (from.x != to.x && from.y != to.y) return false; // 대각은 근접이 아니다
+            return Math.Abs(from.elevation - to.elevation) <= maxStepHeight;
+        }
 
         /// <summary>
         /// 실제로 뚫린 Hole을 통한 층간 시야를 판정한다.

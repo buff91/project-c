@@ -235,7 +235,9 @@ namespace ProjectC.Gameplay
                             enemy.Root != null ? enemy.Root.transform : null,
                             _player.transform.position);
                     }
-                    if (CombatRules.TryMelee(enemy.State, _playerState, out int damage))
+                    if (CombatRules.TryMelee(
+                            enemy.State, _playerState, out int damage,
+                            targetArmor: _playerLoadout.Armor))
                     {
                         yield return ShowPlayerHit(damage, enemy.State.Id);
                         // 누출 오염 슬러지(코드 ID Slime)는 접촉 시 중독시킨다. (상태이상 확장, GDD §5.5)
@@ -288,7 +290,8 @@ namespace ProjectC.Gameplay
                     _grid.Map,
                     enemy.Archetype.RangedRange,
                     out int damage,
-                    enemy.Archetype.RangedPower))
+                    enemy.Archetype.RangedPower,
+                    _playerLoadout.Armor))
             {
                 yield return ShowPlayerHit(damage, enemy.State.Id);
             }

@@ -8,23 +8,26 @@ namespace ProjectC.Core
     /// </summary>
     public static class HubLayout
     {
-        public const int Width = 9;
-        public const int Height = 7;
+        // 9×7에서 확장. 시설이 서로 붙어 있어 오탭이 잦았고, 정착지라기보다 좁은 방으로 읽혔다.
+        // 배치의 상대 관계(중앙 통로 = 입구→모닥불→포탈, 좌우로 시설, 앞쪽에 영웅)는 그대로 두고
+        // 간격만 넓힌다. 허브 카메라는 맵 경계를 자동으로 맞추므로 크기 변경이 안전하다.
+        public const int Width = 13;
+        public const int Height = 9;
 
-        public static readonly GridPos Entry = new GridPos(4, 0, 0);
-        public static readonly GridPos Portal = new GridPos(4, 6, 0);
-        public static readonly GridPos Campfire = new GridPos(4, 3, 0);
-        public static readonly GridPos Merchant = new GridPos(1, 4, 0);
-        public static readonly GridPos Stash = new GridPos(7, 4, 0);
-        public static readonly GridPos Smith = new GridPos(1, 2, 0);
-        public static readonly GridPos BountyBoard = new GridPos(7, 2, 0);
+        public static readonly GridPos Entry = new GridPos(6, 0, 0);
+        public static readonly GridPos Portal = new GridPos(6, 8, 0);
+        public static readonly GridPos Campfire = new GridPos(6, 4, 0);
+        public static readonly GridPos Merchant = new GridPos(2, 5, 0);
+        public static readonly GridPos Stash = new GridPos(10, 5, 0);
+        public static readonly GridPos Smith = new GridPos(2, 2, 0);
+        public static readonly GridPos BountyBoard = new GridPos(10, 2, 0);
 
         /// <summary>HeroRoster.All 순서와 짝을 이룬다.</summary>
         public static readonly IReadOnlyList<GridPos> HeroPositions = new[]
         {
-            new GridPos(2, 2, 0),
-            new GridPos(4, 1, 0),
-            new GridPos(6, 2, 0)
+            new GridPos(4, 2, 0),
+            new GridPos(6, 1, 0),
+            new GridPos(8, 2, 0)
         };
 
         /// <summary>

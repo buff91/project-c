@@ -19,7 +19,12 @@ namespace ProjectC.Core
         Relic = 8,         // 전리품(대): 희귀. 생환 시 골드로 환산.
         Herb = 9,          // 조합 재료: 약초. 2개로 회복 물약을 만든다.
         BlastPowder = 10,  // 조합 재료: 화약. 2개로 폭탄을 만든다.
-        FrostShard = 11    // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
+        FrostShard = 11,   // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
+        // 장비 (대장간 제작 — 스탯이 아니라 행동 규칙을 바꾼다. EquipmentCatalog 참조)
+        PipeSpear = 12,    // 긴 파이프: 근접 사거리 2(직선).
+        HeavyWrench = 13,  // 대형 렌치: 근접 명중 시 1칸 넉백.
+        SignShield = 14,   // 표지판 방패: 받는 물리 피해 -1. 2×2 점유.
+        PaddedBoots = 15   // 완충 부츠: 안전 낙하 높이 +2.
     }
 
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
@@ -30,7 +35,8 @@ namespace ProjectC.Core
             ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
             ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
             ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic,
-            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard
+            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard,
+            ItemKind.PipeSpear, ItemKind.HeavyWrench, ItemKind.SignShield, ItemKind.PaddedBoots
         };
 
         /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
@@ -93,6 +99,10 @@ namespace ProjectC.Core
                 case ItemKind.Herb: return "약초";
                 case ItemKind.BlastPowder: return "화약";
                 case ItemKind.FrostShard: return "서리 수정";
+                case ItemKind.PipeSpear: return "긴 파이프";
+                case ItemKind.HeavyWrench: return "대형 렌치";
+                case ItemKind.SignShield: return "표지판 방패";
+                case ItemKind.PaddedBoots: return "완충 부츠";
                 default: return kind.ToString();
             }
         }
@@ -114,6 +124,10 @@ namespace ProjectC.Core
                 case ItemKind.Herb: return "HERB";
                 case ItemKind.BlastPowder: return "POWDER";
                 case ItemKind.FrostShard: return "SHARD";
+                case ItemKind.PipeSpear: return "SPEAR";
+                case ItemKind.HeavyWrench: return "WRENCH";
+                case ItemKind.SignShield: return "SHIELD";
+                case ItemKind.PaddedBoots: return "BOOTS";
                 default: return kind.ToString();
             }
         }
@@ -140,6 +154,12 @@ namespace ProjectC.Core
                     return "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.";
                 case ItemKind.Relic:
                     return "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.";
+                case ItemKind.PipeSpear:
+                case ItemKind.HeavyWrench:
+                case ItemKind.SignShield:
+                case ItemKind.PaddedBoots:
+                    // 장비 설명의 단일 출처는 EquipmentCatalog — 여기서 중복 정의하지 않는다.
+                    return EquipmentCatalog.ForItem(kind)?.Description ?? kind.ToString();
                 case ItemKind.Herb:
                     return "조합 재료. 2개를 빻으면 회복 물약이 된다.";
                 case ItemKind.BlastPowder:

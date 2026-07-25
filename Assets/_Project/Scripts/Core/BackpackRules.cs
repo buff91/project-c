@@ -89,10 +89,13 @@ namespace ProjectC.Core
             switch (kind)
             {
                 case ItemKind.Relic:
+                case ItemKind.SignShield:      // 큰 방패는 백팩을 크게 먹는다 (안전의 대가)
                     return new ItemFootprint(2, 2);
                 case ItemKind.OilFlask:
                 case ItemKind.ThrowingKnife:
                 case ItemKind.RecallScroll:
+                case ItemKind.PipeSpear:       // 긴 자루 장비는 세로로 길다
+                case ItemKind.HeavyWrench:
                     return new ItemFootprint(1, 2);
                 default:
                     return new ItemFootprint(1, 1);
