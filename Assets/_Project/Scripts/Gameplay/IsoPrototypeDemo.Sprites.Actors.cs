@@ -6,6 +6,33 @@ namespace ProjectC.Gameplay
     public partial class IsoPrototypeDemo
     {
 
+        /// <summary>
+        /// 액터 발밑 접촉 그림자: 납작한 다이아몬드로 중심이 진하고 가장자리로 부드럽게 사라진다.
+        /// 흰색으로 굽고 알파에 모양을 담아, 런타임에 renderer.color로 void색·세기를 입힌다.
+        /// </summary>
+        private Sprite GetContactShadowSprite()
+        {
+            const string key = "contact-shadow";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                // 타일보다 작은 납작한 타원. py 중심을 살짝 아래(13.5)로 둬 발밑에 고이게 한다.
+                float d = Mathf.Abs((px - 31.5f) / 19f) + Mathf.Abs((py - 13.5f) / 9f);
+                if (d >= 1f) continue;
+                float k = 1f - d;
+                byte a = (byte)Mathf.RoundToInt(255f * k * k);
+                texture.SetPixel(px, py, new Color32(255, 255, 255, a));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetSelectionSprite()
         {
             const string key = "selection";

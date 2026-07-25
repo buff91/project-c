@@ -63,3 +63,7 @@ Columns: 6
 166 130  88	tan #A68258
  55 106 103	teal-mid #376A67
 122  62  28	rust-brown #7A3E1C
+# --- 아이템 고유색 (items 실아트 도출 · 가독성 유지용) ---
+198 244 247	ice-lit #C6F4F7
+ 56 153 166	teal-item #3899A6
+164  49  34	red-dark #A43122

@@ -17,6 +17,7 @@ namespace ProjectC.Gameplay
 
             RecomputeVisibility();
             RefreshDungeonFogBackdrop();
+            EnsureStaticLightField();
 
             foreach (var pair in _tileRenderers)
             {
@@ -42,8 +43,12 @@ namespace ProjectC.Gameplay
                     : tileData.wet
                         ? new Color(0.55f, 0.72f, 0.95f)
                         : Color.white;
+                Color light = TileLightColor(pair.Key);
                 pair.Value.color = new Color(
-                    baseColor.r * tint.r, baseColor.g * tint.g, baseColor.b * tint.b, alpha);
+                    baseColor.r * tint.r * light.r,
+                    baseColor.g * tint.g * light.g,
+                    baseColor.b * tint.b * light.b,
+                    alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
@@ -62,7 +67,9 @@ namespace ProjectC.Gameplay
                     _dungeon.Height.FloorIndex(item.Spawn.Position.elevation) == _activeFloorIndex &&
                     (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
                 Color itemTint = ElevationTint(item.Spawn.Position);
-                item.Renderer.color = new Color(itemTint.r, itemTint.g, itemTint.b, 1f);
+                Color itemLight = TileLightColor(item.Spawn.Position);
+                item.Renderer.color = new Color(
+                    itemTint.r * itemLight.r, itemTint.g * itemLight.g, itemTint.b * itemLight.b, 1f);
             }
 
             RefreshRestSiteVisibility();
@@ -862,7 +869,10 @@ namespace ProjectC.Gameplay
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             Color wallTint = ElevationTint(pos);
-            renderer.color = new Color(wallTint.r, wallTint.g, wallTint.b, VisibilityAlpha(pos));
+            Color wallLight = TileLightColor(pos);
+            renderer.color = new Color(
+                wallTint.r * wallLight.r, wallTint.g * wallLight.g, wallTint.b * wallLight.b,
+                VisibilityAlpha(pos));
             _rearWallRenderers.Add(renderer, pos);
         }
 
@@ -905,6 +915,12 @@ namespace ProjectC.Gameplay
                                  HigherElevationOverlapsPlayer(pair.Value, renderer.bounds, playerBounds));
                 ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
             }
+
+            UpdateContactShadow(
+                _playerShadow,
+                _playerState != null ? _playerState.Position : _playerPos,
+                _playerRenderer.sortingOrder,
+                true);
         }
 
         /// <summary>
@@ -1024,6 +1040,68 @@ namespace ProjectC.Gameplay
             if (_visibleTiles.Contains(pos)) return 1f;
             if (_verticalPreviewTiles.Contains(pos)) return verticalPreviewAlpha;
             return exploredAlpha;
+        }
+
+        /// <summary>
+        /// 지금 보고 있는 타일의 빛 색(밝기×색조). 깊이 앰비언트(지상 밝음 → 지하 어둠) +
+        /// 플레이어 광원 웅덩이 + 정적 광원(불·등잔=웜, 개구부=쿨)을 합쳐 밝기를 만들고,
+        /// 웜/쿨 균형으로 앰버↔블루 색조를 입힌 뒤 벽 발치 방향성 그림자를 곱한다.
+        /// 알파(시야 상태)와 직교하는 축이다. 허브·디버그·비활성에서는 흰색(어둠 없음)이고,
+        /// 기억(Explored) 타일도 기존 알파-딤을 그대로 유지하도록 흰색을 돌려준다 —
+        /// 어둠은 "지금 현장"에만 걸고, 이미 지나온 지도의 가독성은 건드리지 않는다.
+        /// </summary>
+        private Color TileLightColor(GridPos pos)
+        {
+            if (viewMode == DungeonViewMode.DebugAll || _dungeon == null) return Color.white;
+
+            // 지상 캠프: 시야는 그대로 두고, 중심(모닥불)만 밝게 남기고 가장자리를 안개로 가라앉힌다.
+            if (hubMode)
+            {
+                if (!hubSurfaceFog) return Color.white;
+                float hx = pos.x - HubLayout.Campfire.x;
+                float hy = pos.y - HubLayout.Campfire.y;
+                float hubDistance = Mathf.Sqrt(hx * hx + hy * hy);
+                float ht = Mathf.Clamp01(
+                    (hubDistance - hubFogInnerRadius) / Mathf.Max(0.01f, hubFogFalloff));
+                float dim = Mathf.Lerp(1f, hubFogEdgeLevel, ht);
+                return new Color(dim, dim, dim, 1f);
+            }
+
+            if (!dungeonDarkness || _playerState == null) return Color.white;
+            if (!_visibleTiles.Contains(pos)) return Color.white;
+
+            int depth = Mathf.Max(0, -_activeFloorIndex);
+            int deepest = Mathf.Max(0, -_dungeon.BottomFloorIndex);
+            float ambient = GridLighting.AmbientForDepth(
+                depth, deepest, surfaceLightLevel, deepLightLevel);
+
+            GridPos origin = _playerState.Position;
+            float dx = pos.x - origin.x;
+            float dy = pos.y - origin.y;
+            float distance = Mathf.Sqrt(dx * dx + dy * dy);
+            float carried = GridLighting.PointFalloff(
+                distance, carriedLightRadius, carriedLightIntensity);
+
+            // 정적 광원(이미 차폐 계산된 필드)을 웜/쿨로 나눠 조회한다.
+            float warm = StaticWarmAt(pos);
+            float cool = StaticCoolAt(pos);
+
+            float brightness = ambient + carried + warm + cool;
+            if (brightness > 1f) brightness = 1f;
+            float lit = Mathf.Lerp(darknessFloor, 1f, brightness) * DirectionalShadowFactor(pos);
+
+            if (!coloredLight)
+                return new Color(lit, lit, lit, 1f);
+
+            // 웜(불·등잔·등불) vs 쿨(개구부 새어드는 빛) 균형으로 색조를 정한다.
+            float warmth = carried * carriedWarmth + warm - cool;
+            Color hue = Color.white;
+            if (warmth > 0f)
+                hue = Color.Lerp(Color.white, WarmLightColor, Mathf.Clamp01(warmth) * lightHueStrength);
+            else if (warmth < 0f)
+                hue = Color.Lerp(Color.white, CoolLightColor, Mathf.Clamp01(-warmth) * lightHueStrength);
+
+            return new Color(lit * hue.r, lit * hue.g, lit * hue.b, 1f);
         }
 
         /// <summary>

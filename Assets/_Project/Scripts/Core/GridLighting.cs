@@ -1,0 +1,144 @@
+using System;
+using System.Collections.Generic;
+
+namespace ProjectC.Core
+{
+    /// <summary>
+    /// 타일 단위 광량(light level) 계산. 순수 C# — UnityEngine 비의존, EditMode 테스트 가능.
+    /// (GDD 핵심 기둥 #3 제한된 시야 + 아트 방향 "청흑 void 바탕 + 국소 앰버 광원")
+    ///
+    /// 조명 엔진(Light2D)을 쓰지 않고, 이미 있는 SpriteRenderer.color 틴트에 곱할
+    /// 0..1 밝기 한 축만 제공한다. 시야(FOV)가 "무엇이 보이는가"라면 여기는
+    /// "보이는 것이 얼마나 밝은가"다. 알파(Unknown/Explored/Visible)와 직교한다.
+    ///
+    /// 규칙:
+    /// - 앰비언트는 던전 깊이로 정해진다. 얕은 층은 지상에 가까워 밝고, 깊이 내려갈수록
+    ///   어둠에 잠긴다. (지상 밝음 → 지하 어둠)
+    /// - 광원(플레이어가 든 등불 등)은 거리에 따라 부드럽게 감쇠하는 빛 웅덩이를 만든다.
+    ///   웅덩이 밖은 앰비언트만 남으므로, 깊은 층에서는 웅덩이 가장자리부터 그림자로 가라앉는다.
+    /// - 여기서는 차폐(벽 뒤 그림자)를 계산하지 않는다. 플레이어 광원은 이미 FOV로
+    ///   벽 너머가 걸러진 가시 집합에만 적용되므로 차폐가 사실상 공짜다. 정적 광원의
+    ///   독립 차폐는 다음 단계(광원별 섀도우캐스트 캐시)에서 다룬다.
+    /// </summary>
+    public static class GridLighting
+    {
+        /// <summary>
+        /// 던전 깊이별 앰비언트 밝기. depthIndex 0(최상층·지상 근처)=surfaceAmbient,
+        /// deepestDepthIndex(최심층)=deepAmbient 로 선형 보간한다.
+        /// 깊이 범위가 없으면(단층) 항상 surfaceAmbient.
+        /// </summary>
+        public static float AmbientForDepth(
+            int depthIndex,
+            int deepestDepthIndex,
+            float surfaceAmbient,
+            float deepAmbient)
+        {
+            if (depthIndex <= 0 || deepestDepthIndex <= 0) return surfaceAmbient;
+            float t = (float)depthIndex / deepestDepthIndex;
+            if (t < 0f) t = 0f;
+            else if (t > 1f) t = 1f;
+            return surfaceAmbient + (deepAmbient - surfaceAmbient) * t;
+        }
+
+        /// <summary>
+        /// 점 광원의 거리 감쇠. distance=0에서 intensity, radius에서 0, 반경 밖은 0.
+        /// 가장자리를 부드럽게 하려고 2차(감쇠²) 곡선을 쓴다 — 빛 웅덩이로 읽힌다.
+        /// </summary>
+        public static float PointFalloff(float distance, float radius, float intensity)
+        {
+            if (radius <= 0f || intensity <= 0f) return 0f;
+            if (distance <= 0f) return intensity;
+            if (distance >= radius) return 0f;
+            float k = 1f - distance / radius; // 중심 1 → 가장자리 0
+            return intensity * k * k;
+        }
+
+        /// <summary>
+        /// 앰비언트 + 광원 하나를 합친 타일 광량(0..1로 포화).
+        /// </summary>
+        public static float TileLight(
+            float ambient,
+            float distanceToLight,
+            float lightRadius,
+            float lightIntensity)
+        {
+            float light = ambient + PointFalloff(distanceToLight, lightRadius, lightIntensity);
+            if (light < 0f) return 0f;
+            return light > 1f ? 1f : light;
+        }
+
+        /// <summary>정적 점 광원 하나(모닥불·벽 등잔·개구부로 새어드는 빛 등).</summary>
+        public readonly struct PointLight
+        {
+            public readonly GridPos Position;
+            public readonly float Radius;
+            public readonly float Intensity;
+
+            public PointLight(GridPos position, float radius, float intensity)
+            {
+                Position = position;
+                Radius = radius;
+                Intensity = intensity;
+            }
+        }
+
+        /// <summary>
+        /// 정적 광원들의 차폐 광량 필드. 각 광원은 섀도우캐스팅(GridVisibility)으로
+        /// 벽 너머가 걸러진 뒤 거리 감쇠로 기여하며, 타일별로 합산해 0..1로 포화한다.
+        /// 벽·기둥이 광원과 타일 사이를 막으면 그 타일은 어둠으로 남는다(= 캐스트 그림자).
+        /// 정적 지오메트리에만 의존하므로 층당 1회 계산해 캐시하면 된다.
+        /// </summary>
+        public static Dictionary<GridPos, float> ComputeStaticField(
+            GridMap map,
+            IReadOnlyList<PointLight> lights,
+            int minElevation,
+            int maxElevation)
+        {
+            var field = new Dictionary<GridPos, float>();
+            if (map == null || lights == null) return field;
+
+            foreach (PointLight light in lights)
+            {
+                if (light.Radius <= 0f || light.Intensity <= 0f) continue;
+                int radius = (int)Math.Ceiling(light.Radius);
+                HashSet<GridPos> lit = GridVisibility.Compute(
+                    map, light.Position, minElevation, maxElevation, radius);
+
+                foreach (GridPos tile in lit)
+                {
+                    float dx = tile.x - light.Position.x;
+                    float dy = tile.y - light.Position.y;
+                    float distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                    float add = PointFalloff(distance, light.Radius, light.Intensity);
+                    if (add <= 0f) continue;
+
+                    field.TryGetValue(tile, out float current);
+                    float sum = current + add;
+                    field[tile] = sum > 1f ? 1f : sum;
+                }
+            }
+
+            return field;
+        }
+
+        /// <summary>
+        /// (dirX, dirY) 방향 이웃 컬럼이 이 타일에 그림자를 드리우는지. 고정 키 라이트가
+        /// 그 방향에서 온다고 볼 때, 이웃 표면이 벽이거나 이 타일보다 높으면 빛을 막아
+        /// 발치에 방향성 캐스트 그림자를 만든다(벽·융기 지형 밑동 그림자).
+        /// </summary>
+        public static bool ShadowedByNeighbor(
+            GridMap map, GridPos pos, int minElevation, int maxElevation, int dirX, int dirY)
+        {
+            if (map == null) return false;
+            int nx = pos.x + dirX;
+            int ny = pos.y + dirY;
+            for (int e = maxElevation; e >= minElevation; e--)
+            {
+                if (!map.TryGet(new GridPos(nx, ny, e), out TileData tile)) continue;
+                if (tile.BlocksSight) return true;   // 벽이 키 라이트를 막는다
+                return e > pos.elevation;            // 더 높은 표면이면 그림자, 같거나 낮으면 아니다
+            }
+            return false;
+        }
+    }
+}

@@ -48,6 +48,18 @@ namespace ProjectC.Gameplay
             verticalPreviewAlpha = Mathf.Clamp(verticalPreviewAlpha, 0.1f, 0.8f);
             playerOccluderAlpha = Mathf.Clamp(playerOccluderAlpha, 0.12f, 0.7f);
 
+            // 지하 어둠: 깊은 층 앰비언트가 얕은 층보다 밝아지지 않도록 상한을 건다.
+            surfaceLightLevel = Mathf.Clamp(surfaceLightLevel, 0.3f, 1f);
+            deepLightLevel = Mathf.Clamp(deepLightLevel, 0.02f, surfaceLightLevel);
+            darknessFloor = Mathf.Clamp(darknessFloor, 0.03f, 0.4f);
+            contactShadowStrength = Mathf.Clamp(contactShadowStrength, 0.1f, 0.9f);
+            hubFogEdgeLevel = Mathf.Clamp(hubFogEdgeLevel, 0.4f, 1f);
+            lightHueStrength = Mathf.Clamp01(lightHueStrength);
+            carriedWarmth = Mathf.Clamp01(carriedWarmth);
+            directionalShadowStrength = Mathf.Clamp(directionalShadowStrength, 0.4f, 1f);
+            // 광원 파라미터가 바뀌면 정적 광량 필드를 다시 계산한다.
+            MarkStaticLightDirty();
+
             if (_dungeon == null) return;
             RefreshFloorVisibility();
             UpdatePlayerOccluders(0f, instant: true);

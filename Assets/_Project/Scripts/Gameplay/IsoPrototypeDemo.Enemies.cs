@@ -141,6 +141,7 @@ namespace ProjectC.Gameplay
             enemy.Root = CreateStandingSprite(
                 enemy.State.Id, MonsterSpriteFor(archetype), spawn, out SpriteRenderer renderer);
             enemy.Renderer = renderer;
+            enemy.Shadow = CreateContactShadow(enemy.Root.transform);
             enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
             enemy.HpBackground = enemy.Root.transform.Find($"{enemy.State.Id} HP Background");
             UpdateHealthBar(enemy.HpFill, enemy.State);
@@ -321,13 +322,15 @@ namespace ProjectC.Gameplay
                     _turns.TurnNumber,
                     enemy.DeathTurn,
                     corpseLifetimeTurns);
+            Color light = TileLightColor(pos);
             enemy.Renderer.color = new Color(
-                tint.r * elevationTint.r * bossTint.r,
-                tint.g * elevationTint.g * bossTint.g,
-                tint.b * elevationTint.b * bossTint.b,
+                tint.r * elevationTint.r * bossTint.r * light.r,
+                tint.g * elevationTint.g * bossTint.g * light.g,
+                tint.b * elevationTint.b * bossTint.b * light.b,
                 alpha);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
+            UpdateContactShadow(enemy.Shadow, pos, enemy.Renderer.sortingOrder, visibleToPlayer);
             SyncEnemyStatusVisuals(enemy, visibleToPlayer);
             bool showHealthBar = visibleToPlayer && enemy.State.IsAlive;
             if (enemy.HpFill != null)

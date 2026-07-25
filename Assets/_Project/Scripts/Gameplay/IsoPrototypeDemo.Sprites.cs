@@ -870,5 +870,6 @@ namespace ProjectC.Gameplay
             cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
             _spriteCache[key] = cached;
             return cached;
-        }    }
+        }
+    }
 }

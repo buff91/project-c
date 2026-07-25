@@ -29,6 +29,7 @@
             </ui:VisualElement>
             <ui:VisualElement class="pc-bar-track" style="margin-top: 4px;">
                 <ui:VisualElement class="pc-bar-fill" style="width: 80%;" />
+                <ui:VisualElement class="pc-bar-ticks" />
             </ui:VisualElement>
             <ui:VisualElement class="pc-bar-track pc-bar-track--xp" style="margin-top: 4px;">
                 <ui:VisualElement class="pc-bar-fill pc-bar-fill--xp" style="width: 45%;" />
