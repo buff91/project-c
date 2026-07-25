@@ -84,6 +84,38 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 건물형 수직성(v0.3): 사다리 위에 얹는 +2단 캐치워크.
+        /// 길이는 밴드 프로파일이 소유하고(얕은 밴드 0), 최심층 아레나는 1:1 결투 공간을
+        /// 비우려 놓지 않는다. 사다리 링크로만 올라가므로 도달성 불변식이 유지되고,
+        /// RNG를 쓰지 않아 생성 스트림도 흔들지 않는다.
+        ///
+        /// 큰 단차(+2)는 높이 인식 FOV 차폐(<see cref="GridVisibility.HeightBlockThreshold"/>)와
+        /// 내려치기·고지대 사격이 실제로 발동하는 층 내부 무대다.
+        /// </summary>
+        private static void PlaceCatwalk(GridMap map, FloorPlan p, int floorCount)
+        {
+            int depth = -p.FloorIndex;
+            if (DungeonBossArenaRules.IsArenaFloor(depth, floorCount)) return;
+
+            int length = DungeonBandProfiles.ForDepth(depth).CatwalkLength;
+            if (length <= 0) return;
+
+            var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
+            for (int i = 0; i < length; i++)
+            {
+                int y = p.RaisedY + i;
+                if (y >= p.Height) break;
+                // 아래에 올라온 단이 실제로 있는 칸에만 얹는다 — 허공에 뜬 발판을 만들지 않는다.
+                if (map.Get(new GridPos(p.LadderX, y, p.BaseElevation + 1)) == null) break;
+
+                var catwalk = new GridPos(p.LadderX, y, p.BaseElevation + 2);
+                map.Set(catwalk, TileKind.Floor);
+                // 첫 칸만 사다리와 명시적 링크로 잇는다. 나머지는 같은 높이 평면 이웃이라 그냥 걷는다.
+                if (i == 0) map.Connect(ladderTop, catwalk);
+            }
+        }
+
+        /// <summary>
         /// 건물형 수직성(v0.3): 북쪽 방 왼쪽 외벽에 낙하형 창문 하나(위치 잠정, RNG 미사용).
         /// 유리는 이동을 막지만 시야는 통과하고, 깨고 넘어(넉백) 창밖이 한 층 아래 바닥이면
         /// 낙하로 이어진다. 창문 자리는 원래 void(벽)라 이동·도달성 불변 — 시야만 바깥으로 연다.

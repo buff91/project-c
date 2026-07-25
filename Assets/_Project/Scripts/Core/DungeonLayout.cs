@@ -147,6 +147,7 @@ namespace ProjectC.Core
                 PickEnemySpawns(map, random, plan, floorCount);
                 PlaceItems(map, random, plan);
                 PlaceBossLandmark(map, plan, floorCount);
+                PlaceCatwalk(map, plan, floorCount);
                 PlaceWindows(map, heightModel, plan, bottomElevation);
             }
 

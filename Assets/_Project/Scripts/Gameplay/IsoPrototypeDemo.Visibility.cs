@@ -845,7 +845,14 @@ namespace ProjectC.Gameplay
             wall.transform.position = Vector3.Lerp(center, outside, 0.46f);
 
             var renderer = wall.AddComponent<SpriteRenderer>();
-            bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % 5 == 0;
+            // 벽 횃불(비상등)의 밀도도 깊이 밴드를 따른다 — 광원 필드(IsWallSconceTile)와 같은
+            // 희소도를 써서 "깊을수록 어둡다"가 빛과 소품 양쪽에서 같은 방향으로 읽히게 한다.
+            // 허브는 캠프 톤을 유지한다.
+            int torchRarity = hubMode || _dungeon == null
+                ? 5
+                : DungeonBandProfiles.ForDepth(
+                    Mathf.Max(0, -_dungeon.Height.FloorIndex(pos.elevation))).WallSconceRarity;
+            bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % torchRarity == 0;
             int decoration = torch
                 ? 0
                 : Mathf.Abs(

@@ -147,6 +147,17 @@ namespace ProjectC.Gameplay
                 if (moss && (px + py) % 5 < 2)
                     color = DungeonMossColor;
 
+                // 캐치워크(+2단 이상)는 석재가 아니라 걸린 금속 격자로 읽힌다. 색상군은 공통 톤을
+                // 유지하고(같은 석재색의 명도 대비) 패턴만 바꿔 "얹힌 발판"임을 알린다.
+                if (context.LocalHeight >= 2 && !border)
+                {
+                    bool grate = (px / 4 + py / 2) % 2 == 0;
+                    bool rail = diamond > 0.72f && diamond <= 0.88f;
+                    color = rail
+                        ? DungeonStoneLightColor
+                        : grate ? DungeonStoneShadowColor : color;
+                }
+
                 if (kind == TileKind.DoorClosed)
                 {
                     bool band = (px + py * 2) % 13 < 3;

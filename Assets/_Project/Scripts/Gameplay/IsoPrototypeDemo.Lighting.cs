@@ -86,6 +86,8 @@ namespace ProjectC.Gameplay
         /// <summary>
         /// 벽 등잔이 걸릴 자리: 활성 층의 바닥 타일 중 이웃 하나가 비어(벽이 서는 자리)
         /// 방 가장자리이고, seed 해시로 고른 소수만. 시점(viewQuarterTurns)에 의존하지 않는다.
+        /// 희소도는 깊이 밴드가 정한다 — 깊어질수록 등잔이 드물어 어둠이 깊어진다.
+        /// 팔레트는 건드리지 않고 광원 밀도만 바꾸므로 던전 공통 톤은 그대로다.
         /// </summary>
         private bool IsWallSconceTile(GridPos pos, TileData tile)
         {
@@ -97,8 +99,9 @@ namespace ProjectC.Gameplay
                 !HasPlanarTile(pos.x, pos.y + 1, floor) ||
                 !HasPlanarTile(pos.x, pos.y - 1, floor);
             if (!edge) return false;
+            int rarity = DungeonBandProfiles.ForDepth(Mathf.Max(0, -floor)).WallSconceRarity;
             int hash = (pos.x * 73856093) ^ (pos.y * 19349663) ^ (dungeonSeed * 83492791);
-            return (hash & 0x7fffffff) % 6 == 0;
+            return (hash & 0x7fffffff) % rarity == 0;
         }
 
         private float StaticWarmAt(GridPos pos) =>

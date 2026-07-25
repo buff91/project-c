@@ -124,6 +124,27 @@
   모닥불·포탈 타일 로컬 광원, PC 가로 확대/모바일 세로 자동 맞춤.
   던전 카탈로그와 FOV·상태이상 색은 분리 보존한다.
 
+## M6 이후 병합분 (기록 보강 — 로드맵에 빠져 있던 항목)
+
+> 아래는 main에 이미 병합됐지만 로드맵에 기록되지 않았던 작업이다. 인수인계 시 코드와
+> 문서가 어긋나지 않도록 사후 기록한다. 상세 규칙은 `docs/SYSTEMS.md`/`ARCHITECTURE.md`.
+
+- [x] **상태이상·요소 반응 확장** — 독(`Poison`, 독립 DoT)과 슬러지 접촉 중독, 물이 화상을 끄는 반응,
+  물에 전도되는 광역 감전(`ShockRules`). 기존 상쇄/연장 테이블 위에 얹었다.
+- [x] **건물형 수직성(v0.3) 1차** — 창문 타일(`Window`/`WindowBroken`: 수평 시야 포털, 깨면 통로·낙하),
+  폭발이 창문을 깨뜨림, 방 가장자리 낙하형 창문 생성, 사다리 위 +2단 캐치워크,
+  근접 단차 타격(`MeleeReachHeight`)과 내려치기 보너스(`DownStrikeBonus`).
+- [x] **몬스터 AI 행동 트리 전환** — 수기 FSM을 `BehaviorTree`로 교체(`MonsterBrain` 재구성).
+  위험 인지(구멍/약한 바닥에 스스로 뛰어들지 않음), 화상 중에는 물을 찾아 끄러 간다.
+- [x] **조명·그림자** — 지하 깊이 기반 동적 앰비언트 + 플레이어 광원 웅덩이, 정적 광원
+  (모닥불/벽 등잔/개구부) 차폐 필드, 방향성 캐스트 그림자와 액터 접촉 그림자, 웜/쿨 색 분리
+  (`GridLighting` + `IsoPrototypeDemo.Lighting.cs`).
+- [x] **아트/UI 포스트아포칼립스 수렴** — 공용 팔레트 잠금 파이프라인(ComfyUI→conform, 크로스시트 응집),
+  던전 아트 리스킨과 PC HUD 통합, HUD 레거시 브라운 → Torchstone 토큰 수렴, 9-slice 스프라이트 승격.
+- [x] **신(神) 클래스 분해 & 데이터 SSOT** — `IsoPrototypeDemo`/HUD 컨트롤러/`DungeonGenerator`를
+  관심사별 partial로 분할하고 몬스터 이름·세이브 아이템 매핑·짧은 라벨을 단일화.
+  파일 지도는 `docs/CODE_STRUCTURE.md`.
+
 ## 다음 콘텐츠 패스 — 잊힌 지하묘지 깊이별 정체성
 
 > 먼저 실제 B1~B10 리포트로 20~30분 목표·피해 급증 구간·아이템 활용도를 확인한 뒤,
@@ -139,9 +160,19 @@
   횃불에 데워진 석재, 토치 골드 물리광, 틸 마법 신호의 18색 마스터 팔레트를 고정하고
   공용 `ProjectCEnvironmentCatalog`에 런타임 역할색으로 미러한다.
   바닥·벽·문·방향형 이동 스프라이트에 같은 톤 매핑을 적용하고 허브 전용 팔레트는 분리한다.
-- [~] 깊이 구간 변주 — 적 조합·방 구조는 완료(`DungeonBandProfile` 밴드 테이블: Shallow/Mid/Deep로
-  드론 비중·분기/웅덩이 확률·적 수 조정, 기존 `DungeonDepthBandRules` 경계 재사용). **소품·팔레트 변주는 후속**
-  (`DungeonSurfaceFor` 공통 톤 불변 유지, 밴드 스프라이트 슬롯 위에서만). Core 테스트 `DungeonBandProfileTests`.
+- [x] **깊이 구간 변주** — 밴드 테이블(`DungeonBandProfile`) 하나가 구간 정체성을 모두 소유한다.
+  - **적 조합·방 구조**: 드론 비중·분기/웅덩이 확률·적 수 (기존 `DungeonDepthBandRules` 경계 재사용).
+  - **구조**: 사다리 위 +2단 캐치워크 길이 — Shallow 0(평평한 도입) / Mid 1(높이 전술 소개) /
+    Deep·Boss 2(통로). 최심층 아레나는 1:1 결투 공간을 비우려 놓지 않는다. 배치는 결정론적
+    (`DungeonGenerator.PlaceCatwalk`, RNG 미사용)이고 사다리 링크로만 올라 도달성 불변식을 지킨다.
+  - **소품/광원**: 벽 등잔·횃불 희소도(`WallSconceRarity`)가 깊어질수록 커진다 — 광원 필드
+    (`IsWallSconceTile`)와 벽 소품(`CreateRearWall`)이 같은 값을 써서 "깊을수록 어둡다"가
+    빛과 장식 양쪽에서 같은 방향으로 읽힌다. 새 아트 없이 기존 시스템만 쓴다.
+  - **팔레트는 바꾸지 않는다(확정)**: `DungeonSurfaceFor`는 모든 깊이에서 같은 공통 석재색을 낸다
+    (`IsoVisualCatalogTests`가 고정). 깊이 변주는 밴드 **스프라이트 슬롯**(`midFloor`/`deepFloor`/
+    `bossFloor`+raised)과 위의 구조·광원으로만 준다.
+  - Core 테스트 `DungeonBandProfileTests` · `CatwalkGenerationTests`. **캐치워크 격자 룩과 등잔
+    밀도의 실제 화면 확인은 남아 있다.**
 - [x] **B10 전조와 보스 공간** — 전투 공간(최심층 하행 경비병 무리 생략=1:1 결투감)과 랜드마크 데이터
   (`DungeonFloorInfo.Landmark`, 뒤쪽 단에 결정론적 배치, `DungeonBossArenaRules`)에 더해
   제단 스프라이트 렌더(`IsoPrototypeDemo.BossArena.cs`, FOV·활성 층 추종, 처치 후 신호색이 식음)와

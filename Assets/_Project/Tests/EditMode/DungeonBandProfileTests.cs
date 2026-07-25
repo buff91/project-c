@@ -68,6 +68,32 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void CatwalkLength_GrowsWithDepth_ShallowHasNone()
+        {
+            Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).CatwalkLength,
+                "도입 구간은 평평하게 둔다");
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).CatwalkLength, 1);
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).CatwalkLength,
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).CatwalkLength);
+        }
+
+        [Test]
+        public void WallSconceRarity_GrowsWithDepth_SoDeeperFloorsAreDarker()
+        {
+            int shallow = DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).WallSconceRarity;
+            int mid = DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).WallSconceRarity;
+            int deep = DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).WallSconceRarity;
+            int boss = DungeonBandProfiles.ForBand(DungeonDepthBand.Boss).WallSconceRarity;
+
+            Assert.Greater(shallow, 0, "0이면 모든 칸이 등잔이 된다(나눗셈 보호)");
+            Assert.GreaterOrEqual(mid, shallow);
+            Assert.GreaterOrEqual(deep, mid);
+            Assert.GreaterOrEqual(boss, deep);
+        }
+
+        [Test]
         public void ExtraEnemies_NonDecreasingWithDepth()
         {
             int shallow = DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).ExtraEnemies;
