@@ -207,8 +207,13 @@ namespace ProjectC.Core
             if (Ended) return;
             currentFloorIndex = floorIndex;
             currentProgressIndex = progressIndex;
-            deepestFloorIndex = Math.Min(deepestFloorIndex, floorIndex);
-            deepestProgressIndex = Math.Max(deepestProgressIndex, progressIndex);
+            // 가장 멀리 간 층은 진행 지수로 고른다 — 층 인덱스 최솟값을 쓰면 상승 던전에서
+            // 시작 층이 영원히 "최심층"으로 남고, 비단조 경로에서도 답이 아니다.
+            if (progressIndex >= deepestProgressIndex)
+            {
+                deepestProgressIndex = progressIndex;
+                deepestFloorIndex = floorIndex;
+            }
 
             RunFloorTelemetry floor = Floor(floorIndex);
             floor.progressIndex = progressIndex;
@@ -392,7 +397,7 @@ namespace ProjectC.Core
             string sourceText = string.IsNullOrEmpty(source) ? "--" : source;
             return
                 $"RUN {FormatDuration(elapsedSeconds)} · 턴 {totalTurns} · " +
-                $"{FormatFloor(currentFloorIndex)} (최심층 {FormatFloor(deepestFloorIndex)})\n" +
+                $"{FormatFloor(currentFloorIndex)} (최고 도달 {FormatFloor(deepestFloorIndex)})\n" +
                 $"피해 {totalDamageTaken} ({sourceText}) · 가한 피해 {totalDamageDealt} · 처치 {kills}\n" +
                 $"획득 {itemsCollected} · 사용 {itemsUsed} · 조합 {itemsCrafted} · " +
                 $"낙하 P{playerFalls}/E{enemyFalls}\n" +

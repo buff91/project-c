@@ -107,8 +107,9 @@ namespace ProjectC.Core
                 "물 웅덩이를 6칸 이상 얼린다.",
                 BountyMetric.WaterFrozen, target: 6, rewardGold: 40),
             new BountyDefinition(
-                "descent", "깊이 내려가라",
-                "B5(깊이 5층)까지 도달한다.",
+                // 방향 중립: 의뢰는 던전을 넘나들고, 첫 던전은 위로 올라간다.
+                "descent", "더 멀리 나아가라",
+                "한 원정에서 5번째 층까지 도달한다.",
                 BountyMetric.DeepestDepth, target: 4, rewardGold: 50),
             new BountyDefinition(
                 "seeker", "숨겨진 보물",
@@ -120,7 +121,7 @@ namespace ProjectC.Core
                 BountyMetric.BarrelPushes, target: 3, rewardGold: 35),
             new BountyDefinition(
                 "warden", "감시자 사냥",
-                "최심층 보스 감시자를 처치한다.",
+                "최상층 보스 감시자를 처치한다.",
                 BountyMetric.BossKills, target: 1, rewardGold: 100)
         };
 
@@ -140,8 +141,9 @@ namespace ProjectC.Core
             {
                 case BountyMetric.Kills: return telemetry.kills;
                 case BountyMetric.BossKills: return telemetry.bossKills;
-                // deepestFloorIndex 는 0,-1,-2… 이므로 부호를 뒤집어 도달 깊이(B1=0)로 만든다.
-                case BountyMetric.DeepestDepth: return -telemetry.deepestFloorIndex;
+                // 진행 지수를 그대로 쓴다. 예전에는 -deepestFloorIndex 로 역산했는데
+                // 상승 던전에서는 층 인덱스가 양수라 값이 음수가 되어 의뢰가 영원히 미완이었다.
+                case BountyMetric.DeepestDepth: return telemetry.deepestProgressIndex;
                 case BountyMetric.EnemyFalls: return telemetry.enemyFalls;
                 case BountyMetric.IntentionalFalls: return telemetry.intentionalFalls;
                 case BountyMetric.BurnApplications: return telemetry.burnApplications;

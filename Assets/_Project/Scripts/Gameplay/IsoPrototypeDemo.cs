@@ -230,6 +230,13 @@ namespace ProjectC.Gameplay
             : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · " +
               $"({_playerPos.x},{_playerPos.y}) · {HungerRules.Label(_hunger.Stage)}";
         public string ActiveFloorLabel => FloorLabel(_activeFloorIndex);
+
+        /// <summary>
+        /// 이번 판에 가장 멀리 간 층의 라벨(게임오버 화면용). 방향을 아는 경로를 타므로
+        /// 상승 던전에서도 "8F"가 나온다 — 정적 폴백은 하강 표기라 "F10"이 된다.
+        /// </summary>
+        public string ReachedFloorLabel =>
+            _runSummary != null ? FloorLabel(_runSummary.DeepestFloorIndex) : ActiveFloorLabel;
         public string AboveFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex + 1, out _)
             ? FloorLabel(_activeFloorIndex + 1)
             : "--";

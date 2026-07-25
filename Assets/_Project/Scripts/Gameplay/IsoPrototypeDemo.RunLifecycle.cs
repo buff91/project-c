@@ -87,7 +87,10 @@ namespace ProjectC.Gameplay
             _hunger = data.hunger ?? new HungerState();
             _lastHungerStage = _hunger.Stage;
 
-            _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
+            _runSummary = new RunSummary(
+                data.deepestFloorIndex,
+                data.kills,
+                data.deepestProgressIndex);
             _runSummary.RecordFloor(
                 GlobalFloorIndex(_activeFloorIndex),
                 GlobalDepth(_activeFloorIndex));
@@ -124,6 +127,7 @@ namespace ProjectC.Gameplay
                 hp = _playerState.Hp,
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                deepestProgressIndex = _runSummary.FurthestProgressIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
@@ -316,6 +320,7 @@ namespace ProjectC.Gameplay
                 hp = restedHp,
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
+                deepestProgressIndex = _runSummary.FurthestProgressIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,

@@ -46,7 +46,7 @@ namespace ProjectC.Gameplay
                           $"다음은 던전 {demo.StageIndex + 1}";
             }
             if (_exitAdvance != null)
-                _exitAdvance.text = finalExit ? "던전 정복" : "더 깊이";
+                _exitAdvance.text = finalExit ? "던전 정복" : "더 나아가기";
             _exitModal.BringToFront();
             _exitModal.AddToClassList("is-open");
         }
@@ -102,7 +102,7 @@ namespace ProjectC.Gameplay
             bool survived = summary.Victory || summary.Extracted;
             _gameoverOverlay.EnableInClassList("is-victory", survived);
             if (_gameoverTitle != null)
-                _gameoverTitle.text = summary.Victory ? "최심층 정복!"
+                _gameoverTitle.text = summary.Victory ? "던전 정복!"
                     : summary.Extracted ? "생환 성공!"
                     : "당신은 죽었습니다";
             if (_gameoverCause != null)
@@ -115,7 +115,10 @@ namespace ProjectC.Gameplay
                 _gameoverCause.style.display = DisplayStyle.Flex;
             }
             if (_gameoverFloor != null)
-                _gameoverFloor.text = $"도달 층: {IsoPrototypeDemo.FloorLabelFallback(summary.DeepestFloorIndex)}";
+                // 방향을 아는 인스턴스 경로로 읽는다 — 폴백은 하강 표기라 상승 던전에서 "F10"이 나온다.
+                _gameoverFloor.text = demo != null
+                    ? $"도달 층: {demo.ReachedFloorLabel}"
+                    : $"도달 층: {IsoPrototypeDemo.FloorLabelFallback(summary.DeepestFloorIndex)}";
             if (_gameoverKills != null)
                 _gameoverKills.text = $"처치: {summary.Kills}";
             _gameoverOverlay.BringToFront();

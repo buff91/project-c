@@ -232,5 +232,41 @@ namespace ProjectC.Tests
                 DungeonProgressDirection.Inward, -1, 1, 2));
         }
 
+        // ── 도달 판정은 진행 지수로 (고도가 아니다) ──────────────────
+        // 두 테스트 모두 순수 Core 라 dotnet shim 에서도 돈다 — RunTelemetryTests 는
+        // JsonUtility 때문에 에디터 전용이라 거기 두면 shim 이 놓친다.
+
+        [Test]
+        public void Ascending_DeepestFloorFollowsProgress_NotMinimumIndex()
+        {
+            var telemetry = new RunTelemetry();
+
+            // 상승 던전: 진행이 깊어질수록 층 인덱스가 커진다.
+            telemetry.RecordFloorEntered(0, 0);
+            telemetry.RecordFloorEntered(4, 4);
+            telemetry.RecordFloorEntered(2, 2);  // 되돌아왔다
+
+            Assert.AreEqual(4, telemetry.deepestProgressIndex);
+            Assert.AreEqual(
+                4,
+                telemetry.deepestFloorIndex,
+                "최솟값을 쓰면 시작 층(0)이 영원히 최고 도달로 남는다.");
+        }
+
+        [Test]
+        public void DeepestDepthBounty_ReadsProgress_SoAscendingRunsCanComplete()
+        {
+            var telemetry = new RunTelemetry();
+
+            // 상승 던전에서 5번째 층(진행 4)까지 갔다 — 층 인덱스는 +4 다.
+            telemetry.RecordFloorEntered(0, 0);
+            telemetry.RecordFloorEntered(4, 4);
+
+            Assert.AreEqual(
+                4,
+                BountyRules.ReadMetric(BountyMetric.DeepestDepth, telemetry),
+                "부호를 뒤집는 역산이면 -4 가 되어 의뢰가 영원히 미완이다.");
+        }
+
     }
 }

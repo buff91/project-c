@@ -48,8 +48,13 @@
   - **낙하 배치는 진행이 아니라 공간 순서다.** 구멍은 방향과 무관하게 아래로 떨어지므로 생성기가
     층을 `FloorIndex` 내림차순(위 → 아래)으로 순회한다. 상승 던전에서는 진행 순서와 반대다.
     보스 아레나에는 구멍을 두지 않는다(하강에서는 공간 최하단이라 자동, 상승에서는 명시 조건).
-  - **"도달 층"은 진행 지수로 판정한다**(`RunSummary.FurthestProgressIndex`) —
-    예전의 층 인덱스 최솟값은 상승 던전에서 영원히 시작 층을 가리켰다.
+  - **"도달 층"은 진행 지수로 판정한다** — `RunSummary.FurthestProgressIndex`와
+    `RunTelemetry.deepestProgressIndex` 둘 다. 예전의 층 인덱스 최솟값은 상승 던전에서
+    영원히 시작 층을 가리켰다. 세이브도 `deepestProgressIndex`를 함께 담아
+    이어하기가 도달 층을 되돌리지 않는다. 현상금 `DeepestDepth`도 진행 지수를 읽는다
+    (부호 뒤집기 역산이면 상승 던전에서 의뢰가 영원히 미완이었다).
+  - **방향 중립 문구**: 의뢰·게임오버·출구 버튼에서 "깊이/최심층/더 깊이"를 걷었다 —
+    첫 던전이 위로 올라가므로 거짓말이 된다. 구간 이름은 초반/중반/후반/보스를 쓴다.
   - **진행 지수 ≠ 고도.** 난이도·구간 판정(적 혼합·휴식처·탈출구·장비 드랍·숨은 방·밴드·보스)은
     `DungeonFloorInfo.ProgressIndex`만 쓰고 **elevation 으로 역산하지 않는다**.
     `DungeonDepthBandRules.ForFloor`는 이 결함(`Max(0, -floorIndex)`) 때문에 삭제됐다.
@@ -122,8 +127,8 @@
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
 - **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **804/804 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **921/921 통과**. 컴파일 에러 없음.
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **806/806 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **923/923 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
   - 옛 "673/673" 기록은 낡은 값이었다.

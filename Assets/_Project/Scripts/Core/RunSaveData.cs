@@ -32,6 +32,13 @@ namespace ProjectC.Core
         public int kills;
         public int deepestFloorIndex;
 
+        /// <summary>
+        /// 가장 멀리 간 <b>진행 지수</b>. 이어하기에서 도달 층이 되돌아가지 않게 함께 저장한다 —
+        /// 층 인덱스만으로는 어느 쪽이 더 멀리 간 것인지 알 수 없다(상승·비단조 던전).
+        /// 옛 세이브는 0 으로 들어오며, 그 경우 첫 층 이동이 도달 층을 다시 세운다.
+        /// </summary>
+        public int deepestProgressIndex;
+
         /// <summary>이번 원정에 반입한 장비. 죽으면 잃으므로 런 상태로 들고 다닌다.</summary>
         public string carriedWeaponId = "";
         public string carriedGearId = "";
