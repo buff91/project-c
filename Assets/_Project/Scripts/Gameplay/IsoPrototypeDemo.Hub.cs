@@ -90,7 +90,7 @@ namespace ProjectC.Gameplay
                 int strength = distance == 0 ? 3 : distance == 1 ? 2 : 1;
                 var lightTile = new GameObject($"{kind} Light {pos.x},{pos.y}");
                 lightTile.transform.SetParent(_visualRoot, false);
-                lightTile.transform.position = _grid.GridToWorld(pos);
+                lightTile.transform.position = VisualPosition(pos);
                 var renderer = lightTile.AddComponent<SpriteRenderer>();
                 renderer.sprite = GetHubLightTileSprite(kind, strength);
                 renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);

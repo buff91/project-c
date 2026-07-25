@@ -56,7 +56,7 @@ namespace ProjectC.Gameplay
         private void ApplyBossAltarView()
         {
             if (!_hasBossAltar || _bossAltar == null || _bossAltarRenderer == null) return;
-            _bossAltar.transform.position = _grid.GridToWorld(_bossAltarPos);
+            _bossAltar.transform.position = VisualPosition(_bossAltarPos);
             _bossAltarRenderer.sortingOrder = _grid.iso.SortingOrder(_bossAltarPos, 1);
         }
 

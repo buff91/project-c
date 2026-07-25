@@ -771,7 +771,7 @@ namespace ProjectC.Gameplay
                     ? visualCatalog.selection
                     : ActorSprites.GetSelectionSprite();
                 hubSelection.sortingOrder = _grid.iso.SortingOrder(_playerPos, -1);
-                _selection.transform.position = _grid.GridToWorld(_playerPos);
+                _selection.transform.position = VisualPosition(_playerPos);
                 _selectionPos = _playerPos;
                 RefreshFloorVisibility();
                 return;
@@ -848,7 +848,7 @@ namespace ProjectC.Gameplay
                 ? visualCatalog.selection
                 : ActorSprites.GetSelectionSprite();
             selectionRenderer.sortingOrder = _grid.iso.SortingOrder(_playerPos, -1);
-            _selection.transform.position = _grid.GridToWorld(_playerPos);
+            _selection.transform.position = VisualPosition(_playerPos);
             _selectionPos = _playerPos;
             RefreshFloorVisibility();
             AnnounceBossApproachIfNeeded();
@@ -886,7 +886,7 @@ namespace ProjectC.Gameplay
         {
             var instance = new GameObject(objectName);
             instance.transform.SetParent(_visualRoot, false);
-            instance.transform.position = _grid.GridToWorld(pos);
+            instance.transform.position = VisualPosition(pos);
             renderer = instance.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, microOffset);
@@ -1162,7 +1162,7 @@ namespace ProjectC.Gameplay
         private void PositionSelection(GridPos pos)
         {
             _selectionPos = pos;
-            _selection.transform.position = _grid.GridToWorld(pos);
+            _selection.transform.position = VisualPosition(pos);
             _selection.GetComponent<SpriteRenderer>().sortingOrder = _grid.iso.SortingOrder(pos, -1);
         }
 

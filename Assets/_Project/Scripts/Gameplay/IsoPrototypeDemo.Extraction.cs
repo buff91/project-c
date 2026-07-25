@@ -61,7 +61,7 @@ namespace ProjectC.Gameplay
             foreach (ExtractionAgent point in _extractionPoints)
             {
                 if (point.Root == null || point.Renderer == null) continue;
-                point.Root.transform.position = _grid.GridToWorld(point.Position);
+                point.Root.transform.position = VisualPosition(point.Position);
                 point.Renderer.sortingOrder = _grid.iso.SortingOrder(point.Position, 1);
             }
         }

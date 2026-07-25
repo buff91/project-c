@@ -87,7 +87,7 @@ namespace ProjectC.Gameplay
             foreach (ItemAgent item in _items)
             {
                 if (item.Root == null) continue;
-                item.Root.transform.position = _grid.GridToWorld(item.Spawn.Position);
+                item.Root.transform.position = VisualPosition(item.Spawn.Position);
                 item.Renderer.sortingOrder = _grid.iso.SortingOrder(item.Spawn.Position, 0);
             }
             ApplyRestSiteView();
@@ -96,7 +96,9 @@ namespace ProjectC.Gameplay
             ApplyExtractionPointView();
             if (_barrelRenderer != null)
             {
-                _barrel.transform.position = _grid.GridToWorld(_barrelPos);
+                // RefreshFloorVisibility 도 같은 값을 넣는다 — 예전엔 여기만 GridToWorld 라
+                // 회전과 가시성 갱신 중 뭐가 마지막이냐에 따라 통이 튀었다.
+                _barrel.transform.position = VisualPosition(_barrelPos);
                 _barrelRenderer.sortingOrder = _grid.iso.SortingOrder(_barrelPos, 1);
             }
             if (_selection != null)
@@ -105,13 +107,13 @@ namespace ProjectC.Gameplay
             foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubPropPositions)
             {
                 if (pair.Key == null) continue;
-                pair.Key.transform.position = _grid.GridToWorld(pair.Value);
+                pair.Key.transform.position = VisualPosition(pair.Value);
                 pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, 1);
             }
             foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubLightPositions)
             {
                 if (pair.Key == null) continue;
-                pair.Key.transform.position = _grid.GridToWorld(pair.Value);
+                pair.Key.transform.position = VisualPosition(pair.Value);
                 pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, -1);
             }
 

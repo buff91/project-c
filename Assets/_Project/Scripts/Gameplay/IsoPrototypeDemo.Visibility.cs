@@ -1066,6 +1066,21 @@ namespace ProjectC.Gameplay
             backB = -frontB;
         }
 
+        /// <summary>
+        /// 칸의 <b>화면상 자리</b>. 층 분리 오프셋을 포함하므로 <see cref="GridManager.GridToWorld"/>와
+        /// 다르다 — DebugAll 은 층을 세로로 벌려 쌓고, Play 는 구멍 미리보기 층만 살짝 어긋나게 둔다.
+        /// <para>
+        /// <b>칸에 붙어 사는 모든 월드 비주얼은 이 함수를 쓴다</b>(타일·액터·아이템·프롭·표지·선택 마커).
+        /// 한쪽만 <c>GridToWorld</c>를 쓰면 오프셋이 걸리는 순간 그 오브젝트만 자기 바닥에서
+        /// 떨어져 허공에 뜬다. 실제로 폭발통이 두 경로에서 다르게 배치돼 갱신 순서에 따라 튀었다.
+        /// 입력 픽킹도 렌더된 다이아몬드(=이 값)를 기준으로 하므로 어긋나면 탭까지 어긋난다.
+        /// </para>
+        /// <para>
+        /// <b>예외는 순간 연출이다</b> — 이동/낙하 트윈의 시작·끝점, 폭발·문 이펙트, 플로팅 텍스트는
+        /// <c>GridToWorld</c>를 그대로 쓴다. 이것들은 애니메이션 도중 활성 층이 바뀌므로
+        /// 오프셋을 먹이면 진행 중에 목표가 튄다. 지속 배치와 순간 연출의 경계가 여기다.
+        /// </para>
+        /// </summary>
         private Vector3 VisualPosition(GridPos pos)
         {
             Vector3 world = _grid.GridToWorld(pos);

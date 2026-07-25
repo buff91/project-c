@@ -73,7 +73,7 @@ namespace ProjectC.Gameplay
             foreach (RescueNpcAgent agent in _rescueNpcs)
             {
                 if (agent.Root == null || agent.Renderer == null) continue;
-                agent.Root.transform.position = _grid.GridToWorld(agent.Pos);
+                agent.Root.transform.position = VisualPosition(agent.Pos);
                 agent.Renderer.sortingOrder = _grid.iso.SortingOrder(agent.Pos, 1);
             }
         }

@@ -354,7 +354,7 @@ namespace ProjectC.Gameplay
                 enemy.DeathTurn = _turns.TurnNumber;
 
             GridPos pos = enemy.State.Position;
-            enemy.Root.transform.position = _grid.GridToWorld(pos);
+            enemy.Root.transform.position = VisualPosition(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
             Color elevationTint = ElevationTint(pos);
             Color tint = CombatantTint(enemy.State);
@@ -468,7 +468,7 @@ namespace ProjectC.Gameplay
             _bossExitPos = _dungeon.OnwardStairOf(bottom).Value;
             _bossExitSeal = new GameObject("Boss Exit Seal");
             _bossExitSeal.transform.SetParent(_visualRoot, false);
-            _bossExitSeal.transform.position = _grid.GridToWorld(_bossExitPos) + Vector3.up * 0.08f;
+            _bossExitSeal.transform.position = VisualPosition(_bossExitPos) + Vector3.up * 0.08f;
             _bossExitSealRenderer = _bossExitSeal.AddComponent<SpriteRenderer>();
             _bossExitSealRenderer.sortingOrder = _grid.iso.SortingOrder(_bossExitPos, 2);
             RefreshBossExitSeal();

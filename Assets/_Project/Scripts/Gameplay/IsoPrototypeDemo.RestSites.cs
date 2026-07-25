@@ -80,7 +80,7 @@ namespace ProjectC.Gameplay
             foreach (RestSiteAgent site in _restSites)
             {
                 if (site.Root == null || site.Renderer == null) continue;
-                site.Root.transform.position = _grid.GridToWorld(site.Position);
+                site.Root.transform.position = VisualPosition(site.Position);
                 site.Renderer.sortingOrder = _grid.iso.SortingOrder(site.Position, 1);
             }
         }
