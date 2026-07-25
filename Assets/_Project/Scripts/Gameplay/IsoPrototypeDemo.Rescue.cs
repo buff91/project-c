@@ -40,11 +40,10 @@ namespace ProjectC.Gameplay
             _rescueNpcPos = floor.RescueNpc.Value;
             _rescueNpcFloorIndex = floor.FloorIndex;
             _rescueNpcId = npc.Id;
-            // 영웅 스프라이트를 재사용하지 않는다 — 동료는 적도 플레이어도 아니라서
-            // 실루엣이 구분돼야 한다. 전용 프롭이 들어올 때까지 상인 계열을 쓴다.
+            // 동료는 적도 플레이어도 아니라 제3의 실루엣이어야 한다 — 묶인 손이 그 표식이다.
             _rescueNpc = CreateStandingSprite(
                 $"Rescue {npc.Id}",
-                ActorSprites.GetHubPropSprite("merchant"),
+                ActorSprites.GetRescueNpcSprite(npc.Id),
                 _rescueNpcPos,
                 out _rescueNpcRenderer,
                 microOffset: 1);

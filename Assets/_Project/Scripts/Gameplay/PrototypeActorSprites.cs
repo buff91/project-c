@@ -652,6 +652,102 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 갇힌 동료. <b>적도 플레이어도 아닌 제3의 실루엣</b>이어야 한다 —
+        /// 던전에서 처음 보는 사람 모양이 위협인지 도움인지 즉시 갈려야 하기 때문이다.
+        ///
+        /// <para>
+        /// 공통 표식은 <b>가슴 앞에 모인 묶인 손</b>이다. 적은 팔을 내리거나 들고 있고
+        /// 플레이어는 무기를 드므로, 손이 모여 묶인 실루엣은 이 게임에서 동료뿐이다.
+        /// 처진 어깨와 낮은 눈으로 "오래 갇혀 있었다"를 더한다.
+        /// </para>
+        /// <para>
+        /// 신호색을 넣지 않는다 — 구출 전에는 희망의 색을 주지 않고, 발견은 FOV 가 맡는다.
+        /// 직업은 앞치마(대장장이)와 가방끈·무전 줄(연락책)로만 가른다.
+        /// </para>
+        /// </summary>
+        internal Sprite GetRescueNpcSprite(string npcId)
+        {
+            string key = $"rescue-{npcId}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            bool smith = npcId == "smith";
+            var texture = NewTexture(32, 48);
+
+            Color32 dark = new Color32(20, 25, 28, 255);
+            Color32 skin = smith
+                ? new Color32(178, 141, 108, 255)   // 그을린 피부
+                : new Color32(205, 177, 139, 255);
+            // 대장장이 가죽을 고블린 몸통(94,62,39)과 확실히 갈라 놓는다 — 적으로 오인하면
+            // 이 스프라이트의 목적이 무너진다. 더 어둡고 붉은 가죽으로 내린다.
+            Color32 cloth = smith
+                ? new Color32(58, 36, 34, 255)
+                : new Color32(64, 70, 84, 255);
+            Color32 clothLight = smith
+                ? new Color32(96, 60, 50, 255)
+                : new Color32(104, 112, 128, 255);
+            Color32 hair = smith
+                ? new Color32(48, 34, 26, 255)
+                : new Color32(70, 62, 54, 255);
+            Color32 rope = new Color32(166, 138, 92, 255);
+            Color32 trouser = new Color32(46, 42, 46, 255);
+
+            // 짙은 외곽선을 먼저 깔고 내부를 덮는다(다른 액터와 같은 방식).
+            FillRect(texture, 10, 2, 13, 10, dark);                            // 다리
+            FillRect(texture, smith ? 6 : 8, 11, smith ? 20 : 16, 16, dark);   // 몸통
+            FillRect(texture, 4, 15, 5, 10, dark);                             // 왼팔
+            FillRect(texture, 23, 15, 5, 10, dark);                            // 오른팔
+            FillRect(texture, 11, 26, 11, 12, dark);                           // 머리
+
+            FillRect(texture, 11, 3, 4, 8, trouser);
+            FillRect(texture, 18, 3, 4, 8, trouser);
+            FillRect(texture, smith ? 7 : 9, 12, smith ? 18 : 14, 14, cloth);
+            FillRect(texture, smith ? 8 : 10, 14, 3, 10, clothLight);          // 좌상단 광원
+
+            // 팔은 아래로 내려와 가슴 앞에서 모인다.
+            FillRect(texture, 5, 16, 3, 8, skin);
+            FillRect(texture, 24, 16, 3, 8, skin);
+            FillRect(texture, 8, 15, 3, 3, skin);
+            FillRect(texture, 21, 15, 3, 3, skin);
+
+            // 묶인 손 — 이 게임에서 동료만 가진 실루엣. 매듭을 아래로 늘어뜨려 눈에 걸리게 한다.
+            FillRect(texture, 11, 12, 10, 5, dark);
+            FillRect(texture, 12, 13, 8, 3, skin);
+            FillRect(texture, 12, 14, 8, 1, rope);
+            FillRect(texture, 15, 9, 2, 6, rope);
+
+            // 머리 — 고개를 숙였다. 눈을 낮게 두고 머리카락을 두껍게 얹어
+            // 민머리 블록으로 읽히지 않게 한다.
+            FillRect(texture, 12, 27, 9, 8, skin);
+            FillRect(texture, 12, 34, 9, 3, hair);
+            FillRect(texture, 11, 33, 1, 3, hair);
+            FillRect(texture, 21, 33, 1, 3, hair);
+            FillRect(texture, 13, 29, 2, 2, dark);
+            FillRect(texture, 18, 29, 2, 2, dark);
+            FillRect(texture, 14, 27, 5, 1, Shift(skin, -28));                 // 다문 입
+
+            if (smith)
+            {
+                // 앞치마 가슴받이 — 밝은 값으로 넓게 넣어 "앞치마를 걸쳤다"가 실루엣에 남는다.
+                FillRect(texture, 11, 18, 10, 7, clothLight);
+                FillRect(texture, 11, 22, 10, 1, cloth);
+                FillRect(texture, 12, 25, 3, 2, Shift(clothLight, 26));        // 어깨끈
+                FillRect(texture, 18, 25, 3, 2, Shift(clothLight, 26));
+            }
+            else
+            {
+                // 어깨에서 허리로 지나가는 가방끈 — 사선으로 그려 대장장이와 갈린다.
+                for (int i = 0; i < 9; i++)
+                    FillRect(texture, 10 + i, 24 - i, 2, 2, rope);
+                FillRect(texture, 19, 15, 3, 4, Shift(clothLight, 30));        // 허리에 걸린 무전기
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         internal Sprite GetBlastSprite(bool fiery = true)
         {
             string key = fiery ? "bomb-blast" : "frost-blast";
