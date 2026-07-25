@@ -73,13 +73,15 @@ namespace ProjectC.Core
                 float distance = normalizedX + normalizedY;
                 if (distance > 1f) continue;
 
+                // 사전식 우선순위: LayerPriority ↓ → SortingOrder ↓ → distance ↑.
+                // (&& 가 || 보다 강하게 묶이는 것에 의존하지 않도록 그룹을 괄호로 명시)
                 bool better = !found ||
                               candidate.LayerPriority > bestLayer ||
-                              candidate.LayerPriority == bestLayer &&
-                              candidate.SortingOrder > bestSorting ||
-                              candidate.LayerPriority == bestLayer &&
-                              candidate.SortingOrder == bestSorting &&
-                              distance < bestDistance;
+                              (candidate.LayerPriority == bestLayer &&
+                               candidate.SortingOrder > bestSorting) ||
+                              (candidate.LayerPriority == bestLayer &&
+                               candidate.SortingOrder == bestSorting &&
+                               distance < bestDistance);
                 if (!better) continue;
 
                 found = true;

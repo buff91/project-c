@@ -18,7 +18,7 @@ namespace ProjectC.Core
         /// <summary>순찰 시 스폰 지점에서 벗어나지 않는 반경(체비셰프).</summary>
         public int PatrolRadius { get; }
 
-        /// <summary>HP 비율이 이 값 미만이면 도주. 0이면 도주하지 않는다. (도주 상태는 M5에서 구현)</summary>
+        /// <summary>HP 비율이 이 값 미만이면 도주. 0이면 도주하지 않는다. (도주는 MonsterBrain.DecideFlee 에서 구현됨)</summary>
         public float FleeThreshold { get; }
 
         public MonsterArchetype(
