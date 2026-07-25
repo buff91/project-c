@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProjectC.Core
 {
@@ -12,128 +13,78 @@ namespace ProjectC.Core
     {
         public int gold;
         public string[] unlockedHeroes = { "knight" };
-        public int potions;
-        public int bombs;
-        public int frostBombs;
-        public int oilFlasks;
-        public int knives;
-        public int scrolls;
-        public int herbs;
-        public int powders;
-        public int frostShards;
-        public int loadoutPotions;
-        public int loadoutBombs;
-        public int loadoutFrostBombs;
-        public int loadoutOilFlasks;
-        public int loadoutKnives;
-        public int loadoutScrolls;
-        public int loadoutHerbs;
-        public int loadoutPowders;
-        public int loadoutFrostShards;
+        /// <summary>
+        /// 창고와 출정 로드아웃. 아이템 종류마다 필드를 늘리지 않도록 목록 하나로 둔다
+        /// (연산은 <see cref="ItemStorage"/>가 공유). 전리품은 창고에 남기지 않는다 —
+        /// 생환 시 항상 골드로 환산되므로 <see cref="AddCount"/>가 걸러낸다.
+        /// </summary>
+        public List<ItemStack> stash = new List<ItemStack>();
+        public List<ItemStack> loadout = new List<ItemStack>();
 
-        // 대장간 영구 강화 티어. 판을 넘어 유지된다 (메타 프로그레션).
-        public int weaponTier;
-        public int armorTier;
-        public int toolTier;
+        // 장착 중인 장비 id (EquipmentCatalog). 빈 문자열이면 맨손이다.
+        // 장착 장비는 백팩 공간을 쓰지 않지만 **안전하지는 않다** — 원정에 반입되며(창고에서 빠짐)
+        // 죽으면 소모품과 함께 잃는다. 창고에 남긴 예비 장비만 안전하다(익스트랙션 규칙).
+        public string equippedWeaponId = "";
+        public string equippedGearId = "";
 
         // 현재 원정에 걸린 의뢰 id 목록. 생환/승리 정산 때 비워지고 허브에서 다시 채운다.
         public string[] activeBountyIds = new string[0];
 
-        public int GetCount(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: return potions;
-                case ItemKind.Bomb: return bombs;
-                case ItemKind.FrostBomb: return frostBombs;
-                case ItemKind.OilFlask: return oilFlasks;
-                case ItemKind.ThrowingKnife: return knives;
-                case ItemKind.RecallScroll: return scrolls;
-                case ItemKind.Herb: return herbs;
-                case ItemKind.BlastPowder: return powders;
-                case ItemKind.FrostShard: return frostShards;
-                default: return 0; // 전리품은 보관하지 않는다 — 항상 골드로 환산
-            }
-        }
+        public int GetCount(ItemKind kind) => ItemStorage.Count(stash, kind);
 
+        /// <summary>
+        /// 창고 수량을 더한다. 전리품(<see cref="ItemCategory.Treasure"/>)은 보관하지 않는다 —
+        /// 생환 정산에서 항상 골드로 바뀌므로 창고에 남으면 이중 계산이 된다.
+        /// </summary>
         public void AddCount(ItemKind kind, int amount)
         {
-            switch (kind)
-            {
-                case ItemKind.Potion: potions += amount; break;
-                case ItemKind.Bomb: bombs += amount; break;
-                case ItemKind.FrostBomb: frostBombs += amount; break;
-                case ItemKind.OilFlask: oilFlasks += amount; break;
-                case ItemKind.ThrowingKnife: knives += amount; break;
-                case ItemKind.RecallScroll: scrolls += amount; break;
-                case ItemKind.Herb: herbs += amount; break;
-                case ItemKind.BlastPowder: powders += amount; break;
-                case ItemKind.FrostShard: frostShards += amount; break;
-            }
+            if (ItemCatalog.CategoryOf(kind) == ItemCategory.Treasure) return;
+            ItemStorage.Add(stash, kind, amount);
         }
 
         /// <summary>창고에서 요청 수량만 제거한다. 보유량을 넘는 요청은 실제 제거량만 반환한다.</summary>
-        public int RemoveCount(ItemKind kind, int amount)
-        {
-            if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
-            int removed = Math.Min(GetCount(kind), amount);
-            if (removed > 0) AddCount(kind, -removed);
-            return removed;
-        }
+        public int RemoveCount(ItemKind kind, int amount) =>
+            ItemStorage.Remove(stash, kind, amount);
 
-        public int GetLoadoutCount(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: return loadoutPotions;
-                case ItemKind.Bomb: return loadoutBombs;
-                case ItemKind.FrostBomb: return loadoutFrostBombs;
-                case ItemKind.OilFlask: return loadoutOilFlasks;
-                case ItemKind.ThrowingKnife: return loadoutKnives;
-                case ItemKind.RecallScroll: return loadoutScrolls;
-                case ItemKind.Herb: return loadoutHerbs;
-                case ItemKind.BlastPowder: return loadoutPowders;
-                case ItemKind.FrostShard: return loadoutFrostShards;
-                default: return 0;
-            }
-        }
+        public int GetLoadoutCount(ItemKind kind) => ItemStorage.Count(loadout, kind);
 
-        public void AddLoadoutCount(ItemKind kind, int amount)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: loadoutPotions += amount; break;
-                case ItemKind.Bomb: loadoutBombs += amount; break;
-                case ItemKind.FrostBomb: loadoutFrostBombs += amount; break;
-                case ItemKind.OilFlask: loadoutOilFlasks += amount; break;
-                case ItemKind.ThrowingKnife: loadoutKnives += amount; break;
-                case ItemKind.RecallScroll: loadoutScrolls += amount; break;
-                case ItemKind.Herb: loadoutHerbs += amount; break;
-                case ItemKind.BlastPowder: loadoutPowders += amount; break;
-                case ItemKind.FrostShard: loadoutFrostShards += amount; break;
-            }
-        }
+        public void AddLoadoutCount(ItemKind kind, int amount) =>
+            ItemStorage.Add(loadout, kind, amount);
 
-        public int RemoveLoadoutCount(ItemKind kind, int amount)
-        {
-            if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
-            int removed = Math.Min(GetLoadoutCount(kind), amount);
-            if (removed > 0) AddLoadoutCount(kind, -removed);
-            return removed;
-        }
+        public int RemoveLoadoutCount(ItemKind kind, int amount) =>
+            ItemStorage.Remove(loadout, kind, amount);
 
-        public void ClearLoadout()
-        {
-            loadoutPotions = loadoutBombs = loadoutFrostBombs = 0;
-            loadoutOilFlasks = loadoutKnives = loadoutScrolls = 0;
-            loadoutHerbs = loadoutPowders = loadoutFrostShards = 0;
-        }
+        public void ClearLoadout() => ItemStorage.Clear(loadout);
 
         public void ClearItems()
         {
-            potions = bombs = frostBombs = oilFlasks = knives = scrolls = 0;
-            herbs = powders = frostShards = 0;
+            ItemStorage.Clear(stash);
             ClearLoadout();
+        }
+
+        /// <summary>장비를 하나라도 보유하고 있는가(제작 후 창고에 남아 있는 것).</summary>
+        public bool OwnsEquipment(EquipmentDefinition definition) =>
+            definition != null && GetCount(definition.Item) > 0;
+
+        /// <summary>슬롯에 장착된 장비 id. 없으면 빈 문자열.</summary>
+        public string GetEquipped(EquipmentSlot slot) =>
+            slot == EquipmentSlot.Weapon ? equippedWeaponId ?? "" : equippedGearId ?? "";
+
+        public void SetEquipped(EquipmentSlot slot, string equipmentId)
+        {
+            string value = equipmentId ?? "";
+            if (slot == EquipmentSlot.Weapon) equippedWeaponId = value;
+            else equippedGearId = value;
+        }
+
+        /// <summary>현재 장착 조합의 전투 보정. 보유하지 않은 장비는 장착으로 치지 않는다.</summary>
+        public CombatLoadout EquippedLoadout()
+        {
+            EquipmentDefinition weapon = EquipmentCatalog.ById(equippedWeaponId);
+            EquipmentDefinition gear = EquipmentCatalog.ById(equippedGearId);
+            return EquipmentRules.LoadoutFor(
+                OwnsEquipment(weapon) ? weapon.Id : null,
+                OwnsEquipment(gear) ? gear.Id : null);
         }
 
         /// <summary>골드가 충분하면 차감하고 true. 상점 구매/해금 공통 경로.</summary>
@@ -162,27 +113,5 @@ namespace ProjectC.Core
             unlockedHeroes = next;
         }
 
-        /// <summary>대장간 강화 티어 조회. 알 수 없는 id 는 0. (SmithyRules 가 유일한 소유자)</summary>
-        public int GetSmithyTier(string upgradeId)
-        {
-            switch (upgradeId)
-            {
-                case "weapon": return weaponTier;
-                case "armor": return armorTier;
-                case "tools": return toolTier;
-                default: return 0;
-            }
-        }
-
-        public void SetSmithyTier(string upgradeId, int tier)
-        {
-            int clamped = tier < 0 ? 0 : tier;
-            switch (upgradeId)
-            {
-                case "weapon": weaponTier = clamped; break;
-                case "armor": armorTier = clamped; break;
-                case "tools": toolTier = clamped; break;
-            }
-        }
     }
 }

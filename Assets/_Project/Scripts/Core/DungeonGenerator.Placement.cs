@@ -84,6 +84,99 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 중간 탈출구 배치. 어느 층에 두는지는 <see cref="ExtractionRules"/>가 정하고,
+        /// 자리는 입구에서 가장 먼 남쪽 방 바닥으로 결정론적으로 고른다 —
+        /// 층에 들어서자마자 나가는 게 아니라 "돌아 나오는" 동선이 되게 한다.
+        /// RNG를 쓰지 않아 생성 스트림을 흔들지 않는다.
+        /// </summary>
+        private static void PlaceExtractionPoint(GridMap map, FloorPlan p, int floorCount)
+        {
+            if (!ExtractionRules.HasExtractionPoint(-p.FloorIndex, floorCount)) return;
+
+            GridPos best = default;
+            int bestDistance = -1;
+            for (int x = 0; x < p.Width; x++)
+            for (int y = 0; y <= p.LowerMaxY; y++)
+            {
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (!IsFreeForSpawn(map, p, pos)) continue;
+
+                int distance = p.Entry.ManhattanTo(pos);
+                if (distance <= bestDistance) continue;
+                bestDistance = distance;
+                best = pos;
+            }
+
+            if (bestDistance >= 0) p.ExtractionPoint = best;
+        }
+
+        /// <summary>
+        /// 던전 장비 배치 — 층당 최대 하나. 깊이 게이트·확률·종류는 <see cref="EquipmentDropRules"/>가
+        /// 소유한다. 주운 장비는 백팩 면적을 먹고, 살아 나와야 창고로 들어간다(익스트랙션).
+        /// 아이템 배치가 끝난 뒤 남은 빈 칸에만 놓아 기존 스폰과 겹치지 않는다.
+        /// </summary>
+        private static void PlaceEquipment(GridMap map, Random random, FloorPlan p)
+        {
+            EquipmentDefinition equipment = EquipmentDropRules.Roll(-p.FloorIndex, random);
+            if (equipment == null) return;
+
+            var candidates = new List<GridPos>();
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                if (x == p.VerticalX && y == p.UpperMinY) continue;
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (IsFreeForSpawn(map, p, pos)) candidates.Add(pos);
+            }
+
+            foreach (GridPos pos in TakeRandom(candidates, 1, random))
+                p.Items.Add(new ItemSpawn(pos, equipment.Item));
+        }
+
+        /// <summary>스폰이 겹치지 않는 빈 바닥인가. 아이템·장비 배치가 공유하는 판정.</summary>
+        private static bool IsFreeForSpawn(GridMap map, FloorPlan p, GridPos pos)
+        {
+            if (map.Get(pos)?.kind != TileKind.Floor) return false;
+            if (pos == p.Entry || pos == p.RestSite) return false;
+            if (p.EnemySpawns.Contains(pos)) return false;
+            foreach (ItemSpawn spawn in p.Items)
+                if (spawn.Position == pos) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 건물형 수직성(v0.3): 사다리 위에 얹는 +2단 캐치워크.
+        /// 길이는 밴드 프로파일이 소유하고(얕은 밴드 0), 최심층 아레나는 1:1 결투 공간을
+        /// 비우려 놓지 않는다. 사다리 링크로만 올라가므로 도달성 불변식이 유지되고,
+        /// RNG를 쓰지 않아 생성 스트림도 흔들지 않는다.
+        ///
+        /// 큰 단차(+2)는 높이 인식 FOV 차폐(<see cref="SightRules.HeightBlockThreshold"/>)와
+        /// 내려치기·고지대 사격이 실제로 발동하는 층 내부 무대다.
+        /// </summary>
+        private static void PlaceCatwalk(GridMap map, FloorPlan p, int floorCount)
+        {
+            int depth = -p.FloorIndex;
+            if (DungeonBossArenaRules.IsArenaFloor(depth, floorCount)) return;
+
+            int length = DungeonBandProfiles.ForDepth(depth).CatwalkLength;
+            if (length <= 0) return;
+
+            var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
+            for (int i = 0; i < length; i++)
+            {
+                int y = p.RaisedY + i;
+                if (y >= p.Height) break;
+                // 아래에 올라온 단이 실제로 있는 칸에만 얹는다 — 허공에 뜬 발판을 만들지 않는다.
+                if (map.Get(new GridPos(p.LadderX, y, p.BaseElevation + 1)) == null) break;
+
+                var catwalk = new GridPos(p.LadderX, y, p.BaseElevation + 2);
+                map.Set(catwalk, TileKind.Floor);
+                // 첫 칸만 사다리와 명시적 링크로 잇는다. 나머지는 같은 높이 평면 이웃이라 그냥 걷는다.
+                if (i == 0) map.Connect(ladderTop, catwalk);
+            }
+        }
+
+        /// <summary>
         /// 건물형 수직성(v0.3): 북쪽 방 왼쪽 외벽에 낙하형 창문 하나(위치 잠정, RNG 미사용).
         /// 유리는 이동을 막지만 시야는 통과하고, 깨고 넘어(넉백) 창밖이 한 층 아래 바닥이면
         /// 낙하로 이어진다. 창문 자리는 원래 void(벽)라 이동·도달성 불변 — 시야만 바깥으로 연다.
@@ -162,21 +255,23 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
-                // 분배(/18): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 분배(/23): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 통조림5(배고픔이 짧은 주기라 자주 먹어야 한다 — 굶어 죽는 게 기본값이 되면 안 된다) ·
                 // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
                 // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
-                int roll = random.Next(0, 18);
+                int roll = random.Next(0, 23);
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;
                 if (roll < 8) return ItemKind.OilFlask;
                 if (roll < 9) return ItemKind.ThrowingKnife;
                 if (roll < 10) return ItemKind.RecallScroll;
-                if (roll < 12) return ItemKind.CoinPouch;
-                if (roll < 13) return ItemKind.Gemstone;
-                if (roll < 14) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
-                if (roll < 16) return ItemKind.Herb;
-                if (roll < 17) return ItemKind.BlastPowder;
+                if (roll < 15) return ItemKind.CannedFood;
+                if (roll < 17) return ItemKind.CoinPouch;
+                if (roll < 18) return ItemKind.Gemstone;
+                if (roll < 19) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 21) return ItemKind.Herb;
+                if (roll < 22) return ItemKind.BlastPowder;
                 return ItemKind.FrostShard;
             }
 
@@ -197,9 +292,21 @@ namespace ProjectC.Core
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
                 {
-                    ItemKind kind = p.BranchIsSecret
-                        ? (p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone)
-                        : RollKind();
+                    // 숨은 방 보상: 기본은 깊이에 따라 유물/보석이고, 아주 가끔만 비상 송출기가
+                    // 나온다(살아 나갈 권리). 롤은 비밀 방일 때 항상 한 번만 소비해 재현성을 지킨다.
+                    ItemKind kind;
+                    if (p.BranchIsSecret)
+                    {
+                        bool beacon =
+                            random.Next(0, 100) < ExtractionRules.BeaconRewardChancePercent;
+                        kind = beacon
+                            ? ItemKind.ExtractionBeacon
+                            : p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone;
+                    }
+                    else
+                    {
+                        kind = RollKind();
+                    }
                     p.Items.Add(new ItemSpawn(pos, kind));
                     if (p.BranchIsSecret)
                         p.SecretReward = pos;

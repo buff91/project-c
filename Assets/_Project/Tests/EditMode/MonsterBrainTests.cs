@@ -133,6 +133,88 @@ namespace ProjectC.Tests
             };
         }
 
+        private static MonsterArchetype Slinger() =>
+            new MonsterArchetype("Slinger", 4, 1, aggroRange: 7, patrolRadius: 2,
+                rangedRange: 4, rangedPower: 2, keepAwayRange: 2);
+
+        [Test]
+        public void Slinger_FiresFromRange_InsteadOfClosing()
+        {
+            GridMap map = Flat(11);
+            var self = new CombatantState("s", new GridPos(4, 0, 0), 4, 1);
+            var player = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
+            var brain = new MonsterBrain(Slinger(), self.Position, seed: 2);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.RangedAttack, action.Kind,
+                "사거리·사선이 잡히면 붙지 않고 쏜다");
+        }
+
+        [Test]
+        public void Slinger_BacksAwayWhenPlayerCloses()
+        {
+            GridMap map = Flat(11);
+            var self = new CombatantState("s", new GridPos(5, 5, 0), 4, 1);
+            var player = new CombatantState("p", new GridPos(4, 5, 0), 10, 3);
+            var brain = new MonsterBrain(Slinger(), self.Position, seed: 2);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.Step, action.Kind, "붙으면 먼저 거리를 벌린다");
+            Assert.Greater(
+                action.Target.ChebyshevTo(player.Position),
+                self.Position.ChebyshevTo(player.Position),
+                "물러선 칸은 더 멀어야 한다");
+        }
+
+        [Test]
+        public void Slinger_Cornered_FallsBackToMelee()
+        {
+            // 물러설 칸이 없는 막다른 자리에서는 붙어서라도 싸운다(무한 대기 방지).
+            var map = new GridMap();
+            map.Set(new GridPos(0, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 0, 0), TileKind.Floor);
+            var self = new CombatantState("s", new GridPos(0, 0, 0), 4, 1);
+            var player = new CombatantState("p", new GridPos(1, 0, 0), 10, 3);
+            var brain = new MonsterBrain(Slinger(), self.Position, seed: 2);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.Attack, action.Kind);
+        }
+
+        [Test]
+        public void Slinger_MovesToRegainLineOfSight_WhenBlocked()
+        {
+            // 사선이 벽에 막히면 쏘지도 붙지도 않고 사격 가능한 자리로 움직인다.
+            GridMap map = Flat(11);
+            for (int y = 0; y < 11; y++)
+                if (y != 5) map.Set(new GridPos(3, y, 0), TileKind.Wall);
+            // 거리는 벌어져 있어(체비셰프 4 > keepAway 2) 물러서기 가지는 타지 않는다.
+            var self = new CombatantState("s", new GridPos(1, 8, 0), 4, 1);
+            var player = new CombatantState("p", new GridPos(5, 8, 0), 10, 3);
+            var brain = new MonsterBrain(Slinger(), self.Position, seed: 2);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.Step, action.Kind);
+            Assert.IsTrue(map.IsWalkable(action.Target));
+        }
+
+        [Test]
+        public void MeleeArchetype_IsUnaffectedByRangedBranch()
+        {
+            GridMap map = Flat(11);
+            var self = new CombatantState("g", new GridPos(4, 0, 0), 5, 1);
+            var player = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
+            var brain = new MonsterBrain(Goblin(), self.Position, seed: 2);
+
+            MonsterAction action = brain.Decide(Context(map, self, player));
+
+            Assert.AreEqual(MonsterActionKind.Step, action.Kind, "근접 몬스터는 그대로 붙는다");
+        }
+
         [Test]
         public void OutOfSight_StaysPatrol_AndKeepsPatrolRadius()
         {

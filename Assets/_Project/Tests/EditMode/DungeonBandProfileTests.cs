@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ProjectC.Core;
 
@@ -22,6 +23,36 @@ namespace ProjectC.Tests
             Assert.AreSame(DungeonBandProfiles.ForBand(expected), DungeonBandProfiles.ForDepth(depth));
         }
 
+        [TestCase(DungeonDepthBand.Shallow, "B1~B3")]
+        [TestCase(DungeonDepthBand.Mid, "B4~B6")]
+        [TestCase(DungeonDepthBand.Deep, "B7~B9")]
+        [TestCase(DungeonDepthBand.Boss, "B10+")]
+        public void RangeLabel_MatchesBoundaries(DungeonDepthBand band, string expected)
+        {
+            Assert.AreEqual(expected, DungeonDepthBandRules.RangeLabel(band));
+        }
+
+        [Test]
+        public void RangeLabel_AgreesWithForDepth_AcrossTheFirstDungeon()
+        {
+            // 라벨과 판정이 각자 하드코딩되면 리포트가 조용히 거짓말을 한다 — 층마다 대조한다.
+            for (int depth = 0; depth <= 11; depth++)
+            {
+                DungeonDepthBand band = DungeonDepthBandRules.ForDepth(depth);
+                string label = DungeonDepthBandRules.RangeLabel(band);
+                string floor = RunTelemetry.FormatFloor(-depth);
+                bool openEnded = label.EndsWith("+", StringComparison.Ordinal);
+                int firstFloor = int.Parse(label.Substring(1).Split('~')[0].TrimEnd('+'));
+                int lastFloor = openEnded
+                    ? int.MaxValue
+                    : int.Parse(label.Split('~')[1].Substring(1));
+                int floorNumber = int.Parse(floor.Substring(1));
+
+                Assert.GreaterOrEqual(floorNumber, firstFloor, $"{floor} ∉ {label}");
+                Assert.LessOrEqual(floorNumber, lastFloor, $"{floor} ∉ {label}");
+            }
+        }
+
         [Test]
         public void EveryBand_HasPositiveTotalWeight()
         {
@@ -35,6 +66,57 @@ namespace ProjectC.Tests
             Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).SkeletonWeight);
             Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SkeletonWeight, 0);
             Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).SkeletonWeight, 0);
+        }
+
+        [Test]
+        public void SlingerWeight_AbsentInShallow_ThenGrowsWithDepth()
+        {
+            Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).SlingerWeight,
+                "도입 구간에는 원거리 압박을 넣지 않는다");
+            Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SlingerWeight, 0);
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).SlingerWeight,
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SlingerWeight);
+        }
+
+        [Test]
+        public void PickForDepth_CoversEveryWeightedArchetype()
+        {
+            // 롤 분기(4-way)가 가중치와 어긋나면 특정 종이 영영 안 나온다 — 실제로 뽑아 확인한다.
+            var random = new Random(4242);
+            var seen = new HashSet<string>();
+            for (int i = 0; i < 3000; i++)
+                seen.Add(MonsterRoster.PickForDepth(6, random).Id);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "Slime", "Goblin", "Skeleton", "Slinger" }, seen,
+                "Deep 밴드는 네 종을 모두 낸다");
+        }
+
+        [Test]
+        public void CatwalkLength_GrowsWithDepth_ShallowHasNone()
+        {
+            Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).CatwalkLength,
+                "도입 구간은 평평하게 둔다");
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).CatwalkLength, 1);
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).CatwalkLength,
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).CatwalkLength);
+        }
+
+        [Test]
+        public void WallSconceRarity_GrowsWithDepth_SoDeeperFloorsAreDarker()
+        {
+            int shallow = DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).WallSconceRarity;
+            int mid = DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).WallSconceRarity;
+            int deep = DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).WallSconceRarity;
+            int boss = DungeonBandProfiles.ForBand(DungeonDepthBand.Boss).WallSconceRarity;
+
+            Assert.Greater(shallow, 0, "0이면 모든 칸이 등잔이 된다(나눗셈 보호)");
+            Assert.GreaterOrEqual(mid, shallow);
+            Assert.GreaterOrEqual(deep, mid);
+            Assert.GreaterOrEqual(boss, deep);
         }
 
         [Test]

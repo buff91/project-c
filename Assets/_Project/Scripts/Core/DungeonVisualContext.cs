@@ -16,17 +16,38 @@ namespace ProjectC.Core
 
     public static class DungeonDepthBandRules
     {
+        // 구간 경계의 단일 출처. 라벨(RangeLabel)도 이 값에서 만들어 판정과 표기가 어긋나지 않게 한다.
+        public const int ShallowLastDepth = 2;
+        public const int MidLastDepth = 5;
+        public const int DeepLastDepth = 8;
+
         public static DungeonDepthBand ForDepth(int depthIndex)
         {
             int depth = Math.Max(0, depthIndex);
-            if (depth <= 2) return DungeonDepthBand.Shallow;
-            if (depth <= 5) return DungeonDepthBand.Mid;
-            if (depth <= 8) return DungeonDepthBand.Deep;
+            if (depth <= ShallowLastDepth) return DungeonDepthBand.Shallow;
+            if (depth <= MidLastDepth) return DungeonDepthBand.Mid;
+            if (depth <= DeepLastDepth) return DungeonDepthBand.Deep;
             return DungeonDepthBand.Boss;
         }
 
         public static DungeonDepthBand ForFloor(int floorIndex) =>
             ForDepth(Math.Max(0, -floorIndex));
+
+        /// <summary>계측 리포트에서 구간을 가리키는 사람이 읽는 층 범위. (깊이 0 = B1)</summary>
+        public static string RangeLabel(DungeonDepthBand band)
+        {
+            switch (band)
+            {
+                case DungeonDepthBand.Shallow:
+                    return $"B1~B{ShallowLastDepth + 1}";
+                case DungeonDepthBand.Mid:
+                    return $"B{ShallowLastDepth + 2}~B{MidLastDepth + 1}";
+                case DungeonDepthBand.Deep:
+                    return $"B{MidLastDepth + 2}~B{DeepLastDepth + 1}";
+                default:
+                    return $"B{DeepLastDepth + 2}+";
+            }
+        }
     }
 
     /// <summary>

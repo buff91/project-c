@@ -51,7 +51,8 @@ namespace ProjectC.Gameplay
         private IEnumerator FallPlayer(GridPos from, string cause)
         {
             FallResult fall = FallRules.TryFall(
-                _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants());
+                _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants(),
+                _playerLoadout.SafeFallHeight);
             if (fall == null) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
 
             _runTelemetry?.RecordFall(
@@ -122,6 +123,7 @@ namespace ProjectC.Gameplay
                 int globalFloor = GlobalFloorIndex(_activeFloorIndex);
                 if (_runTelemetry != null && _runTelemetry.currentFloorIndex != globalFloor)
                     _runTelemetry.RecordFloorEntered(globalFloor);
+                AnnounceBossApproachIfNeeded();
                 UpdateInputFloorRange();
                 SaveCheckpoint();
             }
@@ -198,7 +200,7 @@ namespace ProjectC.Gameplay
             BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
             List<GridPos> revealedSecretDoors = SecretRoomRules.RevealInBlast(_grid.Map, center);
             foreach (GridPos _ in revealedSecretDoors)
-                _runTelemetry?.RecordSecretRoomFound();
+                _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
             int visibleHitCount = 0;
             foreach (CombatantState damaged in result.Damaged)
             {

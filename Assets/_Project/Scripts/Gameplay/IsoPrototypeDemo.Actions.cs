@@ -124,17 +124,22 @@ namespace ProjectC.Gameplay
             yield return MovePlayerPath(path);
 
             if (_playerState.IsAlive && enemy.State.IsAlive &&
-                CombatRules.AreAdjacent(_playerState, enemy.State))
+                CombatRules.CanMelee(_grid.Map, _playerState, enemy.State, _playerLoadout.MeleeReach))
             {
                 yield return AnimateMeleeLunge(
                     _player.transform,
                     enemy.Root != null
                         ? enemy.Root.transform.position
                         : _grid.GridToWorld(enemy.State.Position));
-                if (CombatRules.TryMelee(_playerState, enemy.State, out int damage))
+                if (CombatRules.TryMelee(
+                        _playerState, enemy.State, out int damage,
+                        _grid.Map, _playerLoadout.MeleeReach))
                 {
                     if (_runTelemetry != null) _runTelemetry.meleeAttacks++;
                     yield return ShowEnemyHit(enemy, damage, "Melee");
+                    // 둔기 장비: 때린 대상을 밀어낸다 — 구멍·창문 앞이면 그대로 낙하로 이어진다.
+                    if (_playerLoadout.KnockbackOnHit && enemy.State.IsAlive)
+                        yield return KnockbackCombatant(_playerState.Position, enemy.State);
                     yield return ResolveEnemyPhase();
                 }
             }
@@ -200,10 +205,68 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
+        /// <summary>
+        /// 배고픔 한 턴. 굶고 있으면 주기마다 HP를 깎고, 단계가 바뀔 때만 알린다 —
+        /// 매 턴 경고하면 소음이 되고, 아무 말도 없으면 조용히 죽는다.
+        /// </summary>
+        private IEnumerator TickHunger()
+        {
+            if (hubMode || _playerState == null || !_playerState.IsAlive) yield break;
+
+            int damage = _hunger.Tick();
+            HungerStage stage = _hunger.Stage;
+            if (stage != _lastHungerStage)
+            {
+                _lastHungerStage = stage;
+                if (stage == HungerStage.Hungry)
+                    InteractionFeedback?.Invoke("배가 고프다 — 통조림을 찾아야 한다");
+                else if (stage == HungerStage.Starving)
+                    InteractionFeedback?.Invoke("굶주리고 있다 — 체력이 깎인다");
+            }
+
+            if (damage <= 0) yield break;
+
+            _playerState.TakeDamage(damage);
+            _runTelemetry?.RecordStarvation(damage);
+            yield return ShowPlayerHit(damage, "Starving");
+        }
+
+        /// <summary>통조림을 먹어 배고픔을 채운다. 행동 1회를 소비한다.</summary>
+        public void EatFood()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (_inventory.Count(ItemKind.CannedFood) <= 0)
+            {
+                InteractionFeedback?.Invoke("NO FOOD");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(RunPlayerAction(EatFoodAction()));
+        }
+
+        private IEnumerator EatFoodAction()
+        {
+            _inventory.TryUse(ItemKind.CannedFood);
+            _runTelemetry?.RecordItemUsed(ItemKind.CannedFood, GlobalFloorIndex(_activeFloorIndex));
+            InventoryChanged?.Invoke();
+
+            int fed = _hunger.Feed(HungerRules.RationSatiation);
+            _lastHungerStage = _hunger.Stage;
+            InteractionFeedback?.Invoke(
+                fed > 0 ? "통조림을 먹었다 — 배가 든든하다" : "배가 이미 부르다");
+            Debug.Log($"[Hunger] 통조림 섭취 +{fed} → {_hunger.satiation}");
+            yield return FlashColor(_playerRenderer, new Color32(196, 168, 96, 255));
+
+            yield return ResolveEnemyPhase();
+        }
+
         private IEnumerator DrinkPotion()
         {
             _inventory.TryUse(ItemKind.Potion);
-            _runTelemetry?.RecordItemUsed(ItemKind.Potion);
+            _runTelemetry?.RecordItemUsed(ItemKind.Potion, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             int healed = _playerState.Heal(potionHealAmount);
@@ -221,7 +284,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.OilFlask);
-            _runTelemetry?.RecordItemUsed(ItemKind.OilFlask);
+            _runTelemetry?.RecordItemUsed(ItemKind.OilFlask, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             yield return AnimateProjectile(_playerPos, target);
@@ -237,7 +300,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.ThrowingKnife);
-            _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife);
+            _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             if (CombatRules.TryRanged(
@@ -280,7 +343,7 @@ namespace ProjectC.Gameplay
         private IEnumerator CraftAction(Recipe recipe)
         {
             CraftingRules.TryCraft(_inventory, recipe);
-            _runTelemetry?.RecordItemCrafted(recipe.Output);
+            _runTelemetry?.RecordItemCrafted(recipe.Output, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
             InteractionFeedback?.Invoke(
                 $"조합: {ItemCatalog.DisplayName(recipe.Output)} 완성!");
@@ -309,7 +372,7 @@ namespace ProjectC.Gameplay
         private IEnumerator RecallToEntry()
         {
             _inventory.TryUse(ItemKind.RecallScroll);
-            _runTelemetry?.RecordItemUsed(ItemKind.RecallScroll);
+            _runTelemetry?.RecordItemUsed(ItemKind.RecallScroll, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor);
@@ -341,7 +404,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(kind);
-            _runTelemetry?.RecordItemUsed(kind);
+            _runTelemetry?.RecordItemUsed(kind, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             bool fiery = kind != ItemKind.FrostBomb;

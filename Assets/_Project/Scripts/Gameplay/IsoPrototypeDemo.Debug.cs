@@ -16,6 +16,10 @@ namespace ProjectC.Gameplay
         public string DebugTelemetrySummary =>
             _runTelemetry != null ? _runTelemetry.FormatCompactSummary() : "RUN TELEMETRY --";
 
+        /// <summary>깊이 구간(Shallow/Mid/Deep/Boss)별 체류·피해 비교. 플레이 중 바로 읽는 용도.</summary>
+        public string DebugTelemetryBandSummary =>
+            _runTelemetry != null ? _runTelemetry.FormatBandSummary() : "구간 데이터 없음";
+
         public int DebugLivingEnemiesOnFloor()
         {
             int count = 0;

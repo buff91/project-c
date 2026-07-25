@@ -221,7 +221,8 @@ namespace ProjectC.Gameplay
         public string VerticalHintLabel => BuildVerticalHintLabel();
         public string LocationLabel => _dungeon == null
             ? "--"
-            : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · ({_playerPos.x},{_playerPos.y})";
+            : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · " +
+              $"({_playerPos.x},{_playerPos.y}) · {HungerRules.Label(_hunger.Stage)}";
         public string ActiveFloorLabel => FloorLabel(_activeFloorIndex);
         public string AboveFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex + 1, out _)
             ? FloorLabel(_activeFloorIndex + 1)
@@ -321,6 +322,20 @@ namespace ProjectC.Gameplay
         private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
         private RunTelemetry _runTelemetry;
+
+        /// <summary>장착 장비가 주는 전투 보정(사거리·넉백·방어·안전 낙하). 판 시작 때 메타에서 읽는다.</summary>
+        private CombatLoadout _playerLoadout = CombatLoadout.Unarmed;
+
+        // 이번 원정에 반입한 장비 — 죽으면 잃고 살아 나와야 돌려받는다(익스트랙션 규칙).
+        private string _carriedWeaponId = "";
+        private string _carriedGearId = "";
+
+        /// <summary>배고픔 — 판 전체를 관통하는 부드러운 시계. 층·던전이 바뀌어도 이어진다.</summary>
+        private HungerState _hunger = new HungerState();
+        private HungerStage _lastHungerStage = HungerStage.Fed;
+
+        public HungerStage HungerStage => _hunger.Stage;
+        public int Satiation => _hunger.satiation;
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
@@ -450,11 +465,30 @@ namespace ProjectC.Gameplay
             if (Application.isPlaying)
             {
                 _hero = HeroRoster.ById(continueData != null ? continueData.heroId : HeroSelection.SelectedId);
-                // 대장간 영구 강화를 영웅 기본 스탯 위에 얹는다 (티어 0 이면 기본값 그대로).
-                MetaSaveData heroMeta = MetaStore.LoadOrNew();
-                playerMaxHp = SmithyRules.EffectiveMaxHp(_hero, heroMeta);
-                playerAttack = SmithyRules.EffectiveAttack(_hero, heroMeta);
-                rangedAttackDamage = SmithyRules.EffectiveRangedDamage(_hero, heroMeta);
+                // 스탯은 영웅 프리셋 그대로다 — 영구 강화는 없앴고, 장비는 숫자가 아니라
+                // 행동 규칙(사거리·넉백·방어·안전 낙하)을 바꾼다.
+                playerMaxHp = _hero.MaxHp;
+                playerAttack = _hero.Attack;
+                rangedAttackDamage = _hero.RangedDamage;
+                if (continueData != null)
+                {
+                    // 이어하기: 이미 반입한 장비를 그대로 들고 있다(창고에서 다시 꺼내지 않는다).
+                    _carriedWeaponId = continueData.carriedWeaponId ?? "";
+                    _carriedGearId = continueData.carriedGearId ?? "";
+                }
+                else if (_stageIndex == 1)
+                {
+                    // 새 원정 출발에서만 창고에서 꺼낸다 — 이 순간부터 잃을 수 있다.
+                    // 던전 체인 전환(_stageIndex > 1)은 이미 들고 있는 장비를 그대로 이어 간다.
+                    MetaSaveData departure = MetaStore.LoadOrNew();
+                    ForgeRules.TakeIntoExpedition(
+                        departure, out _carriedWeaponId, out _carriedGearId);
+                    MetaStore.Save(departure);
+                }
+                _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+                if (continueData == null && _stageIndex == 1)
+                    _hunger = new HungerState(); // 새 원정은 배부른 상태로 출발한다
+                _lastHungerStage = _hunger.Stage;
             }
 
             if (Application.isPlaying && _moveRoutine != null)
@@ -471,6 +505,8 @@ namespace ProjectC.Gameplay
             _enemies.Clear();
             _items.Clear();
             ResetRestSitesForBuild();
+            ResetBossArenaForBuild();
+            ResetExtractionPointsForBuild();
             _inventory.Clear();
             _boss = null;
             _bossExitSeal = null;
@@ -748,6 +784,8 @@ namespace ProjectC.Gameplay
                 }
 
                 CreateRestSite(floor);
+                CreateBossAltar(floor);
+                CreateExtractionPoint(floor);
             }
             CreateBossExitSeal();
 
@@ -767,6 +805,7 @@ namespace ProjectC.Gameplay
             _selection.transform.position = _grid.GridToWorld(_playerPos);
             _selectionPos = _playerPos;
             RefreshFloorVisibility();
+            AnnounceBossApproachIfNeeded();
         }
 
         private void LateUpdate()
@@ -960,6 +999,7 @@ namespace ProjectC.Gameplay
                 _runSummary.EndInDefeat(source);
                 FinishRunTelemetry(RunTelemetryOutcome.Defeat, source);
                 RunSaveStore.Clear();
+                LoseCarriedEquipment();
                 Debug.Log($"[Combat] 플레이어 사망 — 사인 {source}, " +
                           $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
                 RunEnded?.Invoke(_runSummary);
@@ -1111,6 +1151,8 @@ namespace ProjectC.Gameplay
                     GlobalFloorIndex(_activeFloorIndex));
                 if (item.Root != null) item.Root.SetActive(false);
                 InventoryChanged?.Invoke();
+
+                if (TryAutoEquipPickedUp(item.Spawn.Kind)) return;
 
                 InteractionFeedback?.Invoke(
                     $"{ItemCatalog.ShortLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");

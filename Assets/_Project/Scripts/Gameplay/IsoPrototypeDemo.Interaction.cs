@@ -222,7 +222,8 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || hubMode) return;
             FinishRunTelemetry(RunTelemetryOutcome.Abandoned, "Abandoned");
             RunSaveStore.Clear();
-            Debug.Log("[Run] 게임 포기 — 소지품 소실, 허브 복귀");
+            LoseCarriedEquipment();
+            Debug.Log("[Run] 게임 포기 — 소지품·반입 장비 소실, 허브 복귀");
             UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
         }
 
@@ -286,6 +287,11 @@ namespace ProjectC.Gameplay
             {
                 if (combatMode == CombatActionMode.Ranged)
                     StartPlayerAction(target, RangedAttack(tappedEnemy));
+                // 긴 사거리 근접 장비(창)는 이미 닿으면 걸어 붙지 않고 그 자리에서 찌른다.
+                else if (CombatRules.CanMelee(
+                             _grid.Map, _playerState, tappedEnemy.State, _playerLoadout.MeleeReach))
+                    StartPlayerAction(
+                        target, ApproachAndAttack(new List<GridPos> { _playerPos }, tappedEnemy));
                 else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
                     StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
                 return;
@@ -310,6 +316,14 @@ namespace ProjectC.Gameplay
             {
                 if (TryFindApproach(target, out List<GridPos> doorPath))
                     StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
+                return;
+            }
+
+            if (!hubMode && TryGetExtractionPointAt(target, out ExtractionAgent extraction))
+            {
+                if (TryFindApproach(target, out List<GridPos> extractionPath))
+                    StartPlayerAction(
+                        target, ApproachAndOfferExtraction(extractionPath, extraction));
                 return;
             }
 

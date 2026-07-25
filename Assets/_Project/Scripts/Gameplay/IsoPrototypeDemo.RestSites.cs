@@ -126,7 +126,7 @@ namespace ProjectC.Gameplay
 
             _usedRestFloorIndices.Add(site.GlobalFloorIndex);
             int healed = _playerState.Heal(healAmount);
-            _runTelemetry?.RecordRest(healed);
+            _runTelemetry?.RecordRest(healed, site.GlobalFloorIndex);
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
             RefreshRestSiteVisibility();

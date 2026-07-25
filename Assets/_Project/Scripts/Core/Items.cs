@@ -19,7 +19,30 @@ namespace ProjectC.Core
         Relic = 8,         // 전리품(대): 희귀. 생환 시 골드로 환산.
         Herb = 9,          // 조합 재료: 약초. 2개로 회복 물약을 만든다.
         BlastPowder = 10,  // 조합 재료: 화약. 2개로 폭탄을 만든다.
-        FrostShard = 11    // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
+        FrostShard = 11,   // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
+        // 장비 (대장간 제작 — 스탯이 아니라 행동 규칙을 바꾼다. EquipmentCatalog 참조)
+        PipeSpear = 12,    // 긴 파이프: 근접 사거리 2(직선).
+        HeavyWrench = 13,  // 대형 렌치: 근접 명중 시 1칸 넉백.
+        SignShield = 14,   // 표지판 방패: 받는 물리 피해 -1. 2×2 점유.
+        PaddedBoots = 15,  // 완충 부츠: 안전 낙하 높이 +2.
+        CannedFood = 16,   // 통조림: 배고픔을 채운다. (HungerRules)
+        ExtractionBeacon = 17 // 비상 송출기: 어디서든 즉시 생환. (ExtractionRules)
+    }
+
+    /// <summary>
+    /// 아이템이 어떤 종류의 물건인가. 분류가 여러 곳에 흩어져 있으면(전리품인가? 재료인가?
+    /// 장비인가?) 새 아이템을 넣을 때마다 조건문을 빠뜨리게 된다 — 한 함수로 모은다.
+    /// </summary>
+    public enum ItemCategory
+    {
+        /// <summary>쓰면 사라지는 물건(물약·폭탄·통조림·송출기…).</summary>
+        Consumable = 0,
+        /// <summary>생환해야 값이 되는 환금 전용 전리품.</summary>
+        Treasure = 1,
+        /// <summary>조합에서만 소비되는 재료.</summary>
+        Material = 2,
+        /// <summary>슬롯에 장착하는 장비.</summary>
+        Equipment = 3
     }
 
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
@@ -30,7 +53,9 @@ namespace ProjectC.Core
             ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
             ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
             ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic,
-            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard
+            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard,
+            ItemKind.PipeSpear, ItemKind.HeavyWrench, ItemKind.SignShield, ItemKind.PaddedBoots,
+            ItemKind.CannedFood, ItemKind.ExtractionBeacon
         };
 
         /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
@@ -45,8 +70,30 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>
+        /// 아이템 분류의 단일 출처. 장비 여부는 <see cref="EquipmentCatalog"/>에서 파생해
+        /// 목록이 두 벌 생기지 않게 한다.
+        /// </summary>
+        public static ItemCategory CategoryOf(ItemKind kind)
+        {
+            if (GoldValue(kind) > 0) return ItemCategory.Treasure;
+            if (EquipmentCatalog.IsEquipment(kind)) return ItemCategory.Equipment;
+            switch (kind)
+            {
+                case ItemKind.Herb:
+                case ItemKind.BlastPowder:
+                case ItemKind.FrostShard:
+                    return ItemCategory.Material;
+                default:
+                    return ItemCategory.Consumable;
+            }
+        }
+
         /// <summary>전리품(환금 전용) 여부. 던전 안에서는 사용 불가.</summary>
-        public static bool IsTreasure(ItemKind kind) => GoldValue(kind) > 0;
+        public static bool IsTreasure(ItemKind kind) => CategoryOf(kind) == ItemCategory.Treasure;
+
+        /// <summary>던전 인벤토리에서 "사용"할 수 있는가 — 전리품·재료·장비는 아니다.</summary>
+        public static bool IsUsable(ItemKind kind) => CategoryOf(kind) == ItemCategory.Consumable;
 
         /// <summary>상점 구매가. 0 이면 비매품(전리품은 팔지 않는다 — 파밍으로만).</summary>
         public static int ShopPrice(ItemKind kind)
@@ -59,6 +106,8 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: return 10;
                 case ItemKind.ThrowingKnife: return 10;
                 case ItemKind.RecallScroll: return 25;
+                case ItemKind.CannedFood: return 12;
+                case ItemKind.ExtractionBeacon: return 70;
                 // 조합 재료 — 재료로 만드는 쪽이 완제품 구매보다 싸게 유지한다.
                 case ItemKind.Herb: return 6;
                 case ItemKind.BlastPowder: return 8;
@@ -74,8 +123,7 @@ namespace ProjectC.Core
         public static string FormatGold(int amount) => $"${amount}";
 
         /// <summary>조합 재료 여부. 사용 불가 — 조합 화면에서만 소비된다.</summary>
-        public static bool IsMaterial(ItemKind kind) =>
-            kind == ItemKind.Herb || kind == ItemKind.BlastPowder || kind == ItemKind.FrostShard;
+        public static bool IsMaterial(ItemKind kind) => CategoryOf(kind) == ItemCategory.Material;
 
         public static string DisplayName(ItemKind kind)
         {
@@ -93,6 +141,12 @@ namespace ProjectC.Core
                 case ItemKind.Herb: return "약초";
                 case ItemKind.BlastPowder: return "화약";
                 case ItemKind.FrostShard: return "서리 수정";
+                case ItemKind.PipeSpear: return "긴 파이프";
+                case ItemKind.HeavyWrench: return "대형 렌치";
+                case ItemKind.SignShield: return "표지판 방패";
+                case ItemKind.PaddedBoots: return "완충 부츠";
+                case ItemKind.CannedFood: return "통조림";
+                case ItemKind.ExtractionBeacon: return "비상 송출기";
                 default: return kind.ToString();
             }
         }
@@ -114,6 +168,12 @@ namespace ProjectC.Core
                 case ItemKind.Herb: return "HERB";
                 case ItemKind.BlastPowder: return "POWDER";
                 case ItemKind.FrostShard: return "SHARD";
+                case ItemKind.PipeSpear: return "SPEAR";
+                case ItemKind.HeavyWrench: return "WRENCH";
+                case ItemKind.SignShield: return "SHIELD";
+                case ItemKind.PaddedBoots: return "BOOTS";
+                case ItemKind.CannedFood: return "FOOD";
+                case ItemKind.ExtractionBeacon: return "BEACON";
                 default: return kind.ToString();
             }
         }
@@ -140,6 +200,16 @@ namespace ProjectC.Core
                     return "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.";
                 case ItemKind.Relic:
                     return "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.";
+                case ItemKind.CannedFood:
+                    return "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.";
+                case ItemKind.ExtractionBeacon:
+                    return "어디서든 즉시 생환한다. 들고 있는 것을 지키고 판을 끝낸다.";
+                case ItemKind.PipeSpear:
+                case ItemKind.HeavyWrench:
+                case ItemKind.SignShield:
+                case ItemKind.PaddedBoots:
+                    // 장비 설명의 단일 출처는 EquipmentCatalog — 여기서 중복 정의하지 않는다.
+                    return EquipmentCatalog.ForItem(kind)?.Description ?? kind.ToString();
                 case ItemKind.Herb:
                     return "조합 재료. 2개를 빻으면 회복 물약이 된다.";
                 case ItemKind.BlastPowder:

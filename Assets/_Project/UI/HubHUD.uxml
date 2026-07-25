@@ -99,7 +99,7 @@
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="대장간" class="settings-title" />
-                        <ui:Label text="영구 장비 강화 — 판을 넘어 유지된다" class="settings-subtitle" />
+                        <ui:Label text="장비 제작·장착 — 장착한 장비는 원정에 반입되고, 죽으면 잃는다" class="settings-subtitle" />
                     </ui:VisualElement>
                     <ui:VisualElement class="hub-header-right">
                         <ui:Label name="hub-smith-gold" text="$0" class="hub-modal-gold" />

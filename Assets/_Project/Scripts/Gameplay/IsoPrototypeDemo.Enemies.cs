@@ -37,6 +37,13 @@ namespace ProjectC.Gameplay
             _runTelemetry?.RecordTurn(GlobalFloorIndex(_activeFloorIndex));
             _enemyPhaseMapChanged = false;
 
+            yield return TickHunger();
+            if (!_playerState.IsAlive)
+            {
+                CompleteEnemyPhaseAndRefreshCorpses();
+                yield break;
+            }
+
             // 플레이어 턴이 끝난 시점의 상태이상 틱.
             // (플레이어 빙결은 아직 소스가 없다 — 소스가 생기면 행동 차단으로 확장)
             StatusTick playerTick = _playerState.Statuses.Tick(IsOnWetTile(_playerState.Position));
@@ -235,7 +242,9 @@ namespace ProjectC.Gameplay
                             enemy.Root != null ? enemy.Root.transform : null,
                             _player.transform.position);
                     }
-                    if (CombatRules.TryMelee(enemy.State, _playerState, out int damage))
+                    if (CombatRules.TryMelee(
+                            enemy.State, _playerState, out int damage,
+                            targetArmor: _playerLoadout.Armor))
                     {
                         yield return ShowPlayerHit(damage, enemy.State.Id);
                         // 누출 오염 슬러지(코드 ID Slime)는 접촉 시 중독시킨다. (상태이상 확장, GDD §5.5)
@@ -246,6 +255,10 @@ namespace ProjectC.Gameplay
                             InteractionFeedback?.Invoke("POISONED!");
                         }
                     }
+                    break;
+
+                case MonsterActionKind.RangedAttack:
+                    yield return EnemyRangedAttack(enemy);
                     break;
 
                 case MonsterActionKind.Step:
@@ -262,6 +275,37 @@ namespace ProjectC.Gameplay
                         Debug.Log($"[Door] {enemy.State.Id} 가 {action.Target} 문을 열었다");
                     }
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 사수의 원거리 공격. 명중 판정은 플레이어와 같은 <see cref="CombatRules.TryRanged"/>를 쓰고,
+        /// 투사체 연출은 FOV를 따른다(시야 밖 적의 연출은 노출하지 않는다).
+        /// 브레인이 정한 뒤 실제 실행까지 상태가 변했을 수 있어 여기서 다시 판정한다.
+        /// </summary>
+        private IEnumerator EnemyRangedAttack(EnemyAgent enemy)
+        {
+            if (_playerState == null || !_playerState.IsAlive) yield break;
+
+            bool seen = _visibleTiles.Contains(enemy.State.Position);
+            if (seen)
+                yield return AnimateProjectile(enemy.State.Position, _playerState.Position);
+
+            if (CombatRules.TryRanged(
+                    enemy.State,
+                    _playerState,
+                    _grid.Map,
+                    enemy.Archetype.RangedRange,
+                    out int damage,
+                    enemy.Archetype.RangedPower,
+                    _playerLoadout.Armor))
+            {
+                yield return ShowPlayerHit(damage, enemy.State.Id);
+            }
+            else if (seen)
+            {
+                // 사선이 끊긴 뒤였다면 빗나간 것으로 읽히게 둔다(피해 없음).
+                InteractionFeedback?.Invoke($"{enemy.DisplayName} 의 투척이 빗나갔다");
             }
         }
 

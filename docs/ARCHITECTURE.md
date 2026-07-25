@@ -147,10 +147,10 @@ tileFloor == activeFloor → visible || explored
 그 외 층                 → verticalPreview (Hole 국소 미리보기일 때만)
 ```
 
-> **향후 방향 — 3D(높이 인식) 시야선.** 현재 FOV·`HasLineOfSight`·`VerticalOpeningRules`는 모두
-> 같은 elevation을 전제한다(높이 다르면 차단). 이를 "높이가 달라도 실제로 보이면 보인다"로 통합하는 것이
-> 입체 전투(고지대 사격·근접 단차 타격·마법)의 토대다. void=불투명·렌더≠시뮬 불변식은 유지하며 3단계로
-> 진행한다(전투 LoS → 근접·마법 재사용 → FOV). 계획: `ROADMAP.md` "향후 기술 과제 — 3D 시야선".
+> **3D(높이 인식) 시야선 — 완료(1·2·3단계).** 전투 LoS는 높이 보간(복셀 차폐), 수평·경사·수직·
+> 개구부·근접 도달 기하는 `SightRules`로 통합(`VerticalOpeningRules` 흡수), FOV 셰도우캐스팅의
+> 컬럼 해석은 `SightRules.ViewColumn` 위임 — 컬럼을 span(지면 + 머리 위 구조물)으로 본다.
+> void=불투명·렌더≠시뮬 불변식은 그대로다. 남은 것은 이 토대 위의 입체 전투 콘텐츠.
 
 ---
 
@@ -249,9 +249,19 @@ tileFloor == activeFloor → visible || explored
 - `PushDirection`: `target−center`의 우세 축 1칸(동률은 x 우선). `Resolve`:
   벽/닫힌 문/점유 → `None`, walkable → `Pushed`, 구멍/void → `PushedIntoFall`(호출자가 `TryFall`로 이음).
 
-### 8.3 VerticalOpeningRules — Hole을 통한 층간 시야
-- **오직 `Hole`만** 시야 포털(StairsUp/Down은 아님). 관찰자가 Hole 층이고 보이면 `Downward`,
-  착지 층이고 보이면 `Upward`. `isVisible` 델리게이트로 FOV를 존중.
+### 8.3 SightRules — 시야·도달 판정의 단일 출처
+- `HasLineOfSight` — 수평·경사는 2D 브레젠험 + 시선 elevation 보간(복셀 차폐), void=불투명.
+  같은 컬럼이면 `HasVerticalSight`로 넘긴다.
+- `HasVerticalSight` — 낮은 쪽 바로 위부터 **높은 쪽 칸까지** 모두 뚫려 있어야 한다.
+  허공(타일 없음)은 통로, 온전한 바닥은 차단(`TileData.BlocksVerticalSight`) — 즉 실제 `Hole`만 층을 잇는다.
+  "void=불투명"은 컬럼을 벽으로 읽는 수평 규칙이라 수직에는 적용하지 않는다.
+- `CanReachAcross(from, to, maxStepHeight)` — 근접 단차 타격의 기하(평면 인접+높이차). `CombatRules.AreAdjacent`가 위임.
+- `ViewColumn(map, x, y, origin, min, max)` → `ColumnView` — 컬럼을 눈높이 기준 **span**으로 해석한다.
+  **지면**(눈높이 이하 최고 타일) + **머리 위 구조물**(눈높이 위 첫 타일) + 너머 차단 여부.
+  지면 아래 타일은 덮여서 내지 않는다. `GridVisibility` 셰도우캐스팅이 이 판정만 쓴다(3단계).
+  눈높이 여유는 `HeightBlockThreshold`(1) — 1단 단차는 안 막고 2단 이상만 막는다.
+- `ViewFromFloor` — **오직 `Hole`만** 시야 포털(StairsUp/Down은 아님). 관찰자가 Hole 층이고 보이면 `Downward`,
+  착지 층이고 보이면 `Upward`. 개구부↔착지 사이가 실제로 뚫려 있어야 하며 `isVisible` 델리게이트로 FOV를 존중.
 
 ### 8.4 VerticalRouteCue — 최초 발견 카드 copy
 - `VerticalRouteRole` 6종. `TryCreate(kind, viewedFromBelow, dest)`가 계단=발판·WALK, 사다리=레일·CLIMB,
@@ -264,10 +274,12 @@ tileFloor == activeFloor → visible || explored
 ### 9.1 전투 (CombatantState / CombatRules)
 - **스탯 모델**: `Id/MaxHp/AttackPower` 불변, `Hp`는 `TakeDamage`(실제 감소분 반환)/`Heal`(죽으면 0). 방어/치명타 없음.
   사망은 **이벤트 없이** `Hp==0`(`IsAlive`)으로만 표현.
-- `AreAdjacent` = 같은 elevation & 맨해튼 1(대각 비인접). `TryMelee` = 인접 시 `AttackPower` 피해.
-- `TryRanged` = 같은 elevation & 맨해튼 ≤ range & **Bresenham 시야선**. 원거리는 별도(더 낮은) 피해로 카이팅 방지.
+- `AreAdjacent` = 맨해튼 1(대각 비인접) & 높이차 ≤ `MeleeReachHeight`(1) — 기하는 `SightRules.CanReachAcross`가 소유.
+  `TryMelee` = 인접 시 `AttackPower` 피해, 위에서 아래로 치면 `DownStrikeBonus`(+1).
+- `TryRanged` = `RangedReachCost`(맨해튼+|Δe|) ≤ range & **높이 인식 시야선**(`SightRules`).
+  원거리는 별도(더 낮은) 피해로 카이팅 방지, 높이 이점은 사거리 예산으로 과금.
 - `FindFiringPosition` = 발사 가능 위치를 맨해튼 다이아몬드로 탐색, **결정적 타이브레이크**(경로 길이→표적 근접→x→y).
-- `DiagnoseRanged` 우선순위: elevation → range → LoS.
+- `DiagnoseRanged` 우선순위: 도달 비용(사거리+높이) → LoS.
 
 ### 9.2 상태이상 & 요소 반응
 - **StatusEffects** — `Burn`(턴당 `BurnDamagePerTurn=1` 고정), `Freeze`(그 턴 행동 스킵) 2종만.
@@ -306,8 +318,13 @@ tileFloor == activeFloor → visible || explored
 >   DOTween, UI Toolkit VisualElement엔 `experimental.animation`/USS transition을 쓴다.
 
 ### 9.5 로스터·활성화
-- **MonsterRoster** — 고블린(HP5·공2·도주0.3)/해골(HP8·공2·비도주)/슬라임(HP3·공1·넓은 배회)/묘지기(HP20·공3).
-  `PickForDepth`가 깊이별 확률 혼합(깊을수록 해골 비중↑).
+- **MonsterRoster** — 약탈자(Goblin, HP5·공2·도주0.3)/낡은 경비 드론(Skeleton, HP8·공2·비도주)/
+  누출 오염 슬러지(Slime, HP3·공1·넓은 배회)/**투석 약탈자(Slinger, HP4·근접1·원거리2·사거리4·유지2)**/
+  감시자(GraveWarden, HP20·공3). `PickForDepth`가 밴드별 확률 혼합(깊을수록 드론·사수 비중↑).
+- **원거리 몬스터** — `MonsterArchetype.IsRanged`면 브레인이 `DecideRanged`를 먼저 탄다:
+  ① `KeepAwayRange` 안이면 거리 벌리기(도주 규칙 재사용, 막히면 근접) ② `CanFireFrom`이면 사격
+  ③ 아니면 `FindFiringPosition`으로 사선 잡는 한 걸음. 셋 다 실패하면 일반 추격으로 흘린다.
+  판정은 플레이어와 같은 `CombatRules`(도달 비용에 높이차 포함)를 쓴다.
 - **MonsterActivation.IsActive** = **같은 층 && 활성 반경(체비셰프)**. 비활성은 `Decide` 자체를 스킵(모바일 성능 핵심).
 - **거리 metric 규약**: 지각/어그로/배회/도주/활성화 = **체비셰프(8방)**, 인접/사거리/실제 이동 = **맨해튼(4방)**. 의도적 비대칭.
 
@@ -352,11 +369,19 @@ tileFloor == activeFloor → visible || explored
 - **MetaSaveData**(`[Serializable]`) — 판 종료(사망 포함)에도 유지되는 은행. `gold`, `unlockedHeroes`,
   창고 9종 + 로드아웃 9종(전리품 필드 없음). `TrySpend`(상점/해금), `IsHeroUnlocked/UnlockHero`.
 - **HeroRoster** — 기사(HP10·공3, 무료)/사냥꾼(HP8·원2, 80G)/연금술사(HP8·공3, 120G). `ById`는 없으면 기사 폴백.
+- **Equipment / ForgeRules** — 무기 1 + 보조 1 슬롯. 장비는 **공격력을 올리지 않고** 규칙만 바꾼다
+  (사거리 2·명중 넉백·피해 -1·안전 낙하 +2). 대장간이 골드로 제작하고 슬롯에 끼우며,
+  옛 영구 스탯 강화(`SmithyRules`)는 제거했다. 전투 보정은 `CombatLoadout` 한 구조체로 모아
+  `CombatRules.TryMelee/TryRanged`가 파라미터로 받는다. 장착 장비는 백팩 공간을 쓰지 않는다.
 
 ### 10.6 텔레메트리 (RunTelemetry)
-- 순수 데이터/집계(Unity 시간·파일 모름, 스키마 v3). Gameplay가 이벤트+unscaled delta를 먹인다.
-- **삼중 기록**: 런 총계 + 층별(`RunFloorTelemetry`) + (피해/아이템) 소스별/아이템별.
-- 층별 시간·턴·피해·처치·획득, 낙하(플레이어/적/의도적), 화상/빙결 부여, 기름 발화·물 결빙/증발, 휴식·숨은 방·치트.
+- 순수 데이터/집계(Unity 시간·파일 모름, 스키마 v4). Gameplay가 이벤트+unscaled delta를 먹인다.
+- **사중 기록**: 런 총계 + 층별(`RunFloorTelemetry`) + 구간별(`RunBandTelemetry`) + (피해/아이템) 소스별/아이템별.
+- 층별 시간·턴·피해·처치·획득·아이템 사용/조합·휴식·숨은 방, 낙하(플레이어/적/의도적),
+  화상/빙결 부여, 기름 발화·물 결빙/증발, 치트.
+- **구간(밴드) 롤업은 파생 값이다** — `RefreshBands()`가 층별 기록을 `DungeonDepthBandRules`로 다시 묶는다
+  (Shallow B1~B3 / Mid B4~B6 / Deep B7~B9 / Boss B10+). 따로 기록하지 않으므로 경계를 바꾸면 과거 리포트도
+  같은 규칙으로 다시 묶이고, 저장(`RunTelemetryStore.Save`)·요약 직전에 재계산한다. 방문하지 않은 구간은 넣지 않는다.
 - 판 종료 시 `development-profile/telemetry`에 JSON 자동 확정. `RunSummary`는 게임오버/승리 모델(첫 결과 latch).
 - **WorldInputRules** — 화면 탭 → 투영 타일 픽킹. 아이소 다이아몬드 히트 테스트(`|dx|/½W+|dy|/½H ≤ 1`),
   우선순위 **LayerPriority↓ → SortingOrder↓ → 중심 근접**(현재 활성 층 → Hole 미리보기 → 렌더 정렬).
@@ -377,6 +402,7 @@ tileFloor == activeFloor → visible || explored
 | `.Sprites.cs` | 런타임 임시 픽셀 스프라이트 생성(아트 없을 때 폴백) |
 | `.CombatFx.cs` | 근접 돌진/스쿼시/플래시/버스트/카메라 흔들림, 상태 FX 아이콘 |
 | `.RestSites.cs` | 휴식처 배치·사용·가시성 |
+| `.BossArena.cs` | 최심층 제단(랜드마크) 렌더·FOV 추종, 아레나 위층 접근 전조 알림 |
 
 - 내부 에이전트(경량 뷰 홀더): `EnemyAgent`, `ItemAgent`, `RestSiteAgent`, `VerticalLandmarkAgent`.
 - 이벤트 다수(`PlayerHpChanged`, `ActiveFloorChanged`, `ExitChoiceRequested`…)로 HUD와 느슨 결합.

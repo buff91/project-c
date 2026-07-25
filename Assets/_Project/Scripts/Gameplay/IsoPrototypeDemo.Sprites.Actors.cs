@@ -95,6 +95,77 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 최심층 아레나의 제단. 공용 톤을 따른다 — 횃불에 데워진 석재 몸통 위에
+        /// 마법/출구 신호색인 틸 코어. 보스를 쓰러뜨리면 런타임 틴트로 식힌다.
+        /// </summary>
+        private Sprite GetBossAltarSprite()
+        {
+            const string key = "boss-altar";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(48, 64);
+            Color32 stoneDark = new Color32(31, 34, 38, 255);
+            Color32 stone = new Color32(67, 65, 61, 255);
+            Color32 stoneLight = new Color32(126, 112, 91, 255);
+            Color32 teal = new Color32(45, 148, 142, 255);
+            Color32 tealCore = new Color32(103, 241, 218, 255);
+
+            // 받침 → 기둥 → 상단 접시 순으로 아래에서 위로 쌓는다.
+            FillRect(texture, 6, 4, 36, 9, stoneDark);
+            FillRect(texture, 9, 6, 30, 5, stone);
+            FillRect(texture, 15, 13, 18, 21, stoneDark);
+            FillRect(texture, 18, 13, 12, 19, stone);
+            FillRect(texture, 10, 34, 28, 7, stoneDark);
+            FillRect(texture, 12, 35, 24, 4, stoneLight);
+
+            // 틸 코어: 접시 위에 뜬 균열의 빛.
+            FillRect(texture, 19, 41, 10, 12, teal);
+            FillRect(texture, 22, 43, 4, 14, tealCore);
+            DrawThickLine(texture, 24, 57, 18, 47, 2, teal);
+            DrawThickLine(texture, 24, 57, 30, 47, 2, teal);
+            FillRect(texture, 21, 39, 6, 2, tealCore);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 중간 탈출구 — 지상으로 끌어올리는 승강 장치. 출구(틸 신호)와 같은 색군을 써서
+        /// "여기로 나간다"가 한눈에 읽히게 하고, 제단·모닥불과는 실루엣으로 구분한다.
+        /// </summary>
+        private Sprite GetExtractionPointSprite()
+        {
+            const string key = "extraction-point";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(40, 56);
+            Color32 frameDark = new Color32(28, 32, 36, 255);
+            Color32 frame = new Color32(74, 80, 86, 255);
+            Color32 teal = new Color32(45, 148, 142, 255);
+            Color32 tealCore = new Color32(103, 241, 218, 255);
+
+            FillRect(texture, 4, 2, 32, 6, frameDark);        // 발판
+            FillRect(texture, 7, 3, 26, 3, frame);
+            DrawThickLine(texture, 7, 6, 7, 50, 3, frameDark); // 좌우 기둥
+            DrawThickLine(texture, 32, 6, 32, 50, 3, frameDark);
+            FillRect(texture, 4, 48, 32, 6, frameDark);        // 상단 대들보
+            FillRect(texture, 7, 49, 26, 3, frame);
+
+            // 위로 뻗는 신호 — 올라간다는 방향을 색과 화살로 함께 말한다.
+            FillRect(texture, 18, 8, 4, 38, teal);
+            FillRect(texture, 19, 10, 2, 34, tealCore);
+            DrawThickLine(texture, 20, 46, 13, 38, 2, tealCore);
+            DrawThickLine(texture, 20, 46, 27, 38, 2, tealCore);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.06f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetLocalStairLandmarkSprite()
         {
             const string key = "landmark-local-stairs";
@@ -617,6 +688,28 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 6, 4, 2, 6, deep);        // 곁가지
                 FillRect(texture, 12, 8, 2, 5, deep);
             }
+            else if (EquipmentCatalog.IsEquipment(kind))
+            {
+                // 바닥에 떨어진 장비 — 소모품(둥근 병·폭탄)과 실루엣이 달라야 주울지 판단이 선다.
+                Color32 steel = new Color32(120, 128, 136, 255);
+                Color32 steelDark = new Color32(58, 64, 70, 255);
+                Color32 grip = new Color32(96, 74, 48, 255);
+                Color32 signal = new Color32(226, 188, 96, 255);
+                bool bulky = BackpackRules.Footprint(kind).Width > 1; // 방패류는 넓적하게
+                if (bulky)
+                {
+                    FillRect(texture, 3, 4, 14, 14, steelDark);
+                    FillRect(texture, 5, 6, 10, 10, steel);
+                    FillRect(texture, 8, 9, 4, 4, signal);
+                }
+                else
+                {
+                    FillRect(texture, 8, 2, 4, 18, steelDark); // 긴 자루
+                    FillRect(texture, 9, 3, 2, 16, steel);
+                    FillRect(texture, 7, 4, 6, 4, grip);       // 손잡이
+                    FillRect(texture, 7, 17, 6, 4, signal);    // 머리 부분
+                }
+            }
             else
             {
                 Color32 shell = new Color32(43, 47, 52, 255);
@@ -710,6 +803,7 @@ namespace ProjectC.Gameplay
             {
                 case "Skeleton": return GetSkeletonSprite();
                 case "Slime": return GetSlimeSprite();
+                case "Slinger": return GetSlingerSprite();
                 default: return GetCharacterSprite(true);
             }
         }
@@ -765,6 +859,43 @@ namespace ProjectC.Gameplay
             FillRect(texture, 9, 6, 2, 3, dark);          // 눈
             FillRect(texture, 15, 6, 2, 3, dark);
             FillRect(texture, 4, 2, 18, 1, dark);         // 바닥선
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 투석 약탈자. 근접 약탈자와 한눈에 구분돼야 대응(엄폐·돌진)이 성립하므로
+        /// 치켜든 팔과 투척끈으로 실루엣을 다르게 잡는다.
+        /// </summary>
+        private Sprite GetSlingerSprite()
+        {
+            const string key = "slinger";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(32, 48);
+            Color32 dark = new Color32(20, 25, 28, 255);
+            Color32 coat = new Color32(108, 92, 66, 255);
+            Color32 coatLight = new Color32(148, 128, 92, 255);
+            Color32 skin = new Color32(198, 158, 118, 255);
+            Color32 sling = new Color32(226, 188, 96, 255);
+
+            FillRect(texture, 11, 2, 10, 12, dark);       // 다리
+            FillRect(texture, 12, 3, 8, 10, coat);
+            FillRect(texture, 9, 13, 14, 16, dark);       // 몸통 외곽
+            FillRect(texture, 10, 14, 12, 14, coat);
+            FillRect(texture, 10, 22, 12, 3, coatLight);  // 어깨끈
+            FillRect(texture, 12, 29, 8, 9, dark);        // 머리
+            FillRect(texture, 13, 30, 6, 7, skin);
+            FillRect(texture, 13, 33, 6, 2, dark);        // 눈가리개
+
+            // 치켜든 팔 + 투척끈 — 원거리 몬스터임을 실루엣으로 알린다.
+            FillRect(texture, 22, 24, 4, 12, coat);
+            FillRect(texture, 22, 34, 4, 3, skin);
+            DrawThickLine(texture, 24, 37, 29, 43, 2, sling);
+            FillRect(texture, 27, 42, 4, 4, sling);
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));

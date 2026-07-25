@@ -161,7 +161,8 @@ namespace ProjectC.Gameplay
                 $"HP {hp} · GOD {(demo.DebugGodMode ? "ON" : "off")} · " +
                 $"층 몬스터 {demo.DebugLivingEnemiesOnFloor()} · " +
                 $"SAVE {(DevelopmentSaveProfile.IsEnabled ? "TEMP" : "REAL")}\n" +
-                demo.DebugTelemetrySummary;
+                demo.DebugTelemetrySummary + "\n" +
+                demo.DebugTelemetryBandSummary;
         }
 
         private void HandleLogMessage(string condition, string stackTrace, LogType type)

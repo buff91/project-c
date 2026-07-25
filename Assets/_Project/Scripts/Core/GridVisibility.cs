@@ -5,17 +5,21 @@ namespace ProjectC.Core
 {
     /// <summary>
     /// Recursive Shadowcasting FOV. (GDD §5.2, M2)
-    /// (x, y) 2D로 8옥탄트를 캐스팅하되, 각 컬럼의 타일은 elevation 대역을
-    /// 위→아래로 스캔한 첫 타일(=표면)로 해석하고 결과에도 그 표면 GridPos를 넣는다.
+    /// (x, y) 2D로 8옥탄트를 캐스팅하되, 각 컬럼의 해석은 <see cref="SightRules.ViewColumn"/>에
+    /// 위임한다 — 시야 판정의 단일 출처를 전투 LoS와 공유하기 위해서다(3D 시야선 3단계).
+    ///
+    /// 컬럼은 높이맵이 아니라 <b>span</b>으로 본다: 한 컬럼에 솔리드 구간이 여럿일 수 있으므로
+    /// (올라온 단 위에 얹힌 캐치워크 등) 눈높이 이하의 <b>지면</b>과 눈높이 위의
+    /// <b>머리 위 구조물</b>을 각각 결과에 넣는다. 그래서 캐치워크 아래 바닥도 실제로 보인다.
     ///
     /// 차단 규칙:
     /// - 타일이 없는 컬럼(void) = 불투명. 이 던전은 방 경계를 벽 타일이 아니라
     ///   타일 부재로 표현하므로(벽은 비주얼 전용), void가 투명하면 닫힌 문 뒤 방이
     ///   빈 공간 너머로 통째로 드러나 문 불변식이 깨진다.
     /// - Wall/DoorClosed = 그 칸 자체는 보이지만 너머로 전파되지 않는다.
-    /// - Hole/WeakFloor/Stairs/DoorOpen = 투과. (CombatRules.HasLineOfSight와 동일 기준)
-    /// - 1단 높이차(raised)는 시야를 막지 않는다. 필요해지면 여기의 표면 판정에
-    ///   "표면 elevation − 눈높이 > 임계 → 불투명" 규칙을 추가한다.
+    /// - Hole/WeakFloor/Stairs/DoorOpen = 투과. (SightRules.HasLineOfSight와 동일 기준)
+    /// - 눈높이보다 <see cref="SightRules.HeightBlockThreshold"/>를 초과해 높은 타일은
+    ///   벽처럼 너머를 막는다. 1단(raised) 단차는 막지 않는다.
     /// </summary>
     public static class GridVisibility
     {
@@ -50,43 +54,11 @@ namespace ProjectC.Core
             return visible;
         }
 
-        /// <summary>컬럼 (x,y)의 표면 타일. 대역에 타일이 없으면 false(void).</summary>
-        private static bool TryGetSurface(
-            GridMap map,
-            int x,
-            int y,
-            int minElevation,
-            int maxElevation,
-            out GridPos surface,
-            out TileData tile)
+        /// <summary>컬럼에서 실제로 보이는 타일(지면·머리 위 구조물)을 결과에 넣는다.</summary>
+        private static void AddVisibleTiles(HashSet<GridPos> visible, ColumnView column)
         {
-            for (int e = maxElevation; e >= minElevation; e--)
-            {
-                var pos = new GridPos(x, y, e);
-                if (map.TryGet(pos, out tile))
-                {
-                    surface = pos;
-                    return true;
-                }
-            }
-
-            surface = default;
-            tile = null;
-            return false;
-        }
-
-        /// <summary>눈높이보다 이 값을 초과해 높은 표면은 벽처럼 너머 시야를 막는다(건물형 높이 인식 FOV).
-        /// 1단(raised) 높이차는 막지 않고, 2단 이상(벽·컨테이너 더미·메자닌)만 차폐한다.</summary>
-        public const int HeightBlockThreshold = 1;
-
-        private static bool IsOpaque(
-            GridMap map, GridPos origin, int x, int y, int minElevation, int maxElevation)
-        {
-            if (!TryGetSurface(map, x, y, minElevation, maxElevation, out GridPos surface, out TileData tile))
-                return true; // void = 불투명
-            if (tile.BlocksSight) return true;
-            // 눈높이보다 충분히 높은 표면(큰 단차)은 벽처럼 너머로 시야를 막는다.
-            return surface.elevation - origin.elevation > HeightBlockThreshold;
+            if (column.HasGround) visible.Add(column.Ground);
+            if (column.HasOverhead) visible.Add(column.Overhead);
         }
 
         private static void CastOctant(
@@ -125,13 +97,13 @@ namespace ProjectC.Core
                     if (end > leftSlope) break;
 
                     // 옥탄트 좌표에서 Chebyshev 거리 == j ≤ radius 이므로 반경은 자동 만족.
-                    if (TryGetSurface(map, mapX, mapY, minElevation, maxElevation,
-                            out GridPos surface, out _))
-                        visible.Add(surface);
+                    ColumnView column = SightRules.ViewColumn(
+                        map, mapX, mapY, origin, minElevation, maxElevation);
+                    AddVisibleTiles(visible, column);
 
                     if (blocked)
                     {
-                        if (IsOpaque(map, origin, mapX, mapY, minElevation, maxElevation))
+                        if (column.BlocksBeyond)
                         {
                             newStart = rightSlope;
                         }
@@ -141,7 +113,7 @@ namespace ProjectC.Core
                             start = newStart;
                         }
                     }
-                    else if (IsOpaque(map, origin, mapX, mapY, minElevation, maxElevation) && j < radius)
+                    else if (column.BlocksBeyond && j < radius)
                     {
                         blocked = true;
                         CastOctant(

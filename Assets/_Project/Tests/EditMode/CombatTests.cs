@@ -6,6 +6,44 @@ namespace ProjectC.Tests
     public class CombatantStateTests
     {
         [Test]
+        public void Spear_ReachesTwoTilesInStraightLine_ButNotThroughWallsOrDiagonally()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 5; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 1, 0), TileKind.Floor);
+
+            var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
+            var twoAway = new CombatantState("a", new GridPos(2, 0, 0), 5, 1);
+            var diagonal = new CombatantState("b", new GridPos(1, 1, 0), 5, 1);
+            var threeAway = new CombatantState("c", new GridPos(3, 0, 0), 5, 1);
+
+            Assert.IsTrue(CombatRules.CanMelee(map, attacker, twoAway, meleeReach: 2));
+            Assert.IsFalse(CombatRules.CanMelee(map, attacker, diagonal, meleeReach: 2),
+                "사거리가 길어져도 대각은 근접이 아니다");
+            Assert.IsFalse(CombatRules.CanMelee(map, attacker, threeAway, meleeReach: 2));
+            Assert.IsFalse(CombatRules.CanMelee(map, attacker, twoAway),
+                "기본 사거리(1)는 예전 그대로다");
+
+            // 사이가 막히면 찌를 수 없다.
+            map.Set(new GridPos(1, 0, 0), TileKind.DoorClosed);
+            Assert.IsFalse(CombatRules.CanMelee(map, attacker, twoAway, meleeReach: 2));
+        }
+
+        [Test]
+        public void Armor_ReducesPhysicalDamage_ButNeverToZero()
+        {
+            Assert.AreEqual(2, CombatRules.Mitigate(3, 1));
+            Assert.AreEqual(1, CombatRules.Mitigate(1, 5), "완전 무효화는 만들지 않는다");
+            Assert.AreEqual(3, CombatRules.Mitigate(3, 0));
+
+            var attacker = new CombatantState("a", new GridPos(0, 0, 0), 5, 3);
+            var target = new CombatantState("b", new GridPos(1, 0, 0), 10, 1);
+
+            Assert.IsTrue(CombatRules.TryMelee(attacker, target, out int damage, targetArmor: 1));
+            Assert.AreEqual(2, damage);
+        }
+
+        [Test]
         public void AreAdjacent_OrthogonalNeighbor_WithinMeleeReachHeight()
         {
             var center = new CombatantState("center", new GridPos(2, 2, 0), 5, 1);

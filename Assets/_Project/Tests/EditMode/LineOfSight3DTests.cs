@@ -56,12 +56,13 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void SameColumn_DifferentElevation_ReturnsFalse()
+        public void SameColumn_SolidFloorAbove_StaysBlocked()
         {
             var map = new GridMap();
             map.Set(new GridPos(0, 0, 0), TileKind.Floor);
             map.Set(new GridPos(0, 0, 2), TileKind.Floor);
-            // 같은 (x,y)의 수직 투시는 2단계(개구부)로 미룬다.
+            // 같은 (x,y)의 수직 판정은 2단계에서 열렸지만, 온전한 바닥은 여전히 막는다.
+            // 개구부를 통한 수직 시야는 SightRulesTests 가 고정한다.
             Assert.IsFalse(CombatRules.HasLineOfSight(map, new GridPos(0, 0, 0), new GridPos(0, 0, 2)));
             Assert.IsTrue(CombatRules.HasLineOfSight(map, new GridPos(0, 0, 0), new GridPos(0, 0, 0)));
         }

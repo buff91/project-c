@@ -15,5 +15,25 @@ namespace ProjectC.Core
         /// <summary>아레나 바로 위층 — 접근 전조를 알릴 층.</summary>
         public static bool IsApproachFloor(int depthIndex, int floorCount) =>
             floorCount > 1 && depthIndex == floorCount - 2;
+
+        /// <summary>
+        /// 아레나 바로 위층에 들어섰을 때 한 번 띄울 전조 문장. 보스가 없는 던전이거나
+        /// 이미 처치했으면 알리지 않는다 — 이미 끝난 위협을 다시 예고하지 않기 위해서다.
+        /// 문구는 층 이름이 아니라 "아래에서 무엇이 기다리는가"를 말한다.
+        /// </summary>
+        public static bool TryApproachCue(
+            string bossName,
+            int depthIndex,
+            int floorCount,
+            bool bossDefeated,
+            out string message)
+        {
+            message = null;
+            if (bossDefeated || string.IsNullOrWhiteSpace(bossName)) return false;
+            if (!IsApproachFloor(depthIndex, floorCount)) return false;
+
+            message = $"바닥이 낮게 울린다 — 한 층 아래에서 {bossName}이(가) 기다린다";
+            return true;
+        }
     }
 }

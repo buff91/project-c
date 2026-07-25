@@ -20,20 +20,44 @@ namespace ProjectC.Core
         /// <summary>위에서 아래로 내려칠 때의 추가 피해 — 높이 이점을 근접에도 부여. (한 줄 콘셉트 "위에서 내려치며")</summary>
         public const int DownStrikeBonus = 1;
 
-        /// <summary>근접 사거리 판정: 평면 정사각 인접 + 높이차가 <see cref="MeleeReachHeight"/> 이내.</summary>
-        public static bool AreAdjacent(CombatantState first, CombatantState second)
+        /// <summary>
+        /// 근접 사거리 판정: 평면 정사각 인접 + 높이차가 <see cref="MeleeReachHeight"/> 이내.
+        /// 기하 판정 자체는 <see cref="SightRules.CanReachAcross"/>가 소유한다 — 마법·특수
+        /// 사거리가 생겨도 "높이차를 얼마까지 넘어 닿는가"를 한 곳에서만 정의하기 위해서다.
+        /// </summary>
+        public static bool AreAdjacent(CombatantState first, CombatantState second) =>
+            CanMelee(null, first, second);
+
+        /// <summary>
+        /// 근접이 닿는가. 사거리 2 이상(창)은 직선이면서 사이가 뚫려 있어야 한다 —
+        /// 벽·닫힌 문 너머로 찌를 수 없다. 사거리 1이면 맵 없이도 판정이 같다(기존 동작).
+        /// </summary>
+        public static bool CanMelee(
+            GridMap map, CombatantState attacker, CombatantState target, int meleeReach = 1)
         {
-            if (first == null || second == null) return false;
-            return first.Position.ManhattanTo(second.Position) == 1 &&
-                   Math.Abs(first.Position.elevation - second.Position.elevation) <= MeleeReachHeight;
+            if (attacker == null || target == null) return false;
+            if (!SightRules.CanReachAcross(
+                    attacker.Position, target.Position, MeleeReachHeight, meleeReach))
+                return false;
+            if (meleeReach <= 1 || map == null) return true;
+            return SightRules.HasLineOfSight(map, attacker.Position, target.Position);
         }
 
-        public static bool TryMelee(CombatantState attacker, CombatantState target, out int damage)
+        /// <param name="map">사거리 2 이상일 때 사이 차폐를 보기 위해 필요하다. 사거리 1이면 무시된다.</param>
+        /// <param name="meleeReach">장비가 주는 평면 근접 사거리(<see cref="CombatLoadout.MeleeReach"/>).</param>
+        /// <param name="targetArmor">대상의 방어(장비). 물리 피해만 줄이며 최소 1은 남는다.</param>
+        public static bool TryMelee(
+            CombatantState attacker,
+            CombatantState target,
+            out int damage,
+            GridMap map = null,
+            int meleeReach = 1,
+            int targetArmor = 0)
         {
             damage = 0;
             if (attacker == null || target == null || !attacker.IsAlive || !target.IsAlive)
                 return false;
-            if (!AreAdjacent(attacker, target))
+            if (!CanMelee(map, attacker, target, meleeReach))
                 return false;
 
             // 위에서 내려치면 추가 피해 — 높이 이점을 근접에도 부여한다.
@@ -41,9 +65,17 @@ namespace ProjectC.Core
             if (attacker.Position.elevation > target.Position.elevation)
                 power += DownStrikeBonus;
 
-            damage = target.TakeDamage(power);
+            damage = target.TakeDamage(Mitigate(power, targetArmor));
             return true;
         }
+
+        /// <summary>
+        /// 방어로 물리 피해를 줄이되 최소 1은 남긴다 — 방어 장비가 약한 공격을 완전히
+        /// 무효화하면 저티어 적이 무의미해지고 스탯 크리프와 같은 문제가 생긴다.
+        /// 상태이상 틱(화상·중독)은 이 경로를 타지 않는다.
+        /// </summary>
+        public static int Mitigate(int power, int armor) =>
+            armor <= 0 ? power : Math.Max(1, power - armor);
 
         /// <param name="attackPower">
         /// 원거리 전용 공격력. 생략하면 근접과 같은 AttackPower.
@@ -55,7 +87,8 @@ namespace ProjectC.Core
             GridMap map,
             int maxRange,
             out int damage,
-            int? attackPower = null)
+            int? attackPower = null,
+            int targetArmor = 0)
         {
             damage = 0;
             if (attacker == null || target == null || map == null || maxRange < 1 ||
@@ -65,7 +98,7 @@ namespace ProjectC.Core
                 !HasLineOfSight(map, attacker.Position, target.Position))
                 return false;
 
-            damage = target.TakeDamage(attackPower ?? attacker.AttackPower);
+            damage = target.TakeDamage(Mitigate(attackPower ?? attacker.AttackPower, targetArmor));
             return true;
         }
 
@@ -144,45 +177,10 @@ namespace ProjectC.Core
         }
 
         /// <summary>
-        /// 높이 인식 시야선(3D 1단계). from→to를 2D 브레젠험으로 걷되, 각 중간 칸에서
-        /// 시선의 elevation을 진행 비율로 보간해 그 복셀의 차폐를 본다. void(빈 칸)=불투명 루트를
-        /// 지키고, from.elevation == to.elevation이면 상수 보간이라 기존 평면 판정과 완전히 같다.
-        /// 같은 컬럼(x==to.x && y==to.y) 수직 투시는 아직 열지 않는다(2단계, VerticalOpeningRules).
+        /// 높이 인식 시야선. 판정의 단일 출처는 <see cref="SightRules.HasLineOfSight"/>이며
+        /// 여기서는 전투 호출부를 위한 얇은 위임만 한다(3D 시야선 2단계 — 수평·경사·수직 통합).
         /// </summary>
-        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to)
-        {
-            if (map == null) return false;
-            // 같은 칸: 수직 시야선은 2단계로 미룬다 — 같은 elevation일 때만 자기 자신이 보인다.
-            if (from.x == to.x && from.y == to.y) return from.elevation == to.elevation;
-
-            int x = from.x;
-            int y = from.y;
-            int dx = Math.Abs(to.x - from.x);
-            int dy = Math.Abs(to.y - from.y);
-            int sx = from.x < to.x ? 1 : -1;
-            int sy = from.y < to.y ? 1 : -1;
-            int error = dx - dy;
-
-            int steps = Math.Max(dx, dy); // 체비셰프 단계 수 = elevation 보간 분모(>=1)
-            int k = 0;
-
-            while (x != to.x || y != to.y)
-            {
-                int twiceError = error * 2;
-                if (twiceError > -dy) { error -= dy; x += sx; }
-                if (twiceError < dx) { error += dx; y += sy; }
-                k++;
-                if (x == to.x && y == to.y) break;
-
-                int e = (int)Math.Round(
-                    from.elevation + (to.elevation - from.elevation) * (double)k / steps,
-                    MidpointRounding.AwayFromZero);
-
-                TileData tile = map.Get(new GridPos(x, y, e));
-                if (tile == null || tile.BlocksSight) return false;
-            }
-
-            return true;
-        }
+        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to) =>
+            SightRules.HasLineOfSight(map, from, to);
     }
 }
