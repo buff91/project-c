@@ -24,6 +24,16 @@ namespace ProjectC.Core
         public GridPos? UpStairs { get; }
         public GridPos? DownStairs { get; }
         public GridPos? Hole { get; }
+
+        /// <summary>
+        /// 엘리베이터 통로 입구. 상승 던전의 <b>후퇴 동선</b>이며 아래로만 내려간다
+        /// (<see cref="ElevatorShaftRules"/>). 하강 던전에는 없다.
+        /// </summary>
+        public GridPos? ElevatorShaft { get; }
+
+        /// <summary>다른 층의 통로가 이 층으로 내려오는 착지 칸.</summary>
+        public GridPos? ElevatorLanding { get; }
+
         public GridPos? RestSite { get; }
         public GridPos? ExtractionPoint { get; }
         public GridPos? Landmark { get; }
@@ -55,7 +65,9 @@ namespace ProjectC.Core
             GridPos? secretReward = null,
             GridPos? landmark = null,
             IReadOnlyList<GridPos> windows = null,
-            GridPos? extractionPoint = null)
+            GridPos? extractionPoint = null,
+            GridPos? elevatorShaft = null,
+            GridPos? elevatorLanding = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -74,6 +86,8 @@ namespace ProjectC.Core
             Landmark = landmark;
             Windows = windows ?? Array.Empty<GridPos>();
             ExtractionPoint = extractionPoint;
+            ElevatorShaft = elevatorShaft;
+            ElevatorLanding = elevatorLanding;
         }
     }
 
@@ -277,6 +291,25 @@ namespace ProjectC.Core
                 PlaceHoleAndWeakFloor(map, heightModel, random, stacked[i], holeAbove, bottomElevation);
             }
 
+            // 2-b) 엘리베이터 통로(상승 던전의 후퇴 동선). 스폰보다 **먼저** 놓아야
+            //      사다리 타일이 IsFreeForSpawn 에 걸러진다 — 적·아이템이 통로에 갇히지 않는다.
+            //      하강 던전에서는 아예 돌지 않으므로 기존 생성이 흔들리지 않는다.
+            if (ElevatorShaftRules.AppliesTo(direction))
+            {
+                var byProgress = new Dictionary<int, FloorPlan>(plans.Count);
+                foreach (FloorPlan plan in plans) byProgress[plan.ProgressIndex] = plan;
+
+                foreach (FloorPlan plan in plans)
+                {
+                    if (!ElevatorShaftRules.ShouldPlace(direction, plan.ProgressIndex, floorCount))
+                        continue;
+
+                    int target = ElevatorShaftRules.DestinationProgressIndex(plan.ProgressIndex);
+                    if (byProgress.TryGetValue(target, out FloorPlan destination))
+                        PlaceElevatorShaft(map, random, plan, destination);
+                }
+            }
+
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
             foreach (FloorPlan plan in plans)
             {
@@ -314,7 +347,9 @@ namespace ProjectC.Core
                     plan.SecretReward,
                     plan.Landmark,
                     plan.Windows,
-                    plan.ExtractionPoint));
+                    plan.ExtractionPoint,
+                    plan.ElevatorShaft,
+                    plan.ElevatorLanding));
             }
 
             return new DungeonLayout(heightModel, floors, direction, firstBuildingFloor);
@@ -407,6 +442,12 @@ namespace ProjectC.Core
             /// </summary>
             public GridPos? Onward;
             public GridPos? Hole;
+
+            /// <summary>이 층에 있는 엘리베이터 통로 입구(아래로만 내려간다).</summary>
+            public GridPos? ElevatorShaft;
+
+            /// <summary>다른 층의 통로가 이 층으로 내려오는 착지 칸.</summary>
+            public GridPos? ElevatorLanding;
             public GridPos? RestSite;
             public GridPos? ExtractionPoint;
             public GridPos? Landmark;

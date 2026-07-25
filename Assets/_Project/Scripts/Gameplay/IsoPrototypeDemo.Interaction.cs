@@ -73,7 +73,18 @@ namespace ProjectC.Gameplay
             {
                 IReadOnlyList<GridPos> ladderLinks = _grid.Map.LinksFrom(_playerPos);
                 if (ladderLinks.Count == 0) return false;
-                label = ladderLinks[0].elevation > _playerPos.elevation
+
+                GridPos destination = ladderLinks[0];
+                // 층을 건너는 사다리 링크는 엘리베이터 통로다 — 같은 층 사다리와 다르게 읽혀야
+                // 한다. 몇 층을 되감는지 목적지 라벨로 알려 주지 않으면 후퇴 비용을 모른 채 누른다.
+                if (_dungeon.Height.FloorIndex(destination.elevation) !=
+                    _dungeon.Height.FloorIndex(_playerPos.elevation))
+                {
+                    label = $"통로로 내려가기 → {FloorLabel(_dungeon.Height.FloorIndex(destination.elevation))}";
+                    return true;
+                }
+
+                label = destination.elevation > _playerPos.elevation
                     ? "사다리 오르기"
                     : "사다리 내려가기";
                 return true;

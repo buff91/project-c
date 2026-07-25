@@ -133,6 +133,60 @@ namespace ProjectC.Core
                 p.Items.Add(new ItemSpawn(pos, equipment.Item));
         }
 
+        /// <summary>
+        /// 엘리베이터 통로 — 상승 던전의 후퇴 동선(<see cref="ElevatorShaftRules"/>).
+        /// 입구와 착지점 <b>두 칸만</b> 사다리 타일로 두고 한 방향(아래로만) 링크로 잇는다.
+        ///
+        /// <para>
+        /// 중간 층에 타일을 두지 않는 이유: 링크가 둘 이상이면 "오르기/내려가기" 상호작용이
+        /// 무엇을 고를지 애매해진다(호출부는 <c>LinksFrom[0]</c>을 쓴다). 양방향으로 두지 않는
+        /// 이유는 계단을 건너뛰는 진행 지름길이 되기 때문이다.
+        /// </para>
+        /// <para>
+        /// 스폰 패스들보다 <b>먼저</b> 돌아야 한다 — 사다리 타일은 Floor 가 아니라서
+        /// <see cref="IsFreeForSpawn"/>이 알아서 피한다(적·아이템이 통로에 갇히지 않는다).
+        /// </para>
+        /// </summary>
+        private static void PlaceElevatorShaft(
+            GridMap map,
+            Random random,
+            FloorPlan source,
+            FloorPlan destination)
+        {
+            var candidates = new List<GridPos>();
+            for (int x = source.UpperMinX; x <= source.UpperMaxX; x++)
+            for (int y = source.UpperMinY; y < source.RaisedY; y++)
+            {
+                // 사다리 컬럼은 캐치워크가 +2단에 얹히는 자리라 비켜 둔다.
+                if (x == source.LadderX) continue;
+
+                var entrance = new GridPos(x, y, source.BaseElevation);
+                var landing = new GridPos(x, y, destination.BaseElevation);
+                if (!IsShaftEnd(map, source, entrance)) continue;
+                if (!IsShaftEnd(map, destination, landing)) continue;
+                candidates.Add(entrance);
+            }
+
+            if (candidates.Count == 0) return;
+
+            GridPos chosen = candidates[random.Next(candidates.Count)];
+            var target = new GridPos(chosen.x, chosen.y, destination.BaseElevation);
+            map.Set(chosen, TileKind.Ladder);
+            map.Set(target, TileKind.Ladder);
+            map.Connect(chosen, target, bidirectional: false);
+            source.ElevatorShaft = chosen;
+            destination.ElevatorLanding = target;
+        }
+
+        /// <summary>통로 끝점으로 쓸 수 있는 칸인가 — 평범한 바닥이고 이미 링크가 없어야 한다.</summary>
+        private static bool IsShaftEnd(GridMap map, FloorPlan p, GridPos pos)
+        {
+            if (map.Get(pos)?.kind != TileKind.Floor) return false;
+            if (pos == p.Entry) return false;
+            if (p.Hole.HasValue && p.Hole.Value == pos) return false;
+            return map.LinksFrom(pos).Count == 0;
+        }
+
         /// <summary>스폰이 겹치지 않는 빈 바닥인가. 아이템·장비 배치가 공유하는 판정.</summary>
         private static bool IsFreeForSpawn(GridMap map, FloorPlan p, GridPos pos)
         {
