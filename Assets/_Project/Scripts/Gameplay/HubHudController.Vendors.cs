@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using ProjectC.Core;
@@ -259,9 +260,25 @@ namespace ProjectC.Gameplay
         private void OpenCodex()
         {
             CloseModals();
+            // 던전에서 돌아온 직후라 기록이 늘어 있다 — 디스크에서 다시 읽어야 최신값을 쓴다.
+            _meta = MetaStore.LoadOrNew();
             RefreshCodex();
             _codexModal?.BringToFront();
             _codexModal?.AddToClassList("is-open");
+        }
+
+        /// <summary>
+        /// 기록을 이 조건에 붓는다. 충족되면 <see cref="ItemUnlockRules.InvestRecords"/>가
+        /// 그 자리에서 해금한다 — 판정은 Core 한 곳에만 있다.
+        /// </summary>
+        private void InvestInCondition(ItemUnlockCondition condition)
+        {
+            int spent = ItemUnlockRules.InvestRecords(
+                _meta, condition, ItemUnlockRules.RemainingFor(_meta, condition));
+            if (spent <= 0) return;
+
+            MetaStore.Save(_meta);
+            RefreshCodex();
         }
 
         private void RefreshCodex()
@@ -274,7 +291,9 @@ namespace ProjectC.Gameplay
             int found = ItemUnlockRules.UnlockedCount(unlocked) +
                         ShelterNpcRoster.RescuedCount(rescued);
             int total = ItemUnlockRules.TotalCount + ShelterNpcRoster.TotalCount;
-            if (_codexCount != null) _codexCount.text = $"기록 {found}/{total}";
+            // 보유 기록을 함께 보여준다 — 투입 버튼을 누를 수 있는지가 여기서 읽혀야 한다.
+            if (_codexCount != null)
+                _codexCount.text = $"해금 {found}/{total} · 기록 {_meta.records}";
 
             foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
             {
@@ -293,13 +312,19 @@ namespace ProjectC.Gameplay
                 desc.AddToClassList("hub-row-desc");
                 row.Add(desc);
 
-                // 최고 기록을 보여준다 — 조건이 한 판 기준이라 지난 판 값을 쓰면
-                // 나쁜 판 뒤에 0 으로 돌아가 안내가 쓸모없어진다.
+                // 진행은 "최고 기록 + 투입"이다 — 판정과 같은 식을 보여줘야 버튼을 눌렀을 때
+                // 숫자가 어떻게 움직일지 예측된다.
+                int best = _meta.BestUnlockProgress(condition.Kind);
+                int invested = _meta.InvestedRecords(condition.Kind);
                 var status = new Label(open
                     ? "해금됨 · 원정에서 등장한다"
-                    : $"최고 기록 {_meta.BestUnlockProgress(condition.Kind)}/{condition.Target}");
+                    : invested > 0
+                        ? $"진행 {best + invested}/{condition.Target} (최고 {best} + 기록 {invested})"
+                        : $"진행 {best}/{condition.Target}");
                 status.AddToClassList("hub-bounty-reward");
                 row.Add(status);
+
+                if (!open) row.Add(BuildInvestButton(condition));
 
                 _codexList.Add(row);
             }
@@ -331,6 +356,25 @@ namespace ProjectC.Gameplay
 
                 _codexList.Add(row);
             }
+        }
+
+        /// <summary>
+        /// 조건 한 줄의 투입 버튼. <b>부족분만큼 한 번에</b> 넣는다 — 1개씩 눌러야 하면
+        /// 목표가 20인 조건에서 스무 번을 누르게 된다. 보유가 모자라면 가진 만큼 들어가고
+        /// 진행이 그만큼 남는다(실패시키지 않는 것이 이 축의 요점이다).
+        /// </summary>
+        private Button BuildInvestButton(ItemUnlockCondition condition)
+        {
+            int need = ItemUnlockRules.RemainingFor(_meta, condition);
+            int pay = Math.Min(need, Math.Max(0, _meta.records));
+
+            var button = new Button { name = $"codex-invest-{condition.Kind}" };
+            button.AddToClassList("settings-done");
+            button.AddToClassList("hub-codex-invest");
+            button.text = pay > 0 ? $"기록 {pay} 투입" : "기록 없음";
+            button.SetEnabled(pay > 0);
+            button.clicked += () => InvestInCondition(condition);
+            return button;
         }
 
         private static string FacilityLabel(ShelterFacility facility) =>

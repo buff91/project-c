@@ -163,6 +163,76 @@ namespace ProjectC.Tests
             Assert.AreEqual(1, meta.records);
         }
 
+        // ── 기록실 투입 ───────────────────────────────────────────────────
+
+        [Test]
+        public void Investing_OpensTheToolTheMomentItIsEnough()
+        {
+            ItemUnlockCondition c = ItemUnlockRules.Conditions[0];
+            var meta = new MetaSaveData { records = 100 };
+            meta.RecordUnlockProgress(c.Kind, c.Target - 2);
+
+            Assert.AreEqual(2, ItemUnlockRules.RemainingFor(meta, c));
+            Assert.AreEqual(2, ItemUnlockRules.InvestRecords(meta, c, 2));
+            Assert.IsTrue(meta.IsItemUnlocked(c.Kind), "충족되면 그 자리에서 열려야 한다");
+            Assert.AreEqual(98, meta.records);
+        }
+
+        [Test]
+        public void Investing_NeverOverpays()
+        {
+            // 남은 만큼만 받는다 — 넘치게 부으면 기록을 버리는 셈이다.
+            ItemUnlockCondition c = ItemUnlockRules.Conditions[0];
+            var meta = new MetaSaveData { records = 100 };
+            meta.RecordUnlockProgress(c.Kind, c.Target - 3);
+
+            Assert.AreEqual(3, ItemUnlockRules.InvestRecords(meta, c, 50), "남은 3만 받는다");
+            Assert.AreEqual(97, meta.records);
+        }
+
+        [Test]
+        public void Investing_PartiallyWhenShort_KeepsTheProgress()
+        {
+            // 부족해도 실패시키지 않는다 — "조금씩 메운다"가 이 축의 전부다.
+            ItemUnlockCondition c = ItemUnlockRules.Conditions[0];
+            var meta = new MetaSaveData { records = 1 };
+
+            Assert.AreEqual(1, ItemUnlockRules.InvestRecords(meta, c, c.Target));
+            Assert.IsFalse(meta.IsItemUnlocked(c.Kind));
+            Assert.AreEqual(1, meta.InvestedRecords(c.Kind), "넣은 만큼은 남는다");
+            Assert.AreEqual(c.Target - 1, ItemUnlockRules.RemainingFor(meta, c));
+        }
+
+        [Test]
+        public void AlreadyUnlocked_TakesNothing()
+        {
+            ItemUnlockCondition c = ItemUnlockRules.Conditions[0];
+            var meta = new MetaSaveData { records = 100 };
+            meta.UnlockItem(c.Kind);
+
+            Assert.AreEqual(0, ItemUnlockRules.RemainingFor(meta, c));
+            Assert.AreEqual(0, ItemUnlockRules.InvestRecords(meta, c, 10), "열린 것에 더 붓지 않는다");
+            Assert.AreEqual(100, meta.records);
+        }
+
+        [Test]
+        public void CodexAndRunEnd_AgreeOnWhatIsOpen()
+        {
+            // 두 경로가 다른 규칙을 쓰면 "기록실에선 열리는데 판 끝나면 안 열린다"가 된다.
+            ItemUnlockCondition c = ItemUnlockRules.Conditions[0];
+            var meta = new MetaSaveData { records = 100 };
+            meta.RecordUnlockProgress(c.Kind, c.Target - 1);
+            meta.InvestRecords(c.Kind, 1);
+
+            Assert.IsTrue(
+                RunRecordRules.IsConditionMet(
+                    meta.BestUnlockProgress(c.Kind), meta.InvestedRecords(c.Kind), c.Target));
+            CollectionAssert.Contains(
+                ItemUnlockRules.EvaluateUnlocks(
+                    meta.UnlockedItemKinds(), meta.BestUnlockProgress, meta.InvestedRecords),
+                c);
+        }
+
         [Test]
         public void FreshSave_HasNothingInvested()
         {

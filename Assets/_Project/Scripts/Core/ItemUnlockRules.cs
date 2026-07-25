@@ -172,6 +172,43 @@ namespace ProjectC.Core
             return opened;
         }
 
+        /// <summary>이 조건까지 남은 진행. 이미 열렸거나 충족했으면 0.</summary>
+        public static int RemainingFor(MetaSaveData meta, ItemUnlockCondition condition)
+        {
+            if (meta == null || condition == null) return 0;
+            if (meta.IsItemUnlocked(condition.Kind)) return 0;
+
+            int have = meta.BestUnlockProgress(condition.Kind) + meta.InvestedRecords(condition.Kind);
+            return Math.Max(0, condition.Target - have);
+        }
+
+        /// <summary>
+        /// 기록실에서 기록을 투입한다. 충족되면 <b>그 자리에서 해금</b>한다.
+        /// 실제 투입량을 돌려준다(보유량이 모자라면 가진 만큼만 들어간다).
+        /// <para>
+        /// <b>해금 판정이 UI 에 흩어지지 않게</b> 여기 둔다 — 판 종료 경로
+        /// (<see cref="EvaluateUnlocks"/>)와 같은 규칙(<see cref="RunRecordRules.IsConditionMet"/>)을
+        /// 써야 "기록실에서는 열리는데 판 끝나면 안 열린다" 같은 어긋남이 안 생긴다.
+        /// </para>
+        /// </summary>
+        public static int InvestRecords(MetaSaveData meta, ItemUnlockCondition condition, int amount)
+        {
+            if (meta == null || condition == null) return 0;
+            if (meta.IsItemUnlocked(condition.Kind)) return 0;
+
+            // 남은 만큼만 받는다 — 이미 열릴 조건에 더 부어 기록을 버리게 두지 않는다.
+            int want = Math.Min(Math.Max(0, amount), RemainingFor(meta, condition));
+            int spent = meta.InvestRecords(condition.Kind, want);
+
+            if (RunRecordRules.IsConditionMet(
+                    meta.BestUnlockProgress(condition.Kind),
+                    meta.InvestedRecords(condition.Kind),
+                    condition.Target))
+                meta.UnlockItem(condition.Kind);
+
+            return spent;
+        }
+
         /// <summary>
         /// 아직 못 연 것 중 <b>가장 가까운</b> 하나. 판 종료 화면이 다음 목표를 알리는 데 쓴다.
         /// <para>

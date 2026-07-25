@@ -575,6 +575,18 @@
     margin-top: 3px;
 }
 
+/* 기록 투입 버튼. 줄 안에서 왼쪽에 붙여 진행 문구 바로 아래에 오게 한다 —
+   눌렀을 때 어떤 숫자가 움직이는지가 시선 이동 없이 읽혀야 한다. */
+.hub-codex-invest {
+    align-self: flex-start;
+    min-width: 108px;
+    margin-top: 6px;
+}
+
+.hub-codex-invest:disabled {
+    opacity: 0.5;
+}
+
 .hub-bounty-empty {
     color: var(--pc-dim);
     font-size: 11px;
