@@ -79,22 +79,21 @@ namespace ProjectC.Gameplay
                 return true;
             }
 
-            if (kind == TileKind.StairsUp)
+            // 던전 출구는 **링크 없는 진출 계단**이다. 종류(StairsUp/Down)는 공간 이름이라
+            // 방향을 타므로, 여기서 종류로 분기하면 상승 던전에서 출구를 못 밟는다.
+            if (kind == TileKind.StairsUp || kind == TileKind.StairsDown)
             {
-                label = $"{AboveFloorLabel}로 이동";
-                return _grid.Map.LinksFrom(_playerPos).Count > 0;
-            }
-
-            if (kind == TileKind.StairsDown)
-            {
-                bool bottomExit = IsBottomExit(_playerPos);
-                bool hasDestination = _grid.Map.LinksFrom(_playerPos).Count > 0 || bottomExit;
+                bool dungeonExit = IsBottomExit(_playerPos);
+                bool hasDestination = _grid.Map.LinksFrom(_playerPos).Count > 0 || dungeonExit;
                 if (!hasDestination) return false;
-                label = bottomExit
+
+                label = dungeonExit
                     ? !BossExitUnlocked
                         ? "출구 봉인됨 — 보스를 처치하라"
                         : HasNextStage ? "다음 던전으로" : "던전 정복"
-                    : $"{BelowFloorLabel}로 이동";
+                    : kind == TileKind.StairsUp
+                        ? $"{AboveFloorLabel}로 이동"
+                        : $"{BelowFloorLabel}로 이동";
                 return true;
             }
 
@@ -123,7 +122,8 @@ namespace ProjectC.Gameplay
                 return true;
             }
 
-            if (kind == TileKind.StairsDown && IsBottomExit(_playerPos))
+            if ((kind == TileKind.StairsUp || kind == TileKind.StairsDown) &&
+                IsBottomExit(_playerPos))
             {
                 if (!BossExitUnlocked)
                 {
@@ -403,10 +403,11 @@ namespace ProjectC.Gameplay
                 {
                     path.Add(links[0]);
                 }
-                else if (targetTile.kind == TileKind.StairsDown &&
+                else if ((targetTile.kind == TileKind.StairsUp ||
+                          targetTile.kind == TileKind.StairsDown) &&
                          IsBottomExit(target))
                 {
-                    // 링크 없는 최심층 하행 계단 = 보스 봉인 출구.
+                    // 링크 없는 진출 계단 = 보스 봉인 출구. 상승 던전에서는 이것이 상행이다.
                     StartPlayerAction(target, MoveAndAdvanceStage(path, target));
                     return;
                 }

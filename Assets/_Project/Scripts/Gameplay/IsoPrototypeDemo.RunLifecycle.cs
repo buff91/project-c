@@ -168,12 +168,22 @@ namespace ProjectC.Gameplay
             BossStateChanged?.Invoke();
         }
 
-        private bool IsBottomExit(GridPos pos) =>
+        /// <summary>
+        /// 이 칸이 <b>던전 출구</b>인가 — 진행 최종 층의 링크 없는 진출 계단.
+        /// 타일 종류(StairsUp/Down)로 판정하면 안 된다: 종류는 공간 이름이라 방향을 탄다.
+        /// 활성 층 조건이 없으므로 다른 층에서 표지를 그릴 때도 쓸 수 있다.
+        /// </summary>
+        private bool IsDungeonExitTile(GridPos pos) =>
             _dungeon != null &&
-            _activeFloorIndex == _dungeon.FinalFloorIndex &&
             _dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo floor) &&
             _dungeon.OnwardStairOf(floor) is GridPos onward &&
             onward == pos;
+
+        /// <summary>플레이어가 지금 출구를 밟고 있는가(활성 층까지 일치).</summary>
+        private bool IsBottomExit(GridPos pos) =>
+            _dungeon != null &&
+            _activeFloorIndex == _dungeon.FinalFloorIndex &&
+            IsDungeonExitTile(pos);
 
         private bool TryRequestExitChoice()
         {

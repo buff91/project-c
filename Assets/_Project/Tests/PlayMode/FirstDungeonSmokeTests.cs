@@ -97,8 +97,22 @@ namespace ProjectC.Tests.PlayMode
             Assert.NotNull(checkpoint.telemetry);
             Assert.AreEqual(9, checkpoint.telemetry.currentFloorIndex);
 
+            // 치트 훅으로 출구 칸까지 이동시키고 선택지가 뜨는지 본다.
             Assert.IsTrue(dungeon.DebugRequestBossExit());
             Assert.AreEqual(1, exitRequests);
+
+            // 여기서부터가 **실제 플레이 경로**다. 위 훅은 TryRequestExitChoice 를 직접 부르지만,
+            // 플레이어는 출구를 밟고 SPACE(=InteractAdjacent)를 누른다. 이 경로가 예전에
+            // 타일 종류(StairsDown)로 분기해서, 진출 계단이 상행인 상승 던전에서는
+            // 출구를 밟아도 아무 일이 없었다. 훅만 검증하면 그 결함을 놓친다.
+            dungeon.InteractAdjacent();
+            yield return null;
+            Assert.AreEqual(
+                2,
+                exitRequests,
+                "출구를 밟고 상호작용했는데 선택지가 뜨지 않는다 — " +
+                "출구 판정이 타일 종류에 묶여 있으면 상승 던전에서 완주할 수 없다.");
+
             dungeon.ConfirmAdvanceStage();
             yield return null;
 

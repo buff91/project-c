@@ -56,6 +56,10 @@
   - **공간 ≠ 진행.** `StairsUp/Down`은 공간 이름이라 고정이고 "다음 층으로 가는 계단"만 방향을 탄다
     (`OnwardStair`/`BackStair`). 같은 이유로 `FinalFloorIndex`(진행 최종)와
     `BottomFloorIndex`(공간 최하단)는 다른 값이다 — 하강 던전에서만 우연히 같다.
+  - **던전 출구는 타일 종류로 판정하지 않는다.** "진행 최종 층의 링크 없는 진출 계단"이며
+    판정은 `IsDungeonExitTile` 하나다. 종류(`StairsDown`)로 분기하면 상승 던전에서 출구를 밟아도
+    아무 일이 없다 — 실제로 그랬고, 스모크가 치트 훅만 검증해 놓쳤다.
+    지금은 스모크가 `InteractAdjacent()`(SPACE 경로)까지 검증한다.
   - **중력은 방향을 타지 않는다.** `FallRules`·`SightRules`는 던전 방향을 모른다.
     다만 **낙하의 의미**는 방향을 탄다(`FallMeaningFor`) — 하강=지름길, 상승=후퇴로,
     진입깊이=지형 위험. 안내 문구는 `FallMeaningHint` 하나에서만 나온다.

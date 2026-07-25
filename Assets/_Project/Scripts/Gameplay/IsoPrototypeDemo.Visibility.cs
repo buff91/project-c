@@ -317,8 +317,8 @@ namespace ProjectC.Gameplay
             if (landmark.Destination.HasValue)
                 return FloorLabel(_dungeon.Height.FloorIndex(landmark.Destination.Value.elevation));
 
-            if (landmark.Kind == TileKind.StairsDown &&
-                _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _dungeon.FinalFloorIndex)
+            // 출구는 종류가 아니라 "진행 최종 층의 진출 계단"이다 — 상승 던전에서는 상행이다.
+            if (IsDungeonExitTile(landmark.Anchor))
                 return !BossExitUnlocked
                     ? "SEALED"
                     : HasNextStage ? "NEXT" : "EXIT";
@@ -603,10 +603,23 @@ namespace ProjectC.Gameplay
             TileKind? playerTile = _grid.Map.Get(_playerPos)?.kind;
             if (playerTile == TileKind.Ladder)
                 return "사다리 위 · 캐릭터 탭 또는 SPACE로 오르내리기";
-            else if (playerTile == TileKind.StairsUp)
-                return $"{AboveFloorLabel} 되돌아가기 · 캐릭터 탭 또는 SPACE";
-            else if (playerTile == TileKind.StairsDown)
-                return $"{BelowFloorLabel} 되돌아가기 · 캐릭터 탭 또는 SPACE";
+            else if (playerTile == TileKind.StairsUp || playerTile == TileKind.StairsDown)
+            {
+                // 진출인지 귀환인지는 방향이 정한다 — 종류로 단정하면 상승 던전에서 뒤바뀐다.
+                string destination = playerTile == TileKind.StairsUp
+                    ? AboveFloorLabel
+                    : BelowFloorLabel;
+                if (IsDungeonExitTile(_playerPos))
+                    return !BossExitUnlocked
+                        ? $"봉인된 출구 · {BossName}를 쓰러뜨려라"
+                        : "출구 · 캐릭터 탭 또는 SPACE";
+
+                bool onward = _grid.Map.Get(_playerPos)?.kind ==
+                              DungeonDirectionRules.OnwardStair(_dungeon.Direction);
+                return onward
+                    ? $"{destination}로 나아가기 · 캐릭터 탭 또는 SPACE"
+                    : $"{destination} 되돌아가기 · 캐릭터 탭 또는 SPACE";
+            }
 
             bool localStairsVisible = false;
             bool ladderVisible = false;
