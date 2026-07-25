@@ -6,22 +6,23 @@ namespace ProjectC.Tests
 {
     public class RuntimeSpriteGroundingTests
     {
-        [TestCase("prop-campfire", 6f)]
-        [TestCase("prop-explosive-barrel", 5f)]
-        [TestCase("prop-portal", 6f)]
-        [TestCase("prop-stash", 11f)]
-        [TestCase("item-blast-powder", 5f)]
-        [TestCase("item-bomb", 4f)]
-        [TestCase("item-coin-pouch", 6f)]
-        [TestCase("item-frost-bomb", 4f)]
-        [TestCase("item-frost-shard", 4f)]
-        [TestCase("item-gemstone", 2f)]
-        [TestCase("item-herb", 5f)]
-        [TestCase("item-oil-flask", 4f)]
-        [TestCase("item-potion", 4f)]
-        [TestCase("item-recall-scroll", 3f)]
-        [TestCase("item-relic", 3f)]
-        [TestCase("item-throwing-knife", 2f)]
+        // 128-레짐: 기대값은 픽셀 단위라 캔버스 ×2와 함께 전부 ×2 (정규화 피벗은 불변).
+        [TestCase("prop-campfire", 12f)]
+        [TestCase("prop-explosive-barrel", 10f)]
+        [TestCase("prop-portal", 12f)]
+        [TestCase("prop-stash", 22f)]
+        [TestCase("item-blast-powder", 10f)]
+        [TestCase("item-bomb", 8f)]
+        [TestCase("item-coin-pouch", 12f)]
+        [TestCase("item-frost-bomb", 8f)]
+        [TestCase("item-frost-shard", 8f)]
+        [TestCase("item-gemstone", 4f)]
+        [TestCase("item-herb", 10f)]
+        [TestCase("item-oil-flask", 8f)]
+        [TestCase("item-potion", 8f)]
+        [TestCase("item-recall-scroll", 6f)]
+        [TestCase("item-relic", 6f)]
+        [TestCase("item-throwing-knife", 4f)]
         public void WorldSprite_PivotMatchesOpaqueGroundContact(string assetName, float expectedPivotY)
         {
             string path = $"Assets/_Project/Art/Runtime/{assetName}.png";

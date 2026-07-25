@@ -51,7 +51,9 @@ def _palette_image(gpl_path: Path = GPL_PATH) -> Image.Image:
     colors = load_gpl(gpl_path)
     palette = Image.new("P", (1, 1))
     flat = [channel for rgb in colors for channel in rgb]
-    flat += [0] * (768 - len(flat))  # pad to 256 * 3
+    # 미사용 슬롯은 검정(0,0,0)이 아니라 첫 색으로 패딩한다 — 검정으로 패딩하면
+    # 최근접 양자화가 어두운 픽셀을 팔레트에 없는 순수 검정으로 스냅한다(실측 아티팩트).
+    flat += list(colors[0]) * (256 - len(colors))
     palette.putpalette(flat)
     return palette
 

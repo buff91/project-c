@@ -19,7 +19,9 @@ namespace ProjectC.EditorTools
         public const string CatalogPath =
             "Assets/_Project/Art/Environment/ProjectCEnvironmentCatalog.asset";
 
-        private const float PixelsPerUnit = 64f;
+        // 128-레짐: 바닥 타일 128×64px = 월드 1.0×0.5 유닛. PrototypeSpriteCanvas의
+        // 절차 생성 상수(64)와 다른 것이 정상이다 — 스프라이트는 각자 PPU를 갖는다.
+        private const float PixelsPerUnit = 128f;
 
         private static readonly Dictionary<string, string> CatalogSlots =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -56,6 +58,8 @@ namespace ProjectC.EditorTools
                 { "actor-goblin", "goblin" },
                 { "actor-skeleton", "skeleton" },
                 { "actor-slime", "slime" },
+                { "actor-slinger", "slinger" },
+                { "actor-grave-warden", "graveWarden" },
                 { "actor-merchant", "merchant" },
                 { "prop-explosive-barrel", "explosiveBarrel" },
                 { "prop-campfire", "hubCampfire" },
@@ -81,58 +85,6 @@ namespace ProjectC.EditorTools
                 { "fx-impact-heavy", "fxImpactHeavy" },
                 { "fx-status-burn", "fxStatusBurn" },
                 { "fx-status-freeze", "fxStatusFreeze" }
-            };
-
-        private static readonly Dictionary<string, Vector2> CustomPivots =
-            new Dictionary<string, Vector2>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "env-floor", new Vector2(0.5f, 0.5f) },
-                { "env-stairs-rising-right", new Vector2(0.5f, 16f / 56f) },
-                { "env-stairs-rising-left", new Vector2(0.5f, 16f / 56f) },
-                { "env-stairs-up-rising-right", new Vector2(0.5f, 16f / 56f) },
-                { "env-stairs-up-rising-left", new Vector2(0.5f, 16f / 56f) },
-                { "env-stairs-down-rising-right", new Vector2(0.5f, 16f / 40f) },
-                { "env-stairs-down-rising-left", new Vector2(0.5f, 16f / 40f) },
-                { "env-door-closed-rising-right", new Vector2(0.5f, 16f / 80f) },
-                { "env-door-closed-rising-left", new Vector2(0.5f, 16f / 80f) },
-                { "env-door-open-rising-right", new Vector2(0.5f, 16f / 80f) },
-                { "env-door-open-rising-left", new Vector2(0.5f, 16f / 80f) },
-                { "env-wall-rising-right", new Vector2(0.5f, 8f / 56f) },
-                { "env-wall-rising-left", new Vector2(0.5f, 8f / 56f) },
-                { "env-wall-torch-rising-right", new Vector2(0.5f, 8f / 56f) },
-                { "env-wall-torch-rising-left", new Vector2(0.5f, 8f / 56f) },
-                { "actor-player", new Vector2(0.5f, 0.04f) },
-                { "actor-knight", new Vector2(0.5f, 0.04f) },
-                { "actor-ranger", new Vector2(0.5f, 0.04f) },
-                { "actor-alchemist", new Vector2(0.5f, 0.04f) },
-                { "actor-goblin", new Vector2(0.5f, 0.04f) },
-                { "actor-skeleton", new Vector2(0.5f, 0.04f) },
-                { "actor-slime", new Vector2(0.5f, 0.04f) },
-                { "actor-merchant", new Vector2(0.5f, 0.04f) },
-                { "prop-campfire", new Vector2(0.5f, 6f / 64f) },
-                { "prop-explosive-barrel", new Vector2(0.5f, 5f / 64f) },
-                { "prop-portal", new Vector2(0.5f, 6f / 80f) },
-                { "prop-stash", new Vector2(0.5f, 11f / 64f) },
-                { "marker-player", new Vector2(0.5f, 0.5f) },
-                { "marker-target", new Vector2(0.5f, 0.5f) },
-                { "item-blast-powder", new Vector2(0.5f, 5f / 32f) },
-                { "item-bomb", new Vector2(0.5f, 4f / 32f) },
-                { "item-coin-pouch", new Vector2(0.5f, 6f / 32f) },
-                { "item-frost-bomb", new Vector2(0.5f, 4f / 32f) },
-                { "item-frost-shard", new Vector2(0.5f, 4f / 32f) },
-                { "item-gemstone", new Vector2(0.5f, 2f / 32f) },
-                { "item-herb", new Vector2(0.5f, 5f / 32f) },
-                { "item-oil-flask", new Vector2(0.5f, 4f / 32f) },
-                { "item-potion", new Vector2(0.5f, 4f / 32f) },
-                { "item-recall-scroll", new Vector2(0.5f, 3f / 32f) },
-                { "item-relic", new Vector2(0.5f, 3f / 32f) },
-                { "item-throwing-knife", new Vector2(0.5f, 2f / 32f) },
-                { "fx-impact-physical", new Vector2(0.5f, 0.5f) },
-                { "fx-impact-fire", new Vector2(0.5f, 0.5f) },
-                { "fx-impact-frost", new Vector2(0.5f, 0.5f) },
-                { "fx-impact-heavy", new Vector2(0.5f, 0.5f) },
-                { "fx-status-burn", new Vector2(0.5f, 0.5f) },
-                { "fx-status-freeze", new Vector2(0.5f, 0.5f) }
             };
 
         private static bool _catalogSyncQueued;
@@ -180,10 +132,9 @@ namespace ProjectC.EditorTools
 
         public static Vector2 ResolvePivotNormalized(string sourcePath)
         {
+            // 피벗 SSOT는 ProjectCArtPivots — PNG 폴백 임포터와 값을 공유한다.
             string assetName = Path.GetFileNameWithoutExtension(sourcePath);
-            return CustomPivots.TryGetValue(assetName, out Vector2 pivot)
-                ? pivot
-                : new Vector2(0.5f, 0f);
+            return ProjectCArtPivots.ResolveOrDefault(assetName, new Vector2(0.5f, 0f));
         }
 
         public static int FrameIndexFromSpriteName(string spriteName)
