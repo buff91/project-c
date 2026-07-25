@@ -69,7 +69,14 @@ MonoBehaviour:
   floor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   raisedFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   lowerFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
+  midFloor: {fileID: 0}
+  midRaisedFloor: {fileID: 0}
+  deepFloor: {fileID: 0}
+  deepRaisedFloor: {fileID: 0}
+  bossFloor: {fileID: 0}
+  bossRaisedFloor: {fileID: 0}
   stairs: {fileID: 0}
+  ladder: {fileID: 0}
   stairsUp: {fileID: 0}
   stairsDown: {fileID: 0}
   hole: {fileID: 0}
@@ -97,6 +104,8 @@ MonoBehaviour:
   goblin: {fileID: 21300000, guid: 7ff67453ca97d480d88a9ed4421f8a93, type: 3}
   skeleton: {fileID: 21300000, guid: ab7f344e226794bd89069311fc91b6db, type: 3}
   slime: {fileID: 21300000, guid: f166d5b1d9cfe4bd58763be1c0de5232, type: 3}
+  slinger: {fileID: 0}
+  graveWarden: {fileID: 0}
   merchant: {fileID: 21300000, guid: 3d7833257dfec46fc91f747f23ebb9ab, type: 3}
   explosiveBarrel: {fileID: 21300000, guid: 4c8099366907c4441ba6cb466d3b2e32, type: 3}
   hubCampfire: {fileID: 21300000, guid: 0d4841f04d8f249c78fb4baf1c37d8f3, type: 3}
@@ -116,3 +125,9 @@ MonoBehaviour:
   herb: {fileID: 21300000, guid: 873c5028942ac413a84a158986f1654c, type: 3}
   blastPowder: {fileID: 21300000, guid: 17f6159259c954e9383e8e916f90953d, type: 3}
   frostShard: {fileID: 21300000, guid: fbbaf6d835b6c460eb1e302189c082b1, type: 3}
+  fxImpactPhysical: {fileID: 0}
+  fxImpactFire: {fileID: 0}
+  fxImpactFrost: {fileID: 0}
+  fxImpactHeavy: {fileID: 0}
+  fxStatusBurn: {fileID: 0}
+  fxStatusFreeze: {fileID: 0}
