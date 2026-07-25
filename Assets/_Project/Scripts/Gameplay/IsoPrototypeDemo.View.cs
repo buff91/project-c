@@ -92,6 +92,7 @@ namespace ProjectC.Gameplay
             }
             ApplyRestSiteView();
             ApplyBossAltarView();
+            ApplyRescueNpcView();
             ApplyExtractionPointView();
             if (_barrelRenderer != null)
             {

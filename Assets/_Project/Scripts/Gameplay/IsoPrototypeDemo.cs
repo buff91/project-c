@@ -532,6 +532,7 @@ namespace ProjectC.Gameplay
             _items.Clear();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
+            ResetRescueForBuild();
             ResetExtractionPointsForBuild();
             _inventory.Clear();
             _boss = null;
@@ -826,6 +827,7 @@ namespace ProjectC.Gameplay
 
                 CreateRestSite(floor);
                 CreateBossAltar(floor);
+                CreateRescueNpc(floor);
                 CreateExtractionPoint(floor);
             }
             CreateBossExitSeal();

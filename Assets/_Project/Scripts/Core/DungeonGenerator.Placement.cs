@@ -115,9 +115,16 @@ namespace ProjectC.Core
         /// 소유한다. 주운 장비는 백팩 면적을 먹고, 살아 나와야 창고로 들어간다(익스트랙션).
         /// 아이템 배치가 끝난 뒤 남은 빈 칸에만 놓아 기존 스폰과 겹치지 않는다.
         /// </summary>
-        private static void PlaceEquipment(GridMap map, Random random, FloorPlan p)
+        private static void PlaceEquipment(
+            GridMap map,
+            Random random,
+            FloorPlan p,
+            DungeonMetaContext meta)
         {
-            EquipmentDefinition equipment = EquipmentDropRules.Roll(p.ProgressIndex, random);
+            // 대장장이를 구출하기 전에는 장비가 나오지 않는다 — 쓸 수도 고칠 수도 없으니
+            // 주워도 의미가 없다. 롤은 그대로 소비하므로 생성 스트림은 흔들리지 않는다.
+            EquipmentDefinition equipment = EquipmentDropRules.Roll(
+                p.ProgressIndex, random, meta.IsFacilityOpen(ShelterFacility.Forge));
             if (equipment == null) return;
 
             var candidates = new List<GridPos>();

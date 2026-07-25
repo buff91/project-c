@@ -39,11 +39,22 @@ namespace ProjectC.Gameplay
             CreateHubProp("Stash", stash != null ? stash : ActorSprites.GetHubPropSprite("stash"), HubLayout.Stash);
             _hubInteractables[HubLayout.Stash] = "stash";
 
-            CreateHubProp("Smith", ActorSprites.GetHubPropSprite("smith"), HubLayout.Smith);
-            _hubInteractables[HubLayout.Smith] = "smith";
+            // 구출로 열리는 시설은 동료가 합류한 뒤에만 존재한다 — 프롭도 상호작용도 없다.
+            // 빈 모달을 보여주는 것보다 "아직 없다"가 정직하고, 구출이 사건이 된다.
+            MetaSaveData shelterMeta = MetaStore.LoadOrNew();
 
-            CreateHubProp("BountyBoard", ActorSprites.GetHubPropSprite("bounty"), HubLayout.BountyBoard);
-            _hubInteractables[HubLayout.BountyBoard] = "bounty";
+            if (shelterMeta.IsFacilityOpen(ShelterFacility.Forge))
+            {
+                CreateHubProp("Smith", ActorSprites.GetHubPropSprite("smith"), HubLayout.Smith);
+                _hubInteractables[HubLayout.Smith] = "smith";
+            }
+
+            if (shelterMeta.IsFacilityOpen(ShelterFacility.BountyBoard))
+            {
+                CreateHubProp(
+                    "BountyBoard", ActorSprites.GetHubPropSprite("bounty"), HubLayout.BountyBoard);
+                _hubInteractables[HubLayout.BountyBoard] = "bounty";
+            }
 
             // 기록실은 항상 열려 있다 — 해금 조건을 배우는 유일한 창구이고, 그 안내를
             // 의뢰로 줄 수 없기 때문이다(의뢰 게시판은 잠기는 시설이라 순환이 된다).

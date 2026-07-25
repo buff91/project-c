@@ -192,6 +192,12 @@ namespace ProjectC.Gameplay
                     label = tile.CanOpen ? "문 열기" : "문 닫기";
                     return true;
                 }
+                if (!hubMode && IsRescueNpcAt(candidate))
+                {
+                    target = candidate;
+                    label = "동료 구출";
+                    return true;
+                }
                 if (hubMode && _hubInteractables.TryGetValue(candidate, out string hubId))
                 {
                     target = candidate;
@@ -199,6 +205,7 @@ namespace ProjectC.Gameplay
                         : hubId == "stash" ? "창고"
                         : hubId == "smith" ? "대장간"
                         : hubId == "bounty" ? "의뢰 게시판"
+                        : hubId == "codex" ? "기록실"
                         : "영웅";
                     return true;
                 }
@@ -312,6 +319,15 @@ namespace ProjectC.Gameplay
                         target, ApproachAndAttack(new List<GridPos> { _playerPos }, tappedEnemy));
                 else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
                     StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
+                return;
+            }
+
+            // 갇힌 동료 탭 → 옆까지 걸어가 구출. 적 판정 뒤에 두어 동료 위에 겹친 적이
+            // 있으면 전투가 먼저 걸리게 한다.
+            if (IsRescueNpcAt(target))
+            {
+                if (TryFindApproach(target, out List<GridPos> rescuePath))
+                    StartPlayerAction(target, ApproachAndRescue(rescuePath, target));
                 return;
             }
 

@@ -270,9 +270,11 @@ namespace ProjectC.Gameplay
             _codexList.Clear();
 
             List<ItemKind> unlocked = _meta.UnlockedItemKinds();
-            if (_codexCount != null)
-                _codexCount.text =
-                    $"기록 {ItemUnlockRules.UnlockedCount(unlocked)}/{ItemUnlockRules.TotalCount}";
+            string[] rescued = _meta.rescuedNpcs ?? new string[0];
+            int found = ItemUnlockRules.UnlockedCount(unlocked) +
+                        ShelterNpcRoster.RescuedCount(rescued);
+            int total = ItemUnlockRules.TotalCount + ShelterNpcRoster.TotalCount;
+            if (_codexCount != null) _codexCount.text = $"기록 {found}/{total}";
 
             foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
             {
@@ -301,7 +303,38 @@ namespace ProjectC.Gameplay
 
                 _codexList.Add(row);
             }
+
+            // 동료는 조건이 아니라 장소로 열린다 — 어느 층에 갇혀 있는지를 알려 준다.
+            // 그래서 "얼마나 남았나"가 아니라 "어디로 가야 하나"가 안내다.
+            foreach (ShelterNpcDefinition npc in ShelterNpcRoster.All)
+            {
+                bool joined = _meta.IsNpcRescued(npc.Id);
+                var row = new VisualElement { name = $"codex-npc-{npc.Id}" };
+                row.AddToClassList("hub-bounty-row");
+                row.EnableInClassList("is-locked", !joined);
+
+                var title = new Label(joined ? npc.DisplayName : "갇힌 동료");
+                title.AddToClassList("hub-row-title");
+                row.Add(title);
+
+                var desc = new Label(joined
+                    ? npc.RescueDetail
+                    : $"{npc.ProgressIndex + 1}번째 층의 잠긴 방에 갇혀 있다");
+                desc.AddToClassList("hub-row-desc");
+                row.Add(desc);
+
+                var status = new Label(joined
+                    ? "합류함 · 시설이 열렸다"
+                    : $"구출하면 {FacilityLabel(npc.Facility)}이 열린다");
+                status.AddToClassList("hub-bounty-reward");
+                row.Add(status);
+
+                _codexList.Add(row);
+            }
         }
+
+        private static string FacilityLabel(ShelterFacility facility) =>
+            facility == ShelterFacility.Forge ? "대장간" : "의뢰 게시판";
 
         // ── 영웅 ─────────────────────────────────────────────
 

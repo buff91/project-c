@@ -146,11 +146,17 @@
   - **기록실**(`HubLayout.Codex`, `hub-codex-modal`)이 조건·최고 기록을 보여준다. 항상 열려 있다.
     진행값은 **최고 기록**(`MetaSaveData.unlockProgress`, 단조 증가)이다 — 조건이 한 판
     기준이라 지난 판 값을 쓰면 나쁜 판 뒤에 0으로 돌아가 안내가 죽는다.
-  - **남은 것**: B단계 — NPC 구출로 대장간·의뢰 게시판 해금(장비 4종은 대장간에 종속).
+  - **시설은 구출로 열린다**(`ShelterNpcRoster`): 대장장이→대장간, 연락책→의뢰 게시판.
+    미구출 시설은 허브에 프롭도 상호작용도 없다. **장비 4종은 대장간에 종속**되며
+    드랍 게이트는 롤을 그대로 소비하고 결과만 막는다. 구출은 즉시 저장한다(죽어도 남는다).
+    갇힌 방은 **확률이 아니라 보장**이고 숨은 방과 겹치지 않는다 — 둘 중 하나라도 어기면
+    시설이 영원히 안 열릴 수 있다(테스트로 고정).
+    상인·창고·기록실은 잠그지 않는다.
+  - **남은 것**: 실플레이로 조건 수치(화상 12·처치 20 등)와 구출 층(2·5) 조정.
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **837/837 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **954/954 통과**. 컴파일 에러 없음.
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **844/844 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **961/961 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
   - 옛 "673/673" 기록은 낡은 값이었다.

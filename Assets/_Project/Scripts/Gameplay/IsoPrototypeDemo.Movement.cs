@@ -31,6 +31,19 @@ namespace ProjectC.Gameplay
             }
         }
 
+        /// <summary>
+        /// 갇힌 동료 옆까지 걸어간 뒤 구출한다. 이동 중 죽거나 동료가 이미 사라졌으면 조용히 끝낸다.
+        /// </summary>
+        private IEnumerator ApproachAndRescue(IReadOnlyList<GridPos> path, GridPos npcPos)
+        {
+            yield return MovePlayerPath(path);
+
+            if (!_playerState.IsAlive || !IsRescueNpcAt(npcPos)) yield break;
+
+            TryRescueNpcAt(npcPos);
+            RefreshFloorVisibility();
+        }
+
         private IEnumerator ApproachAndRevealSecretDoor(
             IReadOnlyList<GridPos> path,
             GridPos secretDoor)

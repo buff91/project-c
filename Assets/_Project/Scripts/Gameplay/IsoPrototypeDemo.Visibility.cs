@@ -74,6 +74,7 @@ namespace ProjectC.Gameplay
 
             RefreshRestSiteVisibility();
             RefreshBossAltarVisibility();
+            RefreshRescueNpcVisibility();
             RefreshExtractionPointVisibility();
 
             if (_barrelRenderer != null && _barrelExploded)

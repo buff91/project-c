@@ -155,15 +155,24 @@ namespace ProjectC.Core
         /// <summary>
         /// 이 층에 놓을 장비를 고른다(없으면 null). 롤은 항상 두 번 — 확률과 종류를
         /// 같은 순서로 소비해 seed 재현성을 유지한다.
+        /// <para>
+        /// <paramref name="forgeOpen"/>이 false 면 장비가 나오지 않는다. 대장장이를 구출하기
+        /// 전에는 장비를 쓸 수도 고칠 수도 없어서 주워도 의미가 없다
+        /// (<see cref="ShelterNpcRoster"/>). <b>롤은 그대로 소비하고 결과만 막는다</b> —
+        /// 그래야 대장간 상태가 던전의 나머지를 흔들지 않는다.
+        /// </para>
         /// </summary>
-        public static EquipmentDefinition Roll(int depthIndex, System.Random random)
+        public static EquipmentDefinition Roll(
+            int depthIndex,
+            System.Random random,
+            bool forgeOpen = true)
         {
             if (random == null) throw new System.ArgumentNullException(nameof(random));
 
             bool allowed = AllowsDrop(depthIndex);
             bool hit = random.Next(0, 100) < DropChancePercent;
             int index = random.Next(0, EquipmentCatalog.All.Count);
-            return allowed && hit ? EquipmentCatalog.All[index] : null;
+            return allowed && hit && forgeOpen ? EquipmentCatalog.All[index] : null;
         }
     }
 
