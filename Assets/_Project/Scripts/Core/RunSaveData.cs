@@ -20,6 +20,13 @@ namespace ProjectC.Core
         public int stageCount = 1;
         public int stageIndex = 1;
         public int currentFloorIndex;
+
+        /// <summary>
+        /// 현재 층의 진행 지수(0부터). <see cref="currentFloorIndex"/>로 역산할 수 없어 따로 저장한다 —
+        /// 상승·비단조 던전에서는 고도와 진행 순서가 일치하지 않는다(GDD §5.1).
+        /// </summary>
+        public int currentProgressIndex;
+
         public bool bossDefeated;
         public int hp;
         public int kills;
@@ -47,11 +54,15 @@ namespace ProjectC.Core
         public void AddItemsTo(Inventory inventory) => ItemStorage.AddTo(items, inventory);
     }
 
-    /// <summary>새 판과 이어하기가 시작할 던전 내부 깊이를 결정한다.</summary>
+    /// <summary>새 판과 이어하기가 시작할 던전 내부 진행 지수를 결정한다.</summary>
     public static class RunStartRules
     {
-        /// <summary>새 판은 반드시 B1(0), 이어하기만 저장된 음수 floor index를 깊이로 변환한다.</summary>
+        /// <summary>
+        /// 새 판은 반드시 첫 층(0), 이어하기는 체크포인트에 <b>저장된</b> 진행 지수를 쓴다.
+        /// 예전에는 <c>Max(0, -currentFloorIndex)</c>로 역산했는데, 상승 던전에서는 전부 0이 되고
+        /// 비단조 경로에서는 애초에 역산할 수 없다.
+        /// </summary>
         public static int ResolvePreviewDepth(RunSaveData continueData) =>
-            continueData == null ? 0 : Math.Max(0, -continueData.currentFloorIndex);
+            continueData == null ? 0 : Math.Max(0, continueData.currentProgressIndex);
     }
 }

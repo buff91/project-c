@@ -98,43 +98,43 @@ namespace ProjectC.Tests
                 shallow,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: 0)));
+                    DungeonVisualContext.From(height, elevation: 0, progressIndex: 0)));
             Assert.AreSame(
                 shallowRaised,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: 1)));
+                    DungeonVisualContext.From(height, elevation: 1, progressIndex: 0)));
             Assert.AreSame(
                 mid,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -12)));
+                    DungeonVisualContext.From(height, elevation: -12, progressIndex: 3)));
             Assert.AreSame(
                 midRaised,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -11)));
+                    DungeonVisualContext.From(height, elevation: -11, progressIndex: 3)));
             Assert.AreSame(
                 deep,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -24)));
+                    DungeonVisualContext.From(height, elevation: -24, progressIndex: 6)));
             Assert.AreSame(
                 boss,
                 _catalog.TileFor(
                     TileKind.Floor,
-                    DungeonVisualContext.From(height, elevation: -36)));
+                    DungeonVisualContext.From(height, elevation: -36, progressIndex: 9)));
         }
 
         [Test]
         public void DungeonSurfaceFor_UsesOneCommonToneAcrossDepths_AndHeightOnlyChangesValue()
         {
             var height = new DungeonHeightModel(4);
-            DungeonVisualContext b1 = DungeonVisualContext.From(height, height.Elevation(0, 0));
-            DungeonVisualContext b4 = DungeonVisualContext.From(height, height.Elevation(-3, 0));
-            DungeonVisualContext b7 = DungeonVisualContext.From(height, height.Elevation(-6, 0));
-            DungeonVisualContext b10 = DungeonVisualContext.From(height, height.Elevation(-9, 0));
-            DungeonVisualContext raised = DungeonVisualContext.From(height, height.Elevation(-6, 1));
+            DungeonVisualContext b1 = DungeonVisualContext.From(height, height.Elevation(0, 0), 0);
+            DungeonVisualContext b4 = DungeonVisualContext.From(height, height.Elevation(-3, 0), 3);
+            DungeonVisualContext b7 = DungeonVisualContext.From(height, height.Elevation(-6, 0), 6);
+            DungeonVisualContext b10 = DungeonVisualContext.From(height, height.Elevation(-9, 0), 9);
+            DungeonVisualContext raised = DungeonVisualContext.From(height, height.Elevation(-6, 1), 6);
 
             Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b1));
             Assert.AreEqual(_catalog.dungeonStone, _catalog.DungeonSurfaceFor(b4));

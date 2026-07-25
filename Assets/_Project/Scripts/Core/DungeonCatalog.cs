@@ -53,15 +53,20 @@ namespace ProjectC.Core
     /// <summary>던전 선택 화면과 절차 생성 seed가 공유하는 단일 목록.</summary>
     public static class DungeonCatalog
     {
+        // 코드 ID 는 리스킨 프로파일 A 원칙에 따라 유지한다(세이브·체크포인트 호환).
+        // 표시명만 폐병원으로 바꿨다 — GDD §10.1.
+        // ⚠ 표시는 상승("B2 → 8F")이지만 생성기는 아직 하강이다. 상승 전환은 미착수이며
+        //    진행 지수 분리(완료)가 그 선행 조건이었다. `docs/ROADMAP.md` 참조.
         public const string DefaultId = "forgotten-catacombs";
 
         public static readonly IReadOnlyList<DungeonDefinition> All = new[]
         {
             new DungeonDefinition(
                 DefaultId,
-                "무너진 환승역",
-                "붕괴한 지하 10층을 내려가 최심층의 감시자를 쓰러뜨리고 출구를 연다.",
-                "B1~B10 · B10 보스: 감시자 · 권장: 기사",
+                "폐병원",
+                "지하 기계실에서 시작해 무너진 병동을 타고 올라간다. " +
+                "최상층의 감시자를 쓰러뜨려야 옥상 출구가 열린다.",
+                "B2 → 8F + 옥상 · 최상층 보스: 감시자 · 권장: 기사",
                 seed: 1977,
                 floorCount: 10,
                 boss: new DungeonBossDefinition(

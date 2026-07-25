@@ -14,7 +14,8 @@
 
 ## 프로젝트 개요
 
-- **장르**: 모바일 아이소메트릭 다층(elevation) 던전 크롤러 (Shattered Pixel Dungeon 계보 + 층간 낙하 전투)
+- **장르**: 모바일 아이소메트릭 다층(elevation) 던전 크롤러
+  (Shattered Pixel Dungeon 계보 + 지형·원소·높이 상호작용 전투)
 - **엔진/언어**: Unity 2D (Isometric Tilemap) · C# · Unity 6000.5.4f1
 - **플랫폼**: iOS / Android (PC 동시 지원 고려 → 입력 추상화 필수)
 - **개발 인원**: 1인
@@ -81,7 +82,9 @@
   시야선·수직 개구부 투시·근접 도달 기하·FOV 컬럼 해석의 SSOT는 모두 `SightRules`다
   (`CombatRules`·`GridVisibility`는 위임). 수직은 실제 개구부만 통과하고, 컬럼은 span으로 봐서
   지면과 머리 위 구조물(캐치워크)이 함께 잡힌다.
-- **첫 던전/보스**: `forgotten-catacombs`는 B1~B10 단일 던전이다. B10의 `묘지기`를
+- **첫 던전/보스**: 첫 목적지는 **폐병원(상승, `B2 → … → 8F` + 옥상 출구)** 10개 층 단일 던전이다
+  (GDD §10.1 — 확정, 생성기 상승 전환은 미착수). 코드 ID `forgotten-catacombs`·seed·층 수는 유지한다.
+  최상층의 `감시자`를
   처치하기 전에는 최심층 출구가 붉게 봉인되고, 처치 후 청록 해금 연출과 전용 HUD가 갱신된다.
   아레나에는 생성기가 고른 제단이 서고(처치 후 신호색이 식음), 바로 위층(B9)에 들어서면
   접근 전조를 한 판에 한 번 알린다(`DungeonBossArenaRules`).
