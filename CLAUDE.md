@@ -14,7 +14,8 @@
 
 ## 프로젝트 개요
 
-- **장르**: 모바일 아이소메트릭 다층(elevation) 던전 크롤러 (Shattered Pixel Dungeon 계보 + 층간 낙하 전투)
+- **장르**: 모바일 아이소메트릭 다층(elevation) 던전 크롤러
+  (Shattered Pixel Dungeon 계보 + 지형·원소·높이 상호작용 전투)
 - **엔진/언어**: Unity 2D (Isometric Tilemap) · C# · Unity 6000.5.4f1
 - **플랫폼**: iOS / Android (PC 동시 지원 고려 → 입력 추상화 필수)
 - **개발 인원**: 1인
