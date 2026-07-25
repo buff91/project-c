@@ -63,3 +63,7 @@ crashlog.txt
 # Python bytecode (art pipeline tooling)
 __pycache__/
 *.pyc
+
+# dotnet 테스트 shim 산출물 (Tools/CoreTests — Unity 없이 Core 테스트)
+/Tools/CoreTests/bin/
+/Tools/CoreTests/obj/

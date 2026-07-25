@@ -6,10 +6,17 @@
 ## 참조 문서 (상세는 여기로)
 
 - `GDD.md` — 게임 기획서. **설계 결정의 최종 출처(SSOT).** 코드/기획 판단 시 먼저 참조.
-- `docs/ROADMAP.md` — 마일스톤 + 현재 진행/환경 상태.
-- `docs/SYSTEMS.md` — 시스템 설계 요약(격자·FOV·낙하·상태이상·AI·크로스플랫폼).
-- `docs/CODE_STRUCTURE.md` — 파일/파셜 레이아웃 지도 + SSOT 위치("어떤 코드가 어디에 사는가").
+- `docs/STATUS.md` — **현재 구현 스냅샷.** 작업 시작 시 먼저 읽는다("지금 뭐가 돌아가나").
+- `docs/ROADMAP.md` — 마일스톤 + 현재 진행/환경 상태("무엇을 다음에 하나").
+- `docs/SYSTEMS.md` — **시스템별 설계 규칙**(텔레메트리·익스트랙션·배고픔·장비·숨은 방·FOV·낙하·AI…).
+  "이 규칙이 어떻게 동작해야 하나"를 볼 때.
+- `docs/ARCHITECTURE.md` — **코드 아키텍처 지도**(계층·좌표 기반·생성·전투·프레젠테이션).
+  "이 로직이 어느 계층에 살고 무엇에 의존하나"를 볼 때. SYSTEMS와 주제가 겹치면
+  **규칙은 SYSTEMS, 코드 배치는 ARCHITECTURE**를 믿는다.
+- `docs/CODE_STRUCTURE.md` — 파일/파셜 레이아웃 지도 + SSOT 표("어떤 코드가 어느 파일에 사는가").
 - `docs/UI_ARCHITECTURE.md` — UI 이원화(UI Toolkit/UGUI) 방침 + Claude 디자인 워크플로. **UI 판단 SSOT.**
+- `docs/UI_DESIGN_SYSTEM.md` — 팔레트/토큰/컴포넌트 등 UI 디자인 시스템 값.
+- `docs/ART_PIPELINE.md` — 아트 생성→마감 파이프라인 개요(상세는 `docs/art-direction/`).
 - `Assets/_Project/M0_SETUP.md` — 씬 연결 가이드.
 
 ## 프로젝트 개요
@@ -54,95 +61,17 @@
 - 아키텍처 규칙의 "입력 추상화 / 게임 로직에 플랫폼 분기 금지"는 유효하다. 단 "모바일이 성능 하한선"과
   "모바일 세로·PC 가로 각각 검증"은 이 기간 동안 완화한다.
 
-## 현재 구현 스냅샷 (2026-07-24)
+## 현재 구현 스냅샷 → `docs/STATUS.md`
 
-> 아래는 빠른 인수인계용 요약이다. 세부 규칙과 완료 이력은
-> `docs/SYSTEMS.md`, `docs/UI_ARCHITECTURE.md`, `docs/ROADMAP.md`를 따른다.
+지금 코드가 어디까지 와 있는지의 요약은 **`docs/STATUS.md`** 에 있다 (진입점을 얇게 두려고 분리했다).
+작업을 시작할 때 그 파일을 먼저 읽는다. 한 줄 요약:
 
-- **씬 흐름**: Build Settings `0 MainMenu → 1 Hub → 2 IsoPrototype`.
-  - 새 게임: `MainMenu → Hub → IsoPrototype`.
-  - 이후 프롤로그/세계관은 `MainMenuController.StartNewGame()`과 Hub 사이에 별도 씬으로 삽입한다.
-  - 던전의 `로비로 가기`는 Hub, 게임오버의 `메뉴로`는 MainMenu로 이동한다.
-- **UI/해상도**: 화면공간 UI는 UI Toolkit. `MainMenuHUD`, `HubHUD`,
-  `PrototypeHUD.Mobile/Desktop`이 공용 `DisplaySettings`와 `ResponsiveUiLayout`을 사용한다.
-  에디터/개발 빌드 설정창에서 `AUTO/MOBILE/PC`와 대표 해상도를 즉시 바꿀 수 있다. 모든 화면 루트는
-  `ui-touch/ui-pointer` 입력 프로필을 받는다. 터치 표준 컨트롤은 논리 56px, 밀집 슬롯은 최소 44px,
-  백팩 셀은 52px을 유지하고 짧은 화면에서는 본문을 스크롤한다.
-- **다층 월드 입력**: `IsoTapInput.TilePicker`가 실제 렌더된 아이소 다이아몬드를
-  `VisualPosition` 기준으로 고른다. 겹치면 **현재 활성 층 → Hole 미리보기 층 →
-  같은 레이어의 렌더 정렬 순서**다. 전체 elevation 역산 방식으로 되돌리지 말 것.
-- **수직 이동 의미**:
-  - `Stairs`: 같은 던전 층의 elevation을 걸어서 이동.
-  - `Ladder`: 해당 타일에서 자기 탭/Space로 명시적 링크 이동. 비주얼 길이는 실제 단차까지만.
-  - `StairsUp/Down`: 입구를 밟는 즉시 반대편 링크까지 한 행동으로 처리하는 던전 층 전환.
-  - `Hole`: 유일하게 위·아래 국소 시야와 낙하를 허용하는 실제 개구부.
-  - PLAY에서는 현재 층만 기본 표시하며 다른 층은 Hole 국소 미리보기 외에는 숨긴다.
-- **FOV/전투 정보**: Unknown/Explored/Visible 3상태. 시야 밖 적의 피해·사망 UI는
-  공개하지 않으며, 시체는 기본 3턴 뒤 월드와 탭 대상에서 제거한다.
-  시야선·수직 개구부 투시·근접 도달 기하·FOV 컬럼 해석의 SSOT는 모두 `SightRules`다
-  (`CombatRules`·`GridVisibility`는 위임). 수직은 실제 개구부만 통과하고, 컬럼은 span으로 봐서
-  지면과 머리 위 구조물(캐치워크)이 함께 잡힌다.
-- **첫 던전/보스**: 첫 목적지는 **폐병원(상승, `B2 → … → 8F` + 옥상 출구)** 10개 층 단일 던전이다
-  (GDD §10.1 — 확정, 생성기 상승 전환은 미착수). 코드 ID `forgotten-catacombs`·seed·층 수는 유지한다.
-  최상층의 `감시자`를
-  처치하기 전에는 최심층 출구가 붉게 봉인되고, 처치 후 청록 해금 연출과 전용 HUD가 갱신된다.
-  아레나에는 생성기가 고른 제단이 서고(처치 후 신호색이 식음), 바로 위층(B9)에 들어서면
-  접근 전조를 한 판에 한 번 알린다(`DungeonBossArenaRules`).
-  최심층 도착만으로 승리하지 않으며 출구 모달의 `던전 정복`을 선택해야 정산·런 종료가 확정된다.
-  체크포인트는 `dungeonId/stageCount/bossDefeated`를 보존한다.
-- **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
-  근접 돌진·스쿼시/플래시·픽셀 버스트·감쇠 카메라 흔들림을 적용한다. 화상은 주황 불꽃 고리,
-  빙결은 청록 결정 고리이며 부여/연장/상쇄를 구분한다. 적 FX도 반드시 FOV를 따른다.
-- **플레이테스트 계측**: `RunTelemetry`가 층별 시간·턴·피해·처치·아이템(획득/사용/조합)·휴식·
-  숨은 방·낙하·상태/원소 반응을 체크포인트와 함께 누적하고, `RefreshBands()`가 이를 깊이 구간
-  (Shallow B1~B3 / Mid B4~B6 / Deep B7~B9 / Boss B10+)으로 롤업한다 — 구간 값은 **파생**이라
-  따로 기록하지 않는다. 개발 디버그 창에서 구간 비교/수동 저장하며, 판 종료 시
-  `development-profile/telemetry`에 JSON 리포트를 자동 확정한다.
-- **숨은 방**: B1~B9 중 seed로 고른 3개 층에 `SecretDoor` 막다른 방이 생긴다. 공개 전에는
-  벽처럼 이동·FOV를 막고, 인접 균열의 `수상한 벽 조사` 또는 폭발로 `SecretPassage`가 된다.
-  `SecretRoomRules`와 `DungeonFloorInfo.SecretDoor/SecretReward`를 우회해 별도 판정을 만들지 않는다.
-- **아트 방향(전환 중)**: 테마를 **포스트 아포칼립스/이상 미궁**으로 전환 확정(GDD §10 v0.3).
-  방향·레퍼런스 SSOT는 `docs/art-direction/project-c-postapoc-art-direction-v1.md`, 리스킨 표는
-  `...postapoc-reskin-table-v1.md`. 팔레트 *원리*(청흑 바탕+국소 호박 광원+신호색 1개)는 유지하고
-  재료 어휘(석재→콘크리트/벽돌/녹, 횃불→비상등/네온, 마법 포탈→이상 균열)만 바꾼다.
-  **현재 구현은 아직 판타지 웜 다크 디오라마**다 — 허브는
-  `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
-  기준으로 횃불에 데워진 석재 + 토치 골드 모닥불/횃불 + 틸 포탈을 사용한다.
-  `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
-  FOV·상태 색은 건드리지 않는다. 광원 타일과 허브 소품은 시점 회전 때 같은 GridPos로 다시 투영한다.
-- **던전 공통 톤**: 모든 깊이는 `project-c-torchstone.gpl`의 18색 마스터 팔레트와
-  `ProjectCEnvironmentCatalog`의 런타임 역할색을 공유한다. 기본 환경은 청흑 void와
-  횃불에 데워진 웜 그레이·토프 석재, 물리 광원은 토치 골드, 마법/출구는 틸로 읽히게 한다.
-  깊이별 변주는 이 공통 톤 위에서만
-  제한적으로 적용하며, 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도와 전면 두께로 구분한다.
-  **깊이 변주의 통로는 세 가지뿐이다** — 밴드 스프라이트 슬롯, 구조(캐치워크 길이), 광원 밀도(등잔 희소도).
-  `DungeonSurfaceFor`의 석재색은 모든 깊이에서 같아야 한다(테스트로 고정). 값은 `DungeonBandProfile`.
-- **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
-  최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.
-  `ProjectCAsepritePipeline`이 Point/PPU 64/Canvas Pivot/무압축/AnimationClip을 강제하고
-  정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다.
-  `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이며 최종본으로 직접 수정하지 않는다.
-- **배고픔/중간 생환**: `HungerRules`가 포만→배고픔(경고)→굶주림(주기적 HP 감소)을 소유한다.
-  주기가 짧아(가득 찬 배 100턴) 중간중간 통조림을 먹는 리듬이며, 판 전체를 관통하고 모닥불로는
-  배가 차지 않는다. `ExtractionRules`의 비상 탈출구는 B4·B8 두 곳뿐이고 최심층은 보스를 잡아야
-  나간다. 비상 송출기(어디서든 생환)는 상점과 숨은 방에서 아주 가끔만 나온다 —
-  정산은 모두 `ExtractRun` 하나로 모인다. 하드 타이머를 쓰지 않는 이유는
-  파밍(기둥 4)을 죽이지 않기 위해서다.
-- **장비**: 무기 1 + 보조 1 슬롯. **어떤 장비도 공격력을 올리지 않는다** — 사거리 2(긴 파이프),
-  명중 넉백(대형 렌치), 피해 -1(표지판 방패), 안전 낙하 +2(완충 부츠)처럼 규칙만 바꾼다.
-  대장간이 골드로 제작·장착을 관리하고(`ForgeRules`), 옛 영구 스탯 강화는 제거했다(GDD §11).
-  장착 장비는 백팩 공간을 쓰지 않으며 출정 준비 격자에도 나오지 않는다.
-  **장비도 익스트랙션 규칙을 탄다** — 장착 = 반입이고, 죽거나 포기하면 잃는다.
-  살아 나와야 창고로 돌아오며, 창고에 남긴 예비 장비만 안전하다.
-- **백팩/창고**: 던전 백팩은 `BackpackRules` 6×4 멀티슬롯(1×1/1×2/2×2)이며
-  `BackpackLayout` 자동 배치를 UI가 그대로 그린다. 공간 부족 시 월드 아이템은 남고,
-  허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의
-  이동·영웅 기본 지급품·초과분 복귀를 담당한다. 허브에서 선택한 물품만 던전 진입 시 반입하고
-  나머지는 창고에 보존한다. 모바일은 선택 후 반대편 탭, PC는 버튼/드래그를 사용한다.
-- **최근 검증 기준**: EditMode `ProjectC.Tests.EditMode` **673/673 통과**,
-  PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**. 변경 후에는 숫자를 맹신하지 말고 둘 다 다시 실행한다.
-- **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
-  작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.
+- 첫 던전은 **폐병원(상승, `B2 → … → 8F` + 옥상 출구)** 10개 층 + 최상층 보스(`감시자`)이며
+  (코드 ID `forgotten-catacombs` 유지, 생성기 상승 전환은 미착수), FOV·낙하·상태이상/원소 반응·
+  장비·배고픔·익스트랙션·백팩/창고·숨은 방·텔레메트리가 붙어 있다.
+- 아트는 **판타지 웜 다크 디오라마 구현 상태**이고, 테마는 포스트 아포칼립스로 전환 확정 — 리스킨 진행 중이다.
+- **작업 트리 주의**: 커밋되지 않은 변경이 남아 있을 수 있다. 시작 시 `git status`/`git diff`를 확인하고
+  기존 변경을 reset/checkout으로 지우지 않는다.
 
 ## 디렉터리 구조
 
@@ -161,24 +90,67 @@ Assets/_Project/
   Scenes/             # MainMenu.unity, Hub.unity, IsoPrototype.unity
   UI/                 # MainMenuHUD, HubHUD, PrototypeHUD.Mobile/Desktop, DisplaySettings
   M0_SETUP.md         # 씬 연결 가이드
-docs/                 # ROADMAP, SYSTEMS, UI_ARCHITECTURE (에이전트 참조 문서)
+Tools/
+  ArtPipeline/        # 아트 후처리 Python (팔레트 잠금·시트 슬라이스·9-slice 빌드)
+  CoreTests/          # Unity 없이 Core 규칙 테스트를 돌리는 dotnet shim
+docs/                 # STATUS, ROADMAP, SYSTEMS, ARCHITECTURE, CODE_STRUCTURE,
+                      # UI_ARCHITECTURE, UI_DESIGN_SYSTEM, ART_PIPELINE (에이전트 참조 문서)
 GDD.md                # 게임 기획서 (SSOT)
 ```
 
 asmdef 5개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`,
 `ProjectC.Tests.EditMode`, `ProjectC.Tests.PlayMode`.
 
+## 테스트 (두 경로)
+
+- **Unity 없이 — Core 규칙**: `./Tools/CoreTests/run-core-tests.sh` (`dotnet test`).
+  `Scripts/Core`가 UnityEngine에 거의 의존하지 않는 덕에 규칙 테스트를 에디터 없이 돌린다.
+  **에디터가 없는 환경(웹/원격 세션)에서는 이게 유일한 검증 경로다** — 돌리지 않았으면
+  "테스트 통과"라고 쓰지 않는다. 경계는 `Tools/CoreTests/ProjectC.CoreTests.csproj` 주석 참조.
+- **에디터에서 — 전체 회귀**: EditMode `ProjectC.Tests.EditMode` + PlayMode
+  `ProjectC.Tests.PlayMode`를 **모두** 실행한다. shim은 이걸 대체하지 않는다
+  (씬·스프라이트·HUD·UI Toolkit 계약은 에디터에서만 검증된다).
+- 새 로직에는 EditMode 테스트를 함께 추가한다. Core 규칙 테스트라면 UnityEngine 타입을
+  쓰지 않는 편이 좋다 — 그러면 shim에서도 자동으로 돌아간다.
+
+## 자동 방어선 (훅 · CI)
+
+검증을 사람의 기억이나 에이전트의 주장에 맡기지 않는다. 두 층으로 기계가 확인한다.
+
+- **로컬 훅** (`.claude/settings.json` → `Tools/Hooks/`) — 모든 브랜치에서 항상 돈다.
+  - `PostToolUse`(`check-cs-edit.sh`): `Scripts/Core`의 UnityEngine 의존,
+    `Assets` 아래 `.meta` 누락, Unity 의존 EditMode 테스트의 shim 제외 누락을 잡는다.
+  - `Stop`(`verify-core-tests.sh`): `.cs`를 건드린 세션이 **테스트 실패 상태로 끝나지 못한다.**
+    dotnet이 없으면 조용히 건너뛴다(설치는 `run-core-tests.sh`가 한다).
+- **CI** (`.github/workflows/core-tests.yml`) — **`release/**` 브랜치 한정**
+  (push + release를 타깃하는 PR). Core 테스트 + Core 순수성 + `.meta` 누락을 검사한다.
+  `main`과 작업 브랜치에는 CI가 없다 — 그 구간은 위 로컬 훅이 유일한 방어선이므로
+  훅을 끄고 작업하지 않는다.
+
 ## Unity MCP
 
 - 이 리포는 MCP for Unity 자동화 경로를 사용한다 (**연결됨**). 씬 셋업/테스트/스크린샷 검증을 MCP로.
 - 스크립트 생성/수정 후에는 `read_console`로 컴파일 에러 확인.
-- 씬/UI 변경은 가능하면 실제 Play와 모바일 세로·PC 가로 Game View에서 각각 캡처 검증.
-- 전체 회귀 테스트는 EditMode `ProjectC.Tests.EditMode`와 PlayMode
-  `ProjectC.Tests.PlayMode`를 모두 실행한다.
+- 씬/UI 변경은 가능하면 실제 Play와 PC 가로 Game View에서 캡처 검증(현재 우선순위 절 참조).
+
+## 스킬 (반복 절차는 여기에 있다)
+
+Claude Code에서 `/이름`으로 호출한다. 절차를 매번 산문 문서에서 재현하지 말고 이걸 쓴다.
+
+- `/test` — 테스트를 올바른 경로로 실행하고 실패를 판정한다(shim / 에디터 회귀 구분).
+- `/feature-done` — 기능 마감 체크리스트(테스트·문서·파일 크기·범위·커밋).
+- `/art-conform` — 아트 시안 → 게임 에셋 마감(팔레트 잠금·임포트 규격·검증).
+
+정의는 `.claude/skills/<이름>/SKILL.md`. 절차가 바뀌면 문서가 아니라 **스킬을 고친다.**
 
 ## 작업 컨벤션
 
 - 주변 코드의 스타일(네이밍, 주석 밀도)을 따른다.
 - 새 로직에는 EditMode 테스트를 함께 추가.
-- 범위를 잔인할 정도로 좁게 유지. 기둥 4개에 부합하지 않는 기능은 보류.
+- **범위를 잔인할 정도로 좁게 유지.** 기둥 4개에 부합하지 않는 기능은 보류.
+  한 세션에서 무관한 시스템 여러 개를 건드리지 않는다 — 되돌릴 수 없게 엉킨다.
+- **설계 결정은 코드보다 먼저.** 규칙이 확정되지 않았으면 구현 대신 먼저 확정한다
+  (구현 뒤에 오는 설계 변경은 `fix:` 커밋으로 위장해서 나타난다).
+- 기능·테스트·문서는 **같은 커밋에** 넣는다. 사후에 기억으로 쓰는 문서는 실제와 어긋난다.
 - 커밋/푸시는 사용자가 요청할 때만.
+- 커밋 메시지는 한국어로 쓴다(제목의 `feat:`/`fix:` 같은 타입 접두사는 영어 유지).
