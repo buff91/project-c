@@ -408,7 +408,7 @@
       <div><span class="k">첫 던전</span><span class="v">잊힌 지하묘지<br><small>B1~B10 · seed 1977</small></span></div>
       <div><span class="k">테마 (v0.3)</span><span class="v">포스트 아포칼립스<br><small>이상(異常) 미궁</small></span></div>
       <div><span class="k">죽음</span><span class="v">판 종료<br><small>로그라이트 메타 이월</small></span></div>
-      <div><span class="k">목표 플레이 시간</span><span class="v">20~30분<br><small>실측으로 튜닝 중</small></span></div>
+      <div><span class="k">한 판 길이</span><span class="v">목표치 없음<br><small>밀도에서 파생 · 1시간도 정상</small></span></div>
       <div><span class="k">현재 타깃</span><span class="v">PC 우선<br><small>모바일 임시 보류</small></span></div>
     </div>
 
@@ -484,7 +484,7 @@
           <li>메타 해금 대상의 최종 범위 (레시피 / 시작 장비 / 역할)</li>
           <li>단일 영웅 vs 역할제 — 현재는 3영웅이나 프로토는 단순화 방침</li>
           <li>후속 던전(침수된 금고·잿불 성채) 개방 조건 = "다른 적"이 선행</li>
-          <li>보스/최심층 보상 수치, 20~30분 목표의 실측 정합</li>
+          <li>보스/최심층 보상 수치 (완주 시간은 목표치를 두지 않기로 확정)</li>
           <li>배고픔 단계에 붙일 별도 상태이상</li>
         </ul>
       </div>
@@ -1104,8 +1104,11 @@
 
     <h3>다음 한 걸음 (권장 순서)</h3>
     <ol>
-      <li><strong>실플레이 리포트 먼저.</strong> B1~B10 텔레메트리로 20~30분 목표·피해 급증 구간·아이템 활용도를
-          확인한다 — 아래 밸런싱 판단이 전부 여기에 의존한다.</li>
+      <li><strong>계측 공백부터.</strong> 내려치기 발동 · 높이차 사격 · 창문 파괴 · 탈출구에서 「계속 탐색」 —
+          기둥 1의 v0.3 콘텐츠가 실제로 쓰였는지 지금 리포트로는 알 수 없다.
+          장비는 <code>RunSaveData.carriedWeaponId/GearId</code>가 이미 있으므로 런 종료 시 스냅샷이면 된다.</li>
+      <li><strong>실플레이 리포트.</strong> B1~B10 텔레메트리로 밀도·피해 급증 구간·아이템 활용도를 확인한다 —
+          아래 밸런싱 판단이 전부 여기에 의존한다. 소요 시간은 판정이 아니라 밀도 지표로 읽는다.</li>
       <li><strong>플레이어 원거리 재조정.</strong> 적 압박(사수)이 생겼으니 M5의 너프(피해 1·사거리 4)를 다시 본다.</li>
       <li><strong>불변식 계약 테스트 분리.</strong> BSP 전환의 안전망을 먼저 깐다.</li>
       <li><strong>밴드 프로파일을 (지역, 깊이)로.</strong> 두 번째 원정지를 여는 유일한 선행 조건.</li>
