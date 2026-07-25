@@ -135,7 +135,9 @@ namespace ProjectC.Gameplay
             // 복귀 전용이라 한 방향이다 — 타고 올라오면 계단을 건너뛰는 지름길이 된다.
             _grid.Map.Connect(entrance.Value, landing.Value, bidirectional: false);
             _elevatorPowered = true;
-            // 표지를 다시 그린다 — 안 하면 다음 시야 갱신까지 멈춘 스프라이트가 남는다.
+            // 표지의 스프라이트·목적지를 먼저 바꾸고(랜드마크는 빌드 때 한 번 만들어진다),
+            // 그다음 가시성·라벨을 갱신한다. 순서가 바뀌면 옛 목적지로 라벨이 그려진다.
+            RefreshElevatorLandmark();
             RefreshFloorVisibility();
             InteractionFeedback?.Invoke("건물에 전원이 들어왔다 — 엘리베이터가 움직인다");
         }

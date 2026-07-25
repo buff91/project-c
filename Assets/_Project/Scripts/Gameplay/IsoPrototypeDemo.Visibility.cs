@@ -148,7 +148,9 @@ namespace ProjectC.Gameplay
                             IReadOnlyList<GridPos> elevatorLinks = _grid.Map.LinksFrom(anchor);
                             if (elevatorLinks.Count > 0) destination = elevatorLinks[0];
                             sprite = ActorSprites.GetElevatorLandmarkSprite(_elevatorPowered);
-                            labelHeight = 1.06f;
+                            // 스프라이트 머리가 타일 중심 대비 1.134 다. 라벨을 그보다 낮게 두면
+                            // **전원 표시등 위에 겹친다** — 상태를 알려주는 바로 그 요소를 가린다.
+                            labelHeight = 1.26f;
                             break;
                         }
 
@@ -242,6 +244,28 @@ namespace ProjectC.Gameplay
 
             landmark.Root.transform.position = position;
             landmark.Renderer.sortingOrder = _grid.iso.SortingOrder(landmark.Anchor, 1);
+        }
+
+        /// <summary>
+        /// 엘리베이터 표지를 전원 상태에 맞춰 <b>제자리에서</b> 갱신한다.
+        /// 랜드마크는 빌드 때 한 번 만들어지고 <see cref="RefreshVerticalLandmarks"/>는 가시성만
+        /// 손보므로, 이걸 부르지 않으면 보스를 잡아도 멈춘 스프라이트와 빈 목적지가 그대로 남는다.
+        /// 전체 재생성 대신 한 개만 고치는 이유는 중복 생성 위험이 없고 값싸기 때문이다.
+        /// </summary>
+        private void RefreshElevatorLandmark()
+        {
+            foreach (VerticalLandmarkAgent agent in _verticalLandmarks)
+            {
+                if (!IsElevatorEntrance(agent.Anchor)) continue;
+
+                if (agent.Renderer != null)
+                    agent.Renderer.sprite =
+                        ActorSprites.GetElevatorLandmarkSprite(_elevatorPowered);
+
+                IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(agent.Anchor);
+                agent.Destination = links.Count > 0 ? links[0] : (GridPos?)null;
+                return;
+            }
         }
 
         private void RefreshVerticalLandmarks()
