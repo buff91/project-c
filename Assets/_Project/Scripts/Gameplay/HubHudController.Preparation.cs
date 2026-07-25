@@ -50,9 +50,9 @@ namespace ProjectC.Gameplay
             int occupiedSlots = 0;
             foreach (ItemKind kind in ItemCatalog.AllKinds)
             {
-                if (ItemCatalog.IsTreasure(kind)) continue;
-                // 장비는 대장간에서 장착으로 관리한다 — 백팩 공간을 쓰지 않으므로 준비 격자에 넣지 않는다.
-                if (EquipmentCatalog.IsEquipment(kind)) continue;
+                // 전리품은 환금 전용이고, 장비는 대장간에서 장착으로 관리한다(백팩 공간을 쓰지 않는다).
+                ItemCategory category = ItemCatalog.CategoryOf(kind);
+                if (category == ItemCategory.Treasure || category == ItemCategory.Equipment) continue;
                 int count = _meta.GetCount(kind);
                 if (count <= 0) continue;
 

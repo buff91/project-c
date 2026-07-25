@@ -29,6 +29,22 @@ namespace ProjectC.Core
         ExtractionBeacon = 17 // 비상 송출기: 어디서든 즉시 생환. (ExtractionRules)
     }
 
+    /// <summary>
+    /// 아이템이 어떤 종류의 물건인가. 분류가 여러 곳에 흩어져 있으면(전리품인가? 재료인가?
+    /// 장비인가?) 새 아이템을 넣을 때마다 조건문을 빠뜨리게 된다 — 한 함수로 모은다.
+    /// </summary>
+    public enum ItemCategory
+    {
+        /// <summary>쓰면 사라지는 물건(물약·폭탄·통조림·송출기…).</summary>
+        Consumable = 0,
+        /// <summary>생환해야 값이 되는 환금 전용 전리품.</summary>
+        Treasure = 1,
+        /// <summary>조합에서만 소비되는 재료.</summary>
+        Material = 2,
+        /// <summary>슬롯에 장착하는 장비.</summary>
+        Equipment = 3
+    }
+
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
     public static class ItemCatalog
     {
@@ -54,8 +70,30 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>
+        /// 아이템 분류의 단일 출처. 장비 여부는 <see cref="EquipmentCatalog"/>에서 파생해
+        /// 목록이 두 벌 생기지 않게 한다.
+        /// </summary>
+        public static ItemCategory CategoryOf(ItemKind kind)
+        {
+            if (GoldValue(kind) > 0) return ItemCategory.Treasure;
+            if (EquipmentCatalog.IsEquipment(kind)) return ItemCategory.Equipment;
+            switch (kind)
+            {
+                case ItemKind.Herb:
+                case ItemKind.BlastPowder:
+                case ItemKind.FrostShard:
+                    return ItemCategory.Material;
+                default:
+                    return ItemCategory.Consumable;
+            }
+        }
+
         /// <summary>전리품(환금 전용) 여부. 던전 안에서는 사용 불가.</summary>
-        public static bool IsTreasure(ItemKind kind) => GoldValue(kind) > 0;
+        public static bool IsTreasure(ItemKind kind) => CategoryOf(kind) == ItemCategory.Treasure;
+
+        /// <summary>던전 인벤토리에서 "사용"할 수 있는가 — 전리품·재료·장비는 아니다.</summary>
+        public static bool IsUsable(ItemKind kind) => CategoryOf(kind) == ItemCategory.Consumable;
 
         /// <summary>상점 구매가. 0 이면 비매품(전리품은 팔지 않는다 — 파밍으로만).</summary>
         public static int ShopPrice(ItemKind kind)
@@ -85,8 +123,7 @@ namespace ProjectC.Core
         public static string FormatGold(int amount) => $"${amount}";
 
         /// <summary>조합 재료 여부. 사용 불가 — 조합 화면에서만 소비된다.</summary>
-        public static bool IsMaterial(ItemKind kind) =>
-            kind == ItemKind.Herb || kind == ItemKind.BlastPowder || kind == ItemKind.FrostShard;
+        public static bool IsMaterial(ItemKind kind) => CategoryOf(kind) == ItemCategory.Material;
 
         public static string DisplayName(ItemKind kind)
         {

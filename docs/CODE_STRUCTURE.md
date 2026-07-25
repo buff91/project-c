@@ -62,8 +62,10 @@
 - **시야**: `SightRules.cs`(수평·경사·수직 시야선 + 개구부 투시 + 근접 도달 기하 + 컬럼 span
   해석 `ViewColumn`) · `GridVisibility.cs`(옥탄트 셰도우캐스팅 골격만; 컬럼 판정은 위임) —
   옛 `VerticalOpeningRules`는 `SightRules`에 흡수됐다.
-- **아이템/상호작용**: `Items.cs`(`ItemKind`·`ItemCatalog`·`Inventory`·`ItemSpawn`) ·
-  `Interactions.cs`(`OilRules`·`BombRules`·`BombResult`) — 데이터와 상호작용 로직 분리.
+- **아이템/상호작용**: `Items.cs`(`ItemKind`·`ItemCategory`·`ItemCatalog`·`Inventory`·`ItemSpawn`) ·
+  `ItemStorage.cs`(수량 목록 저장 연산) · `Interactions.cs`(`OilRules`·`BombRules`·`BombResult`).
+  **아이템 종류를 늘릴 때 손댈 곳은 `ItemKind` + `ItemCatalog` 뿐이다** — 세이브·창고·로드아웃은
+  목록 기반이라 필드를 추가하지 않는다.
 - **던전 생성**: `DungeonLayout.cs`(`DungeonFloorInfo`·`DungeonLayout`·`DungeonGenerator.Generate`+헬퍼)
   + `DungeonGenerator.Planning.cs` / `.Carving.cs` / `.Placement.cs` — `partial static class`로 단계 분할.
 - **조명**: `GridLighting.cs` *(main 브랜치, 병합됨)*.
@@ -91,6 +93,8 @@
 | 장비 정의·효과 | `EquipmentCatalog` (전투 보정은 `CombatLoadout`) |
 | 장비 제작·장착 | `ForgeRules` (+ `MetaSaveData.equippedWeaponId/GearId`) |
 | 아이템 백팩 면적 | `BackpackRules.Footprint` |
+| 아이템 분류(소모품/전리품/재료/장비) | `ItemCatalog.CategoryOf` |
+| 아이템 수량 저장·복원 | `ItemStorage` (`MetaSaveData.stash/loadout`·`RunSaveData.items` 공유) |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 검증 필요)
 

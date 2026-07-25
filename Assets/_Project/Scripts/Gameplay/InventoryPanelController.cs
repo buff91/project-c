@@ -328,8 +328,7 @@ namespace ProjectC.Gameplay
             {
                 bool treasure = ItemCatalog.IsTreasure(kind);
                 bool material = ItemCatalog.IsMaterial(kind);
-                _useButton.SetEnabled(
-                    count > 0 && !treasure && !material && !EquipmentCatalog.IsEquipment(kind));
+                _useButton.SetEnabled(count > 0 && ItemCatalog.IsUsable(kind));
                 _useButton.text = treasure ? "생환 시 환금"
                     : material ? "조합 재료"
                     : kind == ItemKind.Potion ? "마시기"
@@ -365,8 +364,7 @@ namespace ProjectC.Gameplay
             if (demo == null || !_selected.HasValue || CountOf(_selected.Value) <= 0) return;
 
             ItemKind selected = _selected.Value;
-            if (ItemCatalog.IsTreasure(selected) || ItemCatalog.IsMaterial(selected)) return;
-            if (EquipmentCatalog.IsEquipment(selected)) return; // 장비는 조준 대상이 아니다
+            if (!ItemCatalog.IsUsable(selected)) return; // 전리품·재료·장비는 쓰지 않는다
 
             Close();
             switch (selected)
