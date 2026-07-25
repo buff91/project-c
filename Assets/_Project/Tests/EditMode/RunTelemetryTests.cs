@@ -126,23 +126,23 @@ namespace ProjectC.Tests
 
             Assert.AreEqual(3, telemetry.bands.Count, "방문하지 않은 구간은 리포트에 넣지 않는다");
             Assert.AreEqual("Shallow", telemetry.bands[0].band);
-            Assert.AreEqual("B1~B3", telemetry.bands[0].floorRange);
+            Assert.AreEqual("1~3번째", telemetry.bands[0].floorRange);
             Assert.AreEqual(2, telemetry.bands[0].floors);
             Assert.AreEqual(2, telemetry.bands[0].turns);
             Assert.AreEqual(3, telemetry.bands[0].damageTaken);
             Assert.AreEqual(12f, telemetry.bands[0].elapsedSeconds);
 
             Assert.AreEqual("Mid", telemetry.bands[1].band);
-            Assert.AreEqual("B4~B6", telemetry.bands[1].floorRange);
+            Assert.AreEqual("4~6번째", telemetry.bands[1].floorRange);
             Assert.AreEqual(1, telemetry.bands[1].kills);
             Assert.AreEqual(1, telemetry.bands[1].itemsUsed);
 
             Assert.AreEqual("Boss", telemetry.bands[2].band);
-            Assert.AreEqual("B10+", telemetry.bands[2].floorRange);
+            Assert.AreEqual("10번째+", telemetry.bands[2].floorRange);
             Assert.AreEqual(7, telemetry.bands[2].damageTaken);
             Assert.AreEqual(1, telemetry.bands[2].kills);
 
-            StringAssert.Contains("Mid B4~B6", telemetry.FormatBandSummary());
+            StringAssert.Contains("중반 4~6번째", telemetry.FormatBandSummary());
             StringAssert.Contains("구간별:", telemetry.FormatDetailedSummary());
         }
 

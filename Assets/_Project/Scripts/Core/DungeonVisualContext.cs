@@ -35,19 +35,42 @@ namespace ProjectC.Core
         // 구간이 필요하면 ForDepth(진행 지수)를 쓰고, 진행 지수는
         // DungeonLayout.ProgressIndexFor(floorIndex) 로 얻는다.
 
-        /// <summary>계측 리포트에서 구간을 가리키는 사람이 읽는 층 범위. (깊이 0 = B1)</summary>
+        /// <summary>
+        /// 계측 리포트에서 구간을 가리키는 사람이 읽는 <b>진행</b> 범위.
+        /// <para>
+        /// 예전에는 <c>B1~B3</c>처럼 지하 층 표기를 썼는데, 던전이 상승·평면일 수도 있으므로
+        /// (GDD §10.1) 화면에 거짓이 된다. 진행 순서는 방향과 무관하므로 "몇 번째 층"으로 쓴다 —
+        /// 폐병원에서 1~3번째는 B2·B1·1F이고, 하강 던전에서는 B1~B3이다.
+        /// </para>
+        /// </summary>
         public static string RangeLabel(DungeonDepthBand band)
         {
             switch (band)
             {
                 case DungeonDepthBand.Shallow:
-                    return $"B1~B{ShallowLastDepth + 1}";
+                    return $"1~{ShallowLastDepth + 1}번째";
                 case DungeonDepthBand.Mid:
-                    return $"B{ShallowLastDepth + 2}~B{MidLastDepth + 1}";
+                    return $"{ShallowLastDepth + 2}~{MidLastDepth + 1}번째";
                 case DungeonDepthBand.Deep:
-                    return $"B{MidLastDepth + 2}~B{DeepLastDepth + 1}";
+                    return $"{MidLastDepth + 2}~{DeepLastDepth + 1}번째";
                 default:
-                    return $"B{DeepLastDepth + 2}+";
+                    return $"{DeepLastDepth + 2}번째+";
+            }
+        }
+
+        /// <summary>
+        /// 구간의 사람이 읽는 이름. 열거자 이름(Shallow/Mid/Deep)은 깊이 어휘라
+        /// 상승 던전에서 어긋나므로, 화면·리포트에는 방향 중립어를 쓴다.
+        /// 열거자 자체는 코드/JSON 키로 그대로 둔다(과거 리포트 호환).
+        /// </summary>
+        public static string BandLabel(DungeonDepthBand band)
+        {
+            switch (band)
+            {
+                case DungeonDepthBand.Shallow: return "초반";
+                case DungeonDepthBand.Mid: return "중반";
+                case DungeonDepthBand.Deep: return "후반";
+                default: return "보스";
             }
         }
     }

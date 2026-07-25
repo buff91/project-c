@@ -23,10 +23,10 @@ namespace ProjectC.Tests
             Assert.AreSame(DungeonBandProfiles.ForBand(expected), DungeonBandProfiles.ForDepth(depth));
         }
 
-        [TestCase(DungeonDepthBand.Shallow, "B1~B3")]
-        [TestCase(DungeonDepthBand.Mid, "B4~B6")]
-        [TestCase(DungeonDepthBand.Deep, "B7~B9")]
-        [TestCase(DungeonDepthBand.Boss, "B10+")]
+        [TestCase(DungeonDepthBand.Shallow, "1~3번째")]
+        [TestCase(DungeonDepthBand.Mid, "4~6번째")]
+        [TestCase(DungeonDepthBand.Deep, "7~9번째")]
+        [TestCase(DungeonDepthBand.Boss, "10번째+")]
         public void RangeLabel_MatchesBoundaries(DungeonDepthBand band, string expected)
         {
             Assert.AreEqual(expected, DungeonDepthBandRules.RangeLabel(band));

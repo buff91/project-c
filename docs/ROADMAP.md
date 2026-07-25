@@ -270,11 +270,12 @@
       `DungeonDepthBandRules.ForFloor`는 **삭제**한다(결함의 원천).
       체크포인트도 진행 지수를 저장해야 한다 — `currentFloorIndex`로 역산할 수 없다.
       상세: `docs/ARCHITECTURE.md` §4.5 경고 박스.
-- [ ] **표시 리스킨** — `DungeonCatalog` 표시명/설명/`RouteLabel`을 폐병원·상승 표기로.
+- [x] **표시 리스킨** — `DungeonCatalog` 표시명/설명/`RouteLabel`을 폐병원·상승 표기로. 코드 ID 유지.
       코드 ID·seed·층 수(10)는 유지. 생성기는 아직 하강이므로 **라벨만 앞서 나가지 않게** 함께 묶어 처리한다.
-- [ ] **구간 라벨 방향 중립화** — `DungeonDepthBandRules`의 `Shallow/Mid/Deep/Boss` 표시명을
-      **초반/중반/후반/보스**로. 판정 상수·경계는 그대로 두고 라벨만 바꾼다. 밴드는 파생 값이라
-      **과거 리포트도 같은 규칙으로 다시 묶인다**(라벨↔판정 대조 테스트 갱신).
+- [x] **구간 라벨 방향 중립화** — `DungeonDepthBandRules.BandLabel`(초반/중반/후반/보스)과
+      `RangeLabel`(「1~3번째」 식 진행 표기)을 추가하고 리포트가 이를 쓴다. 열거자 이름
+      (`Shallow/Mid/Deep/Boss`)은 코드·JSON 키로 그대로 둬 과거 리포트와 호환된다.
+      판정 상수·경계는 손대지 않았다. `RunBandTelemetry.label` 신설.
 - [ ] **생성기 상승 전환** — 층 루프 방향, `StairsUp/Down` 링크 방향, `RunStartRules.ResolvePreviewDepth`
       부호. Hole은 여전히 **아래(= 이전 층)로** 떨어지므로 생성 순서가 뒤집힌다(착지 층이 먼저 생성됨).
       기존 불변식(정확히 한 층 아래 착지·2층 관통 금지·기둥 겹침)은 **그대로 계약으로 유지**한다.

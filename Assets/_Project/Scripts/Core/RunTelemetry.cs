@@ -46,7 +46,12 @@ namespace ProjectC.Core
     [Serializable]
     public sealed class RunBandTelemetry
     {
+        /// <summary>코드/JSON 키(Shallow/Mid/Deep/Boss). 과거 리포트 호환을 위해 유지한다.</summary>
         public string band;
+
+        /// <summary>화면·리포트용 방향 중립 이름(초반/중반/후반/보스).</summary>
+        public string label;
+
         public string floorRange;
         public int floors;
         public int visits;
@@ -357,6 +362,7 @@ namespace ProjectC.Core
                         rolled = new RunBandTelemetry
                         {
                             band = band.ToString(),
+                            label = DungeonDepthBandRules.BandLabel(band),
                             floorRange = DungeonDepthBandRules.RangeLabel(band)
                         };
                     }
@@ -427,7 +433,7 @@ namespace ProjectC.Core
                 RunBandTelemetry band = bands[i];
                 if (i > 0) text.Append('\n');
                 text.Append(
-                    $"- {band.band} {band.floorRange} · {FormatDuration(band.elapsedSeconds)}/{band.turns}턴 " +
+                    $"- {band.label} {band.floorRange} · {FormatDuration(band.elapsedSeconds)}/{band.turns}턴 " +
                     $"({band.floors}층) · 피해 {band.damageTaken} / 가한 피해 {band.damageDealt} · " +
                     $"처치 {band.kills} · 아이템 {band.itemsCollected}획득·{band.itemsUsed}사용 · " +
                     $"휴식 {band.restSitesUsed}회/+{band.healingFromRest} HP · 숨은 방 {band.secretRoomsFound}");
