@@ -1,0 +1,66 @@
+name: Core 규칙 테스트
+
+# release 브랜치에 반영될 때만 돈다 — main과 작업 브랜치는 로컬 훅
+# (Tools/Hooks/verify-core-tests.sh)이 막는다.
+#
+# pull_request 도 넣은 이유: "반영될 때"를 머지 후가 아니라 머지 직전에 잡는다.
+# release 브랜치가 이미 빨개진 뒤에 아는 것은 늦다.
+on:
+  push:
+    branches:
+      - 'release/**'
+  pull_request:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+jobs:
+  core-tests:
+    name: dotnet test (Unity 불필요)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: .NET 8 SDK 설치
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: NuGet 캐시
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Tools/CoreTests/ProjectC.CoreTests.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Core 규칙 테스트
+        run: dotnet test Tools/CoreTests/ProjectC.CoreTests.csproj --nologo --verbosity minimal
+
+      # Core 순수성은 shim이 도는 근거다 — 깨지면 커버리지가 조용히 줄어든다.
+      # (IsoGrid.cs만 예외이며 csproj에서 명시적으로 제외된다.)
+      - name: Core 순수성 확인 (UnityEngine 의존)
+        run: |
+          violations="$(grep -rl 'using UnityEngine' Assets/_Project/Scripts/Core --include='*.cs' \
+            | grep -v 'Core/IsoGrid.cs' || true)"
+          if [ -n "$violations" ]; then
+            echo "Scripts/Core는 순수 C# 로직이어야 한다. UnityEngine에 의존하는 파일:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "OK — IsoGrid.cs 외에 UnityEngine 의존 없음"
+
+      # 에디터 없는 세션에서 추가된 .cs 는 .meta 가 빠질 수 있다.
+      - name: .meta 누락 확인
+        run: |
+          missing=""
+          while IFS= read -r f; do
+            [ -f "${f}.meta" ] || missing="${missing}${f}"$'\n'
+          done < <(find Assets -name '*.cs' -not -path '*/obj/*' -not -path '*/bin/*')
+          if [ -n "$missing" ]; then
+            echo ".meta 가 없는 스크립트 (Unity 참조가 끊긴다):"
+            printf '%s' "$missing"
+            exit 1
+          fi
+          echo "OK — .meta 누락 없음"

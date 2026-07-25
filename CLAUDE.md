@@ -111,6 +111,20 @@ asmdef 5개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`
 - 새 로직에는 EditMode 테스트를 함께 추가한다. Core 규칙 테스트라면 UnityEngine 타입을
   쓰지 않는 편이 좋다 — 그러면 shim에서도 자동으로 돌아간다.
 
+## 자동 방어선 (훅 · CI)
+
+검증을 사람의 기억이나 에이전트의 주장에 맡기지 않는다. 두 층으로 기계가 확인한다.
+
+- **로컬 훅** (`.claude/settings.json` → `Tools/Hooks/`) — 모든 브랜치에서 항상 돈다.
+  - `PostToolUse`(`check-cs-edit.sh`): `Scripts/Core`의 UnityEngine 의존,
+    `Assets` 아래 `.meta` 누락, Unity 의존 EditMode 테스트의 shim 제외 누락을 잡는다.
+  - `Stop`(`verify-core-tests.sh`): `.cs`를 건드린 세션이 **테스트 실패 상태로 끝나지 못한다.**
+    dotnet이 없으면 조용히 건너뛴다(설치는 `run-core-tests.sh`가 한다).
+- **CI** (`.github/workflows/core-tests.yml`) — **`release/**` 브랜치 한정**
+  (push + release를 타깃하는 PR). Core 테스트 + Core 순수성 + `.meta` 누락을 검사한다.
+  `main`과 작업 브랜치에는 CI가 없다 — 그 구간은 위 로컬 훅이 유일한 방어선이므로
+  훅을 끄고 작업하지 않는다.
+
 ## Unity MCP
 
 - 이 리포는 MCP for Unity 자동화 경로를 사용한다 (**연결됨**). 씬 셋업/테스트/스크린샷 검증을 MCP로.
