@@ -97,6 +97,27 @@ namespace ProjectC.Core
             }
         }
 
+        /// <summary>HUD/피드백용 짧은 영문 라벨. 픽셀 폭이 좁은 액션 문구에서 KR 이름 대신 쓴다.</summary>
+        public static string ShortLabel(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.Potion: return "POTION";
+                case ItemKind.Bomb: return "BOMB";
+                case ItemKind.FrostBomb: return "FROST";
+                case ItemKind.OilFlask: return "OIL";
+                case ItemKind.ThrowingKnife: return "KNIFE";
+                case ItemKind.RecallScroll: return "SCROLL";
+                case ItemKind.CoinPouch: return "COIN";
+                case ItemKind.Gemstone: return "GEM";
+                case ItemKind.Relic: return "RELIC";
+                case ItemKind.Herb: return "HERB";
+                case ItemKind.BlastPowder: return "POWDER";
+                case ItemKind.FrostShard: return "SHARD";
+                default: return kind.ToString();
+            }
+        }
+
         public static string Description(ItemKind kind)
         {
             switch (kind)

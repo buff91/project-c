@@ -27,18 +27,7 @@ namespace ProjectC.Gameplay
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
 
-            if (data.potions > 0) _inventory.Add(ItemKind.Potion, data.potions);
-            if (data.bombs > 0) _inventory.Add(ItemKind.Bomb, data.bombs);
-            if (data.frostBombs > 0) _inventory.Add(ItemKind.FrostBomb, data.frostBombs);
-            if (data.oilFlasks > 0) _inventory.Add(ItemKind.OilFlask, data.oilFlasks);
-            if (data.knives > 0) _inventory.Add(ItemKind.ThrowingKnife, data.knives);
-            if (data.scrolls > 0) _inventory.Add(ItemKind.RecallScroll, data.scrolls);
-            if (data.coinPouches > 0) _inventory.Add(ItemKind.CoinPouch, data.coinPouches);
-            if (data.gemstones > 0) _inventory.Add(ItemKind.Gemstone, data.gemstones);
-            if (data.relics > 0) _inventory.Add(ItemKind.Relic, data.relics);
-            if (data.herbs > 0) _inventory.Add(ItemKind.Herb, data.herbs);
-            if (data.powders > 0) _inventory.Add(ItemKind.BlastPowder, data.powders);
-            if (data.frostShards > 0) _inventory.Add(ItemKind.FrostShard, data.frostShards);
+            data.AddItemsTo(_inventory);
             InventoryChanged?.Invoke();
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
@@ -59,7 +48,7 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive)
                 return;
 
-            RunSaveStore.Save(new RunSaveData
+            var data = new RunSaveData
             {
                 heroId = _hero != null ? _hero.Id : null,
                 dungeonId = DungeonSelection.Selected.Id,
@@ -72,23 +61,13 @@ namespace ProjectC.Gameplay
                 currentFloorIndex = _activeFloorIndex,
                 bossDefeated = _bossDefeated,
                 hp = _playerState.Hp,
-                potions = PotionCount,
-                bombs = BombCount,
-                frostBombs = FrostBombCount,
-                oilFlasks = ItemCount(ItemKind.OilFlask),
-                knives = ItemCount(ItemKind.ThrowingKnife),
-                scrolls = ItemCount(ItemKind.RecallScroll),
-                coinPouches = ItemCount(ItemKind.CoinPouch),
-                gemstones = ItemCount(ItemKind.Gemstone),
-                relics = ItemCount(ItemKind.Relic),
-                herbs = ItemCount(ItemKind.Herb),
-                powders = ItemCount(ItemKind.BlastPowder),
-                frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 telemetry = _runTelemetry
-            });
+            };
+            data.WriteItems(_inventory);
+            RunSaveStore.Save(data);
         }
 
         /// <summary>던전 선택 확인 — 허브에서 새 판을 시작한다.</summary>
@@ -251,23 +230,12 @@ namespace ProjectC.Gameplay
             {
                 heroId = _hero != null ? _hero.Id : null,
                 hp = restedHp,
-                potions = PotionCount,
-                bombs = BombCount,
-                frostBombs = FrostBombCount,
-                oilFlasks = ItemCount(ItemKind.OilFlask),
-                knives = ItemCount(ItemKind.ThrowingKnife),
-                scrolls = ItemCount(ItemKind.RecallScroll),
-                coinPouches = ItemCount(ItemKind.CoinPouch),
-                gemstones = ItemCount(ItemKind.Gemstone),
-                relics = ItemCount(ItemKind.Relic),
-                herbs = ItemCount(ItemKind.Herb),
-                powders = ItemCount(ItemKind.BlastPowder),
-                frostShards = ItemCount(ItemKind.FrostShard),
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 telemetry = _runTelemetry
             };
+            carry.WriteItems(_inventory);
 
             _stageIndex++;
             dungeonSeed = dungeonSeed * 31 + 7; // 결정론적 체인 — 같은 시작 seed 면 같은 여정

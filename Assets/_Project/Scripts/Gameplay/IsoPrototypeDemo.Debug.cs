@@ -78,7 +78,7 @@ namespace ProjectC.Gameplay
                 return;
             }
             InventoryChanged?.Invoke();
-            InteractionFeedback?.Invoke($"CHEAT: {ItemLabel(kind)} +1 (×{count})");
+            InteractionFeedback?.Invoke($"CHEAT: {ItemCatalog.ShortLabel(kind)} +1 (×{count})");
         }
 
         public void DebugKillAllOnFloor()

@@ -21,13 +21,17 @@ namespace ProjectC.Core
         /// <summary>HP 비율이 이 값 미만이면 도주. 0이면 도주하지 않는다. (도주는 MonsterBrain.DecideFlee 에서 구현됨)</summary>
         public float FleeThreshold { get; }
 
+        /// <summary>표시용 이름(정산/텔레메트리 문구의 SSOT). 미지정 시 코드 ID 로 폴백한다.</summary>
+        public string DisplayName { get; }
+
         public MonsterArchetype(
             string id,
             int maxHp,
             int attackPower,
             int aggroRange,
             int patrolRadius,
-            float fleeThreshold = 0f)
+            float fleeThreshold = 0f,
+            string displayName = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("몬스터 ID가 필요합니다.", nameof(id));
             if (maxHp <= 0) throw new ArgumentOutOfRangeException(nameof(maxHp));
@@ -42,6 +46,7 @@ namespace ProjectC.Core
             AggroRange = aggroRange;
             PatrolRadius = patrolRadius;
             FleeThreshold = fleeThreshold;
+            DisplayName = string.IsNullOrWhiteSpace(displayName) ? id : displayName;
         }
     }
 }

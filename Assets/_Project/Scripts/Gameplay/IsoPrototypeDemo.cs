@@ -1053,7 +1053,7 @@ namespace ProjectC.Gameplay
                 InventoryChanged?.Invoke();
 
                 InteractionFeedback?.Invoke(
-                    $"{ItemLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");
+                    $"{ItemCatalog.ShortLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");
                 Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
                 return;
             }

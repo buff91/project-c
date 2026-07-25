@@ -66,7 +66,7 @@ namespace ProjectC.Gameplay
             bool alreadyAimingThis = _bombAiming && _bombAimKind == kind;
             if (!alreadyAimingThis && _inventory.Count(kind) <= 0)
             {
-                InteractionFeedback?.Invoke($"NO {ItemLabel(kind)}S");
+                InteractionFeedback?.Invoke($"NO {ItemCatalog.ShortLabel(kind)}S");
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace ProjectC.Gameplay
             SetBombAiming(!alreadyAimingThis);
             string aimHint = kind == ItemKind.ThrowingKnife
                 ? $"KNIFE: 적을 탭 · 사거리 {rangedAttackRange} · 피해 {knifeDamage}"
-                : $"{ItemLabel(kind)}: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3";
+                : $"{ItemCatalog.ShortLabel(kind)}: 목표 타일 탭 · 사거리 {bombThrowRange} · 3×3";
             InteractionFeedback?.Invoke(_bombAiming ? aimHint : "AIM CANCELED");
         }
 
@@ -83,26 +83,6 @@ namespace ProjectC.Gameplay
             _bombAiming = aiming;
             // 조준 종류 전환도 HUD 하이라이트에 반영돼야 하므로 상태가 같아도 알린다.
             BombAimingChanged?.Invoke(aiming);
-        }
-
-        private static string ItemLabel(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: return "POTION";
-                case ItemKind.Bomb: return "BOMB";
-                case ItemKind.FrostBomb: return "FROST";
-                case ItemKind.OilFlask: return "OIL";
-                case ItemKind.ThrowingKnife: return "KNIFE";
-                case ItemKind.RecallScroll: return "SCROLL";
-                case ItemKind.CoinPouch: return "COIN";
-                case ItemKind.Gemstone: return "GEM";
-                case ItemKind.Relic: return "RELIC";
-                case ItemKind.Herb: return "HERB";
-                case ItemKind.BlastPowder: return "POWDER";
-                case ItemKind.FrostShard: return "SHARD";
-                default: return kind.ToString();
-            }
         }
 
         /// <summary>선택 마커를 옮기고 행동 코루틴을 잠금 래퍼로 시작한다. (탭 분기 공통 꼬리)</summary>
