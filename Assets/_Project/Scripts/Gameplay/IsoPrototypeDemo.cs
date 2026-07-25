@@ -225,10 +225,23 @@ namespace ProjectC.Gameplay
         public CombatActionMode CombatMode => combatMode;
         public int RangedAttackRange => rangedAttackRange;
         public string VerticalHintLabel => BuildVerticalHintLabel();
+        /// <summary>
+        /// 지금 <b>어디</b>에 서 있는가. 상태는 넣지 않는다 — 배고픔이 여기 섞여 있던 시절엔
+        /// 이 한 줄이 담긴 패널을 넘쳐 미니맵 위에 겹쳐 찍혔고, 애초에 배고픔은 위치가 아니다.
+        /// </summary>
         public string LocationLabel => _dungeon == null
             ? "--"
             : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · " +
-              $"({_playerPos.x},{_playerPos.y}) · {HungerRules.Label(_hunger.Stage)}";
+              $"({_playerPos.x},{_playerPos.y})";
+
+        /// <summary>
+        /// 배고픔 단계. HP 와 같은 <b>활력</b>이라 vitals 에 붙는다 — 판 전체를 관통하며
+        /// "다음 탈출구까지 버틸 식량이 있나"를 계속 묻는 값이라, 위치 옆이 아니라 HP 옆이 제자리다.
+        /// </summary>
+        public string HungerLabel => HungerRules.Label(_hunger.Stage);
+
+        /// <summary>배고픔이 경고 이상인가 — HUD 가 색으로 구분한다.</summary>
+        public bool HungerIsWarning => _hunger.Stage != HungerStage.Fed;
         public string ActiveFloorLabel => FloorLabel(_activeFloorIndex);
 
         /// <summary>

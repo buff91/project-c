@@ -96,6 +96,14 @@ namespace ProjectC.Gameplay
         {
             if (_locationLabel != null)
                 _locationLabel.text = demo != null ? demo.LocationLabel : "--";
+
+            // 배고픔은 위치가 아니라 활력이라 vitals 에 있지만, 갱신 시점은 같다
+            // (둘 다 플레이어가 한 행동 할 때마다 바뀐다).
+            if (_hungerLabel != null)
+            {
+                _hungerLabel.text = demo != null ? demo.HungerLabel : "포만";
+                _hungerLabel.EnableInClassList("is-warning", demo != null && demo.HungerIsWarning);
+            }
         }
 
         private void UpdateVerticalHintLabel()

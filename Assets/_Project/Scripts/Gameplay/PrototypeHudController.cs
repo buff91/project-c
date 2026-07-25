@@ -46,6 +46,7 @@ namespace ProjectC.Gameplay
         private Label _depthCaption;
         private Label _floorLabel;
         private Label _locationLabel;
+        private Label _hungerLabel;
         private Label _statusLabel;
         private Label _verticalHintLabel;
         private VisualElement _routeDiscovery;
@@ -230,6 +231,7 @@ namespace ProjectC.Gameplay
             _depthCaption = root.Q<Label>("depth-caption");
             _floorLabel = root.Q<Label>("floor-label");
             _locationLabel = root.Q<Label>("location-label");
+            _hungerLabel = root.Q<Label>("hunger-label");
             _statusLabel = root.Q<Label>("status-label");
             _verticalHintLabel = root.Q<Label>("vertical-hint-label");
             _routeDiscovery = root.Q<VisualElement>("vertical-route-discovery");

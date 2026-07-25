@@ -23,6 +23,7 @@ namespace ProjectC.Tests
             "depth-label",
             "depth-caption",
             "location-label",
+            "hunger-label",
             "floor-label",
             "status-label",
             "vertical-hint-label",

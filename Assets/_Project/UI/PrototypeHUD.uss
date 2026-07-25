@@ -141,6 +141,19 @@
     color: rgb(255, 176, 164);
 }
 
+/* 배고픔은 HP 와 같은 활력이라 vitals 에 붙는다. 평소엔 조용한 회색이고
+   경고 단계부터 색이 붙는다 — 포만은 알림이 아니라 배경 정보다. */
+.hunger-label {
+    color: var(--muted);
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin-top: 3px;
+}
+
+.hunger-label.is-warning {
+    color: rgb(255, 176, 164);
+}
+
 .mana-value {
     color: rgb(184, 202, 255);
 }

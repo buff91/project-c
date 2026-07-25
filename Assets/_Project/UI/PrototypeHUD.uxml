@@ -15,6 +15,7 @@
                 </ui:VisualElement>
                 <ui:Label name="hp-value" text="--/--" class="hp-value" />
             </ui:VisualElement>
+            <ui:Label name="hunger-label" text="포만" class="hunger-label" />
         </ui:VisualElement>
 
         <ui:VisualElement class="artifact-panel minimap-panel">
