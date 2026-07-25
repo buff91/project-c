@@ -6,9 +6,10 @@ namespace ProjectC.Core
     public enum MonsterActionKind
     {
         Wait = 0,
-        Step,      // Target 칸으로 한 걸음
-        OpenDoor,  // Target 의 닫힌 문을 연다 (행동 1회)
-        Attack     // 인접한 플레이어를 근접 공격
+        Step,        // Target 칸으로 한 걸음
+        OpenDoor,    // Target 의 닫힌 문을 연다 (행동 1회)
+        Attack,      // 인접한 플레이어를 근접 공격
+        RangedAttack // 사거리·사선이 잡힌 플레이어를 원거리 공격
     }
 
     /// <summary>브레인이 반환하는 행동 "의도". 실행·연출은 Gameplay 가 담당한다.</summary>
@@ -27,6 +28,8 @@ namespace ProjectC.Core
         public static MonsterAction Step(GridPos to) => new MonsterAction(MonsterActionKind.Step, to);
         public static MonsterAction OpenDoor(GridPos door) => new MonsterAction(MonsterActionKind.OpenDoor, door);
         public static MonsterAction Attack() => new MonsterAction(MonsterActionKind.Attack, default);
+        public static MonsterAction RangedAttack() =>
+            new MonsterAction(MonsterActionKind.RangedAttack, default);
 
         public override string ToString() =>
             Kind == MonsterActionKind.Step || Kind == MonsterActionKind.OpenDoor
@@ -181,6 +184,13 @@ namespace ProjectC.Core
         {
             GridPos self = context.Self.Position;
 
+            // 사수는 붙기 전에 쏜다. 결정하지 못하면(사선도 자리도 없으면) 일반 추격으로 흘린다.
+            if (seesPlayer && _archetype.IsRanged)
+            {
+                MonsterAction? ranged = DecideRanged(context);
+                if (ranged.HasValue) return ranged.Value;
+            }
+
             if (seesPlayer && CombatRules.AreAdjacent(context.Self, context.Player))
                 return MonsterAction.Attack();
 
@@ -196,6 +206,49 @@ namespace ProjectC.Core
             return context.Map.Get(step)?.kind == TileKind.DoorClosed
                 ? MonsterAction.OpenDoor(step)   // 추격 중에만 문을 연다 (순찰은 안 엶)
                 : MonsterAction.Step(step);
+        }
+
+        /// <summary>
+        /// 사수의 교전 순서. ① 너무 붙었으면 거리를 벌린다(막히면 붙어서라도 싸운다)
+        /// ② 사거리·사선이 잡히면 쏜다 ③ 아니면 사격 가능한 자리로 한 걸음.
+        /// 셋 다 못 하면 null 을 돌려 일반 추격(붙어서 때리기)으로 넘긴다.
+        ///
+        /// 판정은 전부 플레이어와 같은 <see cref="CombatRules"/>를 쓴다 — 사거리 예산에 높이차를
+        /// 물리는 규칙(고지대는 비쌈)도 그대로 적용돼, 사수와 플레이어가 같은 기하를 공유한다.
+        /// </summary>
+        private MonsterAction? DecideRanged(MonsterBrainContext context)
+        {
+            GridPos self = context.Self.Position;
+            GridPos player = context.Player.Position;
+
+            if (_archetype.KeepAwayRange > 0 &&
+                self.ChebyshevTo(player) <= _archetype.KeepAwayRange)
+            {
+                // 거리 벌리기는 도주와 같은 규칙(가장 멀어지는 이웃 칸)을 재사용한다.
+                MonsterAction retreat = DecideFlee(context);
+                if (retreat.Kind == MonsterActionKind.Step) return retreat;
+                // 물러설 곳이 없으면 붙어서라도 싸운다.
+                if (CombatRules.AreAdjacent(context.Self, context.Player))
+                    return MonsterAction.Attack();
+            }
+
+            if (CombatRules.CanFireFrom(context.Map, self, player, _archetype.RangedRange))
+                return MonsterAction.RangedAttack();
+
+            if (CombatRules.FindFiringPosition(
+                    context.Map,
+                    self,
+                    player,
+                    _archetype.RangedRange,
+                    out List<GridPos> path,
+                    pos => pos != self &&
+                           (IsFallHazard(context.Map, pos) ||
+                            (context.IsOccupied != null && context.IsOccupied(pos)))) &&
+                path.Count >= 2 &&
+                context.Height.SameFloor(self, path[1]))
+                return MonsterAction.Step(path[1]);
+
+            return null;
         }
 
         /// <summary>공격이 성립하는 칸(플레이어와 같은 elevation 의 4방향 이웃)까지의 최단 경로.</summary>

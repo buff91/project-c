@@ -11,6 +11,9 @@ namespace ProjectC.Core
         public int GoblinWeight { get; }
         public int SkeletonWeight { get; }
 
+        /// <summary>원거리 사수 비중. 얕은 밴드는 0 — 원거리 압박은 도입 구간을 지난 뒤 등장한다.</summary>
+        public int SlingerWeight { get; }
+
         /// <summary>북쪽 방 기본 적 수에 더하는 보정.</summary>
         public int ExtraEnemies { get; }
 
@@ -40,11 +43,13 @@ namespace ProjectC.Core
             int branchChancePercent,
             int puddleChancePercent,
             int catwalkLength,
-            int wallSconceRarity)
+            int wallSconceRarity,
+            int slingerWeight = 0)
         {
             SlimeWeight = slimeWeight;
             GoblinWeight = goblinWeight;
             SkeletonWeight = skeletonWeight;
+            SlingerWeight = slingerWeight;
             ExtraEnemies = extraEnemies;
             BranchChancePercent = branchChancePercent;
             PuddleChancePercent = puddleChancePercent;
@@ -53,7 +58,7 @@ namespace ProjectC.Core
         }
 
         /// <summary>적 조합 롤 범위. 항상 &gt; 0 이도록 프로파일을 정의한다.</summary>
-        public int TotalWeight => SlimeWeight + GoblinWeight + SkeletonWeight;
+        public int TotalWeight => SlimeWeight + GoblinWeight + SkeletonWeight + SlingerWeight;
     }
 
     /// <summary>
@@ -68,22 +73,22 @@ namespace ProjectC.Core
             new DungeonBandProfile(50, 50, 0, extraEnemies: 0, branchChancePercent: 50, puddleChancePercent: 50,
                 catwalkLength: 0, wallSconceRarity: 5);
 
-        // Mid(B4~B6): 드론 등장, 밀도 소폭 상승. 캐치워크 한 칸으로 높이 전술을 소개한다.
+        // Mid(B4~B6): 드론과 사수가 함께 등장, 밀도 소폭 상승. 캐치워크 한 칸으로 높이 전술을 소개한다.
         private static readonly DungeonBandProfile Mid =
-            new DungeonBandProfile(15, 50, 35, extraEnemies: 1, branchChancePercent: 60, puddleChancePercent: 50,
-                catwalkLength: 1, wallSconceRarity: 6);
+            new DungeonBandProfile(15, 40, 30, extraEnemies: 1, branchChancePercent: 60, puddleChancePercent: 50,
+                catwalkLength: 1, wallSconceRarity: 6, slingerWeight: 15);
 
         // Deep(B7~B9): 드론 비중 최다, 파밍/물 반응 무대 증가.
         // 캐치워크가 통로가 되고 등잔은 드물어진다 — 깊이는 어둠과 높이로 읽힌다.
         private static readonly DungeonBandProfile Deep =
-            new DungeonBandProfile(5, 45, 50, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 60,
-                catwalkLength: 2, wallSconceRarity: 8);
+            new DungeonBandProfile(5, 35, 40, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 60,
+                catwalkLength: 2, wallSconceRarity: 8, slingerWeight: 20);
 
         // Boss(B10~): Deep와 동일 — 전역 누적 깊이가 9를 넘어도 유효한 혼합을 유지한다.
         // 최심층 아레나 자체는 결투 공간을 비우려 캐치워크를 놓지 않는다(생성기가 아레나 축으로 판정).
         private static readonly DungeonBandProfile Boss =
-            new DungeonBandProfile(5, 45, 50, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 60,
-                catwalkLength: 2, wallSconceRarity: 9);
+            new DungeonBandProfile(5, 35, 40, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 60,
+                catwalkLength: 2, wallSconceRarity: 9, slingerWeight: 20);
 
         public static DungeonBandProfile ForBand(DungeonDepthBand band)
         {

@@ -747,6 +747,7 @@ namespace ProjectC.Gameplay
             {
                 case "Skeleton": return GetSkeletonSprite();
                 case "Slime": return GetSlimeSprite();
+                case "Slinger": return GetSlingerSprite();
                 default: return GetCharacterSprite(true);
             }
         }
@@ -802,6 +803,43 @@ namespace ProjectC.Gameplay
             FillRect(texture, 9, 6, 2, 3, dark);          // 눈
             FillRect(texture, 15, 6, 2, 3, dark);
             FillRect(texture, 4, 2, 18, 1, dark);         // 바닥선
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 투석 약탈자. 근접 약탈자와 한눈에 구분돼야 대응(엄폐·돌진)이 성립하므로
+        /// 치켜든 팔과 투척끈으로 실루엣을 다르게 잡는다.
+        /// </summary>
+        private Sprite GetSlingerSprite()
+        {
+            const string key = "slinger";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(32, 48);
+            Color32 dark = new Color32(20, 25, 28, 255);
+            Color32 coat = new Color32(108, 92, 66, 255);
+            Color32 coatLight = new Color32(148, 128, 92, 255);
+            Color32 skin = new Color32(198, 158, 118, 255);
+            Color32 sling = new Color32(226, 188, 96, 255);
+
+            FillRect(texture, 11, 2, 10, 12, dark);       // 다리
+            FillRect(texture, 12, 3, 8, 10, coat);
+            FillRect(texture, 9, 13, 14, 16, dark);       // 몸통 외곽
+            FillRect(texture, 10, 14, 12, 14, coat);
+            FillRect(texture, 10, 22, 12, 3, coatLight);  // 어깨끈
+            FillRect(texture, 12, 29, 8, 9, dark);        // 머리
+            FillRect(texture, 13, 30, 6, 7, skin);
+            FillRect(texture, 13, 33, 6, 2, dark);        // 눈가리개
+
+            // 치켜든 팔 + 투척끈 — 원거리 몬스터임을 실루엣으로 알린다.
+            FillRect(texture, 22, 24, 4, 12, coat);
+            FillRect(texture, 22, 34, 4, 3, skin);
+            DrawThickLine(texture, 24, 37, 29, 43, 2, sling);
+            FillRect(texture, 27, 42, 4, 4, sling);
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));

@@ -248,6 +248,10 @@ namespace ProjectC.Gameplay
                     }
                     break;
 
+                case MonsterActionKind.RangedAttack:
+                    yield return EnemyRangedAttack(enemy);
+                    break;
+
                 case MonsterActionKind.Step:
                     yield return MoveEnemyStep(enemy, action.Target);
                     break;
@@ -262,6 +266,36 @@ namespace ProjectC.Gameplay
                         Debug.Log($"[Door] {enemy.State.Id} 가 {action.Target} 문을 열었다");
                     }
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 사수의 원거리 공격. 명중 판정은 플레이어와 같은 <see cref="CombatRules.TryRanged"/>를 쓰고,
+        /// 투사체 연출은 FOV를 따른다(시야 밖 적의 연출은 노출하지 않는다).
+        /// 브레인이 정한 뒤 실제 실행까지 상태가 변했을 수 있어 여기서 다시 판정한다.
+        /// </summary>
+        private IEnumerator EnemyRangedAttack(EnemyAgent enemy)
+        {
+            if (_playerState == null || !_playerState.IsAlive) yield break;
+
+            bool seen = _visibleTiles.Contains(enemy.State.Position);
+            if (seen)
+                yield return AnimateProjectile(enemy.State.Position, _playerState.Position);
+
+            if (CombatRules.TryRanged(
+                    enemy.State,
+                    _playerState,
+                    _grid.Map,
+                    enemy.Archetype.RangedRange,
+                    out int damage,
+                    enemy.Archetype.RangedPower))
+            {
+                yield return ShowPlayerHit(damage, enemy.State.Id);
+            }
+            else if (seen)
+            {
+                // 사선이 끊긴 뒤였다면 빗나간 것으로 읽히게 둔다(피해 없음).
+                InteractionFeedback?.Invoke($"{enemy.DisplayName} 의 투척이 빗나갔다");
             }
         }
 

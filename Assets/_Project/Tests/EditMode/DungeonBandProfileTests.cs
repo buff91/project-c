@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using ProjectC.Core;
 
@@ -65,6 +66,31 @@ namespace ProjectC.Tests
             Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).SkeletonWeight);
             Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SkeletonWeight, 0);
             Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).SkeletonWeight, 0);
+        }
+
+        [Test]
+        public void SlingerWeight_AbsentInShallow_ThenGrowsWithDepth()
+        {
+            Assert.AreEqual(0, DungeonBandProfiles.ForBand(DungeonDepthBand.Shallow).SlingerWeight,
+                "도입 구간에는 원거리 압박을 넣지 않는다");
+            Assert.Greater(DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SlingerWeight, 0);
+            Assert.GreaterOrEqual(
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Deep).SlingerWeight,
+                DungeonBandProfiles.ForBand(DungeonDepthBand.Mid).SlingerWeight);
+        }
+
+        [Test]
+        public void PickForDepth_CoversEveryWeightedArchetype()
+        {
+            // 롤 분기(4-way)가 가중치와 어긋나면 특정 종이 영영 안 나온다 — 실제로 뽑아 확인한다.
+            var random = new Random(4242);
+            var seen = new HashSet<string>();
+            for (int i = 0; i < 3000; i++)
+                seen.Add(MonsterRoster.PickForDepth(6, random).Id);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "Slime", "Goblin", "Skeleton", "Slinger" }, seen,
+                "Deep 밴드는 네 종을 모두 낸다");
         }
 
         [Test]

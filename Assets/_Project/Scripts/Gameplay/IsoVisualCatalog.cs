@@ -95,6 +95,7 @@ namespace ProjectC.Gameplay
         public Sprite goblin;
         public Sprite skeleton;
         public Sprite slime;
+        public Sprite slinger;
         public Sprite merchant;
         public Sprite explosiveBarrel;
         public Sprite hubCampfire;
@@ -119,6 +120,7 @@ namespace ProjectC.Gameplay
             {
                 case "Skeleton": return skeleton;
                 case "Slime": return slime;
+                case "Slinger": return slinger != null ? slinger : goblin;
                 default: return goblin;
             }
         }

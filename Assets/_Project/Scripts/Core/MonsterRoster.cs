@@ -24,13 +24,24 @@ namespace ProjectC.Core
             new MonsterArchetype("Slime", maxHp: 3, attackPower: 1,
                 aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f, displayName: "누출 오염 슬러지");
 
+        /// <summary>
+        /// 투석 약탈자(코드 ID Slinger): 유일한 원거리 교전 몬스터. 멀리서 먼저 보고 던지며,
+        /// 붙으면 약하고 먼저 물러선다. 플레이어의 무피해 카이팅에 대한 반대 압력이자
+        /// 엄폐·높이·돌진을 의미 있게 만드는 자리다. (수치는 실플레이 전 임시)
+        /// </summary>
+        public static readonly MonsterArchetype Slinger =
+            new MonsterArchetype("Slinger", maxHp: 4, attackPower: 1,
+                aggroRange: 7, patrolRadius: 2, fleeThreshold: 0.25f, displayName: "투석 약탈자",
+                rangedRange: 4, rangedPower: 2, keepAwayRange: 2);
+
         /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
         public static readonly MonsterArchetype GraveWarden =
             new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
                 aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
 
         /// <summary>깊이 비례로 스폰되는 일반 몬스터(보스 제외). 피해 소스 접두사 매칭 순서를 겸한다.</summary>
-        public static readonly IReadOnlyList<MonsterArchetype> Regular = new[] { Goblin, Skeleton, Slime };
+        public static readonly IReadOnlyList<MonsterArchetype> Regular =
+            new[] { Goblin, Skeleton, Slime, Slinger };
 
         /// <summary>
         /// 피해 소스 문자열("Goblin B2-1")의 접두사에 해당하는 일반 몬스터 아키타입을 찾는다.
@@ -57,8 +68,11 @@ namespace ProjectC.Core
             DungeonBandProfile profile = DungeonBandProfiles.ForDepth(depth);
             int roll = random.Next(0, profile.TotalWeight);
             if (roll < profile.SlimeWeight) return Slime;
-            if (roll < profile.SlimeWeight + profile.GoblinWeight) return Goblin;
-            return Skeleton;
+            roll -= profile.SlimeWeight;
+            if (roll < profile.GoblinWeight) return Goblin;
+            roll -= profile.GoblinWeight;
+            if (roll < profile.SkeletonWeight) return Skeleton;
+            return Slinger;
         }
     }
 }

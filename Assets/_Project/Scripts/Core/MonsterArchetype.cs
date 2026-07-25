@@ -24,6 +24,24 @@ namespace ProjectC.Core
         /// <summary>표시용 이름(정산/텔레메트리 문구의 SSOT). 미지정 시 코드 ID 로 폴백한다.</summary>
         public string DisplayName { get; }
 
+        /// <summary>
+        /// 원거리 공격 사거리. 판정은 플레이어와 같은 <see cref="CombatRules.RangedReachCost"/>
+        /// (맨해튼 + 높이차)를 쓴다. 0이면 근접 전용.
+        /// </summary>
+        public int RangedRange { get; }
+
+        /// <summary>원거리 공격력. 근접(<see cref="AttackPower"/>)과 따로 둬서 "붙으면 약한 사수"를 표현한다.</summary>
+        public int RangedPower { get; }
+
+        /// <summary>
+        /// 플레이어가 이 거리(체비셰프) 이하로 붙으면 거리를 벌린다. 0이면 물러서지 않는다.
+        /// 플레이어의 무피해 카이팅을 억제하는 반대 압력이자, 엄폐·돌진을 의미 있게 만드는 값.
+        /// </summary>
+        public int KeepAwayRange { get; }
+
+        /// <summary>원거리 교전을 하는 몬스터인가.</summary>
+        public bool IsRanged => RangedRange > 0 && RangedPower > 0;
+
         public MonsterArchetype(
             string id,
             int maxHp,
@@ -31,7 +49,10 @@ namespace ProjectC.Core
             int aggroRange,
             int patrolRadius,
             float fleeThreshold = 0f,
-            string displayName = null)
+            string displayName = null,
+            int rangedRange = 0,
+            int rangedPower = 0,
+            int keepAwayRange = 0)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("몬스터 ID가 필요합니다.", nameof(id));
             if (maxHp <= 0) throw new ArgumentOutOfRangeException(nameof(maxHp));
@@ -39,6 +60,9 @@ namespace ProjectC.Core
             if (aggroRange < 1) throw new ArgumentOutOfRangeException(nameof(aggroRange));
             if (patrolRadius < 0) throw new ArgumentOutOfRangeException(nameof(patrolRadius));
             if (fleeThreshold < 0f || fleeThreshold > 1f) throw new ArgumentOutOfRangeException(nameof(fleeThreshold));
+            if (rangedRange < 0) throw new ArgumentOutOfRangeException(nameof(rangedRange));
+            if (rangedPower < 0) throw new ArgumentOutOfRangeException(nameof(rangedPower));
+            if (keepAwayRange < 0) throw new ArgumentOutOfRangeException(nameof(keepAwayRange));
 
             Id = id;
             MaxHp = maxHp;
@@ -47,6 +71,9 @@ namespace ProjectC.Core
             PatrolRadius = patrolRadius;
             FleeThreshold = fleeThreshold;
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? id : displayName;
+            RangedRange = rangedRange;
+            RangedPower = rangedPower;
+            KeepAwayRange = keepAwayRange;
         }
     }
 }

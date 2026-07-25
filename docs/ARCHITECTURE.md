@@ -318,8 +318,13 @@ tileFloor == activeFloor → visible || explored
 >   DOTween, UI Toolkit VisualElement엔 `experimental.animation`/USS transition을 쓴다.
 
 ### 9.5 로스터·활성화
-- **MonsterRoster** — 고블린(HP5·공2·도주0.3)/해골(HP8·공2·비도주)/슬라임(HP3·공1·넓은 배회)/묘지기(HP20·공3).
-  `PickForDepth`가 깊이별 확률 혼합(깊을수록 해골 비중↑).
+- **MonsterRoster** — 약탈자(Goblin, HP5·공2·도주0.3)/낡은 경비 드론(Skeleton, HP8·공2·비도주)/
+  누출 오염 슬러지(Slime, HP3·공1·넓은 배회)/**투석 약탈자(Slinger, HP4·근접1·원거리2·사거리4·유지2)**/
+  감시자(GraveWarden, HP20·공3). `PickForDepth`가 밴드별 확률 혼합(깊을수록 드론·사수 비중↑).
+- **원거리 몬스터** — `MonsterArchetype.IsRanged`면 브레인이 `DecideRanged`를 먼저 탄다:
+  ① `KeepAwayRange` 안이면 거리 벌리기(도주 규칙 재사용, 막히면 근접) ② `CanFireFrom`이면 사격
+  ③ 아니면 `FindFiringPosition`으로 사선 잡는 한 걸음. 셋 다 실패하면 일반 추격으로 흘린다.
+  판정은 플레이어와 같은 `CombatRules`(도달 비용에 높이차 포함)를 쓴다.
 - **MonsterActivation.IsActive** = **같은 층 && 활성 반경(체비셰프)**. 비활성은 `Decide` 자체를 스킵(모바일 성능 핵심).
 - **거리 metric 규약**: 지각/어그로/배회/도주/활성화 = **체비셰프(8방)**, 인접/사거리/실제 이동 = **맨해튼(4방)**. 의도적 비대칭.
 
