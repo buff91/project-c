@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using ProjectC.Core;
 
@@ -58,6 +59,12 @@ namespace ProjectC.Tests
             {
                 var map = new GridMap();
                 DungeonLayout layout = DungeonGenerator.Generate(map, 13, 13, floorCount: 10, seed: seed);
+
+                // 도달성은 문을 다 연 상태로 본다 — `ProceduralDungeonTests`의 도달성 검사와 같은 전제다.
+                // (플레이어는 문을 열고 지나가지만 `FindPath`는 기본적으로 닫힌 문을 막는다.)
+                foreach (DungeonFloorInfo floor in layout.Floors)
+                foreach (GridPos door in floor.Doors)
+                    map.Set(door, TileKind.DoorOpen);
 
                 foreach (DungeonFloorInfo floor in layout.Floors)
                 {

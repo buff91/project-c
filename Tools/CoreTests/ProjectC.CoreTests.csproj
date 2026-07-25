@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unity 없이 Core 규칙 테스트를 돌리는 shim (SSOT는 여전히 Unity Test Runner).
+
+    왜 있나: `Scripts/Core`는 UnityEngine 의존이 IsoGrid.cs 하나뿐이다. 그 경계 덕분에
+    규칙 테스트 대부분은 에디터 없이 `dotnet test`로 검증할 수 있다 — 웹/원격 세션과 CI처럼
+    Unity Editor가 없는 환경에서도 회귀를 잡는 게 목적이다.
+
+    무엇이 아닌가: PlayMode·씬·스프라이트·HUD 캡처 검증을 대체하지 않는다.
+    Unity 의존 테스트(아래 Remove 목록)는 여전히 에디터에서만 돌아간다.
+    전체 회귀는 CLAUDE.md 규칙대로 EditMode + PlayMode 둘 다 실행한다.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Unity 6000.5(C# 9)가 거부할 문법이 여기서 통과하지 않도록 언어 버전을 맞춘다. -->
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>ProjectC.CoreTests</AssemblyName>
+    <RootNamespace>ProjectC.Tests</RootNamespace>
+    <!-- Assets/ 밖의 파일을 링크로 끌어오므로 기본 glob은 끈다. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- 미사용 변수 등 Unity 쪽 경고를 CI 실패로 만들지 않는다. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS0168;CS0219;CS0414</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ProjectRoot>$(MSBuildThisFileDirectory)../../</ProjectRoot>
+  </PropertyGroup>
+
+  <ItemGroup Label="Core (순수 C# 로직)">
+    <Compile Include="$(ProjectRoot)Assets/_Project/Scripts/Core/**/*.cs">
+      <Link>Core/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <!-- IsoGrid는 UnityEngine.Vector2/Mathf에 의존한다 (Core 안에서 이걸 참조하는 파일은 없다).
+         정렬·투영 규칙은 에디터의 IsoGridTests가 계속 지킨다. -->
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Scripts/Core/IsoGrid.cs" />
+  </ItemGroup>
+
+  <ItemGroup Label="EditMode 테스트 (Unity 무의존만)">
+    <Compile Include="$(ProjectRoot)Assets/_Project/Tests/EditMode/**/*.cs">
+      <Link>Tests/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+
+    <!--
+      아래는 UnityEngine / ProjectC.Gameplay / UnityEditor 에 의존해서 에디터에서만 돌아간다.
+      새 테스트는 기본으로 여기 포함된다 — Core 규칙 테스트라면 그대로 두면 되고,
+      Unity 타입을 쓴다면 이 목록에 한 줄 추가한다 (빌드 에러가 그걸 알려준다).
+    -->
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentSaveProfileTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentViewportServiceTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DisplaySettingsDataTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudVisualTreeContractTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoGridTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoVisualCatalogTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ItemStorageTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/OrthographicCameraFramingTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ProjectCAsepritePipelineTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ResponsiveUiLayoutTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RunTelemetryTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RuntimeSpriteGroundingTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteOcclusionTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NUnit 3.14는 Unity test-framework 1.7.0이 쓰는 NUnit 3.13과 API 호환이다. -->
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+  </ItemGroup>
+
+</Project>

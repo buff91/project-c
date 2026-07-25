@@ -258,6 +258,9 @@ namespace ProjectC.Tests
             {
                 if (ItemCatalog.IsTreasure(kind))
                     Assert.AreEqual(0, ItemCatalog.ShopPrice(kind), $"{kind}: 전리품은 파밍 전용");
+                else if (ItemCatalog.CategoryOf(kind) == ItemCategory.Equipment)
+                    // 장비 값은 대장간이 소유한다(EquipmentDefinition.CraftCost) — 상점은 팔지 않는다.
+                    Assert.AreEqual(0, ItemCatalog.ShopPrice(kind), $"{kind}: 장비는 대장간 소관");
                 else
                     Assert.Greater(ItemCatalog.ShopPrice(kind), 0, kind.ToString());
             }
