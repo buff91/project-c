@@ -261,7 +261,9 @@ namespace ProjectC.Gameplay
                     ActiveFloorChanged?.Invoke(_activeFloorIndex);
                     Debug.Log($"[Dungeon] 층 이동: {FloorLabel(_activeFloorIndex)} / " +
                               $"층 내부 높이 {_dungeon.Height.LocalHeight(next.elevation)}");
-                    _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+                    _runSummary.RecordFloor(
+                GlobalFloorIndex(_activeFloorIndex),
+                GlobalDepth(_activeFloorIndex));
                     TryDeclareVictory();
                     if (_runSummary.Ended) yield break;
                     SaveCheckpoint();

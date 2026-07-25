@@ -105,13 +105,42 @@ namespace ProjectC.Tests
     public class RunSummaryTests
     {
         [Test]
-        public void RecordFloor_KeepsDeepestFloor()
+        public void RecordFloor_KeepsFurthestProgress_NotLowestElevation()
         {
+            // 하강 던전: 진행이 깊어질수록 층 인덱스가 작아진다.
             var summary = new RunSummary(0);
-            summary.RecordFloor(-2);
-            summary.RecordFloor(-1);
+            summary.RecordFloor(-2, 2);
+            summary.RecordFloor(-1, 1); // 되돌아왔다 — 도달 층을 되돌리지 않는다
 
             Assert.AreEqual(-2, summary.DeepestFloorIndex);
+            Assert.AreEqual(2, summary.FurthestProgressIndex);
+        }
+
+        [Test]
+        public void RecordFloor_Ascending_TracksProgressNotMinimum()
+        {
+            // 상승 던전: 진행이 깊어질수록 층 인덱스가 **커진다**. 최솟값을 쓰면
+            // 시작 층이 영원히 "도달 층"으로 남는다 — 그 결함을 고정한다.
+            var summary = new RunSummary(0);
+            summary.RecordFloor(1, 1);
+            summary.RecordFloor(5, 5);
+            summary.RecordFloor(3, 3); // 되돌아왔다
+
+            Assert.AreEqual(5, summary.DeepestFloorIndex);
+            Assert.AreEqual(5, summary.FurthestProgressIndex);
+        }
+
+        [Test]
+        public void RecordFloor_NonMonotonicPath_UsesProgressOrder()
+        {
+            // 올라갔다 떨어지는 경로: 고도로는 순서를 알 수 없다.
+            var summary = new RunSummary(0);
+            summary.RecordFloor(3, 1);
+            summary.RecordFloor(1, 2); // 떨어졌지만 나중에 방문했다
+            summary.RecordFloor(6, 3);
+
+            Assert.AreEqual(6, summary.DeepestFloorIndex);
+            Assert.AreEqual(3, summary.FurthestProgressIndex);
         }
 
         [Test]

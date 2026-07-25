@@ -72,8 +72,8 @@ namespace ProjectC.Core
     {
         // 코드 ID 는 리스킨 프로파일 A 원칙에 따라 유지한다(세이브·체크포인트 호환).
         // 표시명만 폐병원으로 바꿨다 — GDD §10.1.
-        // ⚠ 표시는 상승("B2 → 8F")이지만 생성기는 아직 하강이다. 상승 전환은 미착수이며
-        //    진행 지수 분리(완료)가 그 선행 조건이었다. `docs/ROADMAP.md` 참조.
+        // 생성기가 아래 Direction 을 실제로 읽는다 — 표시와 구조가 일치한다.
+        // 방향은 던전별 데이터이며 전역 스위치가 아니다: 아래 셋이 서로 다른 방향으로 공존한다.
         public const string DefaultId = "forgotten-catacombs";
 
         public static readonly IReadOnlyList<DungeonDefinition> All = new[]

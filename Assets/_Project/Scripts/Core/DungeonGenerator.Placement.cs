@@ -23,7 +23,7 @@ namespace ProjectC.Core
                     candidates.Add(pos);
             }
 
-            int depth = -p.FloorIndex;
+            int depth = p.ProgressIndex;
             int bandExtra = DungeonBandProfiles.ForDepth(depth).ExtraEnemies;
             int desired = 1 + random.Next(0, 2) + depth / 2 + bandExtra + AreaSpawnBonus(p.Width, p.Height);
             p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
@@ -35,9 +35,9 @@ namespace ProjectC.Core
             // (밸런스 시뮬 600판 근거 — 직행 정책 완주율 94%)
             // 최심층(아레나)은 경비병 무리 대신 보스 1:1을 위해 하행 경비를 생략한다.
             bool arenaFloor = DungeonBossArenaRules.IsArenaFloor(depth, floorCount);
-            if (p.Down.HasValue && !arenaFloor)
+            if (p.Onward.HasValue && !arenaFloor)
             {
-                bool eastRoom = p.Down.Value.x != 1;
+                bool eastRoom = p.Onward.Value.x != 1;
                 int guardMinX = eastRoom ? p.RightMinX : 0;
                 int guardMaxX = eastRoom ? p.Width - 1 : p.LeftMaxX;
                 var guardPool = new List<GridPos>();
@@ -47,7 +47,7 @@ namespace ProjectC.Core
                     var pos = new GridPos(x, y, p.BaseElevation);
                     if (pos == p.Entry) continue;
                     if (pos == p.RestSite) continue;
-                    if (pos.ChebyshevTo(p.Down.Value) > 3) continue;
+                    if (pos.ChebyshevTo(p.Onward.Value) > 3) continue;
                     if (map.Get(pos)?.kind != TileKind.Floor) continue;
                     if (p.EnemySpawns.Contains(pos)) continue;
                     guardPool.Add(pos);
@@ -67,7 +67,7 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceBossLandmark(GridMap map, FloorPlan p, int floorCount)
         {
-            if (!DungeonBossArenaRules.IsArenaFloor(-p.FloorIndex, floorCount)) return;
+            if (!DungeonBossArenaRules.IsArenaFloor(p.ProgressIndex, floorCount)) return;
 
             for (int y = p.Height - 1; y >= p.RaisedY; y--)
             for (int dx = 0; dx <= p.UpperMaxX - p.UpperMinX; dx++)
@@ -91,7 +91,7 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceExtractionPoint(GridMap map, FloorPlan p, int floorCount)
         {
-            if (!ExtractionRules.HasExtractionPoint(-p.FloorIndex, floorCount)) return;
+            if (!ExtractionRules.HasExtractionPoint(p.ProgressIndex, floorCount)) return;
 
             GridPos best = default;
             int bestDistance = -1;
@@ -117,7 +117,7 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceEquipment(GridMap map, Random random, FloorPlan p)
         {
-            EquipmentDefinition equipment = EquipmentDropRules.Roll(-p.FloorIndex, random);
+            EquipmentDefinition equipment = EquipmentDropRules.Roll(p.ProgressIndex, random);
             if (equipment == null) return;
 
             var candidates = new List<GridPos>();
@@ -155,7 +155,7 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceCatwalk(GridMap map, FloorPlan p, int floorCount)
         {
-            int depth = -p.FloorIndex;
+            int depth = p.ProgressIndex;
             if (DungeonBossArenaRules.IsArenaFloor(depth, floorCount)) return;
 
             int length = DungeonBandProfiles.ForDepth(depth).CatwalkLength;
@@ -215,7 +215,7 @@ namespace ProjectC.Core
         private static void PlacePuddle(GridMap map, Random random, FloorPlan p)
         {
             // 웅덩이 확률도 깊이 밴드별(깊을수록 물+빙결 무대 증가).
-            int puddleChance = DungeonBandProfiles.ForDepth(-p.FloorIndex).PuddleChancePercent;
+            int puddleChance = DungeonBandProfiles.ForDepth(p.ProgressIndex).PuddleChancePercent;
             if (random.Next(0, 100) >= puddleChance) return;
 
             var seeds = new List<GridPos>();
@@ -269,7 +269,7 @@ namespace ProjectC.Core
                 if (roll < 15) return ItemKind.CannedFood;
                 if (roll < 17) return ItemKind.CoinPouch;
                 if (roll < 18) return ItemKind.Gemstone;
-                if (roll < 19) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 19) return p.ProgressIndex >= 2 ? ItemKind.Relic : ItemKind.CoinPouch;
                 if (roll < 21) return ItemKind.Herb;
                 if (roll < 22) return ItemKind.BlastPowder;
                 return ItemKind.FrostShard;
@@ -301,7 +301,7 @@ namespace ProjectC.Core
                             random.Next(0, 100) < ExtractionRules.BeaconRewardChancePercent;
                         kind = beacon
                             ? ItemKind.ExtractionBeacon
-                            : p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone;
+                            : p.ProgressIndex >= 3 ? ItemKind.Relic : ItemKind.Gemstone;
                     }
                     else
                     {

@@ -109,8 +109,34 @@ namespace ProjectC.Core
         /// <summary>마지막 진행 지수. 층 수 - 1.</summary>
         public int MaxProgressIndex => Floors[Floors.Count - 1].ProgressIndex;
 
-        public DungeonLayout(DungeonHeightModel height, List<DungeonFloorInfo> floors)
+        /// <summary>
+        /// 이 던전의 진행 방향. <b>던전별 데이터</b>이며 전역 스위치가 아니다.
+        /// 중력(<see cref="FallRules"/>·<see cref="SightRules"/>)은 이 값을 타지 않는다.
+        /// </summary>
+        public DungeonProgressDirection Direction { get; }
+
+        /// <summary>
+        /// 다음 층으로 나아가는 계단. 하강 던전에서는 하행, 상승 던전에서는 상행이다.
+        /// <b>"출구"를 찾는 코드는 <see cref="DungeonFloorInfo.DownStairs"/>가 아니라 이것을 써야 한다</b> —
+        /// 그러지 않으면 상승 던전에서 되돌아가는 계단을 출구로 오인한다.
+        /// </summary>
+        public GridPos? OnwardStairOf(DungeonFloorInfo floor) =>
+            floor == null
+                ? null
+                : Direction == DungeonProgressDirection.Ascend ? floor.UpStairs : floor.DownStairs;
+
+        /// <summary>이전 층으로 되돌아가는 계단. 첫 층에는 없다.</summary>
+        public GridPos? BackStairOf(DungeonFloorInfo floor) =>
+            floor == null
+                ? null
+                : Direction == DungeonProgressDirection.Ascend ? floor.DownStairs : floor.UpStairs;
+
+        public DungeonLayout(
+            DungeonHeightModel height,
+            List<DungeonFloorInfo> floors,
+            DungeonProgressDirection direction = DungeonProgressDirection.Descend)
         {
+            Direction = direction;
             Height = height ?? throw new ArgumentNullException(nameof(height));
             if (floors == null || floors.Count == 0)
                 throw new ArgumentException("던전은 한 층 이상이어야 합니다.", nameof(floors));
@@ -162,13 +188,19 @@ namespace ProjectC.Core
     /// </summary>
     public static partial class DungeonGenerator
     {
+        /// <summary>
+        /// 다층 던전을 만든다. <paramref name="direction"/>은 <b>진행</b> 방향이며 공간이 아니다 —
+        /// 하강이 주 목적인 던전과 상승이 주 목적인 던전이 함께 존재하므로 전역 스위치가 아니라
+        /// 던전별 데이터로 받는다(GDD §10.1). 중력은 이 값을 타지 않는다.
+        /// </summary>
         public static DungeonLayout Generate(
             GridMap map,
             int width,
             int height,
             int floorCount,
             int elevationsPerFloor = 4,
-            int seed = 1977)
+            int seed = 1977,
+            DungeonProgressDirection direction = DungeonProgressDirection.Descend)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (width < 9) throw new ArgumentOutOfRangeException(nameof(width));
@@ -180,8 +212,8 @@ namespace ProjectC.Core
             var random = new Random(seed);
             HashSet<int> secretDepths = PickSecretDepths(random, floorCount);
 
-            // 1) 층 골격을 계획하고 새긴다. 아래층 북쪽 방은 윗층 북쪽 방과 기둥이
-            //    겹치도록 제약해 구멍 착지 후보가 항상 남게 한다.
+            // 1) 층 골격을 계획하고 새긴다. 인접 진행 층끼리 북쪽 방 기둥이 겹치도록 제약해
+            //    구멍 착지 후보가 항상 남게 한다(방향과 무관하게 인접 층이 공간적으로도 인접하다).
             var plans = new List<FloorPlan>(floorCount);
             for (int depth = 0; depth < floorCount; depth++)
             {
@@ -194,20 +226,41 @@ namespace ProjectC.Core
                     floorCount,
                     heightModel,
                     previous,
-                    secretDepths.Contains(depth));
-                CarveFloor(map, plan, height);
+                    secretDepths.Contains(depth),
+                    direction);
+                CarveFloor(map, plan, height, direction);
                 plans.Add(plan);
             }
 
             for (int i = 0; i < plans.Count - 1; i++)
-                map.Connect(plans[i].Down.Value, plans[i + 1].Up.Value, bidirectional: true);
+                map.Connect(plans[i].Onward.Value, plans[i + 1].Back.Value, bidirectional: true);
 
             // 2) 구멍은 모든 층이 새겨진 뒤에야 "정확히 한 층 아래에 착지하는" 칸을 고를 수 있다.
-            int bottomElevation = heightModel.Elevation(-(floorCount - 1));
-            for (int depth = 0; depth < floorCount - 1; depth++)
+            //    낙하 바닥은 공간 최하단이다 — 상승 던전에서는 첫 층이 가장 아래다.
+            int bottomFloorIndex = plans[0].FloorIndex;
+            foreach (FloorPlan plan in plans)
+                if (plan.FloorIndex < bottomFloorIndex) bottomFloorIndex = plan.FloorIndex;
+            int bottomElevation = heightModel.Elevation(bottomFloorIndex);
+
+            // 구멍은 방향과 무관하게 **아래로** 떨어지므로 진행 순서가 아니라 공간 순서로 순회한다.
+            // 상승 던전에서는 둘이 뒤집혀서, 진행이 앞선 층이 공간적으로는 아래에 있다.
+            //
+            // 순회는 반드시 **위에서 아래로** 간다. 각 층이 "바로 위층의 구멍 착지 칸"을 피해야
+            // 하는데(2층 관통 금지) 그 값은 위층을 먼저 처리해야 생긴다. 하강 던전에서는 이 순서가
+            // 예전 진행 순서 순회와 정확히 같아서 **같은 seed 가 같은 던전을 낸다**.
+            var stacked = new List<FloorPlan>(plans);
+            stacked.Sort((a, b) => a.FloorIndex.CompareTo(b.FloorIndex));
+            for (int i = stacked.Count - 1; i >= 1; i--)
             {
-                GridPos? holeAbove = depth > 0 ? plans[depth - 1].Hole : null;
-                PlaceHoleAndWeakFloor(map, heightModel, random, plans[depth], holeAbove, bottomElevation);
+                // 보스 아레나에는 구멍을 두지 않는다. 하강 던전에서는 아레나가 공간 최하단이라
+                // 자동으로 빠졌고(그래서 이 조건이 없었다), 상승 던전에서는 아레나가 최상층이라
+                // 조건 없이는 구멍이 생겨 보스전 중 낙하로 아레나를 벗어날 수 있다.
+                // 방향을 바꾸는 변경에 게임플레이 변화를 섞지 않기 위해 불변식을 명시한다.
+                if (DungeonBossArenaRules.IsArenaFloor(stacked[i].ProgressIndex, floorCount))
+                    continue;
+
+                GridPos? holeAbove = i + 1 < stacked.Count ? stacked[i + 1].Hole : null;
+                PlaceHoleAndWeakFloor(map, heightModel, random, stacked[i], holeAbove, bottomElevation);
             }
 
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
@@ -224,18 +277,19 @@ namespace ProjectC.Core
                 PlaceWindows(map, heightModel, plan, bottomElevation);
             }
 
-            // plans 는 진행 순서대로 쌓인다(depth 0 = 첫 층). 진행 지수는 여기서 확정되며
-            // 이후 어디서도 elevation 으로 다시 계산하지 않는다.
+            // plans 는 진행 순서대로 쌓인다(depth 0 = 첫 층). 진행 지수는 계획 단계에서 확정돼
+            // plan 이 들고 다니며, 이후 어디서도 elevation 으로 다시 계산하지 않는다.
             var floors = new List<DungeonFloorInfo>(floorCount);
-            for (int progress = 0; progress < plans.Count; progress++)
+            foreach (FloorPlan plan in plans)
             {
-                FloorPlan plan = plans[progress];
+                // 진출/귀환(진행)을 상행/하행(공간)으로 되돌린다 — 맵에 놓인 타일 종류와 맞아야 한다.
+                bool onwardGoesUp = direction == DungeonProgressDirection.Ascend;
                 floors.Add(new DungeonFloorInfo(
                     plan.FloorIndex,
-                    progress,
+                    plan.ProgressIndex,
                     plan.Entry,
-                    plan.Up,
-                    plan.Down,
+                    onwardGoesUp ? plan.Onward : plan.Back,
+                    onwardGoesUp ? plan.Back : plan.Onward,
                     plan.Hole,
                     plan.RestSite,
                     plan.EnemySpawns,
@@ -249,7 +303,7 @@ namespace ProjectC.Core
                     plan.ExtractionPoint));
             }
 
-            return new DungeonLayout(heightModel, floors);
+            return new DungeonLayout(heightModel, floors, direction);
         }
 
         /// <summary>
@@ -295,7 +349,21 @@ namespace ProjectC.Core
         {
             public int Width;
             public int Height;
+
+            /// <summary>
+            /// 공간 좌표축의 층 인덱스(위로 갈수록 큼). 방향에 따라 부호가 갈린다 —
+            /// 하강 던전은 0, −1, −2 …, 상승 던전은 0, +1, +2 … 로 간다.
+            /// <b>난이도·구간 판정에 쓰지 말 것</b> — 그건 <see cref="ProgressIndex"/>다.
+            /// </summary>
             public int FloorIndex;
+
+            /// <summary>
+            /// 진행 지수(첫 층 = 0). 난이도·구간·보상 판정의 유일한 축이다.
+            /// <b>고도에서 역산하지 않는다</b> — 예전에 <c>-FloorIndex</c>로 뽑았는데 상승 던전에서
+            /// 음수가 되어 모든 밴드 판정이 조용히 첫 층으로 붕괴했다(GDD §5.1).
+            /// </summary>
+            public int ProgressIndex;
+
             public int BaseElevation;
             public int LeftMaxX;
             public int RightMinX;
@@ -315,8 +383,15 @@ namespace ProjectC.Core
             public int BranchMaxX;
             public int BranchMinY;
             public int BranchMaxY;
-            public GridPos? Up;
-            public GridPos? Down;
+            /// <summary>이전 층(진행 −1)으로 되돌아가는 계단. 첫 층에는 없다.</summary>
+            public GridPos? Back;
+
+            /// <summary>
+            /// 다음 층(진행 +1)으로 나아가는 계단. 최종 층에도 둔다 —
+            /// 링크가 없는 진출 계단이 "던전 출구"다.
+            /// <b>공간 방향이 아니라 진행 방향</b>이므로 상승 던전에서는 이것이 위로 가는 계단이다.
+            /// </summary>
+            public GridPos? Onward;
             public GridPos? Hole;
             public GridPos? RestSite;
             public GridPos? ExtractionPoint;

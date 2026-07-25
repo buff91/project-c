@@ -4,11 +4,21 @@ namespace ProjectC.Core
 {
     /// <summary>
     /// 한 판의 결과 기록. 사망/승리 시 게임오버 화면이 읽는다.
-    /// 층 인덱스는 아래로 갈수록 작다(B1=0, B2=-1 …) — 최심층 = 최솟값.
+    /// <para>
+    /// "가장 멀리 간 층"은 <b>진행 지수</b>로 판정한다 — 고도가 아니다.
+    /// 예전에는 층 인덱스의 최솟값을 썼는데(아래로 갈수록 작다는 전제), 상승 던전에서는
+    /// 시작 층이 영원히 최솟값이라 도달 층이 첫 층에 붙어 있었다.
+    /// 비단조 경로(올라갔다 떨어지는 층)에서도 최솟값은 답이 아니다.
+    /// </para>
     /// </summary>
     public sealed class RunSummary
     {
+        /// <summary>가장 멀리 진행한 층의 <b>층 인덱스</b>(표시·세이브용). 진행 지수로 골라낸 값이다.</summary>
         public int DeepestFloorIndex { get; private set; }
+
+        /// <summary>가장 멀리 진행한 <b>진행 지수</b>. 어느 층이 더 멀리 갔는지의 판정 기준.</summary>
+        public int FurthestProgressIndex { get; private set; }
+
         public string CauseOfDeath { get; private set; }
         public int Kills { get; private set; }
         public bool Victory { get; private set; }
@@ -16,14 +26,23 @@ namespace ProjectC.Core
         public int GoldBanked { get; private set; }
         public bool Ended { get; private set; }
 
-        public RunSummary(int startFloorIndex = 0, int kills = 0)
+        public RunSummary(int startFloorIndex = 0, int kills = 0, int startProgressIndex = 0)
         {
             DeepestFloorIndex = startFloorIndex;
+            FurthestProgressIndex = startProgressIndex;
             Kills = kills;
         }
 
-        public void RecordFloor(int floorIndex) =>
-            DeepestFloorIndex = Math.Min(DeepestFloorIndex, floorIndex);
+        /// <summary>
+        /// 층 방문 기록. <paramref name="progressIndex"/>가 지금까지의 최대보다 크지 않으면 무시한다 —
+        /// 되돌아간 층이 "도달 층"을 되돌리지 않는다.
+        /// </summary>
+        public void RecordFloor(int floorIndex, int progressIndex)
+        {
+            if (progressIndex < FurthestProgressIndex) return;
+            FurthestProgressIndex = progressIndex;
+            DeepestFloorIndex = floorIndex;
+        }
 
         public void RecordKill() => Kills++;
 

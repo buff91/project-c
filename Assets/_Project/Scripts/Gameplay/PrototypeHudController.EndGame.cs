@@ -115,7 +115,7 @@ namespace ProjectC.Gameplay
                 _gameoverCause.style.display = DisplayStyle.Flex;
             }
             if (_gameoverFloor != null)
-                _gameoverFloor.text = $"도달 층: {IsoPrototypeDemo.FloorLabel(summary.DeepestFloorIndex)}";
+                _gameoverFloor.text = $"도달 층: {IsoPrototypeDemo.FloorLabelFallback(summary.DeepestFloorIndex)}";
             if (_gameoverKills != null)
                 _gameoverKills.text = $"처치: {summary.Kills}";
             _gameoverOverlay.BringToFront();

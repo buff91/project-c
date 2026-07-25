@@ -115,8 +115,8 @@ namespace ProjectC.Gameplay
         {
             yield return null;
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor);
-            if (floor.DownStairs.HasValue)
-                HandleTileTapped(floor.DownStairs.Value, tileExists: true);
+            if (_dungeon.OnwardStairOf(floor) is GridPos onward)
+                HandleTileTapped(onward, tileExists: true);
         }
 
         private IEnumerator ApproachAndAttack(IReadOnlyList<GridPos> path, EnemyAgent enemy)

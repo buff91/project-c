@@ -6,7 +6,11 @@ namespace ProjectC.Core
     public static partial class DungeonGenerator
     {
 
-        private static void CarveFloor(GridMap map, FloorPlan p, int height)
+        private static void CarveFloor(
+            GridMap map,
+            FloorPlan p,
+            int height,
+            DungeonProgressDirection direction)
         {
             void SetBase(int x, int y, TileKind kind = TileKind.Floor) =>
                 map.Set(new GridPos(x, y, p.BaseElevation), kind);
@@ -63,8 +67,12 @@ namespace ProjectC.Core
 
             // 캐치워크(+2단)는 밴드 길이와 아레나 여부를 알아야 하므로 배치 단계(PlaceCatwalk)에서 얹는다.
 
-            if (p.Up.HasValue) map.Set(p.Up.Value, TileKind.StairsUp);
-            if (p.Down.HasValue) map.Set(p.Down.Value, TileKind.StairsDown);
+            // StairsUp/Down 은 **공간** 이름이라 고정이고, 진출·귀환 중 무엇이 되는지가
+            // 방향을 탄다. 상승 던전에서는 진출 계단이 StairsUp 이다.
+            if (p.Back.HasValue)
+                map.Set(p.Back.Value, DungeonDirectionRules.BackStair(direction));
+            if (p.Onward.HasValue)
+                map.Set(p.Onward.Value, DungeonDirectionRules.OnwardStair(direction));
         }
 
         private static void PlaceHoleAndWeakFloor(
@@ -139,7 +147,7 @@ namespace ProjectC.Core
             FloorPlan p,
             int floorCount)
         {
-            int depth = -p.FloorIndex;
+            int depth = p.ProgressIndex;
             if (!DungeonRestRules.ShouldPlace(depth, floorCount)) return;
 
             var candidates = new List<GridPos>();

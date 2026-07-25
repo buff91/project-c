@@ -120,11 +120,11 @@ namespace ProjectC.Gameplay
         {
             if (!Application.isPlaying || _dungeon == null ||
                 !_dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo floor) ||
-                !floor.DownStairs.HasValue)
+                _dungeon.OnwardStairOf(floor) is null)
                 return false;
 
             MarkTelemetryCheat();
-            GridPos exit = floor.DownStairs.Value;
+            GridPos exit = _dungeon.OnwardStairOf(floor).Value;
             _playerState.MoveTo(exit);
             _player.transform.position = _grid.GridToWorld(exit);
             SyncPlayerView(exit, floorChanged: true);
@@ -146,7 +146,9 @@ namespace ProjectC.Gameplay
             _playerState.MoveTo(floor.Entry);
             _player.transform.position = _grid.GridToWorld(floor.Entry);
             SyncPlayerView(floor.Entry, floorChanged: true);
-            _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+            _runSummary.RecordFloor(
+                GlobalFloorIndex(_activeFloorIndex),
+                GlobalDepth(_activeFloorIndex));
             InteractionFeedback?.Invoke($"CHEAT: {FloorLabel(_activeFloorIndex)} 로 점프");
         }
 

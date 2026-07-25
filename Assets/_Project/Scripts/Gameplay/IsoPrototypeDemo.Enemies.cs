@@ -461,10 +461,10 @@ namespace ProjectC.Gameplay
         {
             if (hubMode || _dungeon == null || DungeonSelection.Selected.Boss == null ||
                 !_dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo bottom) ||
-                !bottom.DownStairs.HasValue)
+                _dungeon.OnwardStairOf(bottom) is null)
                 return;
 
-            _bossExitPos = bottom.DownStairs.Value;
+            _bossExitPos = _dungeon.OnwardStairOf(bottom).Value;
             _bossExitSeal = new GameObject("Boss Exit Seal");
             _bossExitSeal.transform.SetParent(_visualRoot, false);
             _bossExitSeal.transform.position = _grid.GridToWorld(_bossExitPos) + Vector3.up * 0.08f;

@@ -15,13 +15,17 @@ namespace ProjectC.Core
             int floorCount,
             DungeonHeightModel heightModel,
             FloorPlan previous,
-            bool forceSecretBranch)
+            bool forceSecretBranch,
+            DungeonProgressDirection direction)
         {
             var p = new FloorPlan
             {
                 Width = width,
                 Height = height,
-                FloorIndex = -depth
+                ProgressIndex = depth,
+                // 부호만 방향을 탄다. Inward 는 층을 아래로 쌓지만 그건 렌더·컬링을 위한
+                // 내부 규약이고 플레이어에게는 수평 진입으로 읽힌다(DungeonDirectionRules 참조).
+                FloorIndex = DungeonDirectionRules.FloorIndexFor(direction, depth)
             };
             p.BaseElevation = heightModel.Elevation(p.FloorIndex);
 
@@ -74,13 +78,13 @@ namespace ProjectC.Core
             }
 
             // 층간 링크는 같은 x/y의 수직 샤프트를 공유한다.
-            // 중간층에서는 좌·우 샤프트를 번갈아 써 Up/Down이 한 칸에 겹치지 않게 한다.
-            int upX = (depth - 1) % 2 == 0 ? width - 2 : 1;
-            int downX = depth % 2 == 0 ? width - 2 : 1;
-            p.Up = depth == 0 ? (GridPos?)null : p.At(upX, 1);
-            // 최심층에도 하행 계단을 둔다 — 링크가 없는 하행 계단이 "다음 던전 출구"다.
-            p.Down = p.At(downX, 1);
-            p.Entry = p.Up ?? p.At(1, 1);
+            // 중간층에서는 좌·우 샤프트를 번갈아 써 귀환/진출이 한 칸에 겹치지 않게 한다.
+            int backX = (depth - 1) % 2 == 0 ? width - 2 : 1;
+            int onwardX = depth % 2 == 0 ? width - 2 : 1;
+            p.Back = depth == 0 ? (GridPos?)null : p.At(backX, 1);
+            // 최종 층에도 진출 계단을 둔다 — 링크가 없는 진출 계단이 "던전 출구"다.
+            p.Onward = p.At(onwardX, 1);
+            p.Entry = p.Back ?? p.At(1, 1);
             return p;
         }
     }

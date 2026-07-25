@@ -289,19 +289,18 @@
       `DungeonDirectionRules`(층 인덱스 부호 · 진출/귀환 계단 · 낙하의 진행 의미 · 건물 층 라벨),
       `DungeonDefinition.Direction`/`FirstBuildingFloor`. 폐병원=상승·B2 시작, 침수된 금고=하강·B1 시작.
       계약 테스트 `DungeonDirectionRulesTests`. **생성기는 아직 이 값을 읽지 않는다**(아래).
-- [ ] **생성기가 방향을 읽게 한다** — ⚠ *일방적인 "상승 전환"이 아니다.* 하강이 주 목적인 던전과
-      상승이 주 목적인 던전이 함께 존재하므로, 생성기는 방향을 **매개변수로 받아야** 한다.
-      하강이 박혀 있는 곳은 세 군데뿐이다:
-      `DungeonGenerator.Planning.cs`의 `FloorIndex = -depth` ·
-      `DungeonLayout.cs`의 `Connect(plans[i].Down, plans[i+1].Up)`(= 진출 계단을 Down으로 고정) ·
-      `bottomElevation = Elevation(-(floorCount-1))`(낙하 바닥).
-      **핵심은 공간(위/아래)과 진행(진출/귀환)의 분리**다 — `FinalFloorIndex`를 `BottomFloorIndex`에서
-      갈라낸 것과 같은 구분이며, `DungeonDirectionRules.OnwardStair/BackStair`가 그 SSOT다.
-      Hole은 방향과 무관하게 **아래로** 떨어지므로 상승 던전에서는 착지 층이 먼저 생성된다
-      (생성 순서가 뒤집힌다). 기존 불변식(정확히 한 층 아래 착지·2층 관통 금지·기둥 겹침)은
-      **그대로 계약으로 유지**한다.
-      함께 따라가야 하는 곳: `IsBottomExit`/`CreateBossExitSeal`이 `floor.DownStairs`를 보는데
-      상승 던전에서는 진출 계단이 `UpStairs`다. `FloorLabel`도 `DungeonDirectionRules.FloorLabelFor`로.
+- [x] **생성기가 방향을 읽게 한다** — 하강·상승·진입깊이가 매개변수로 공존한다.
+      `Generate(..., DungeonProgressDirection)` · `FloorPlan.Up/Down` → **진출/귀환**(`Onward`/`Back`) ·
+      계단 종류는 `OnwardStair`/`BackStair` · 낙하는 진행 순서가 아니라 **공간 순서**로 순회한다
+      (상승 던전에서는 둘이 뒤집힌다). `DungeonLayout.Direction` + `OnwardStairOf`/`BackStairOf` 로
+      "출구"를 찾던 4곳(`IsBottomExit`·`CreateBossExitSeal`·치트 점프·자동 이동)을 전환했고,
+      `FloorLabel`은 `DungeonDirectionRules.FloorLabelFor` 를 탄다.
+      **첫 던전이 실제로 상승이 됐다** — 폐병원 B2 → 8F, PlayMode 스모크가 이 경로를 통과한다.
+      부수적으로 두 결함을 고쳤다: 생성기 배치 패스 10여 곳의 `-FloorIndex` 역산(상승에서 난이도가
+      첫 층으로 붕괴), `RunSummary`의 최솟값 기반 도달 층(상승에서 영원히 시작 층).
+      하강 던전 출력은 골든 비교로 **완전 동일**함을 확인했다(seed 1/7/23/1977 × 층 3/10).
+      보스 아레나 무구멍 불변식은 명시적으로 유지했다 — 하강에서는 공간 최하단이라 자동으로
+      빠졌지만 상승에서는 최상층이라 조건이 필요하다.
 - [ ] **낙하 affordance 재배치** — 상승 던전에서 낙하는 전진 지름길이 아니라 **후퇴·탈출 수단**이다
       (GDD §5.3 주석). 엘리베이터 통로를 후퇴 동선으로 배치하고, 완충 부츠의 안내 문구를 재검토한다.
 - [ ] **병원 소품 추가** — 위생 타일·들것·커튼·수술등·엘리베이터 통로. 확정된 환경 세트(콘크리트·

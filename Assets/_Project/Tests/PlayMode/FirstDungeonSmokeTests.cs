@@ -37,7 +37,7 @@ namespace ProjectC.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator MainMenuToHubToB10BossAndUnlockedExit_CompletesRun()
+        public IEnumerator MainMenuToHubToRooftopBossAndUnlockedExit_CompletesRun()
         {
             Assert.NotNull(Object.FindAnyObjectByType<MainMenuController>());
             InvokeMainMenuStart();
@@ -56,14 +56,18 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsFalse(dungeon.hubMode);
             Assert.AreEqual(DungeonCatalog.DefaultId, dungeon.DungeonId);
             Assert.AreEqual(10, dungeon.FloorCount);
-            Assert.AreEqual("B1", dungeon.ActiveFloorLabel);
+            // 첫 던전은 폐병원(상승) — 지하 기계실 B2 에서 시작해 8F 옥상으로 올라간다.
+            // 출처: DungeonCatalog(direction: Ascend, firstBuildingFloor: -2, "B2 → 8F + 옥상"),
+            // docs/STATUS.md "첫 던전/보스", GDD §10.1.
+            Assert.AreEqual("B2", dungeon.ActiveFloorLabel);
             Assert.NotNull(dungeon.Telemetry);
             Assert.AreEqual(RunTelemetryOutcome.InProgress, dungeon.Telemetry.outcome);
 
-            dungeon.DebugJumpFloor(-9);
+            // 상승 던전의 진행 최종 층은 공간 최상단(+9)이다 — 하강 던전의 -9 가 아니다.
+            dungeon.DebugJumpFloor(9);
             yield return null;
 
-            Assert.AreEqual("B10", dungeon.ActiveFloorLabel);
+            Assert.AreEqual("8F", dungeon.ActiveFloorLabel);
             Assert.IsTrue(dungeon.IsBossFloor);
             Assert.Greater(dungeon.BossHp, 0);
             Assert.IsFalse(dungeon.BossDefeated);
@@ -89,9 +93,9 @@ namespace ProjectC.Tests.PlayMode
                 root.Q<Label>("boss-health-value").text);
             Assert.IsTrue(RunSaveStore.TryLoad(out RunSaveData checkpoint));
             Assert.IsTrue(checkpoint.bossDefeated);
-            Assert.AreEqual(-9, checkpoint.currentFloorIndex);
+            Assert.AreEqual(9, checkpoint.currentFloorIndex);
             Assert.NotNull(checkpoint.telemetry);
-            Assert.AreEqual(-9, checkpoint.telemetry.currentFloorIndex);
+            Assert.AreEqual(9, checkpoint.telemetry.currentFloorIndex);
 
             Assert.IsTrue(dungeon.DebugRequestBossExit());
             Assert.AreEqual(1, exitRequests);

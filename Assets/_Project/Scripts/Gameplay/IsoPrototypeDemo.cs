@@ -650,13 +650,15 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            // 진행 방향은 던전별 데이터다 — 전역 스위치가 아니다(GDD §10.1).
             _dungeon = DungeonGenerator.Generate(
                 _grid.Map,
                 roomSize,
                 roomSize,
                 floorCount,
                 elevationsPerFloor,
-                dungeonSeed);
+                dungeonSeed,
+                DungeonSelection.Selected.Direction);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));
@@ -1104,7 +1106,30 @@ namespace ProjectC.Gameplay
             _input.targetElevation = _dungeon.Height.Elevation(_activeFloorIndex);
         }
 
-        public static string FloorLabel(int floorIndex) =>
+        /// <summary>
+        /// 층 라벨. <b>방향을 아는 인스턴스 경로를 쓴다</b> — 층 인덱스만으로는 라벨을 만들 수 없다.
+        /// 상승 던전에서 floorIndex 2 는 "F3"이 아니라 "1F"이고, 진입깊이 던전은 "3구역"이다.
+        /// <para>
+        /// 레이아웃이 모르는 층(던전 체인의 전역 인덱스·요약값)은 옛 하강 표기로 떨어진다 —
+        /// 체인 전체를 아우르는 표기는 별도 과제다(<see cref="FloorLabelFallback"/>).
+        /// </para>
+        /// </summary>
+        public string FloorLabel(int floorIndex)
+        {
+            if (_dungeon != null && _dungeon.TryGetProgressIndex(floorIndex, out int progress))
+                return DungeonDirectionRules.FloorLabelFor(
+                    _dungeon.Direction,
+                    DungeonSelection.Selected.FirstBuildingFloor,
+                    progress);
+
+            return FloorLabelFallback(floorIndex);
+        }
+
+        /// <summary>
+        /// 레이아웃 밖의 층 인덱스를 표기하는 폴백(하강 가정). 게임오버 요약처럼
+        /// 던전 체인의 전역 인덱스를 받는 곳에서만 쓴다.
+        /// </summary>
+        public static string FloorLabelFallback(int floorIndex) =>
             floorIndex <= 0 ? $"B{1 - floorIndex}" : $"F{floorIndex + 1}";
 
         private void PositionSelection(GridPos pos)

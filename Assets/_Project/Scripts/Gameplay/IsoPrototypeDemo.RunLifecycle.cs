@@ -88,7 +88,9 @@ namespace ProjectC.Gameplay
             _lastHungerStage = _hunger.Stage;
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
-            _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+            _runSummary.RecordFloor(
+                GlobalFloorIndex(_activeFloorIndex),
+                GlobalDepth(_activeFloorIndex));
             if (data.telemetry != null)
             {
                 _runTelemetry = data.telemetry;
@@ -170,8 +172,8 @@ namespace ProjectC.Gameplay
             _dungeon != null &&
             _activeFloorIndex == _dungeon.FinalFloorIndex &&
             _dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo floor) &&
-            floor.DownStairs.HasValue &&
-            floor.DownStairs.Value == pos;
+            _dungeon.OnwardStairOf(floor) is GridPos onward &&
+            onward == pos;
 
         private bool TryRequestExitChoice()
         {

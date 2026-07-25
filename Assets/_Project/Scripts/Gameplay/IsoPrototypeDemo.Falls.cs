@@ -119,7 +119,9 @@ namespace ProjectC.Gameplay
             if (floorChanged)
             {
                 _activeFloorIndex = _dungeon.Height.FloorIndex(position.elevation);
-                _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
+                _runSummary.RecordFloor(
+                GlobalFloorIndex(_activeFloorIndex),
+                GlobalDepth(_activeFloorIndex));
                 int globalFloor = GlobalFloorIndex(_activeFloorIndex);
                 if (_runTelemetry != null && _runTelemetry.currentFloorIndex != globalFloor)
                     _runTelemetry.RecordFloorEntered(globalFloor, GlobalDepth(_activeFloorIndex));
