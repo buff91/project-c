@@ -17,6 +17,7 @@ namespace ProjectC.Gameplay
 
             RecomputeVisibility();
             RefreshDungeonFogBackdrop();
+            EnsureStaticLightField();
 
             foreach (var pair in _tileRenderers)
             {
@@ -914,6 +915,12 @@ namespace ProjectC.Gameplay
                                  HigherElevationOverlapsPlayer(pair.Value, renderer.bounds, playerBounds));
                 ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
             }
+
+            UpdateContactShadow(
+                _playerShadow,
+                _playerState != null ? _playerState.Position : _playerPos,
+                _playerRenderer.sortingOrder,
+                true);
         }
 
         /// <summary>
@@ -1044,9 +1051,21 @@ namespace ProjectC.Gameplay
         /// </summary>
         private float TileLightLevel(GridPos pos)
         {
-            if (!dungeonDarkness || hubMode || viewMode == DungeonViewMode.DebugAll ||
-                _dungeon == null || _playerState == null)
-                return 1f;
+            if (viewMode == DungeonViewMode.DebugAll || _dungeon == null) return 1f;
+
+            // 지상 캠프: 시야는 그대로 두고, 중심(모닥불)만 밝게 남기고 가장자리를 안개로 가라앉힌다.
+            if (hubMode)
+            {
+                if (!hubSurfaceFog) return 1f;
+                float hx = pos.x - HubLayout.Campfire.x;
+                float hy = pos.y - HubLayout.Campfire.y;
+                float hubDistance = Mathf.Sqrt(hx * hx + hy * hy);
+                float ht = Mathf.Clamp01(
+                    (hubDistance - hubFogInnerRadius) / Mathf.Max(0.01f, hubFogFalloff));
+                return Mathf.Lerp(1f, hubFogEdgeLevel, ht);
+            }
+
+            if (!dungeonDarkness || _playerState == null) return 1f;
             if (!_visibleTiles.Contains(pos)) return 1f;
 
             int depth = Mathf.Max(0, -_activeFloorIndex);
@@ -1058,9 +1077,12 @@ namespace ProjectC.Gameplay
             float dx = pos.x - origin.x;
             float dy = pos.y - origin.y;
             float distance = Mathf.Sqrt(dx * dx + dy * dy);
-            float light = GridLighting.TileLight(
-                ambient, distance, carriedLightRadius, carriedLightIntensity);
+            float carried = GridLighting.PointFalloff(
+                distance, carriedLightRadius, carriedLightIntensity);
 
+            // 정적 광원(모닥불·벽 등잔·개구부)은 이미 차폐 계산된 필드에서 조회한다.
+            float light = ambient + carried + StaticLightAt(pos);
+            if (light > 1f) light = 1f;
             return Mathf.Lerp(darknessFloor, 1f, light);
         }
 

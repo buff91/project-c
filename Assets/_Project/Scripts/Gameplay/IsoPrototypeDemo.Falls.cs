@@ -82,6 +82,7 @@ namespace ProjectC.Gameplay
         private IEnumerator CollapseUnderPlayer(GridPos pos)
         {
             _grid.Map.Set(pos, TileKind.Hole);
+            MarkStaticLightDirty(); // 새 개구부 = 새 광원
             InteractionFeedback?.Invoke("WEAK FLOOR COLLAPSED!");
             Debug.Log($"[Fall] 플레이어 밑의 약한 바닥 붕괴 {pos}");
             yield return FallPlayer(pos, "COLLAPSE");
@@ -156,6 +157,7 @@ namespace ProjectC.Gameplay
         private IEnumerator CollapseUnderEnemy(EnemyAgent enemy, GridPos pos)
         {
             _grid.Map.Set(pos, TileKind.Hole);
+            MarkStaticLightDirty(); // 새 개구부 = 새 광원
             Debug.Log($"[Fall] {enemy.State.Id} 밑의 약한 바닥 붕괴 {pos}");
             yield return FallEnemy(enemy, pos, "붕괴");
         }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace ProjectC.Core
 {
     /// <summary>
@@ -62,6 +65,60 @@ namespace ProjectC.Core
             float light = ambient + PointFalloff(distanceToLight, lightRadius, lightIntensity);
             if (light < 0f) return 0f;
             return light > 1f ? 1f : light;
+        }
+
+        /// <summary>정적 점 광원 하나(모닥불·벽 등잔·개구부로 새어드는 빛 등).</summary>
+        public readonly struct PointLight
+        {
+            public readonly GridPos Position;
+            public readonly float Radius;
+            public readonly float Intensity;
+
+            public PointLight(GridPos position, float radius, float intensity)
+            {
+                Position = position;
+                Radius = radius;
+                Intensity = intensity;
+            }
+        }
+
+        /// <summary>
+        /// 정적 광원들의 차폐 광량 필드. 각 광원은 섀도우캐스팅(GridVisibility)으로
+        /// 벽 너머가 걸러진 뒤 거리 감쇠로 기여하며, 타일별로 합산해 0..1로 포화한다.
+        /// 벽·기둥이 광원과 타일 사이를 막으면 그 타일은 어둠으로 남는다(= 캐스트 그림자).
+        /// 정적 지오메트리에만 의존하므로 층당 1회 계산해 캐시하면 된다.
+        /// </summary>
+        public static Dictionary<GridPos, float> ComputeStaticField(
+            GridMap map,
+            IReadOnlyList<PointLight> lights,
+            int minElevation,
+            int maxElevation)
+        {
+            var field = new Dictionary<GridPos, float>();
+            if (map == null || lights == null) return field;
+
+            foreach (PointLight light in lights)
+            {
+                if (light.Radius <= 0f || light.Intensity <= 0f) continue;
+                int radius = (int)Math.Ceiling(light.Radius);
+                HashSet<GridPos> lit = GridVisibility.Compute(
+                    map, light.Position, minElevation, maxElevation, radius);
+
+                foreach (GridPos tile in lit)
+                {
+                    float dx = tile.x - light.Position.x;
+                    float dy = tile.y - light.Position.y;
+                    float distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                    float add = PointFalloff(distance, light.Radius, light.Intensity);
+                    if (add <= 0f) continue;
+
+                    field.TryGetValue(tile, out float current);
+                    float sum = current + add;
+                    field[tile] = sum > 1f ? 1f : sum;
+                }
+            }
+
+            return field;
         }
     }
 }

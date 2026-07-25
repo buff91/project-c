@@ -112,6 +112,35 @@ namespace ProjectC.Gameplay
         [Tooltip("완전한 어둠에서도 실루엣이 읽히도록 남기는 최소 밝기(순검정 방지).")]
         [Range(0.03f, 0.4f)] public float darknessFloor = 0.12f;
 
+        [Header("정적 광원 (모닥불 / 벽 등잔 / 개구부)")]
+        [Tooltip("모닥불·벽 등잔·Hole이 주변을 밝히고 벽 뒤에 그림자를 드리운다(차폐 계산, 층당 캐시).")]
+        public bool staticLights = true;
+        [Tooltip("휴식지 모닥불의 광원 반경/세기.")]
+        [Range(2, 8)] public int restLightRadius = 5;
+        [Range(0.3f, 1f)] public float restLightIntensity = 0.9f;
+        [Tooltip("벽 등잔(방 가장자리 seed 타일)의 반경/세기. 은은한 토치 앰비언스.")]
+        [Range(2, 6)] public int sconceLightRadius = 4;
+        [Range(0.1f, 0.8f)] public float sconceLightIntensity = 0.5f;
+        [Tooltip("Hole로 위·아래 층의 빛이 새어드는 개구부 광원의 반경/세기.")]
+        [Range(2, 6)] public int holeLightRadius = 3;
+        [Range(0.1f, 0.9f)] public float holeLightIntensity = 0.6f;
+
+        [Header("접촉 그림자 (액터 발밑)")]
+        [Tooltip("플레이어·적 발밑에 부드러운 드롭섀도우를 깐다(어둠 속 접지감). 허브 제외.")]
+        public bool contactShadows = true;
+        [Tooltip("접촉 그림자의 최대 진하기. 밝은 곳일수록 진하게, 어두운 곳일수록 옅게 나온다.")]
+        [Range(0.1f, 0.9f)] public float contactShadowStrength = 0.55f;
+
+        [Header("지상 캠프 안개")]
+        [Tooltip("허브 캠프의 가장자리를 옅은 안개로 가라앉혀 중심(모닥불)만 밝게 남긴다. 시야는 건드리지 않는다.")]
+        public bool hubSurfaceFog = true;
+        [Tooltip("안개가 시작되는 모닥불로부터의 반경. 이 안은 밝게 유지된다.")]
+        [Range(1f, 8f)] public float hubFogInnerRadius = 3f;
+        [Tooltip("안개가 가장자리 밝기까지 짙어지는 거리.")]
+        [Range(2f, 10f)] public float hubFogFalloff = 5f;
+        [Tooltip("캠프 가장자리의 밝기(1이면 안개 없음).")]
+        [Range(0.4f, 1f)] public float hubFogEdgeLevel = 0.72f;
+
         [Header("플레이어 가림 처리")]
         [Tooltip("플레이어와 화면상 겹치는 앞쪽 타일·벽을 자동으로 투명하게 만든다.")]
         public bool fadePlayerOccluders = true;
@@ -875,6 +904,7 @@ namespace ProjectC.Gameplay
             if (playerSprite == null)
                 playerSprite = GetCharacterSprite(false);
             _player = CreateStandingSprite("Player", playerSprite, _playerPos, out _playerRenderer);
+            _playerShadow = CreateContactShadow(_player.transform);
             _playerSorting = _player.AddComponent<GridSortingObject>();
             _playerSorting.grid = _grid;
             _playerSorting.microOffset = 1;
@@ -1174,6 +1204,10 @@ namespace ProjectC.Gameplay
             surfaceLightLevel = Mathf.Clamp(surfaceLightLevel, 0.3f, 1f);
             deepLightLevel = Mathf.Clamp(deepLightLevel, 0.02f, surfaceLightLevel);
             darknessFloor = Mathf.Clamp(darknessFloor, 0.03f, 0.4f);
+            contactShadowStrength = Mathf.Clamp(contactShadowStrength, 0.1f, 0.9f);
+            hubFogEdgeLevel = Mathf.Clamp(hubFogEdgeLevel, 0.4f, 1f);
+            // 광원 파라미터가 바뀌면 정적 광량 필드를 다시 계산한다.
+            MarkStaticLightDirty();
 
             if (_dungeon == null) return;
             RefreshFloorVisibility();
@@ -2879,6 +2913,8 @@ namespace ProjectC.Gameplay
                 yield return AnimateDoorTransition(renderer, door, nextKind);
             else
                 _grid.Map.Set(door, nextKind);
+            // 문/비밀 통로가 열리면 차폐가 바뀌므로 정적 광량 필드를 다시 계산한다.
+            MarkStaticLightDirty();
         }
 
         private IEnumerator FlashColor(SpriteRenderer renderer, Color32 flash)
@@ -3093,6 +3129,7 @@ namespace ProjectC.Gameplay
             public MonsterBrain Brain;
             public GameObject Root;
             public SpriteRenderer Renderer;
+            public SpriteRenderer Shadow;
             public Transform HpFill;
             public Transform HpBackground;
             public MonsterMood LastMood;

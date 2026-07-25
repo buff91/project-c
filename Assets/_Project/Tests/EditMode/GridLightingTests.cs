@@ -86,5 +86,71 @@ namespace ProjectC.Tests
             float edge = GridLighting.TileLight(ambient, 4f, 4f, 0.95f);
             Assert.Greater(near, edge, "웅덩이 안이 가장자리보다 밝다(어둠 속 그림자 그라데이션)");
         }
+
+        private static GridMap Flat(int size)
+        {
+            var map = new GridMap();
+            for (int x = 0; x < size; x++)
+            for (int y = 0; y < size; y++)
+                map.Set(new GridPos(x, y, 0), TileKind.Floor);
+            return map;
+        }
+
+        [Test]
+        public void StaticField_LightsNearTiles_FallsWithDistance()
+        {
+            GridMap map = Flat(11);
+            var lights = new[] { new GridLighting.PointLight(new GridPos(5, 5, 0), 4f, 0.9f) };
+
+            var field = GridLighting.ComputeStaticField(map, lights, 0, 0);
+
+            Assert.IsTrue(field.TryGetValue(new GridPos(5, 5, 0), out float center));
+            Assert.IsTrue(field.TryGetValue(new GridPos(7, 5, 0), out float mid));
+            Assert.Greater(center, mid, "광원에 가까울수록 밝다");
+            Assert.Greater(mid, 0f);
+        }
+
+        [Test]
+        public void StaticField_WallCastsShadow()
+        {
+            // 광원과 타일 사이에 벽 → 벽 너머는 광량 필드에 들어오지 않는다(캐스트 그림자).
+            GridMap map = Flat(13);
+            map.Set(new GridPos(8, 6, 0), TileKind.Wall);
+            var lights = new[] { new GridLighting.PointLight(new GridPos(6, 6, 0), 6f, 1f) };
+
+            var field = GridLighting.ComputeStaticField(map, lights, 0, 0);
+
+            Assert.IsTrue(field.ContainsKey(new GridPos(7, 6, 0)), "벽 앞은 밝다");
+            Assert.IsFalse(
+                field.ContainsKey(new GridPos(10, 6, 0)),
+                "벽 뒤 그림자에는 정적 광이 닿지 않는다");
+        }
+
+        [Test]
+        public void StaticField_MultipleLights_Accumulate()
+        {
+            GridMap map = Flat(11);
+            var one = new[] { new GridLighting.PointLight(new GridPos(5, 5, 0), 4f, 0.4f) };
+            var two = new[]
+            {
+                new GridLighting.PointLight(new GridPos(5, 5, 0), 4f, 0.4f),
+                new GridLighting.PointLight(new GridPos(6, 5, 0), 4f, 0.4f),
+            };
+
+            float single = GridLighting.ComputeStaticField(map, one, 0, 0)[new GridPos(5, 5, 0)];
+            float doubled = GridLighting.ComputeStaticField(map, two, 0, 0)[new GridPos(5, 5, 0)];
+
+            Assert.Greater(doubled, single, "겹치는 광원은 합산된다");
+            Assert.LessOrEqual(doubled, 1f, "합산은 1로 포화한다");
+        }
+
+        [Test]
+        public void StaticField_NoLights_IsEmpty()
+        {
+            GridMap map = Flat(5);
+            var field = GridLighting.ComputeStaticField(
+                map, new GridLighting.PointLight[0], 0, 0);
+            Assert.AreEqual(0, field.Count);
+        }
     }
 }
