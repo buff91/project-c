@@ -460,7 +460,7 @@ namespace ProjectC.Gameplay
         private void CreateBossExitSeal()
         {
             if (hubMode || _dungeon == null || DungeonSelection.Selected.Boss == null ||
-                !_dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo bottom) ||
+                !_dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo bottom) ||
                 !bottom.DownStairs.HasValue)
                 return;
 
@@ -478,7 +478,7 @@ namespace ProjectC.Gameplay
             if (_bossExitSealRenderer == null || _dungeon == null) return;
 
             _bossExitSealRenderer.sprite = GetBossExitSealSprite(_bossDefeated);
-            bool onFloor = _activeFloorIndex == _dungeon.BottomFloorIndex;
+            bool onFloor = _activeFloorIndex == _dungeon.FinalFloorIndex;
             bool seen = viewMode == DungeonViewMode.DebugAll ||
                         _visibleTiles.Contains(_bossExitPos) ||
                         _verticalPreviewTiles.Contains(_bossExitPos);

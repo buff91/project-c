@@ -261,7 +261,7 @@
 > **좌표계는 거의 그대로다** — `DungeonHeightModel.FloorIndex`는 음수 안전 나눗셈이라 양수 방향도
 > 이미 정상 동작하고, `FallRules`/`SightRules`는 중력 절대라 무관하다.
 
-- [ ] **⭐ 선행: 진행 지수를 고도에서 떼어낸다** — 나머지 전부의 전제다.
+- [x] **⭐ 선행: 진행 지수를 고도에서 떼어낸다** — 코드 완료(Unity 검증 남음). — 나머지 전부의 전제다.
       `DungeonVisualContext.DepthIndex`가 지금은 `Math.Max(0, -floorIndex)` **파생값**이라
       상승 던전에서 전부 0으로 붕괴하고(예외 없이 조용히), 비단조 경로에서는 원리적으로 성립하지 않는다.
       `DungeonFloorInfo`에 진행 지수를 1급 필드로 두고 **생성기가 경로를 깔며 부여**한다.

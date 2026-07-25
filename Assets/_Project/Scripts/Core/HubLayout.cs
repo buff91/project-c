@@ -49,6 +49,7 @@ namespace ProjectC.Core
 
             var floor = new DungeonFloorInfo(
                 0,
+                progressIndex: 0,
                 Entry,
                 upStairs: null,
                 downStairs: null,

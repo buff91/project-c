@@ -97,7 +97,7 @@ namespace ProjectC.Gameplay
 
             DungeonVisualContext context = VisualContext(pos);
             bool extruded = context.IsRaised || IsFrontEdge(pos);
-            int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + context.DepthIndex * 13) % 4;
+            int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + context.ProgressIndex * 13) % 4;
             Color32 baseColor = DungeonSurfaceColor(context);
 
             if (visualCatalog != null)
@@ -108,7 +108,7 @@ namespace ProjectC.Gameplay
             }
 
             string key =
-                $"tile-{kind}-d{context.DepthIndex}-h{context.LocalHeight}-v{variant}-x{extruded}";
+                $"tile-{kind}-d{context.ProgressIndex}-h{context.LocalHeight}-v{variant}-x{extruded}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             int textureHeight = extruded ? 48 : TilePixelHeight;
@@ -421,7 +421,7 @@ namespace ProjectC.Gameplay
             bool closed = kind == TileKind.DoorClosed;
             bool risesRight = DoorPlaneRisesRight(pos);
             string key =
-                $"door-iso-{kind}-d{context.DepthIndex}-h{context.LocalHeight}-r{risesRight}";
+                $"door-iso-{kind}-d{context.ProgressIndex}-h{context.LocalHeight}-r{risesRight}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             const int width = 64;
@@ -507,7 +507,7 @@ namespace ProjectC.Gameplay
             DungeonVisualContext context = VisualContext(pos);
             bool risesRight = DoorPlaneRisesRight(pos);
             string key =
-                $"secret-wall-d{context.DepthIndex}-lh{context.LocalHeight}-r{risesRight}-h{hinted}";
+                $"secret-wall-d{context.ProgressIndex}-lh{context.LocalHeight}-r{risesRight}-h{hinted}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             const int width = 64;
@@ -585,9 +585,10 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        // 진행 지수는 레이아웃이 소유한다 — elevation 으로 역산하지 않는다(GDD §5.1).
         private DungeonVisualContext VisualContext(GridPos pos) =>
             _dungeon != null
-                ? DungeonVisualContext.From(_dungeon.Height, pos.elevation)
+                ? DungeonVisualContext.From(_dungeon, pos.elevation)
                 : DungeonVisualContext.Preview(pos.elevation);
 
         private Color32 DungeonVoidColor =>

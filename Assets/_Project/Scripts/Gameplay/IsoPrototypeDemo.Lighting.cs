@@ -99,7 +99,9 @@ namespace ProjectC.Gameplay
                 !HasPlanarTile(pos.x, pos.y + 1, floor) ||
                 !HasPlanarTile(pos.x, pos.y - 1, floor);
             if (!edge) return false;
-            int rarity = DungeonBandProfiles.ForDepth(Mathf.Max(0, -floor)).WallSconceRarity;
+            int rarity = DungeonBandProfiles
+                .ForDepth(_dungeon != null ? _dungeon.ProgressIndexFor(floor) : 0)
+                .WallSconceRarity;
             int hash = (pos.x * 73856093) ^ (pos.y * 19349663) ^ (dungeonSeed * 83492791);
             return (hash & 0x7fffffff) % rarity == 0;
         }

@@ -17,6 +17,13 @@ namespace ProjectC.Core
     public sealed class RunFloorTelemetry
     {
         public int floorIndex;
+
+        /// <summary>
+        /// 몇 번째로 방문한 층인가(0부터, 던전 체인 누적). 구간 롤업의 키다 —
+        /// floorIndex 부호로 역산하면 상승 던전에서 전부 첫 구간으로 붕괴한다.
+        /// </summary>
+        public int progressIndex;
+
         public int visits;
         public int turns;
         public float elapsedSeconds;
@@ -83,7 +90,7 @@ namespace ProjectC.Core
     [Serializable]
     public sealed class RunTelemetry
     {
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
 
         /// <summary>구간 롤업을 항상 얕은 곳부터 깊은 곳 순으로 낸다.</summary>
         private static readonly DungeonDepthBand[] BandOrder =
@@ -106,6 +113,10 @@ namespace ProjectC.Core
         public string endCause;
         public int currentFloorIndex;
         public int deepestFloorIndex;
+
+        /// <summary>현재/최대 진행 지수. 구간 롤업과 "얼마나 나아갔나"의 출처다.</summary>
+        public int currentProgressIndex;
+        public int deepestProgressIndex;
         public int totalTurns;
         public float elapsedSeconds;
         public int totalDamageTaken;
@@ -149,7 +160,8 @@ namespace ProjectC.Core
             string heroId,
             int seed,
             int floorIndex,
-            DateTime utcNow)
+            DateTime utcNow,
+            int progressIndex = 0)
         {
             var telemetry = new RunTelemetry
             {
@@ -161,9 +173,11 @@ namespace ProjectC.Core
                 outcome = RunTelemetryOutcome.InProgress,
                 outcomeLabel = RunTelemetryOutcome.InProgress.ToString(),
                 currentFloorIndex = floorIndex,
-                deepestFloorIndex = floorIndex
+                deepestFloorIndex = floorIndex,
+                currentProgressIndex = progressIndex,
+                deepestProgressIndex = progressIndex
             };
-            telemetry.RecordFloorEntered(floorIndex);
+            telemetry.RecordFloorEntered(floorIndex, progressIndex);
             return telemetry;
         }
 
@@ -183,12 +197,17 @@ namespace ProjectC.Core
             Floor(floorIndex).turns++;
         }
 
-        public void RecordFloorEntered(int floorIndex)
+        public void RecordFloorEntered(int floorIndex, int progressIndex)
         {
             if (Ended) return;
             currentFloorIndex = floorIndex;
+            currentProgressIndex = progressIndex;
             deepestFloorIndex = Math.Min(deepestFloorIndex, floorIndex);
-            Floor(floorIndex).visits++;
+            deepestProgressIndex = Math.Max(deepestProgressIndex, progressIndex);
+
+            RunFloorTelemetry floor = Floor(floorIndex);
+            floor.progressIndex = progressIndex;
+            floor.visits++;
         }
 
         public void RecordDamageTaken(string source, int amount, bool fatal, int floorIndex)
@@ -330,7 +349,9 @@ namespace ProjectC.Core
                 RunBandTelemetry rolled = null;
                 foreach (RunFloorTelemetry floor in floors)
                 {
-                    if (DungeonDepthBandRules.ForFloor(floor.floorIndex) != band) continue;
+                    // 진행 지수로 묶는다. 예전에는 floorIndex 부호로 역산했는데(ForFloor),
+                    // 상승 던전에서는 전부 첫 구간으로 붕괴했다.
+                    if (DungeonDepthBandRules.ForDepth(floor.progressIndex) != band) continue;
                     if (rolled == null)
                     {
                         rolled = new RunBandTelemetry
@@ -425,8 +446,20 @@ namespace ProjectC.Core
 
         private void EnsureCurrentFloor(int floorIndex)
         {
-            if (currentFloorIndex != floorIndex)
-                RecordFloorEntered(floorIndex);
+            if (currentFloorIndex == floorIndex) return;
+
+            // 이 경로는 진행 지수를 모른다(피해·아이템 기록 등). 이미 방문한 층이면 그때 기록한
+            // 값을 재사용하고, 처음 보는 층이면 현재 진행 지수를 유지한다 —
+            // 정상 흐름은 언제나 RecordFloorEntered 가 먼저 돈다.
+            int progress = currentProgressIndex;
+            foreach (RunFloorTelemetry floor in floors)
+            {
+                if (floor.floorIndex != floorIndex) continue;
+                progress = floor.progressIndex;
+                break;
+            }
+
+            RecordFloorEntered(floorIndex, progress);
         }
 
         private RunFloorTelemetry Floor(int floorIndex)
@@ -435,9 +468,16 @@ namespace ProjectC.Core
                 if (floor.floorIndex == floorIndex)
                     return floor;
 
-            var created = new RunFloorTelemetry { floorIndex = floorIndex };
+            var created = new RunFloorTelemetry
+            {
+                floorIndex = floorIndex,
+                progressIndex = currentProgressIndex
+            };
             floors.Add(created);
-            floors.Sort((a, b) => b.floorIndex.CompareTo(a.floorIndex));
+
+            // 방문 순서로 정렬한다. 예전에는 floorIndex 내림차순(= 깊을수록 먼저)이었는데
+            // 상승 던전에서는 순서가 뒤집힌다. 진행 지수는 방향과 무관하게 항상 방문 순서다.
+            floors.Sort((a, b) => a.progressIndex.CompareTo(b.progressIndex));
             return created;
         }
 

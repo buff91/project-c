@@ -5,7 +5,21 @@ namespace ProjectC.Core
 {
     public sealed class DungeonFloorInfo
     {
+        /// <summary>elevation 을 던전 층으로 묶은 <b>공간</b> 구획. 진행 순서와 무관하다.</summary>
         public int FloorIndex { get; }
+
+        /// <summary>
+        /// 몇 번째로 방문하는 층인가(0부터). 난이도·콘텐츠 규칙의 유일한 키다 —
+        /// 휴식처·탈출구·장비 드랍·숨은 방·적 혼합·구간 변주·보스가 모두 이 값을 쓴다.
+        /// <para>
+        /// <b>elevation 에서 파생하지 않는다.</b> 던전은 상승·하강·평면이 모두 가능하고
+        /// 한 던전 안에서 올라갔다 떨어지는 경로도 가능하므로(GDD §5.1),
+        /// <c>1F→3F→2F→5F</c> 같은 경로에서는 고도로 역산할 방법이 없다.
+        /// 생성기가 경로를 깔면서 부여한다.
+        /// </para>
+        /// </summary>
+        public int ProgressIndex { get; }
+
         public GridPos Entry { get; }
         public GridPos? UpStairs { get; }
         public GridPos? DownStairs { get; }
@@ -27,6 +41,7 @@ namespace ProjectC.Core
 
         public DungeonFloorInfo(
             int floorIndex,
+            int progressIndex,
             GridPos entry,
             GridPos? upStairs,
             GridPos? downStairs,
@@ -44,6 +59,7 @@ namespace ProjectC.Core
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
+            ProgressIndex = progressIndex < 0 ? 0 : progressIndex;
             Entry = entry;
             UpStairs = upStairs;
             DownStairs = downStairs;
@@ -67,10 +83,31 @@ namespace ProjectC.Core
             new Dictionary<int, DungeonFloorInfo>();
 
         public DungeonHeightModel Height { get; }
+
+        /// <summary>진행 순서(ProgressIndex 오름차순)로 정렬된 층 목록.</summary>
         public IReadOnlyList<DungeonFloorInfo> Floors { get; }
         public GridPos Entry => Floors[0].Entry;
-        public int TopFloorIndex => Floors[0].FloorIndex;
-        public int BottomFloorIndex => Floors[Floors.Count - 1].FloorIndex;
+
+        /// <summary>
+        /// <b>공간</b> 최상단 층 인덱스. FOV·입력 픽킹의 elevation 상한처럼
+        /// "가장 높은 곳"이 필요한 곳에서만 쓴다 — 진행과 무관하다.
+        /// </summary>
+        public int TopFloorIndex { get; }
+
+        /// <summary>
+        /// <b>공간</b> 최하단 층 인덱스. 낙하 바닥·elevation 하한용이며 진행과 무관하다.
+        /// "마지막 층"을 원하면 <see cref="FinalFloorIndex"/>를 쓴다.
+        /// </summary>
+        public int BottomFloorIndex { get; }
+
+        /// <summary>
+        /// <b>진행</b> 최종 층(보스·출구가 있는 곳). 하강 던전에서는 우연히
+        /// <see cref="BottomFloorIndex"/>와 같지만, 상승·비단조 던전에서는 다르다.
+        /// </summary>
+        public int FinalFloorIndex => Floors[Floors.Count - 1].FloorIndex;
+
+        /// <summary>마지막 진행 지수. 층 수 - 1.</summary>
+        public int MaxProgressIndex => Floors[Floors.Count - 1].ProgressIndex;
 
         public DungeonLayout(DungeonHeightModel height, List<DungeonFloorInfo> floors)
         {
@@ -79,12 +116,43 @@ namespace ProjectC.Core
                 throw new ArgumentException("던전은 한 층 이상이어야 합니다.", nameof(floors));
 
             Floors = floors;
+            int top = floors[0].FloorIndex;
+            int bottom = floors[0].FloorIndex;
             foreach (DungeonFloorInfo floor in floors)
+            {
                 _byFloor.Add(floor.FloorIndex, floor);
+                if (floor.FloorIndex > top) top = floor.FloorIndex;
+                if (floor.FloorIndex < bottom) bottom = floor.FloorIndex;
+            }
+
+            // 공간 극단은 목록 순서가 아니라 실제 최대/최소로 구한다. 하강 던전에서는
+            // 목록 순서와 같지만, 상승·비단조 던전에서는 목록 순서가 진행 순서라 다르다.
+            TopFloorIndex = top;
+            BottomFloorIndex = bottom;
         }
 
         public bool TryGetFloor(int floorIndex, out DungeonFloorInfo floor) =>
             _byFloor.TryGetValue(floorIndex, out floor);
+
+        /// <summary>
+        /// 층의 진행 지수를 찾는다. 난이도·구간 판정은 반드시 이 값을 거쳐야 하며
+        /// elevation 이나 floorIndex 부호로 역산해서는 안 된다.
+        /// </summary>
+        public bool TryGetProgressIndex(int floorIndex, out int progressIndex)
+        {
+            if (_byFloor.TryGetValue(floorIndex, out DungeonFloorInfo floor))
+            {
+                progressIndex = floor.ProgressIndex;
+                return true;
+            }
+
+            progressIndex = 0;
+            return false;
+        }
+
+        /// <summary>모르는 층은 0(첫 층)으로 본다 — 허브처럼 층이 하나뿐인 레이아웃 포함.</summary>
+        public int ProgressIndexFor(int floorIndex) =>
+            TryGetProgressIndex(floorIndex, out int progress) ? progress : 0;
     }
 
     /// <summary>
@@ -156,11 +224,15 @@ namespace ProjectC.Core
                 PlaceWindows(map, heightModel, plan, bottomElevation);
             }
 
+            // plans 는 진행 순서대로 쌓인다(depth 0 = 첫 층). 진행 지수는 여기서 확정되며
+            // 이후 어디서도 elevation 으로 다시 계산하지 않는다.
             var floors = new List<DungeonFloorInfo>(floorCount);
-            foreach (FloorPlan plan in plans)
+            for (int progress = 0; progress < plans.Count; progress++)
             {
+                FloorPlan plan = plans[progress];
                 floors.Add(new DungeonFloorInfo(
                     plan.FloorIndex,
+                    progress,
                     plan.Entry,
                     plan.Up,
                     plan.Down,
