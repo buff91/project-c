@@ -714,14 +714,30 @@ namespace ProjectC.Gameplay
                 : "EXPLORE TO FIND VERTICAL ROUTES";
         }
 
+        /// <summary>
+        /// 개구부 너머로 보이는 조각을 미리보기에 넣는다.
+        /// <para>
+        /// <b>정사각 박스가 아니라 실제 FOV 다.</b> 예전에는 중심에서 체비셰프 반경 안의 칸을
+        /// 전부 넣었고 <b>차폐를 아예 보지 않았다</b> — 벽 뒤도, 닫힌 문 뒤 방도 통째로 드러났다.
+        /// 그건 <see cref="GridVisibility"/>가 지키는 "void=불투명, 닫힌 문 뒤 방은 Unknown"
+        /// 불변식과 정면으로 충돌한다. 반대편 층에서 셰도우캐스팅을 한 번 더 돌리면
+        /// 같은 규칙을 그대로 물려받는다 — 벽 뒤는 안 보이고, 열린 공간은 오히려 더 넓게 보인다.
+        /// </para>
+        /// <para>
+        /// 반경 상한은 남긴다. 개구부 너머가 무한히 보이면 기둥 3(제한된 시야)이 무너진다 —
+        /// 여기서 반경은 "박스 크기"가 아니라 <b>FOV 사거리</b>로 읽는다.
+        /// </para>
+        /// </summary>
         private void AddVerticalWindow(GridPos center, int floorIndex)
         {
-            foreach (var pair in _grid.Map.All())
+            int minElevation = _dungeon.Height.Elevation(floorIndex);
+            int maxElevation = minElevation + _dungeon.Height.ElevationsPerFloor - 1;
+
+            foreach (GridPos pos in GridVisibility.Compute(
+                         _grid.Map, center, minElevation, maxElevation, verticalPreviewRadius))
             {
-                if (_dungeon.Height.FloorIndex(pair.Key.elevation) != floorIndex) continue;
-                if (Mathf.Abs(pair.Key.x - center.x) <= verticalPreviewRadius &&
-                    Mathf.Abs(pair.Key.y - center.y) <= verticalPreviewRadius)
-                    _verticalPreviewTiles.Add(pair.Key);
+                if (_dungeon.Height.FloorIndex(pos.elevation) != floorIndex) continue;
+                _verticalPreviewTiles.Add(pos);
             }
         }
 

@@ -124,7 +124,10 @@ namespace ProjectC.Gameplay
         [Range(0, 19)] public int previewStartDepth = 0;
         public DungeonViewMode viewMode = DungeonViewMode.Play;
         [Range(3, 10)] public int fieldOfViewRadius = 6;
-        [Range(1, 2)] public int verticalPreviewRadius = 2;
+        // 개구부 너머를 보는 **FOV 사거리**다(예전엔 차폐를 안 보는 정사각 박스의 반경이었다).
+        // 플레이어 시야(6)보다 짧게 둔다 — 개구부 너머는 "엿보는" 정보여야지
+        // 그 층을 통째로 아는 수단이 되면 기둥 3(제한된 시야)이 무너진다.
+        [Range(1, 6)] public int verticalPreviewRadius = 4;
         [Range(0.05f, 0.4f)] public float exploredAlpha = 0.16f;
         [Range(0.1f, 0.7f)] public float verticalPreviewAlpha = 0.54f;
         [Range(0.2f, 1.2f)] public float playAdjacentFloorSeparation = 0.6f;

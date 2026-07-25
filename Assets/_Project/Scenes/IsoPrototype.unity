@@ -156,30 +156,71 @@ MonoBehaviour:
   configureMainCamera: 1
   playCameraSize: 5.2
   debugCameraSize: 8.8
+  hubCameraHorizontalPadding: 0.6
+  hubCameraVerticalPadding: 1.2
   playerMaxHp: 8
   playerAttack: 2
   rangedAttackDamage: 1
   rangedAttackRange: 6
   combatMode: 0
+  corpseLifetimeTurns: 3
   potionHealAmount: 5
   bombDamage: 3
   frostBombDamage: 1
   bombThrowRange: 4
   knifeDamage: 3
   stageCount: 1
+  hubMode: 0
   floorCount: 10
   elevationsPerFloor: 4
   dungeonSeed: 1977
   previewStartDepth: 0
   viewMode: 0
   fieldOfViewRadius: 6
-  verticalPreviewRadius: 2
+  verticalPreviewRadius: 4
   exploredAlpha: 0.16
   verticalPreviewAlpha: 0.54
   playAdjacentFloorSeparation: 0.6
   debugFloorSeparation: 1.6
   debugAdjacentAlpha: 0.48
   autoDescendOnStart: 0
+  showDungeonFogBackdrop: 1
+  unknownFogColor:
+    serializedVersion: 2
+    rgba: 3524135175
+  unknownFogEdge:
+    serializedVersion: 2
+    rgba: 3826453770
+  dungeonDarkness: 1
+  surfaceLightLevel: 0.9
+  deepLightLevel: 0.14
+  carriedLightRadius: 4
+  carriedLightIntensity: 0.95
+  darknessFloor: 0.12
+  staticLights: 1
+  restLightRadius: 5
+  restLightIntensity: 0.9
+  sconceLightRadius: 4
+  sconceLightIntensity: 0.5
+  holeLightRadius: 3
+  holeLightIntensity: 0.6
+  contactShadows: 1
+  contactShadowStrength: 0.55
+  coloredLight: 1
+  lightHueStrength: 0.6
+  carriedWarmth: 0.45
+  warmLightColor:
+    serializedVersion: 2
+    rgba: 4286107135
+  coolLightColor:
+    serializedVersion: 2
+    rgba: 4294954142
+  directionalShadows: 1
+  directionalShadowStrength: 0.78
+  hubSurfaceFog: 1
+  hubFogInnerRadius: 3
+  hubFogFalloff: 5
+  hubFogEdgeLevel: 0.72
   fadePlayerOccluders: 1
   playerOccluderAlpha: 0.3
   playerOccluderFadeSpeed: 8
@@ -216,10 +257,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf1f8da2c70924dbf9de986b8c7d96ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoTapInput
-  targetElevation: -4
+  targetElevation: 0
   pickHighestExisting: 1
-  minElevation: -4
-  maxElevation: -1
+  minElevation: 0
+  maxElevation: 39
 --- !u!114 &291117081
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -238,8 +279,8 @@ MonoBehaviour:
     elevationStep: 0.25
     elevationSortBand: 1000
     viewQuarterTurns: 0
-    viewPivotX: 5
-    viewPivotY: 5
+    viewPivotX: 6
+    viewPivotY: 6
   buildDemoOnStart: 0
   demoSize: 6
 --- !u!4 &291117082
@@ -284,7 +325,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.023529412, g: 0.03529412, b: 0.050980393, a: 1}
+  m_BackGroundColor: {r: 0.019607844, g: 0.02745098, b: 0.047058824, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -334,7 +375,7 @@ Transform:
   m_GameObject: {fileID: 1366273966}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4, y: -3.5, z: -10}
+  m_LocalPosition: {x: 0, y: -0.5, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
