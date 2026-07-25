@@ -24,7 +24,8 @@ namespace ProjectC.Core
         PipeSpear = 12,    // 긴 파이프: 근접 사거리 2(직선).
         HeavyWrench = 13,  // 대형 렌치: 근접 명중 시 1칸 넉백.
         SignShield = 14,   // 표지판 방패: 받는 물리 피해 -1. 2×2 점유.
-        PaddedBoots = 15   // 완충 부츠: 안전 낙하 높이 +2.
+        PaddedBoots = 15,  // 완충 부츠: 안전 낙하 높이 +2.
+        CannedFood = 16    // 통조림: 배고픔을 채운다. (HungerRules)
     }
 
     /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
@@ -36,7 +37,8 @@ namespace ProjectC.Core
             ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
             ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic,
             ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard,
-            ItemKind.PipeSpear, ItemKind.HeavyWrench, ItemKind.SignShield, ItemKind.PaddedBoots
+            ItemKind.PipeSpear, ItemKind.HeavyWrench, ItemKind.SignShield, ItemKind.PaddedBoots,
+            ItemKind.CannedFood
         };
 
         /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
@@ -65,6 +67,7 @@ namespace ProjectC.Core
                 case ItemKind.OilFlask: return 10;
                 case ItemKind.ThrowingKnife: return 10;
                 case ItemKind.RecallScroll: return 25;
+                case ItemKind.CannedFood: return 12;
                 // 조합 재료 — 재료로 만드는 쪽이 완제품 구매보다 싸게 유지한다.
                 case ItemKind.Herb: return 6;
                 case ItemKind.BlastPowder: return 8;
@@ -103,6 +106,7 @@ namespace ProjectC.Core
                 case ItemKind.HeavyWrench: return "대형 렌치";
                 case ItemKind.SignShield: return "표지판 방패";
                 case ItemKind.PaddedBoots: return "완충 부츠";
+                case ItemKind.CannedFood: return "통조림";
                 default: return kind.ToString();
             }
         }
@@ -128,6 +132,7 @@ namespace ProjectC.Core
                 case ItemKind.HeavyWrench: return "WRENCH";
                 case ItemKind.SignShield: return "SHIELD";
                 case ItemKind.PaddedBoots: return "BOOTS";
+                case ItemKind.CannedFood: return "FOOD";
                 default: return kind.ToString();
             }
         }
@@ -154,6 +159,8 @@ namespace ProjectC.Core
                     return "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.";
                 case ItemKind.Relic:
                     return "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.";
+                case ItemKind.CannedFood:
+                    return "먹으면 배고픔을 크게 채운다. 먹는 데 행동 1회를 소비한다.";
                 case ItemKind.PipeSpear:
                 case ItemKind.HeavyWrench:
                 case ItemKind.SignShield:

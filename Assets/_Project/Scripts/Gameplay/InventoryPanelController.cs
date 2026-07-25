@@ -328,11 +328,14 @@ namespace ProjectC.Gameplay
             {
                 bool treasure = ItemCatalog.IsTreasure(kind);
                 bool material = ItemCatalog.IsMaterial(kind);
-                _useButton.SetEnabled(count > 0 && !treasure && !material);
+                _useButton.SetEnabled(
+                    count > 0 && !treasure && !material && !EquipmentCatalog.IsEquipment(kind));
                 _useButton.text = treasure ? "생환 시 환금"
                     : material ? "조합 재료"
                     : kind == ItemKind.Potion ? "마시기"
                     : kind == ItemKind.RecallScroll ? "사용하기"
+                    : kind == ItemKind.CannedFood ? "먹기"
+                    : EquipmentCatalog.IsEquipment(kind) ? "허브에서 장착"
                     : "조준하기";
             }
         }
@@ -362,6 +365,7 @@ namespace ProjectC.Gameplay
 
             ItemKind selected = _selected.Value;
             if (ItemCatalog.IsTreasure(selected) || ItemCatalog.IsMaterial(selected)) return;
+            if (EquipmentCatalog.IsEquipment(selected)) return; // 장비는 조준 대상이 아니다
 
             Close();
             switch (selected)
@@ -371,6 +375,9 @@ namespace ProjectC.Gameplay
                     break;
                 case ItemKind.RecallScroll:
                     demo.UseRecallScroll();
+                    break;
+                case ItemKind.CannedFood:
+                    demo.EatFood();
                     break;
                 default:
                     demo.ToggleAim(selected);

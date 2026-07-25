@@ -83,6 +83,10 @@ namespace ProjectC.Gameplay
             _carriedGearId = data.carriedGearId ?? "";
             _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
 
+            // 배고픔도 이월된다 — 모닥불에서 쉬어도 배는 채워지지 않는다.
+            _hunger = data.hunger ?? new HungerState();
+            _lastHungerStage = _hunger.Stage;
+
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
             _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
             if (data.telemetry != null)
@@ -119,6 +123,7 @@ namespace ProjectC.Gameplay
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
+                hunger = _hunger.Clone(),
                 telemetry = _runTelemetry
             };
             data.WriteItems(_inventory);
@@ -294,6 +299,7 @@ namespace ProjectC.Gameplay
                 usedRestFloorIndices = SnapshotUsedRestSites(),
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
+                hunger = _hunger.Clone(),
                 telemetry = _runTelemetry
             };
             carry.WriteItems(_inventory);

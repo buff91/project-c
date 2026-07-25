@@ -34,12 +34,16 @@ namespace ProjectC.Core
         public int herbs;
         public int powders;
         public int frostShards;
+        public int cannedFood;
         public int kills;
         public int deepestFloorIndex;
 
         /// <summary>이번 원정에 반입한 장비. 죽으면 잃으므로 런 상태로 들고 다닌다.</summary>
         public string carriedWeaponId = "";
         public string carriedGearId = "";
+
+        /// <summary>배고픔은 판 전체를 관통한다 — 층·던전이 바뀌어도 이어진다.</summary>
+        public HungerState hunger = new HungerState();
         public List<int> usedRestFloorIndices = new List<int>();
         public RunTelemetry telemetry;
 
@@ -63,6 +67,7 @@ namespace ProjectC.Core
             herbs = inventory.Count(ItemKind.Herb);
             powders = inventory.Count(ItemKind.BlastPowder);
             frostShards = inventory.Count(ItemKind.FrostShard);
+            cannedFood = inventory.Count(ItemKind.CannedFood);
         }
 
         /// <summary>세이브에 담긴 종류별 수량을 인벤토리에 더한다(WriteItems 의 역). 0 은 건너뛴다.</summary>
@@ -81,6 +86,7 @@ namespace ProjectC.Core
             if (herbs > 0) inventory.Add(ItemKind.Herb, herbs);
             if (powders > 0) inventory.Add(ItemKind.BlastPowder, powders);
             if (frostShards > 0) inventory.Add(ItemKind.FrostShard, frostShards);
+            if (cannedFood > 0) inventory.Add(ItemKind.CannedFood, cannedFood);
         }
     }
 

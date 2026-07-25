@@ -132,6 +132,8 @@ namespace ProjectC.Core
         public int waterEvaporatedTiles;
         public int restSitesUsed;
         public int healingFromRest;
+        public int starvingTurns;
+        public int starvationDamage;
         public bool cheatsUsed;
         public List<RunFloorTelemetry> floors = new List<RunFloorTelemetry>();
         public List<RunDamageTelemetry> damageSources = new List<RunDamageTelemetry>();
@@ -290,6 +292,14 @@ namespace ProjectC.Core
             floor.healingFromRest += healed;
         }
 
+        /// <summary>굶주림으로 깎인 턴·피해. 배고픔 압박이 실제로 물렸는지 리포트로 본다.</summary>
+        public void RecordStarvation(int damage)
+        {
+            if (Ended) return;
+            starvingTurns++;
+            starvationDamage += Math.Max(0, damage);
+        }
+
         public void RecordSecretRoomFound(int floorIndex)
         {
             if (Ended) return;
@@ -360,6 +370,7 @@ namespace ProjectC.Core
                 $"획득 {itemsCollected} · 사용 {itemsUsed} · 조합 {itemsCrafted} · " +
                 $"낙하 P{playerFalls}/E{enemyFalls}\n" +
                 $"숨은 방 {secretRoomsFound} · 휴식 {restSitesUsed}회/+{healingFromRest} HP · " +
+                $"굶주림 {starvingTurns}턴/-{starvationDamage} HP · " +
                 $"상태 화상 {burnApplications}/빙결 {freezeApplications} · " +
                 $"반응 기름 {oilIgnitedTiles}/물결빙 {waterFrozenTiles}/증발 {waterEvaporatedTiles}" +
                 (cheatsUsed ? "\n⚠ CHEATS USED" : "");

@@ -37,6 +37,13 @@ namespace ProjectC.Gameplay
             _runTelemetry?.RecordTurn(GlobalFloorIndex(_activeFloorIndex));
             _enemyPhaseMapChanged = false;
 
+            yield return TickHunger();
+            if (!_playerState.IsAlive)
+            {
+                CompleteEnemyPhaseAndRefreshCorpses();
+                yield break;
+            }
+
             // 플레이어 턴이 끝난 시점의 상태이상 틱.
             // (플레이어 빙결은 아직 소스가 없다 — 소스가 생기면 행동 차단으로 확장)
             StatusTick playerTick = _playerState.Statuses.Tick(IsOnWetTile(_playerState.Position));

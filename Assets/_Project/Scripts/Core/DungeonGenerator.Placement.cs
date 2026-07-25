@@ -228,21 +228,23 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
-                // 분배(/18): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 분배(/21): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 통조림3(배고픔의 해답 — 굶어 죽는 게 기본값이 되지 않게 넉넉히) ·
                 // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
                 // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
-                int roll = random.Next(0, 18);
+                int roll = random.Next(0, 21);
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;
                 if (roll < 8) return ItemKind.OilFlask;
                 if (roll < 9) return ItemKind.ThrowingKnife;
                 if (roll < 10) return ItemKind.RecallScroll;
-                if (roll < 12) return ItemKind.CoinPouch;
-                if (roll < 13) return ItemKind.Gemstone;
-                if (roll < 14) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
-                if (roll < 16) return ItemKind.Herb;
-                if (roll < 17) return ItemKind.BlastPowder;
+                if (roll < 13) return ItemKind.CannedFood;
+                if (roll < 15) return ItemKind.CoinPouch;
+                if (roll < 16) return ItemKind.Gemstone;
+                if (roll < 17) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 19) return ItemKind.Herb;
+                if (roll < 20) return ItemKind.BlastPowder;
                 return ItemKind.FrostShard;
             }
 

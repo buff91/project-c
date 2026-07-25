@@ -205,6 +205,64 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
+        /// <summary>
+        /// 배고픔 한 턴. 굶고 있으면 주기마다 HP를 깎고, 단계가 바뀔 때만 알린다 —
+        /// 매 턴 경고하면 소음이 되고, 아무 말도 없으면 조용히 죽는다.
+        /// </summary>
+        private IEnumerator TickHunger()
+        {
+            if (hubMode || _playerState == null || !_playerState.IsAlive) yield break;
+
+            int damage = _hunger.Tick();
+            HungerStage stage = _hunger.Stage;
+            if (stage != _lastHungerStage)
+            {
+                _lastHungerStage = stage;
+                if (stage == HungerStage.Hungry)
+                    InteractionFeedback?.Invoke("배가 고프다 — 통조림을 찾아야 한다");
+                else if (stage == HungerStage.Starving)
+                    InteractionFeedback?.Invoke("굶주리고 있다 — 체력이 깎인다");
+            }
+
+            if (damage <= 0) yield break;
+
+            _playerState.TakeDamage(damage);
+            _runTelemetry?.RecordStarvation(damage);
+            yield return ShowPlayerHit(damage, "Starving");
+        }
+
+        /// <summary>통조림을 먹어 배고픔을 채운다. 행동 1회를 소비한다.</summary>
+        public void EatFood()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (_inventory.Count(ItemKind.CannedFood) <= 0)
+            {
+                InteractionFeedback?.Invoke("NO FOOD");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(RunPlayerAction(EatFoodAction()));
+        }
+
+        private IEnumerator EatFoodAction()
+        {
+            _inventory.TryUse(ItemKind.CannedFood);
+            _runTelemetry?.RecordItemUsed(ItemKind.CannedFood, GlobalFloorIndex(_activeFloorIndex));
+            InventoryChanged?.Invoke();
+
+            int fed = _hunger.Feed(HungerRules.RationSatiation);
+            _lastHungerStage = _hunger.Stage;
+            InteractionFeedback?.Invoke(
+                fed > 0 ? "통조림을 먹었다 — 배가 든든하다" : "배가 이미 부르다");
+            Debug.Log($"[Hunger] 통조림 섭취 +{fed} → {_hunger.satiation}");
+            yield return FlashColor(_playerRenderer, new Color32(196, 168, 96, 255));
+
+            yield return ResolveEnemyPhase();
+        }
+
         private IEnumerator DrinkPotion()
         {
             _inventory.TryUse(ItemKind.Potion);

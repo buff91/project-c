@@ -221,7 +221,8 @@ namespace ProjectC.Gameplay
         public string VerticalHintLabel => BuildVerticalHintLabel();
         public string LocationLabel => _dungeon == null
             ? "--"
-            : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · ({_playerPos.x},{_playerPos.y})";
+            : $"{FloorLabel(_activeFloorIndex)} · HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)} · " +
+              $"({_playerPos.x},{_playerPos.y}) · {HungerRules.Label(_hunger.Stage)}";
         public string ActiveFloorLabel => FloorLabel(_activeFloorIndex);
         public string AboveFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex + 1, out _)
             ? FloorLabel(_activeFloorIndex + 1)
@@ -328,6 +329,13 @@ namespace ProjectC.Gameplay
         // 이번 원정에 반입한 장비 — 죽으면 잃고 살아 나와야 돌려받는다(익스트랙션 규칙).
         private string _carriedWeaponId = "";
         private string _carriedGearId = "";
+
+        /// <summary>배고픔 — 판 전체를 관통하는 부드러운 시계. 층·던전이 바뀌어도 이어진다.</summary>
+        private HungerState _hunger = new HungerState();
+        private HungerStage _lastHungerStage = HungerStage.Fed;
+
+        public HungerStage HungerStage => _hunger.Stage;
+        public int Satiation => _hunger.satiation;
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
@@ -478,6 +486,9 @@ namespace ProjectC.Gameplay
                     MetaStore.Save(departure);
                 }
                 _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+                if (continueData == null && _stageIndex == 1)
+                    _hunger = new HungerState(); // 새 원정은 배부른 상태로 출발한다
+                _lastHungerStage = _hunger.Stage;
             }
 
             if (Application.isPlaying && _moveRoutine != null)
