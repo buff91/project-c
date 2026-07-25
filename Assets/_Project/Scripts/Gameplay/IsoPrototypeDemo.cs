@@ -288,6 +288,9 @@ namespace ProjectC.Gameplay
         public event System.Action<CombatActionMode> CombatModeChanged;
         public event System.Action<string> InteractionFeedback;
         public event System.Action<VerticalRouteCue> VerticalRouteDiscovered;
+
+        /// <summary>던전 입장 카드(제목, 본문). 새 원정 첫 층에서 한 번만 발화한다.</summary>
+        public event System.Action<string, string> DungeonEntryCue;
         public event System.Action PlayerPositionChanged;
         public event System.Action VerticalContextChanged;
         public event System.Action InventoryChanged;
@@ -604,6 +607,12 @@ namespace ProjectC.Gameplay
                 {
                     InteractionFeedback?.Invoke($"{_hero.DisplayName} — 기본 지급품으로 던전 진입");
                 }
+
+                // 입장 카드는 새 원정 첫 층에서만. 이어하기·던전 전환에서는 띄우지 않는다 —
+                // "여기가 어디이고 왜 여기서 시작하는가"는 한 번만 설명하면 된다.
+                DungeonDefinition entered = DungeonSelection.Selected;
+                if (entered != null && entered.HasEntryCue)
+                    DungeonEntryCue?.Invoke(entered.EntryTitle, entered.EntryDetail);
             }
 
             if (configureMainCamera)

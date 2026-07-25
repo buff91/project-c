@@ -105,6 +105,7 @@ namespace ProjectC.Gameplay
                 demo.CombatModeChanged += HandleCombatModeChanged;
                 demo.InteractionFeedback += HandleInteractionFeedback;
                 demo.VerticalRouteDiscovered += HandleVerticalRouteDiscovered;
+                demo.DungeonEntryCue += HandleDungeonEntryCue;
                 demo.PlayerPositionChanged += HandlePlayerPositionChanged;
                 demo.VerticalContextChanged += HandleVerticalContextChanged;
                 demo.InventoryChanged += HandleInventoryChanged;
@@ -152,6 +153,7 @@ namespace ProjectC.Gameplay
                 demo.CombatModeChanged -= HandleCombatModeChanged;
                 demo.InteractionFeedback -= HandleInteractionFeedback;
                 demo.VerticalRouteDiscovered -= HandleVerticalRouteDiscovered;
+                demo.DungeonEntryCue -= HandleDungeonEntryCue;
                 demo.PlayerPositionChanged -= HandlePlayerPositionChanged;
                 demo.VerticalContextChanged -= HandleVerticalContextChanged;
                 demo.InventoryChanged -= HandleInventoryChanged;

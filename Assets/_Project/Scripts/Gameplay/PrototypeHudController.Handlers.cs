@@ -41,29 +41,45 @@ namespace ProjectC.Gameplay
 
         private void HandleVerticalRouteDiscovered(VerticalRouteCue cue)
         {
+            string variant = null;
+            switch (cue.Role)
+            {
+                case VerticalRouteRole.Ladder:
+                    variant = "route-ladder";
+                    break;
+                case VerticalRouteRole.FloorUp:
+                case VerticalRouteRole.FloorDown:
+                    variant = "route-floor";
+                    break;
+                case VerticalRouteRole.OpeningUp:
+                case VerticalRouteRole.OpeningDown:
+                    variant = "route-opening";
+                    break;
+            }
+
+            ShowDiscoveryCard(cue.Title, cue.Detail, variant);
+        }
+
+        /// <summary>
+        /// 던전 입장 카드. 최초 발견 카드와 같은 자리·같은 수명을 쓴다 —
+        /// 새 UI 를 만들지 않는 이유는 플레이어에게 둘 다 "지금 알아 둘 것" 한 장이기 때문이다.
+        /// </summary>
+        private void HandleDungeonEntryCue(string title, string detail) =>
+            ShowDiscoveryCard(title, detail, variant: null);
+
+        private void ShowDiscoveryCard(string title, string detail, string variant)
+        {
             if (_routeDiscovery == null) return;
             if (_routeDiscoveryRoutine != null)
                 StopCoroutine(_routeDiscoveryRoutine);
 
-            if (_routeDiscoveryTitle != null) _routeDiscoveryTitle.text = cue.Title;
-            if (_routeDiscoveryDetail != null) _routeDiscoveryDetail.text = cue.Detail;
+            if (_routeDiscoveryTitle != null) _routeDiscoveryTitle.text = title;
+            if (_routeDiscoveryDetail != null) _routeDiscoveryDetail.text = detail;
             _routeDiscovery.RemoveFromClassList("route-ladder");
             _routeDiscovery.RemoveFromClassList("route-floor");
             _routeDiscovery.RemoveFromClassList("route-opening");
-            switch (cue.Role)
-            {
-                case VerticalRouteRole.Ladder:
-                    _routeDiscovery.AddToClassList("route-ladder");
-                    break;
-                case VerticalRouteRole.FloorUp:
-                case VerticalRouteRole.FloorDown:
-                    _routeDiscovery.AddToClassList("route-floor");
-                    break;
-                case VerticalRouteRole.OpeningUp:
-                case VerticalRouteRole.OpeningDown:
-                    _routeDiscovery.AddToClassList("route-opening");
-                    break;
-            }
+            if (!string.IsNullOrEmpty(variant))
+                _routeDiscovery.AddToClassList(variant);
 
             _routeDiscovery.BringToFront();
             _routeDiscovery.AddToClassList("is-open");

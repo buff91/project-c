@@ -27,6 +27,18 @@ namespace ProjectC.Core
         public DungeonBossDefinition Boss { get; }
         public bool IsAvailable { get; }
 
+        /// <summary>
+        /// 던전에 처음 발을 들일 때 한 번 띄우는 카드의 제목/본문. 비어 있으면 띄우지 않는다.
+        /// <para>
+        /// <b>왜 데이터인가.</b> "왜 하필 여기서 시작하는가"는 던전마다 다른 서사다 —
+        /// 폐병원은 쉘터 배수 터널이 지하 기계실로 이어지기 때문이고, 다른 원정지는 다른 이유다.
+        /// 규칙 계층에 문구를 두면 던전을 늘릴 때마다 분기가 는다.
+        /// </para>
+        /// </summary>
+        public string EntryTitle { get; }
+
+        public string EntryDetail { get; }
+
         public DungeonDefinition(
             string id,
             string displayName,
@@ -37,7 +49,9 @@ namespace ProjectC.Core
             DungeonBossDefinition boss,
             bool isAvailable,
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
-            int firstBuildingFloor = -1)
+            int firstBuildingFloor = -1,
+            string entryTitle = null,
+            string entryDetail = null)
         {
             Id = id;
             DisplayName = displayName;
@@ -49,7 +63,13 @@ namespace ProjectC.Core
             FirstBuildingFloor = firstBuildingFloor;
             Boss = boss;
             IsAvailable = isAvailable;
+            EntryTitle = entryTitle;
+            EntryDetail = entryDetail;
         }
+
+        /// <summary>입장 카드를 띄울 문구가 있는가.</summary>
+        public bool HasEntryCue =>
+            !string.IsNullOrWhiteSpace(EntryTitle) && !string.IsNullOrWhiteSpace(EntryDetail);
     }
 
     /// <summary>던전 최심층을 지키는 보스 데이터. 전투 수치는 MonsterRoster에서 공유한다.</summary>
@@ -93,7 +113,12 @@ namespace ProjectC.Core
                     MonsterRoster.GraveWarden),
                 isAvailable: true,
                 direction: DungeonProgressDirection.Ascend,
-                firstBuildingFloor: -2),
+                firstBuildingFloor: -2,
+                // 왜 정문이 아니라 지하 2층인가 — 시작 지점을 변명이 아니라 제약으로 만든다.
+                // 이 한 줄이 "위로 올라가는 것이 유일한 길"과 "옥상이 목표"를 동시에 설명한다.
+                entryTitle: "지하 2층 · 기계실",
+                entryDetail: "쉘터의 배수 터널이 여기로 이어진다. 병원 정문은 오래전에 묻혔고, " +
+                    "지상으로 나가려면 무너진 병동을 타고 올라가야 한다."),
             new DungeonDefinition(
                 "flooded-vault",
                 "침수된 금고",
