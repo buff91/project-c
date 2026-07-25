@@ -428,3 +428,58 @@
     font-size: inherit;
     -unity-font-style: bold;
 }
+
+/* ============================================================
+   9-slice 스프라이트 승격 (v1.6) — 컴포넌트 라이브러리/갤러리.
+   USS엔 box-shadow/clip이 없어 단순 보더였던 프레임·글로우·눈금을
+   도트 9-slice 스프라이트로 교체한다. 소스 순서상 위의 단순 보더 정의를
+   오버라이드한다. 스프라이트는 build_ui_nineslice_v1.py 생성.
+   ⚠ 실 렌더·슬라이스 미세조정은 Unity(DesignSystemGallery)에서 확인.
+   현재 라이브 HUD는 .pc-heart 외 이 컴포넌트를 쓰지 않아 영향 없음.
+   ============================================================ */
+
+/* 창 크롬 — 깎인 모서리 도트 프레임(패널 채움 baked → 진짜 컷코너) */
+.pc-window {
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("../Art/Runtime/ui-window-frame.png");
+    -unity-slice-left: 11;
+    -unity-slice-top: 11;
+    -unity-slice-right: 11;
+    -unity-slice-bottom: 11;
+    -unity-slice-scale: 1px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.pc-window--teal {
+    background-image: url("../Art/Runtime/ui-window-frame-teal.png");
+}
+
+/* 골드 글로우 — 현재 층 / 선택 슬롯 / 선택 액션 (한 화면 한 곳) */
+.pc-dia--current,
+.pc-dbtn--selected,
+.pc-slot--selected {
+    background-image: url("../Art/Runtime/ui-glow-frame.png");
+    -unity-slice-left: 11;
+    -unity-slice-top: 11;
+    -unity-slice-right: 11;
+    -unity-slice-bottom: 11;
+    -unity-slice-scale: 1px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+/* 게이지 세그먼트 눈금 — fill 위에 얹는 절대배치 오버레이(가로 반복) */
+.pc-bar-ticks {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-image: url("../Art/Runtime/ui-gauge-tick.png");
+    background-repeat: repeat no-repeat;
+}
