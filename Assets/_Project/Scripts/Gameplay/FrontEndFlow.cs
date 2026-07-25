@@ -33,6 +33,30 @@ namespace ProjectC.Gameplay
         }
     }
 
+    /// <summary>
+    /// 타이틀 버튼 규칙. 타이틀은 <b>앱을 켤 때 한 번 지나는 문</b>이지 판마다 돌아오는
+    /// 착지점이 아니다 — 판이 끝난 뒤의 착지점은 캠프다(게임오버의 "캠프로 돌아가기").
+    /// <para>
+    /// <b>`게임 시작`은 언제나 캠프로 간다.</b> 첫 실행이든 재접속이든 캠프가 시작점이라
+    /// 버튼 이름과 목적지를 저장 상태에 따라 흔들지 않는다.
+    /// </para>
+    /// <para>
+    /// <b>`이어하기`는 던전 중간 저장(층 체크포인트)이 있을 때만 존재한다.</b> 없으면
+    /// 비활성 회색으로 남기지 않고 숨긴다 — 죽은 직후 화면에 뜬 회색 "이어하기"는
+    /// 정보가 아니라 "원정을 잃었나?"라는 오해다.
+    /// </para>
+    /// </summary>
+    public static class TitleEntryRouting
+    {
+        /// <summary>`게임 시작`의 목적지. 이후 프롤로그 씬을 넣는다면 여기만 바꾼다.</summary>
+        public static string StartScene => FrontEndFlow.HubScene;
+
+        /// <summary>`이어하기`의 목적지 — 체크포인트가 있는 던전으로 직행한다.</summary>
+        public static string ResumeScene => FrontEndFlow.DungeonScene;
+
+        public static bool ShowsResume(bool hasRunSave) => hasRunSave;
+    }
+
     /// <summary>허브 던전 선택을 새 게임 생성에 전달한다.</summary>
     public static class DungeonSelection
     {

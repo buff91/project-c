@@ -438,7 +438,8 @@ tileFloor == activeFloor → visible || explored
 - **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력→`GridPos`/액션(장치 추상화), `ActorPicker` 주입.
 - **정적 서비스**: `RunSaveStore`(JSON 1파일)·`MetaStore`(영속 창고)·`DisplaySettingsStore`·`RunTelemetryStore`,
   `DevelopmentSaveProfile`(격리 개발 저장 루트)·`DevelopmentViewportService`(에디터 해상도/모드 강제).
-- **씬 라우팅**: `FrontEndFlow`(씬 이름 상수)·`DungeonSelection`(선택 던전 전달)·`MainMenuController`.
+- **씬 라우팅**: `FrontEndFlow`(씬 이름 상수)·`TitleEntryRouting`(타이틀 목적지 + `이어하기`
+  노출 규칙)·`DungeonSelection`(선택 던전 전달)·`MainMenuController`.
 
 ### 11.3 UI (UI Toolkit 화면 HUD)
 - 컨트롤러: `PrototypeHudController`(던전 HUD·액션 휠), `HubHudController`, `InventoryPanelController`(6×4 백팩+조합),

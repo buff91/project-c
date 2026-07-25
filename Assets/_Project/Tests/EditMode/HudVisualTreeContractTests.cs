@@ -68,7 +68,8 @@ namespace ProjectC.Tests
             "exit-extract",
             "exit-advance",
             "action-wheel",
-            "gameover-overlay"
+            "gameover-overlay",
+            "menu-button"
         };
 
         private static readonly string[] HubRequiredNames =
@@ -131,6 +132,11 @@ namespace ProjectC.Tests
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-rotate-right-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-backpack-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-wait-icon"));
+
+            // 판이 끝난 뒤 착지점은 캠프 하나다. 던전 씬을 그대로 리로드하는 "다시 도전"을
+            // 되살리면 방금 번 골드·해금을 못 쓰고 같은 조건으로 돌아가는 길이 다시 생긴다.
+            Assert.AreEqual("캠프로 돌아가기", tree.Q<Button>("menu-button").text);
+            Assert.IsNull(tree.Q<Button>("restart-button"));
         }
 
         [Test]

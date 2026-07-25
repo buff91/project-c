@@ -66,6 +66,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RunTelemetryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RuntimeSpriteGroundingTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteOcclusionTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/TitleEntryRoutingTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

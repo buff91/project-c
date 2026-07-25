@@ -59,7 +59,6 @@ namespace ProjectC.Gameplay
         private Label _gameoverCause;
         private Label _gameoverFloor;
         private Label _gameoverKills;
-        private Button _restartButton;
         private Button _menuButton;
         private VisualElement _exitModal;
         private Label _exitTitle;
@@ -143,8 +142,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _potionButton, null, UsePotion);
             RebindButton(ref _bombButton, null, ToggleBombAim);
             RebindButton(ref _frostButton, null, ToggleFrostBombAim);
-            RebindButton(ref _restartButton, null, RestartRun);
-            RebindButton(ref _menuButton, null, GoToMainMenu);
+            RebindButton(ref _menuButton, null, ReturnToCamp);
             if (demo != null)
             {
                 demo.ViewRotationChanged -= HandleViewRotationChanged;
@@ -225,8 +223,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _potionButton, root.Q<Button>("potion-button"), UsePotion);
             RebindButton(ref _bombButton, root.Q<Button>("bomb-button"), ToggleBombAim);
             RebindButton(ref _frostButton, root.Q<Button>("frost-button"), ToggleFrostBombAim);
-            RebindButton(ref _restartButton, root.Q<Button>("restart-button"), RestartRun);
-            RebindButton(ref _menuButton, root.Q<Button>("menu-button"), GoToMainMenu);
+            RebindButton(ref _menuButton, root.Q<Button>("menu-button"), ReturnToCamp);
 
             _viewLabel = root.Q<Label>("view-label");
             _depthLabel = root.Q<Label>("depth-label");

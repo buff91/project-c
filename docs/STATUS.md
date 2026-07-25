@@ -8,8 +8,12 @@
 
 - **씬 흐름**: Build Settings `0 MainMenu → 1 Hub → 2 IsoPrototype`.
   - 새 게임: `MainMenu → Hub → IsoPrototype`.
-  - 이후 프롤로그/세계관은 `MainMenuController.StartNewGame()`과 Hub 사이에 별도 씬으로 삽입한다.
-  - 던전의 `로비로 가기`는 Hub, 게임오버의 `메뉴로`는 MainMenu로 이동한다.
+  - 이후 프롤로그/세계관은 `MainMenuController.EnterCamp()`와 Hub 사이에 별도 씬으로 삽입한다.
+  - **타이틀은 앱을 켤 때 한 번 지나는 문이다.** `게임 시작`은 언제나 Hub로 가고,
+    `이어하기`는 던전 중간 저장이 있을 때만 나타나 던전으로 직행한다
+    (`TitleEntryRouting`). 체크포인트가 없으면 회색 비활성이 아니라 **숨긴다.**
+  - 던전의 `로비로 가기`와 게임오버의 `캠프로 돌아가기`는 모두 Hub로 간다.
+    던전 씬을 바로 리로드하는 재도전 버튼은 두지 않는다(방금 번 골드·해금을 건너뛴다).
 - **UI/해상도**: 화면공간 UI는 UI Toolkit. `MainMenuHUD`, `HubHUD`,
   `PrototypeHUD.Mobile/Desktop`이 공용 `DisplaySettings`와 `ResponsiveUiLayout`을 사용한다.
   에디터/개발 빌드 설정창에서 `AUTO/MOBILE/PC`와 대표 해상도를 즉시 바꿀 수 있다. 모든 화면 루트는

@@ -69,13 +69,13 @@
 
 | 파일 | 줄수 | 담당 |
 |------|-----:|------|
-| `HubHudController.cs` | 359 | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 |
+| `HubHudController.cs` | 371 | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 |
 | `HubHudController.Vendors.cs` | 296 | 상점·대장간·현상금·영웅 모달 |
 | `HubHudController.Preparation.cs` | 446 | 창고·출정 백팩·드래그드롭 엔진 |
-| `PrototypeHudController.cs` | 510 | 수명주기·문서 바인딩·컨트롤 콜백·Update·입력·메뉴 |
+| `PrototypeHudController.cs` | 509 | 수명주기·문서 바인딩·컨트롤 콜백·Update·입력·메뉴 |
 | `PrototypeHudController.Handlers.cs` | 146 | 데모 이벤트 핸들러(`Handle*`)·미니맵·HP 표시 |
 | `PrototypeHudController.ActionWheel.cs` | 199 | 액션 휠 빌드/배치 |
-| `PrototypeHudController.EndGame.cs` | 117 | 출구 선택·보스 패널·게임오버 |
+| `PrototypeHudController.EndGame.cs` | 151 | 출구 선택·보스 패널·게임오버 |
 | `PrototypeHudController.Labels.cs` | 109 | 라벨 갱신(`Update*Label`)·상호작용 버튼 |
 
 ## Core 모듈 정리

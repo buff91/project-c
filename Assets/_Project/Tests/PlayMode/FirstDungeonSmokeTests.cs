@@ -129,11 +129,12 @@ namespace ProjectC.Tests.PlayMode
 
         private static void InvokeMainMenuStart()
         {
-            MethodInfo start = typeof(MainMenuController).GetMethod(
-                "StartNewGame",
+            // 첫 실행이든 재접속이든 타이틀의 기본 버튼은 캠프로 간다(TitleEntryRouting).
+            MethodInfo enterCamp = typeof(MainMenuController).GetMethod(
+                "EnterCamp",
                 BindingFlags.Static | BindingFlags.NonPublic);
-            Assert.NotNull(start);
-            start.Invoke(null, null);
+            Assert.NotNull(enterCamp);
+            enterCamp.Invoke(null, null);
         }
 
         private static IEnumerator LoadScene(string sceneName)

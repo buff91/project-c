@@ -135,14 +135,17 @@ namespace ProjectC.Gameplay
             _gameoverOverlay.AddToClassList("is-open");
         }
 
-        private void RestartRun()
+        /// <summary>
+        /// 판이 끝난 뒤의 착지점은 캠프다 — 타이틀이 아니라.
+        /// <para>
+        /// 던전 씬을 바로 리로드하는 "다시 도전"은 두지 않는다: 방금 번 골드·해금·구출한
+        /// 동료를 못 쓰고 같은 조건으로 되돌아가는 길이라, 실패가 전진으로 바뀌는
+        /// 로그라이트 루프를 건너뛴다. 재도전은 캠프의 출정 버튼이 담당한다.
+        /// </para>
+        /// </summary>
+        private void ReturnToCamp()
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        }
-
-        private void GoToMainMenu()
-        {
-            SceneManager.LoadScene(FrontEndFlow.MainMenuScene);
+            SceneManager.LoadScene(FrontEndFlow.HubScene);
         }
     }
 }

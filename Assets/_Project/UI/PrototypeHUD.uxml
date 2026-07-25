@@ -197,8 +197,7 @@
                 <ui:Label name="gameover-floor" text="도달 층: --" class="gameover-detail" />
                 <ui:Label name="gameover-kills" text="처치: 0" class="gameover-detail" />
                 <ui:VisualElement class="settings-actions">
-                    <ui:Button name="menu-button" text="메뉴로" class="settings-reset" />
-                    <ui:Button name="restart-button" text="다시 도전" class="settings-done" />
+                    <ui:Button name="menu-button" text="캠프로 돌아가기" class="settings-done" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
