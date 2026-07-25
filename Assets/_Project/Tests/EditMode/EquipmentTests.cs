@@ -10,6 +10,35 @@ namespace ProjectC.Tests
     public class EquipmentTests
     {
         [Test]
+        public void Generator_PlacesEquipment_OnlyBelowTheGateDepth_AndAtMostOnePerFloor()
+        {
+            bool sawAny = false;
+            for (int seed = 0; seed < 24; seed++)
+            {
+                var map = new GridMap();
+                DungeonLayout layout = DungeonGenerator.Generate(map, 13, 13, floorCount: 10, seed: seed);
+
+                foreach (DungeonFloorInfo floor in layout.Floors)
+                {
+                    int depth = -floor.FloorIndex;
+                    int equipmentCount = 0;
+                    foreach (ItemSpawn spawn in floor.Items)
+                        if (EquipmentCatalog.IsEquipment(spawn.Kind)) equipmentCount++;
+
+                    Assert.LessOrEqual(equipmentCount, 1, $"seed {seed} depth {depth}: 층당 최대 하나");
+                    if (equipmentCount > 0)
+                    {
+                        sawAny = true;
+                        Assert.GreaterOrEqual(depth, EquipmentDropRules.FirstDropDepth,
+                            $"seed {seed}: 얕은 밴드엔 장비가 없다");
+                    }
+                }
+            }
+
+            Assert.IsTrue(sawAny, "던전에서 장비가 실제로 나온다");
+        }
+
+        [Test]
         public void Catalog_HasBothSlots_AndNeverGrantsRawAttack()
         {
             bool weapon = false;
@@ -72,6 +101,46 @@ namespace ProjectC.Tests
 
             meta.AddCount(ItemKind.PipeSpear, 1);
             Assert.AreEqual(2, meta.EquippedLoadout().MeleeReach);
+        }
+
+        [Test]
+        public void DropRules_SkipShallowBand_AndPickFromCatalog()
+        {
+            var random = new System.Random(7);
+            for (int i = 0; i < 200; i++)
+                Assert.IsNull(EquipmentDropRules.Roll(0, random), "도입 구간엔 장비가 굴러다니지 않는다");
+
+            bool sawDrop = false;
+            var deepRandom = new System.Random(7);
+            for (int i = 0; i < 200; i++)
+            {
+                EquipmentDefinition rolled = EquipmentDropRules.Roll(6, deepRandom);
+                if (rolled == null) continue;
+                sawDrop = true;
+                Assert.AreSame(EquipmentCatalog.ById(rolled.Id), rolled);
+            }
+            Assert.IsTrue(sawDrop, "깊은 층에서는 실제로 나온다");
+        }
+
+        [Test]
+        public void DropRules_ConsumeTheSameRolls_RegardlessOfDepth()
+        {
+            // 확률/종류 롤을 깊이와 무관하게 같은 횟수로 소비해야 seed 재현성이 유지된다.
+            var shallow = new System.Random(11);
+            var deep = new System.Random(11);
+            EquipmentDropRules.Roll(0, shallow);
+            EquipmentDropRules.Roll(9, deep);
+
+            Assert.AreEqual(shallow.Next(0, 1000), deep.Next(0, 1000));
+        }
+
+        [Test]
+        public void ShouldAutoEquip_OnlyWhenSlotIsEmpty()
+        {
+            Assert.IsTrue(EquipmentRules.ShouldAutoEquip(null));
+            Assert.IsTrue(EquipmentRules.ShouldAutoEquip(""));
+            Assert.IsFalse(EquipmentRules.ShouldAutoEquip("pipe-spear"),
+                "이미 낀 장비를 말없이 갈아치우지 않는다");
         }
 
         [Test]

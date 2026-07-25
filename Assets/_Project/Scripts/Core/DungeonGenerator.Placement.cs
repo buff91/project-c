@@ -84,6 +84,40 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 던전 장비 배치 — 층당 최대 하나. 깊이 게이트·확률·종류는 <see cref="EquipmentDropRules"/>가
+        /// 소유한다. 주운 장비는 백팩 면적을 먹고, 살아 나와야 창고로 들어간다(익스트랙션).
+        /// 아이템 배치가 끝난 뒤 남은 빈 칸에만 놓아 기존 스폰과 겹치지 않는다.
+        /// </summary>
+        private static void PlaceEquipment(GridMap map, Random random, FloorPlan p)
+        {
+            EquipmentDefinition equipment = EquipmentDropRules.Roll(-p.FloorIndex, random);
+            if (equipment == null) return;
+
+            var candidates = new List<GridPos>();
+            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            {
+                if (x == p.VerticalX && y == p.UpperMinY) continue;
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (IsFreeForSpawn(map, p, pos)) candidates.Add(pos);
+            }
+
+            foreach (GridPos pos in TakeRandom(candidates, 1, random))
+                p.Items.Add(new ItemSpawn(pos, equipment.Item));
+        }
+
+        /// <summary>스폰이 겹치지 않는 빈 바닥인가. 아이템·장비 배치가 공유하는 판정.</summary>
+        private static bool IsFreeForSpawn(GridMap map, FloorPlan p, GridPos pos)
+        {
+            if (map.Get(pos)?.kind != TileKind.Floor) return false;
+            if (pos == p.Entry || pos == p.RestSite) return false;
+            if (p.EnemySpawns.Contains(pos)) return false;
+            foreach (ItemSpawn spawn in p.Items)
+                if (spawn.Position == pos) return false;
+            return true;
+        }
+
+        /// <summary>
         /// 건물형 수직성(v0.3): 사다리 위에 얹는 +2단 캐치워크.
         /// 길이는 밴드 프로파일이 소유하고(얕은 밴드 0), 최심층 아레나는 1:1 결투 공간을
         /// 비우려 놓지 않는다. 사다리 링크로만 올라가므로 도달성 불변식이 유지되고,

@@ -146,6 +146,7 @@ namespace ProjectC.Core
                 PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan, floorCount);
                 PlaceItems(map, random, plan);
+                PlaceEquipment(map, random, plan);
                 PlaceBossLandmark(map, plan, floorCount);
                 PlaceCatwalk(map, plan, floorCount);
                 PlaceWindows(map, heightModel, plan, bottomElevation);

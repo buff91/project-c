@@ -138,9 +138,46 @@ namespace ProjectC.Core
         public static bool IsEquipment(ItemKind item) => ForItem(item) != null;
     }
 
+    /// <summary>
+    /// 던전에 장비가 굴러다니는 규칙. 파밍으로 얻은 장비가 익스트랙션의 판돈이 되므로
+    /// (주워서 살아 나와야 내 것) 등장 깊이와 빈도를 한 곳에서 정한다.
+    /// </summary>
+    public static class EquipmentDropRules
+    {
+        /// <summary>장비가 나오기 시작하는 깊이(0 = B1). Shallow 밴드에는 나오지 않는다.</summary>
+        public const int FirstDropDepth = 3;
+
+        /// <summary>층당 장비가 놓일 확률(%). 층당 최대 하나다.</summary>
+        public const int DropChancePercent = 30;
+
+        public static bool AllowsDrop(int depthIndex) => depthIndex >= FirstDropDepth;
+
+        /// <summary>
+        /// 이 층에 놓을 장비를 고른다(없으면 null). 롤은 항상 두 번 — 확률과 종류를
+        /// 같은 순서로 소비해 seed 재현성을 유지한다.
+        /// </summary>
+        public static EquipmentDefinition Roll(int depthIndex, System.Random random)
+        {
+            if (random == null) throw new System.ArgumentNullException(nameof(random));
+
+            bool allowed = AllowsDrop(depthIndex);
+            bool hit = random.Next(0, 100) < DropChancePercent;
+            int index = random.Next(0, EquipmentCatalog.All.Count);
+            return allowed && hit ? EquipmentCatalog.All[index] : null;
+        }
+    }
+
     /// <summary>장착 조합을 전투 보정으로 바꾸는 순수 규칙.</summary>
     public static class EquipmentRules
     {
+        /// <summary>
+        /// 던전에서 주운 장비를 바로 낄 것인가 — 슬롯이 비어 있을 때만이다.
+        /// 이미 낀 장비를 말없이 갈아치우면 "더 좋은 걸 주웠나?" 판단을 뺏는다.
+        /// 슬롯이 차 있으면 백팩에 남아 생환해야 창고로 들어간다.
+        /// </summary>
+        public static bool ShouldAutoEquip(string currentSlotEquipmentId) =>
+            string.IsNullOrEmpty(currentSlotEquipmentId);
+
         /// <summary>
         /// 무기/보조 id 조합의 전투 보정. 없는 id·빈 문자열은 맨손으로 취급하고,
         /// 슬롯이 맞지 않는 id는 무시한다(세이브가 손상돼도 규칙이 깨지지 않게).

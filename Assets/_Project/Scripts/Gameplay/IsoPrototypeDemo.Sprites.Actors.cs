@@ -654,6 +654,28 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 6, 4, 2, 6, deep);        // 곁가지
                 FillRect(texture, 12, 8, 2, 5, deep);
             }
+            else if (EquipmentCatalog.IsEquipment(kind))
+            {
+                // 바닥에 떨어진 장비 — 소모품(둥근 병·폭탄)과 실루엣이 달라야 주울지 판단이 선다.
+                Color32 steel = new Color32(120, 128, 136, 255);
+                Color32 steelDark = new Color32(58, 64, 70, 255);
+                Color32 grip = new Color32(96, 74, 48, 255);
+                Color32 signal = new Color32(226, 188, 96, 255);
+                bool bulky = BackpackRules.Footprint(kind).Width > 1; // 방패류는 넓적하게
+                if (bulky)
+                {
+                    FillRect(texture, 3, 4, 14, 14, steelDark);
+                    FillRect(texture, 5, 6, 10, 10, steel);
+                    FillRect(texture, 8, 9, 4, 4, signal);
+                }
+                else
+                {
+                    FillRect(texture, 8, 2, 4, 18, steelDark); // 긴 자루
+                    FillRect(texture, 9, 3, 2, 16, steel);
+                    FillRect(texture, 7, 4, 6, 4, grip);       // 손잡이
+                    FillRect(texture, 7, 17, 6, 4, signal);    // 머리 부분
+                }
+            }
             else
             {
                 Color32 shell = new Color32(43, 47, 52, 255);

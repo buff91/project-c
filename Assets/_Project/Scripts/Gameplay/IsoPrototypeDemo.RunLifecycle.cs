@@ -19,6 +19,36 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
+        /// 주운 장비를 빈 슬롯에 바로 낀다(백팩에서 슬롯으로 옮긴다). 슬롯이 차 있으면
+        /// 백팩에 그대로 두고 false — 살아 나와야 창고로 들어간다. 낀 장비는 반입 장비와
+        /// 같은 운명이다(죽으면 잃는다).
+        /// </summary>
+        private bool TryAutoEquipPickedUp(ItemKind kind)
+        {
+            EquipmentDefinition definition = EquipmentCatalog.ForItem(kind);
+            if (definition == null) return false;
+
+            bool weaponSlot = definition.Slot == EquipmentSlot.Weapon;
+            string current = weaponSlot ? _carriedWeaponId : _carriedGearId;
+            if (!EquipmentRules.ShouldAutoEquip(current))
+            {
+                InteractionFeedback?.Invoke(
+                    $"{definition.DisplayName} 획득 — 슬롯이 차 있어 백팩에 넣었다");
+                return true;
+            }
+
+            if (!_inventory.TryUse(kind)) return false; // 방금 넣었으므로 실패할 일은 없다
+            if (weaponSlot) _carriedWeaponId = definition.Id;
+            else _carriedGearId = definition.Id;
+            _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+            InventoryChanged?.Invoke();
+
+            InteractionFeedback?.Invoke($"{definition.DisplayName} 장착 — {definition.Description}");
+            Debug.Log($"[Equip] 주운 장비 장착: {definition.Id}");
+            return true;
+        }
+
+        /// <summary>
         /// 사망·포기: 반입한 장비를 잃는다. 창고에서 이미 꺼냈으므로 되돌리지 않고 슬롯만 비운다 —
         /// 창고에 남겨둔 예비 장비는 안전하다(익스트랙션: 들고 나간 것만 위험하다).
         /// </summary>

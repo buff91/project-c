@@ -1139,6 +1139,8 @@ namespace ProjectC.Gameplay
                 if (item.Root != null) item.Root.SetActive(false);
                 InventoryChanged?.Invoke();
 
+                if (TryAutoEquipPickedUp(item.Spawn.Kind)) return;
+
                 InteractionFeedback?.Invoke(
                     $"{ItemCatalog.ShortLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");
                 Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
