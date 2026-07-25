@@ -96,7 +96,8 @@ namespace ProjectC.Tests
             var random = new System.Random(seed);
             var picks = new List<string>(count);
             for (int i = 0; i < count; i++)
-                picks.Add(MonsterRoster.PickForDepth(depth, random).Id);
+                picks.Add(MonsterRoster.PickForDepth(
+                    DungeonRegionProfile.Facility, depth, random).Id);
             return picks;
         }
     }

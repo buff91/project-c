@@ -17,13 +17,15 @@ namespace ProjectC.Core
             FloorPlan previous,
             bool forceSecretBranch,
             DungeonProgressDirection direction,
-            ShelterNpcDefinition pendingNpc)
+            ShelterNpcDefinition pendingNpc,
+            DungeonRegionProfile region)
         {
             var p = new FloorPlan
             {
                 Width = width,
                 Height = height,
                 ProgressIndex = depth,
+                Region = region,
                 // 부호만 방향을 탄다. Inward 는 층을 아래로 쌓지만 그건 렌더·컬링을 위한
                 // 내부 규약이고 플레이어에게는 수평 진입으로 읽힌다(DungeonDirectionRules 참조).
                 FloorIndex = DungeonDirectionRules.FloorIndexFor(direction, depth)
@@ -64,7 +66,7 @@ namespace ProjectC.Core
             //
             // 갇힌 방(NPC)과 숨은 방은 **확률을 타지 않는다**. 특히 NPC 는 확률로 두면
             // 운이 나쁜 플레이어의 시설이 영원히 안 열리고 되돌릴 방법이 없다.
-            int branchChance = DungeonBandProfiles.ForDepth(depth).BranchChancePercent;
+            int branchChance = DungeonBandProfiles.ForDepth(region, depth).BranchChancePercent;
             bool wantBranch =
                 forceSecretBranch || pendingNpc != null || random.Next(0, 100) < branchChance;
             int branchDoorCap = Math.Min(p.LeftMaxX, p.UpperMinX - 2);

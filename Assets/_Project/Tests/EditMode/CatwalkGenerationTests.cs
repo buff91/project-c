@@ -45,7 +45,8 @@ namespace ProjectC.Tests
                     }
 
                     bool arena = DungeonBossArenaRules.IsArenaFloor(depth, layout.Floors.Count);
-                    int bandLength = DungeonBandProfiles.ForDepth(depth).CatwalkLength;
+                    int bandLength = DungeonBandProfiles
+                        .ForDepth(DungeonRegionProfile.Facility, depth).CatwalkLength;
 
                     if (arena)
                     {

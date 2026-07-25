@@ -56,16 +56,21 @@ namespace ProjectC.Core
         }
 
         /// <summary>
-        /// 깊이 구간(밴드)별 혼합 (depth 0 = 최상층 B1). 얕은 밴드는 슬러지/약탈자만,
-        /// 깊어질수록 경비 드론(Skeleton) 비중이 커진다. 가중치는 <see cref="DungeonBandProfiles"/>가
-        /// 소유한다(밴드 경계 SSOT는 <see cref="DungeonDepthBandRules"/>). 롤은 한 번만 —
-        /// 같은 seed·depth는 항상 같은 결과. (GDD §5.7 난이도·깊이 연동)
+        /// <b>(지역 × 깊이)</b>별 혼합 (depth 0 = 첫 층). 얕은 밴드는 슬러지/약탈자만,
+        /// 깊어질수록 경비 드론(Skeleton) 비중이 커지며 그 기준선을 지역이 정한다.
+        /// 가중치는 <see cref="DungeonBandProfiles"/>가 소유한다(밴드 경계 SSOT는
+        /// <see cref="DungeonDepthBandRules"/>). 롤은 한 번만 — 같은 seed·지역·depth는
+        /// 항상 같은 결과. (GDD §5.7 난이도·깊이 연동)
+        /// <para>
+        /// <b>지역은 얼굴과 비중만 가른다.</b> 위 아키타입의 HP·공격력·행동 트리는 전 지역 공용이다.
+        /// </para>
         /// </summary>
-        public static MonsterArchetype PickForDepth(int depth, Random random)
+        public static MonsterArchetype PickForDepth(
+            DungeonRegionProfile region, int depth, Random random)
         {
             if (random == null) throw new ArgumentNullException(nameof(random));
 
-            DungeonBandProfile profile = DungeonBandProfiles.ForDepth(depth);
+            DungeonBandProfile profile = DungeonBandProfiles.ForDepth(region, depth);
             int roll = random.Next(0, profile.TotalWeight);
             if (roll < profile.SlimeWeight) return Slime;
             roll -= profile.SlimeWeight;

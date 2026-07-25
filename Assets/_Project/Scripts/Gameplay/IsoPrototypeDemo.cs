@@ -681,7 +681,9 @@ namespace ProjectC.Gameplay
                 // 제약 없는 기본값을 써서 예전과 같은 던전을 보여준다.
                 Application.isPlaying
                     ? DungeonMetaContext.FromUnlocked(MetaStore.LoadOrNew().UnlockedItemKinds())
-                    : DungeonMetaContext.Unrestricted);
+                    : DungeonMetaContext.Unrestricted,
+                // 지역도 던전별 데이터다 — 적 혼합·밀도·반응 무대가 여기서 갈린다.
+                DungeonSelection.Selected.Region);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));
@@ -795,7 +797,8 @@ namespace ProjectC.Gameplay
                     if (hasBossSpawn && spawn == bossSpawn)
                         continue;
                     SpawnEnemy(
-                        MonsterRoster.PickForDepth(GlobalDepth(floor.FloorIndex), _spawnRng),
+                        MonsterRoster.PickForDepth(
+                            _dungeon.Region, GlobalDepth(floor.FloorIndex), _spawnRng),
                         spawn,
                         floor.FloorIndex);
                 }

@@ -154,6 +154,16 @@ namespace ProjectC.Core
         public int FirstBuildingFloor { get; }
 
         /// <summary>
+        /// 이 던전의 지역 프로파일. 적 혼합·밀도·반응 무대 확률이 여기서 갈린다.
+        /// <para>
+        /// <b>레이아웃이 들고 있어야 하는 이유는 <see cref="Direction"/>과 같다</b> —
+        /// 전역 선택에서 읽으면 던전 체인의 2번째 던전이 1번째의 지역 값으로 몬스터를 뽑는다.
+        /// 생성기와 런타임 스폰이 같은 출처를 봐야 층 안팎이 어긋나지 않는다.
+        /// </para>
+        /// </summary>
+        public DungeonRegionProfile Region { get; }
+
+        /// <summary>
         /// 다음 층으로 나아가는 계단. 하강 던전에서는 하행, 상승 던전에서는 상행이다.
         /// <b>"출구"를 찾는 코드는 <see cref="DungeonFloorInfo.DownStairs"/>가 아니라 이것을 써야 한다</b> —
         /// 그러지 않으면 상승 던전에서 되돌아가는 계단을 출구로 오인한다.
@@ -173,10 +183,12 @@ namespace ProjectC.Core
             DungeonHeightModel height,
             List<DungeonFloorInfo> floors,
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
-            int firstBuildingFloor = -1)
+            int firstBuildingFloor = -1,
+            DungeonRegionProfile region = DungeonRegionProfile.Facility)
         {
             Direction = direction;
             FirstBuildingFloor = firstBuildingFloor;
+            Region = region;
             Height = height ?? throw new ArgumentNullException(nameof(height));
             if (floors == null || floors.Count == 0)
                 throw new ArgumentException("던전은 한 층 이상이어야 합니다.", nameof(floors));
@@ -232,6 +244,11 @@ namespace ProjectC.Core
         /// 다층 던전을 만든다. <paramref name="direction"/>은 <b>진행</b> 방향이며 공간이 아니다 —
         /// 하강이 주 목적인 던전과 상승이 주 목적인 던전이 함께 존재하므로 전역 스위치가 아니라
         /// 던전별 데이터로 받는다(GDD §10.1). 중력은 이 값을 타지 않는다.
+        /// <para>
+        /// <paramref name="region"/>은 <b>콘텐츠 정체성</b>이다 — 적 혼합·밀도·반응 무대 확률을
+        /// 가른다(<see cref="DungeonBandProfiles"/>). 기본값은 기준 지역이라 기존 호출부의
+        /// 생성 결과가 바뀌지 않는다.
+        /// </para>
         /// </summary>
         public static DungeonLayout Generate(
             GridMap map,
@@ -242,7 +259,8 @@ namespace ProjectC.Core
             int seed = 1977,
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
             int firstBuildingFloor = -1,
-            DungeonMetaContext meta = default)
+            DungeonMetaContext meta = default,
+            DungeonRegionProfile region = DungeonRegionProfile.Facility)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (width < 9) throw new ArgumentOutOfRangeException(nameof(width));
@@ -274,7 +292,8 @@ namespace ProjectC.Core
                     previous,
                     secretDepths.Contains(depth),
                     direction,
-                    meta.PendingNpcAt(depth));
+                    meta.PendingNpcAt(depth),
+                    region);
                 CarveFloor(map, plan, height, direction);
                 plans.Add(plan);
             }
@@ -374,7 +393,7 @@ namespace ProjectC.Core
                     plan.BranchNpcId));
             }
 
-            return new DungeonLayout(heightModel, floors, direction, firstBuildingFloor);
+            return new DungeonLayout(heightModel, floors, direction, firstBuildingFloor, region);
         }
 
         /// <summary>
@@ -441,6 +460,13 @@ namespace ProjectC.Core
             /// 음수가 되어 모든 밴드 판정이 조용히 첫 층으로 붕괴했다(GDD §5.1).
             /// </summary>
             public int ProgressIndex;
+
+            /// <summary>
+            /// 이 층이 속한 지역 프로파일. 밴드 조회는 <b>(지역, 진행 지수)</b> 두 축을 모두 쓴다 —
+            /// 계획·배치 단계가 각자 지역을 인자로 받으면 한 곳만 빠뜨려도 층 안에서
+            /// 정체성이 갈린다(북쪽 방은 침수인데 웅덩이는 기준값인 식).
+            /// </summary>
+            public DungeonRegionProfile Region;
 
             public int BaseElevation;
             public int LeftMaxX;

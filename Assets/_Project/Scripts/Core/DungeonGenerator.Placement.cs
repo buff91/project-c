@@ -24,7 +24,7 @@ namespace ProjectC.Core
             }
 
             int depth = p.ProgressIndex;
-            int bandExtra = DungeonBandProfiles.ForDepth(depth).ExtraEnemies;
+            int bandExtra = DungeonBandProfiles.ForDepth(p.Region, depth).ExtraEnemies;
             int desired = 1 + random.Next(0, 2) + depth / 2 + bandExtra + AreaSpawnBonus(p.Width, p.Height);
             p.EnemySpawns.AddRange(TakeRandom(candidates, desired, random));
 
@@ -228,7 +228,7 @@ namespace ProjectC.Core
             int depth = p.ProgressIndex;
             if (DungeonBossArenaRules.IsArenaFloor(depth, floorCount)) return;
 
-            int length = DungeonBandProfiles.ForDepth(depth).CatwalkLength;
+            int length = DungeonBandProfiles.ForDepth(p.Region, depth).CatwalkLength;
             if (length <= 0) return;
 
             var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
@@ -284,8 +284,10 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlacePuddle(GridMap map, Random random, FloorPlan p)
         {
-            // 웅덩이 확률도 깊이 밴드별(깊을수록 물+빙결 무대 증가).
-            int puddleChance = DungeonBandProfiles.ForDepth(p.ProgressIndex).PuddleChancePercent;
+            // 웅덩이 확률은 (지역 × 깊이)다 — 깊을수록 물+빙결 무대가 늘고,
+            // 그 기준선은 지역이 정한다(침수된 금고는 높고 잿불 성채는 낮다).
+            int puddleChance =
+                DungeonBandProfiles.ForDepth(p.Region, p.ProgressIndex).PuddleChancePercent;
             if (random.Next(0, 100) >= puddleChance) return;
 
             var seeds = new List<GridPos>();

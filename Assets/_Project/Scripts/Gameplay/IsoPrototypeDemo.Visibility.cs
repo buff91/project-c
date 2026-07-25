@@ -904,6 +904,7 @@ namespace ProjectC.Gameplay
             int torchRarity = hubMode || _dungeon == null
                 ? 5
                 : DungeonBandProfiles.ForDepth(
+                    _dungeon.Region,
                     _dungeon.ProgressIndexFor(
                         _dungeon.Height.FloorIndex(pos.elevation))).WallSconceRarity;
             bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % torchRarity == 0;

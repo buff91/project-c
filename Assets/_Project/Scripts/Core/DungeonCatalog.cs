@@ -24,6 +24,13 @@ namespace ProjectC.Core
         /// </summary>
         public int FirstBuildingFloor { get; }
 
+        /// <summary>
+        /// 이 원정지의 콘텐츠 정체성 프로파일. 적 혼합·밀도·반응 무대 확률이 여기서 갈린다
+        /// (<see cref="DungeonBandProfiles"/>). <b>던전마다 하나씩이 아니라 공유 가능한 프로파일</b>이라
+        /// 같은 결의 원정지가 늘어나도 표가 커지지 않는다.
+        /// </summary>
+        public DungeonRegionProfile Region { get; }
+
         public DungeonBossDefinition Boss { get; }
         public bool IsAvailable { get; }
 
@@ -51,8 +58,10 @@ namespace ProjectC.Core
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
             int firstBuildingFloor = -1,
             string entryTitle = null,
-            string entryDetail = null)
+            string entryDetail = null,
+            DungeonRegionProfile region = DungeonRegionProfile.Facility)
         {
+            Region = region;
             Id = id;
             DisplayName = displayName;
             Description = description;
@@ -130,7 +139,9 @@ namespace ProjectC.Core
                 isAvailable: false,
                 // 고도가 진행 축이 아니다 — 구역 번호로 표기하고 오르내림은 국소 지형이다.
                 direction: DungeonProgressDirection.Inward,
-                firstBuildingFloor: -1),
+                firstBuildingFloor: -1,
+                // 물 웅덩이가 도처에 있어야 "왜 여기가 다른가"가 첫 층에서 읽힌다.
+                region: DungeonRegionProfile.Flooded),
             new DungeonDefinition(
                 "ember-keep",
                 "잿불 성채",
@@ -140,7 +151,9 @@ namespace ProjectC.Core
                 seed: 3141,
                 floorCount: 10,
                 boss: null,
-                isAvailable: false)
+                isAvailable: false,
+                // 물이 드물어야 불 연쇄가 선다 — 웅덩이 확률이 Facility 의 절반 이하다.
+                region: DungeonRegionProfile.Ember)
         };
 
         public static DungeonDefinition ById(string id)

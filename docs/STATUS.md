@@ -78,6 +78,17 @@
     영웅 HP(8~10)를 넘어 "뛰어내려 빠르게 하강"이 성립하지 않는다.
   - **지상 진입(B1 → 1F)은 한 판에 한 번 알린다**(`CrossesIntoAboveGround`).
     상승 구조가 공짜로 주는 전환점이라 여기서 짚으면 건물을 타고 오른다는 구조가 읽힌다.
+- **지역(원정지) 정체성**: 콘텐츠 변주 표가 **(지역 × 깊이)** 두 축이다 —
+  `DungeonBandProfiles.ForDepth(region, depth)`. 깊이가 기울기를 주고 지역이 기준선을 옮긴다.
+  `Facility`(폐병원 — 기준선) · `Flooded`(침수된 금고: 웅덩이↑·광원↓·사수↓) ·
+  `Ember`(잿불 성채: 웅덩이↓·밀도↑·광원↑). 던전 → 지역은 `DungeonDefinition.Region` →
+  `DungeonLayout.Region`으로 실려가 생성기·런타임 스폰·광원이 같은 출처를 본다.
+  - **지역은 혼합·밀도·무대 확률만 가른다** — 아키타입 스탯·행동 트리는 전 지역 공용이다.
+  - **지역 인자에 기본값을 두지 않는다**(옛 `ForFloor` 역산 붕괴의 재발 방지).
+  - **폐병원 출력은 불변임을 지문으로 고정했다**(`DungeonGeneratorGoldenTests`) — 세이브가
+    seed 재생성이라 조용한 배치 변화가 곧 이어하기 붕괴다. 불변식 테스트로는 안 잡힌다.
+  - **아직 안 열렸다**: `Flooded`/`Ember` 던전은 `isAvailable: false`라 이 값들은 미검증이다.
+    기름 타일 무대도 없다(기름은 아이템뿐). 다음은 지역 전용 적 + 침수된 금고 개방.
 - **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
   근접 돌진·스쿼시/플래시·픽셀 버스트·감쇠 카메라 흔들림을 적용한다. 화상은 주황 불꽃 고리,
   빙결은 청록 결정 고리이며 부여/연장/상쇄를 구분한다. 적 FX도 반드시 FOV를 따른다.
@@ -154,12 +165,12 @@
     상인·창고·기록실은 잠그지 않는다.
   - **남은 것**: 실플레이로 조건 수치(화상 12·처치 20 등)와 구출 층(2·5) 조정.
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
-- **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **844/844 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **961/961 통과**. 컴파일 에러 없음.
+- **최근 검증 기준**(2026-07-25, 지역 축 도입 후 — 세 경로 모두 실제 실행해 확인):
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **851/851 통과**.
+  - Unity EditMode `ProjectC.Tests.EditMode` **968/968 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
-  - 옛 "673/673" 기록은 낡은 값이었다.
+  - 같은 날 지역 축 도입 **직전** 기준선은 Core 844였다(옛 "673/673" 기록은 낡은 값).
   변경 후에는 숫자를 맹신하지 말고, 최소한 shim을 돌리고 에디터 회귀도 다시 실행한다.
 - **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
   작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.

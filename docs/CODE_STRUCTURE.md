@@ -114,6 +114,9 @@
 | 눈높이 초과 차폐 임계 | `SightRules.HeightBlockThreshold` |
 | 수직 시야 차단 여부(타일) | `TileData.BlocksVerticalSight` |
 | 깊이 구간 경계·라벨 | `DungeonDepthBandRules` (판정과 `RangeLabel`이 같은 상수 사용) |
+| 콘텐츠 변주 수치 (지역 × 깊이) | `DungeonBandProfiles` (지역은 필수 인자 — 기본값 없음) |
+| 던전 → 지역 매핑 | `DungeonDefinition.Region` → `DungeonLayout.Region` (생성기·런타임 스폰 공용) |
+| 생성기 출력 회귀 | `DungeonGeneratorGoldenTests` 지문 (불변식 테스트가 못 잡는 배치 변화용) |
 | 텔레메트리 구간 롤업 | `RunTelemetry.RefreshBands` (파생 값 — 저장·요약 직전 재계산) |
 | 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` |
 | 장비 정의·효과 | `EquipmentCatalog` (전투 보정은 `CombatLoadout`) |
