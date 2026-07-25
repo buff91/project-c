@@ -38,6 +38,8 @@ namespace ProjectC.Gameplay
             string key = $"fog-backdrop-{fog}-{fogEdge}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
+            // 캔버스 상수(64×32) 기준 2×1타일 크기다 — 절차 규격은 64-레짐에 고정돼 있으므로
+            // 카탈로그 자산이 128-레짐이 되어도 이 상수를 올리지 말 것(올리면 절반 크기가 된다).
             const int width = 128;
             const int height = 64;
             var texture = NewTexture(width, height);
@@ -263,7 +265,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetMappedTileSprite(
+        internal Sprite GetMappedTileSprite(
             Sprite topSprite,
             Color32 baseColor,
             bool extruded,
@@ -271,30 +273,37 @@ namespace ProjectC.Gameplay
         {
             Texture2D source = topSprite.texture;
             Rect sourceRect = topSprite.rect;
+            int sourceWidth = Mathf.RoundToInt(sourceRect.width);
+            int sourceHeight = Mathf.RoundToInt(sourceRect.height);
+            // 카탈로그 바닥은 64×32의 정수 배(128×64 …)까지 받는다 — 128-레짐 자산이 와도
+            // 톤매핑과 단차 측면을 잃지 않는다. 배율이 어긋난 소스만 원본 그대로 돌려준다.
+            int scale = sourceWidth / TilePixelWidth;
             if (source == null || !source.isReadable ||
-                Mathf.RoundToInt(sourceRect.width) != TilePixelWidth ||
-                Mathf.RoundToInt(sourceRect.height) != TilePixelHeight)
+                scale < 1 ||
+                sourceWidth != TilePixelWidth * scale ||
+                sourceHeight != TilePixelHeight * scale)
                 return topSprite;
 
             string key =
-                $"mapped-tile-{topSprite.name}-{baseColor.r}-{baseColor.g}-{baseColor.b}-x{extruded}";
+                $"mapped-tile-{topSprite.name}-{sourceWidth}x{sourceHeight}" +
+                $"-{baseColor.r}-{baseColor.g}-{baseColor.b}-x{extruded}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-            int textureHeight = extruded ? 48 : TilePixelHeight;
-            int topOffset = extruded ? 16 : 0;
-            var texture = NewTexture(TilePixelWidth, textureHeight);
+            int textureHeight = (extruded ? 48 : TilePixelHeight) * scale;
+            int topOffset = extruded ? 16 * scale : 0;
+            var texture = NewTexture(TilePixelWidth * scale, textureHeight);
             if (extruded)
-                DrawExtrudedSides(texture, baseColor, hubFaces);
+                DrawExtrudedSides(texture, baseColor, hubFaces, scale);
 
             Color[] pixels = source.GetPixels(
                 Mathf.RoundToInt(sourceRect.x),
                 Mathf.RoundToInt(sourceRect.y),
-                TilePixelWidth,
-                TilePixelHeight);
-            for (int py = 0; py < TilePixelHeight; py++)
-            for (int px = 0; px < TilePixelWidth; px++)
+                sourceWidth,
+                sourceHeight);
+            for (int py = 0; py < sourceHeight; py++)
+            for (int px = 0; px < sourceWidth; px++)
             {
-                Color pixel = pixels[py * TilePixelWidth + px];
+                Color pixel = pixels[py * sourceWidth + px];
                 if (pixel.a > 0f)
                     texture.SetPixel(px, py + topOffset, ToneMapEnvironmentPixel(pixel, baseColor));
             }
@@ -302,7 +311,8 @@ namespace ProjectC.Gameplay
             texture.Apply(false, true);
             cached = CreateSprite(
                 texture,
-                extruded ? new Vector2(0.5f, 32f / 48f) : new Vector2(0.5f, 0.5f));
+                extruded ? new Vector2(0.5f, 32f / 48f) : new Vector2(0.5f, 0.5f),
+                PixelsPerUnit * scale);
             _spriteCache[key] = cached;
             return cached;
         }
@@ -340,7 +350,8 @@ namespace ProjectC.Gameplay
             Vector2 pivot = new Vector2(
                 sourceSprite.pivot.x / sourceRect.width,
                 sourceSprite.pivot.y / sourceRect.height);
-            cached = CreateSprite(texture, pivot);
+            // 소스 PPU 상속 — 상수 PPU로 만들면 128-레짐 문/계단/벽의 월드 크기가 2배가 된다.
+            cached = CreateSprite(texture, pivot, sourceSprite.pixelsPerUnit);
             _spriteCache[key] = cached;
             return cached;
         }
@@ -406,25 +417,30 @@ namespace ProjectC.Gameplay
         /// 전면 타일의 두께(좌·우 측면). 허브는 바닥색을 어둡게 깎아 쓰고,
         /// 던전은 공용 석재/벽 그림자 역할색을 쓴다 — 그래서 허브 여부를 받아야 한다.
         /// </summary>
-        private void DrawExtrudedSides(Texture2D texture, Color32 baseColor, bool hubFaces)
+        private void DrawExtrudedSides(Texture2D texture, Color32 baseColor, bool hubFaces, int scale = 1)
         {
             Color32 leftFace = hubFaces ? Shift(baseColor, -24) : _palette.StoneShadow;
             Color32 rightFace = hubFaces ? Shift(baseColor, -38) : _palette.WallShadow;
-            for (int py = 0; py < 32; py++)
+            int half = 32 * scale;
+            int width = 64 * scale;
+            for (int py = 0; py < 32 * scale; py++)
             {
-                int leftMin = py < 16 ? 32 - py * 2 : 0;
-                int leftMax = py < 16 ? 32 : 64 - py * 2;
-                int rightMin = py < 16 ? 32 : py * 2;
-                int rightMax = py < 16 ? 32 + py * 2 : 63;
+                int leftMin = py < 16 * scale ? half - py * 2 : 0;
+                int leftMax = py < 16 * scale ? half : width - py * 2;
+                int rightMin = py < 16 * scale ? half : py * 2;
+                int rightMax = py < 16 * scale ? half + py * 2 : width - 1;
 
-                for (int px = Mathf.Max(0, leftMin); px <= Mathf.Min(31, leftMax); px++)
+                // 모르타르 줄눈은 원본 픽셀 밀도(py/scale)로 계산한다 — 배율이 올라도 간격이 유지된다.
+                for (int px = Mathf.Max(0, leftMin); px <= Mathf.Min(half - 1, leftMax); px++)
                 {
-                    bool mortar = py % 7 == 0 || (px + (py / 7) * 8) % 19 == 0;
+                    bool mortar = (py / scale) % 7 == 0 ||
+                                  (px / scale + ((py / scale) / 7) * 8) % 19 == 0;
                     texture.SetPixel(px, py, mortar ? _palette.Outline : leftFace);
                 }
-                for (int px = Mathf.Max(32, rightMin); px <= Mathf.Min(63, rightMax); px++)
+                for (int px = Mathf.Max(half, rightMin); px <= Mathf.Min(width - 1, rightMax); px++)
                 {
-                    bool mortar = py % 7 == 0 || (px - (py / 7) * 7) % 21 == 0;
+                    bool mortar = (py / scale) % 7 == 0 ||
+                                  (px / scale - ((py / scale) / 7) * 7) % 21 == 0;
                     texture.SetPixel(px, py, mortar ? _palette.Outline : rightFace);
                 }
             }

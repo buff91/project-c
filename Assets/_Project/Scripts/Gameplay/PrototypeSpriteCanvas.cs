@@ -29,13 +29,20 @@ namespace ProjectC.Gameplay
             return texture;
         }
 
-        internal static Sprite CreateSprite(Texture2D texture, Vector2 pivot)
+        internal static Sprite CreateSprite(Texture2D texture, Vector2 pivot) =>
+            CreateSprite(texture, pivot, PixelsPerUnit);
+
+        /// <summary>
+        /// 자체 PPU를 가진 소스(카탈로그 자산)를 복제·가공할 때는 이 오버로드로 소스 PPU를
+        /// 물려줘야 한다 — 상수 PPU로 만들면 128-레짐 자산의 월드 크기가 2배로 어긋난다.
+        /// </summary>
+        internal static Sprite CreateSprite(Texture2D texture, Vector2 pivot, float pixelsPerUnit)
         {
             return Sprite.Create(
                 texture,
                 new Rect(0, 0, texture.width, texture.height),
                 pivot,
-                PixelsPerUnit,
+                pixelsPerUnit,
                 0,
                 SpriteMeshType.FullRect);
         }
