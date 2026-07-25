@@ -57,6 +57,10 @@
     (`OnwardStair`/`BackStair`). 같은 이유로 `FinalFloorIndex`(진행 최종)와
     `BottomFloorIndex`(공간 최하단)는 다른 값이다 — 하강 던전에서만 우연히 같다.
   - **중력은 방향을 타지 않는다.** `FallRules`·`SightRules`는 던전 방향을 모른다.
+    다만 **낙하의 의미**는 방향을 탄다(`FallMeaningFor`) — 하강=지름길, 상승=후퇴로,
+    진입깊이=지형 위험. 안내 문구는 `FallMeaningHint` 하나에서만 나온다.
+  - **지상 진입(B1 → 1F)은 한 판에 한 번 알린다**(`CrossesIntoAboveGround`).
+    상승 구조가 공짜로 주는 전환점이라 여기서 짚으면 건물을 타고 오른다는 구조가 읽힌다.
 - **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
   근접 돌진·스쿼시/플래시·픽셀 버스트·감쇠 카메라 흔들림을 적용한다. 화상은 주황 불꽃 고리,
   빙결은 청록 결정 고리이며 부여/연장/상쇄를 구분한다. 적 FX도 반드시 FOV를 따른다.

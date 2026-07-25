@@ -251,10 +251,12 @@ namespace ProjectC.Gameplay
                 int nextFloor = _dungeon.Height.FloorIndex(next.elevation);
                 if (nextFloor != _activeFloorIndex)
                 {
+                    int previousFloor = _activeFloorIndex;
                     _activeFloorIndex = nextFloor;
                     _runTelemetry?.RecordFloorEntered(
                         GlobalFloorIndex(_activeFloorIndex), GlobalDepth(_activeFloorIndex));
                     AnnounceBossApproachIfNeeded();
+                    AnnounceSurfaceCrossingIfNeeded(previousFloor);
                     UpdateInputFloorRange();
                     RefreshFloorVisibility();
                     PositionSelection(next);
@@ -262,8 +264,8 @@ namespace ProjectC.Gameplay
                     Debug.Log($"[Dungeon] 층 이동: {FloorLabel(_activeFloorIndex)} / " +
                               $"층 내부 높이 {_dungeon.Height.LocalHeight(next.elevation)}");
                     _runSummary.RecordFloor(
-                GlobalFloorIndex(_activeFloorIndex),
-                GlobalDepth(_activeFloorIndex));
+                        GlobalFloorIndex(_activeFloorIndex),
+                        GlobalDepth(_activeFloorIndex));
                     TryDeclareVictory();
                     if (_runSummary.Ended) yield break;
                     SaveCheckpoint();
@@ -415,5 +417,26 @@ namespace ProjectC.Gameplay
             _playerRenderer.color = original;
             yield return new WaitForSeconds(0.12f);
         }
+        /// <summary>
+        /// 지하에서 지상으로 처음 올라선 순간(B1 → 1F)을 한 판에 한 번 알린다.
+        /// 상승 던전이 공짜로 주는 유일한 서사 전환점이라, 여기서 한 번 짚어 주면
+        /// "건물을 타고 오른다"는 구조가 설명 없이 읽힌다. 판정은 Core 가 소유한다.
+        /// </summary>
+        private void AnnounceSurfaceCrossingIfNeeded(int previousFloorIndex)
+        {
+            if (hubMode || _dungeon == null || _surfaceCrossingAnnounced) return;
+
+            if (!DungeonDirectionRules.CrossesIntoAboveGround(
+                    _dungeon.Direction,
+                    _dungeon.FirstBuildingFloor,
+                    _dungeon.ProgressIndexFor(previousFloorIndex),
+                    _dungeon.ProgressIndexFor(_activeFloorIndex)))
+                return;
+
+            _surfaceCrossingAnnounced = true;
+            InteractionFeedback?.Invoke("지상층이다 — 깨진 외벽 너머로 바깥이 보인다");
+            Debug.Log("[Dungeon] 지상 진입: " + FloorLabel(_activeFloorIndex));
+        }
+
     }
 }

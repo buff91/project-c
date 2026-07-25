@@ -18,6 +18,9 @@ namespace ProjectC.Gameplay
         private bool _hasBossAltar;
         private bool _bossApproachAnnounced;
 
+        /// <summary>지상 진입(B1 → 1F) 알림을 한 판에 한 번만 띄우기 위한 플래그.</summary>
+        private bool _surfaceCrossingAnnounced;
+
         public bool HasBossAltar => _hasBossAltar;
 
         private void ResetBossArenaForBuild()
@@ -26,6 +29,7 @@ namespace ProjectC.Gameplay
             _bossAltarRenderer = null;
             _hasBossAltar = false;
             _bossApproachAnnounced = false;
+            _surfaceCrossingAnnounced = false;
         }
 
         /// <summary>아레나 층의 제단을 만든다. 랜드마크가 없는 층(=최심층이 아닌 층)은 그냥 지나간다.</summary>
@@ -84,9 +88,11 @@ namespace ProjectC.Gameplay
             DungeonBossDefinition boss = DungeonSelection.Selected?.Boss;
             if (boss == null) return;
 
+            // 진행 지수는 레이아웃에서 받는다 — 예전의 `-_activeFloorIndex` 는 상승 던전에서
+            // 음수가 되어 전조가 아예 뜨지 않았다(GDD §5.1).
             if (!DungeonBossArenaRules.TryApproachCue(
                     boss.DisplayName,
-                    -_activeFloorIndex,
+                    _dungeon.ProgressIndexFor(_activeFloorIndex),
                     _dungeon.Floors.Count,
                     _bossDefeated,
                     out string message))

@@ -643,9 +643,11 @@ namespace ProjectC.Gameplay
                     out GridPos landing);
                 if (openingView == VerticalOpeningView.Downward && !downwardOpeningAdded)
                 {
+                    // 같은 행동이 지름길인지 후퇴인지는 던전 방향이 정한다 — 문구는 Core 소유.
                     hints.Add(
                         $"바닥 구멍 탭: 아래로 뛰어내리기 → " +
-                        $"{FloorLabel(_dungeon.Height.FloorIndex(landing.elevation))}");
+                        $"{FloorLabel(_dungeon.Height.FloorIndex(landing.elevation))} · " +
+                        DungeonDirectionRules.FallMeaningHint(_dungeon.Direction));
                     downwardOpeningAdded = true;
                 }
                 else if (openingView == VerticalOpeningView.Upward && !upwardOpeningAdded)

@@ -172,5 +172,65 @@ namespace ProjectC.Tests
             Assert.IsFalse(DungeonDirectionRules.UsesVerticalProgress(vault.Direction),
                 "침수된 금고는 고도가 진행 축이 아니다");
         }
+        // ── 낙하의 의미 (GDD §5.3) ────────────────────────────────────
+
+        [Test]
+        public void FallMeaning_DependsOnDirection_ButRulesDoNot()
+        {
+            Assert.AreEqual(FallMeaning.Shortcut,
+                DungeonDirectionRules.FallMeaningFor(DungeonProgressDirection.Descend));
+            Assert.AreEqual(FallMeaning.Retreat,
+                DungeonDirectionRules.FallMeaningFor(DungeonProgressDirection.Ascend),
+                "상승 던전에서 아래는 이미 지나온 곳이다 — 지름길이 아니다.");
+            Assert.AreEqual(FallMeaning.Hazard,
+                DungeonDirectionRules.FallMeaningFor(DungeonProgressDirection.Inward));
+        }
+
+        [Test]
+        public void FallMeaningHint_NeverCallsRetreatAShortcut()
+        {
+            string descend = DungeonDirectionRules.FallMeaningHint(DungeonProgressDirection.Descend);
+            string ascend = DungeonDirectionRules.FallMeaningHint(DungeonProgressDirection.Ascend);
+
+            StringAssert.Contains("지름길", descend);
+            Assert.IsFalse(ascend.Contains("지름길"),
+                "상승 던전 안내가 낙하를 지름길이라 부르면 거짓말이다.");
+            Assert.AreNotEqual(descend, ascend);
+        }
+
+        // ── 지상 진입 전환점 (B1 -> 1F) ───────────────────────────────
+
+        [Test]
+        public void Ascend_CrossingFromB1ToGroundFloor_IsAnnounced()
+        {
+            // 폐병원: B2(진행 0) -> B1(1) -> 1F(2). 전환은 1 -> 2 에서만 일어난다.
+            const DungeonProgressDirection dir = DungeonProgressDirection.Ascend;
+            const int first = -2;
+
+            Assert.IsFalse(DungeonDirectionRules.CrossesIntoAboveGround(dir, first, 0, 1),
+                "B2 -> B1 은 아직 지하다.");
+            Assert.IsTrue(DungeonDirectionRules.CrossesIntoAboveGround(dir, first, 1, 2),
+                "B1 -> 1F 가 지상 진입이다.");
+            Assert.IsFalse(DungeonDirectionRules.CrossesIntoAboveGround(dir, first, 2, 3),
+                "1F -> 2F 는 이미 지상이다.");
+        }
+
+        [Test]
+        public void Descend_NeverCrossesIntoAboveGround()
+        {
+            for (int progress = 0; progress < 9; progress++)
+                Assert.IsFalse(
+                    DungeonDirectionRules.CrossesIntoAboveGround(
+                        DungeonProgressDirection.Descend, -1, progress, progress + 1),
+                    "하강 던전은 지상으로 올라서지 않는다.");
+        }
+
+        [Test]
+        public void Inward_HasNoGroundConcept()
+        {
+            Assert.IsFalse(DungeonDirectionRules.CrossesIntoAboveGround(
+                DungeonProgressDirection.Inward, -1, 1, 2));
+        }
+
     }
 }

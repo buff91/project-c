@@ -114,7 +114,7 @@ namespace ProjectC.Core
             new EquipmentDefinition(
                 "padded-boots", ItemKind.PaddedBoots, EquipmentSlot.Gear,
                 "완충 부츠",
-                "안전 낙하 높이 +2. 뛰어내리는 것이 이동 수단이 된다.",
+                "안전 낙하 높이 +2. 높은 곳에서 뛰어내려도 버틴다 — 지름길로도, 후퇴로도 쓴다.",
                 craftCost: 45,
                 safeFallBonus: 2)
         };
