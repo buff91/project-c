@@ -167,8 +167,10 @@ namespace ProjectC.Tests
             Assert.AreEqual(-2, hospital.FirstBuildingFloor, "폐병원은 B2에서 시작한다");
 
             DungeonDefinition vault = DungeonCatalog.ById("flooded-vault");
-            Assert.AreEqual(DungeonProgressDirection.Descend, vault.Direction,
+            Assert.AreEqual(DungeonProgressDirection.Inward, vault.Direction,
                 "던전마다 방향이 다르다 — 전역 스위치가 아니다");
+            Assert.IsFalse(DungeonDirectionRules.UsesVerticalProgress(vault.Direction),
+                "침수된 금고는 고도가 진행 축이 아니다");
         }
     }
 }

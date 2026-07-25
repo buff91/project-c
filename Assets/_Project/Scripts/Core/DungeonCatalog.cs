@@ -96,17 +96,19 @@ namespace ProjectC.Core
             new DungeonDefinition(
                 "flooded-vault",
                 "침수된 금고",
-                "물과 빙결 반응이 중심인 다음 원정지.",
+                "고도가 아니라 안으로 파고드는 구조. 물과 빙결 반응이 중심인 다음 원정지.",
                 "준비 중",
                 seed: 2718,
                 floorCount: 10,
                 boss: null,
                 isAvailable: false,
-                direction: DungeonProgressDirection.Descend,
+                // 고도가 진행 축이 아니다 — 구역 번호로 표기하고 오르내림은 국소 지형이다.
+                direction: DungeonProgressDirection.Inward,
                 firstBuildingFloor: -1),
             new DungeonDefinition(
                 "ember-keep",
                 "잿불 성채",
+                // 진행 방향 미정 — 기본값(하강)을 쓴다. 성채라면 상승이 어울리지만 확정 전이다.
                 "불·기름 연쇄 반응이 중심인 고난도 원정지.",
                 "준비 중",
                 seed: 3141,
