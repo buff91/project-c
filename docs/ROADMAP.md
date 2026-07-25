@@ -276,9 +276,23 @@
       `RangeLabel`(「1~3번째」 식 진행 표기)을 추가하고 리포트가 이를 쓴다. 열거자 이름
       (`Shallow/Mid/Deep/Boss`)은 코드·JSON 키로 그대로 둬 과거 리포트와 호환된다.
       판정 상수·경계는 손대지 않았다. `RunBandTelemetry.label` 신설.
-- [ ] **생성기 상승 전환** — 층 루프 방향, `StairsUp/Down` 링크 방향, `RunStartRules.ResolvePreviewDepth`
-      부호. Hole은 여전히 **아래(= 이전 층)로** 떨어지므로 생성 순서가 뒤집힌다(착지 층이 먼저 생성됨).
-      기존 불변식(정확히 한 층 아래 착지·2층 관통 금지·기둥 겹침)은 **그대로 계약으로 유지**한다.
+- [x] **방향을 던전별 데이터로** — `DungeonProgressDirection`(Descend/Ascend) +
+      `DungeonDirectionRules`(층 인덱스 부호 · 진출/귀환 계단 · 낙하의 진행 의미 · 건물 층 라벨),
+      `DungeonDefinition.Direction`/`FirstBuildingFloor`. 폐병원=상승·B2 시작, 침수된 금고=하강·B1 시작.
+      계약 테스트 `DungeonDirectionRulesTests`. **생성기는 아직 이 값을 읽지 않는다**(아래).
+- [ ] **생성기가 방향을 읽게 한다** — ⚠ *일방적인 "상승 전환"이 아니다.* 하강이 주 목적인 던전과
+      상승이 주 목적인 던전이 함께 존재하므로, 생성기는 방향을 **매개변수로 받아야** 한다.
+      하강이 박혀 있는 곳은 세 군데뿐이다:
+      `DungeonGenerator.Planning.cs`의 `FloorIndex = -depth` ·
+      `DungeonLayout.cs`의 `Connect(plans[i].Down, plans[i+1].Up)`(= 진출 계단을 Down으로 고정) ·
+      `bottomElevation = Elevation(-(floorCount-1))`(낙하 바닥).
+      **핵심은 공간(위/아래)과 진행(진출/귀환)의 분리**다 — `FinalFloorIndex`를 `BottomFloorIndex`에서
+      갈라낸 것과 같은 구분이며, `DungeonDirectionRules.OnwardStair/BackStair`가 그 SSOT다.
+      Hole은 방향과 무관하게 **아래로** 떨어지므로 상승 던전에서는 착지 층이 먼저 생성된다
+      (생성 순서가 뒤집힌다). 기존 불변식(정확히 한 층 아래 착지·2층 관통 금지·기둥 겹침)은
+      **그대로 계약으로 유지**한다.
+      함께 따라가야 하는 곳: `IsBottomExit`/`CreateBossExitSeal`이 `floor.DownStairs`를 보는데
+      상승 던전에서는 진출 계단이 `UpStairs`다. `FloorLabel`도 `DungeonDirectionRules.FloorLabelFor`로.
 - [ ] **낙하 affordance 재배치** — 상승 던전에서 낙하는 전진 지름길이 아니라 **후퇴·탈출 수단**이다
       (GDD §5.3 주석). 엘리베이터 통로를 후퇴 동선으로 배치하고, 완충 부츠의 안내 문구를 재검토한다.
 - [ ] **병원 소품 추가** — 위생 타일·들것·커튼·수술등·엘리베이터 통로. 확정된 환경 세트(콘크리트·

@@ -11,6 +11,19 @@ namespace ProjectC.Core
         public string RouteLabel { get; }
         public int Seed { get; }
         public int FloorCount { get; }
+
+        /// <summary>
+        /// 주 진행 방향. 던전별 정체성 축이다 — 하강이 주 목적인 던전과
+        /// 상승이 주 목적인 던전이 함께 존재한다(GDD §10.1, §11).
+        /// </summary>
+        public DungeonProgressDirection Direction { get; }
+
+        /// <summary>
+        /// 던전이 시작하는 건물 층 번호(0 없음). 폐병원은 −2(B2), 지하 던전은 −1(B1).
+        /// 표시 라벨만 정하며 좌표계에는 영향을 주지 않는다.
+        /// </summary>
+        public int FirstBuildingFloor { get; }
+
         public DungeonBossDefinition Boss { get; }
         public bool IsAvailable { get; }
 
@@ -22,7 +35,9 @@ namespace ProjectC.Core
             int seed,
             int floorCount,
             DungeonBossDefinition boss,
-            bool isAvailable)
+            bool isAvailable,
+            DungeonProgressDirection direction = DungeonProgressDirection.Descend,
+            int firstBuildingFloor = -1)
         {
             Id = id;
             DisplayName = displayName;
@@ -30,6 +45,8 @@ namespace ProjectC.Core
             RouteLabel = routeLabel;
             Seed = seed;
             FloorCount = floorCount;
+            Direction = direction;
+            FirstBuildingFloor = firstBuildingFloor;
             Boss = boss;
             IsAvailable = isAvailable;
         }
@@ -73,19 +90,25 @@ namespace ProjectC.Core
                     "grave-warden",
                     "감시자",
                     MonsterRoster.GraveWarden),
-                isAvailable: true),
+                isAvailable: true,
+                direction: DungeonProgressDirection.Ascend,
+                firstBuildingFloor: -2),
             new DungeonDefinition(
                 "flooded-vault",
                 "침수된 금고",
-                "물과 빙결 반응이 중심인 다음 원정지.",
+                "고도가 아니라 안으로 파고드는 구조. 물과 빙결 반응이 중심인 다음 원정지.",
                 "준비 중",
                 seed: 2718,
                 floorCount: 10,
                 boss: null,
-                isAvailable: false),
+                isAvailable: false,
+                // 고도가 진행 축이 아니다 — 구역 번호로 표기하고 오르내림은 국소 지형이다.
+                direction: DungeonProgressDirection.Inward,
+                firstBuildingFloor: -1),
             new DungeonDefinition(
                 "ember-keep",
                 "잿불 성채",
+                // 진행 방향 미정 — 기본값(하강)을 쓴다. 성채라면 상승이 어울리지만 확정 전이다.
                 "불·기름 연쇄 반응이 중심인 고난도 원정지.",
                 "준비 중",
                 seed: 3141,

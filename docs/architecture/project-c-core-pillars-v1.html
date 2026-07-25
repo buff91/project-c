@@ -476,6 +476,8 @@
           <li>수직성 어휘 = 건물형. 층·계단실·<strong>창문</strong>·엘리베이터 통로</li>
           <li>첫 던전 = <strong>폐병원 상승</strong> 10개 층 + 옥상 출구.
               지하 던전은 <strong>외벽 창문이 성립하지 않아</strong> <code>WindowRules</code>의 절반이 죽는다</li>
+          <li><strong>진행 방향은 던전별 데이터</strong> — 하강 / 상승 / <strong>진입 깊이</strong>(고도가 축이 아님)
+              셋이 공존한다. 전역 스위치가 아니다</li>
           <li>장비는 <strong>공격력을 올리지 않고 규칙만 바꾼다</strong> (영구 스탯 강화 제거)</li>
           <li>팔레트 18색 고정 · 깊이 변주는 스프라이트 슬롯/구조/광원으로만</li>
         </ul>
@@ -598,11 +600,17 @@
         <li>용어를 섞지 말 것: <strong>진행 지수</strong>(몇 번째로 방문하는 층 — 난이도 키) ·
             <code>FloorIndex</code>(공간 구획) · <code>Elevation</code>(연속 높이) ·
             <code>LocalHeight</code>(층 안 단차). <code>TileKind.Floor</code>는 또 다른 개념(걸을 수 있는 바닥 타입)이다.</li>
-        <li><strong>진행 순서 ≠ 고도 (v0.3.2 규약).</strong> 던전은 상승·하강·평면이 모두 가능하고
+        <li><strong>진행 순서 ≠ 고도 (v0.3.2 규약).</strong> 던전은 상승·하강·진입 깊이가 모두 가능하고
             한 던전 안에서 <strong>올라갔다 떨어지는</strong> 경로도 가능하다. 그래서 진행 지수는
             <strong>elevation의 함수가 될 수 없고</strong> 생성 시점에 층에 박히는 데이터여야 한다.
-            난이도는 <em>얼마나 나아갔는가</em>를 따르지 얼마나 높은가를 따르지 않는다.
-            (현재 코드는 이 규약을 어기고 있다 — §10 리스크)</li>
+            난이도는 <em>얼마나 나아갔는가</em>를 따르지 얼마나 높은가를 따르지 않는다.</li>
+        <li><strong>공간(위/아래) ≠ 진행(진출/귀환).</strong> <code>StairsUp/Down</code>은 공간 이름이라
+            고정이고, "다음 층으로 가는 계단"이 둘 중 무엇인지만 방향을 탄다.
+            같은 이유로 <code>BottomFloorIndex</code>(공간 최하단)와 <code>FinalFloorIndex</code>(진행 최종)는
+            다른 값이다 — 하강 던전에서만 우연히 같다.</li>
+        <li><strong>중력은 방향을 타지 않는다.</strong> <code>FallRules</code>·<code>SightRules</code>는
+            던전 방향을 모른다. 바뀌는 것은 규칙이 아니라 의미다 — 낙하는 하강에서 전진 지름길,
+            상승에서 후퇴·탈출 수단, 진입 깊이 던전에서는 진행과 무관한 지형 위험이다.</li>
       </ul>
     </div>
 
@@ -1051,6 +1059,8 @@
           <tr><td>휴식처 배치·회복량</td><td class="m">DungeonRestRules</td><td class="m">횡단</td></tr>
           <tr><td>보스 배치 · 출구 봉인 · 전조</td><td class="m">DungeonBossRules · DungeonBossArenaRules</td><td class="m">횡단</td></tr>
           <tr><td>진행 구간 정체성 · 경계</td><td class="m">DungeonBandProfile · DungeonDepthBandRules</td><td class="m">횡단</td></tr>
+          <tr><td>던전 진행 방향 · 진출/귀환 계단 · 층 라벨</td><td class="m">DungeonDirectionRules</td><td class="m">횡단</td></tr>
+          <tr><td>진행 지수(난이도 키)</td><td class="m">DungeonFloorInfo.ProgressIndex</td><td class="m">횡단</td></tr>
           <tr><td>월드 탭 픽킹 우선순위</td><td class="m">WorldInputRules</td><td class="m">횡단</td></tr>
           <tr><td>계측 집계 · 밴드 롤업</td><td class="m">RunTelemetry</td><td class="m">횡단</td></tr>
         </tbody>
@@ -1090,20 +1100,20 @@
                 GDD 본문도 "모바일 전용" 시점이다. <strong>실측은 아래 각주.</strong></td>
           </tr>
           <tr>
-            <td class="m"><span class="chip risk">높음</span></td>
-            <td>진행 지수가 고도에서 파생됨<br><span class="chip risk">조용히 깨짐</span></td>
-            <td><code>DungeonVisualContext.cs:73</code> — <code>DepthIndex = Math.Max(0, −floorIndex)</code>.
-                이름만 분리돼 있고 실제로는 <strong>진행 = 고도 하강이 하드코딩</strong>이다.
-                <strong>상승 던전에서 전부 0으로 붕괴</strong>하며 예외가 나지 않아 밴드·적 혼합·휴식처·탈출구·
-                장비 드랍·보스 아레나가 말없이 오작동한다. 비단조 경로(<code>1F→3F→2F→5F</code>)에서는
-                원리적으로 역산 불가. <strong>파생을 고칠 게 아니라 없애야 한다</strong> —
-                생성기가 경로를 깔며 층에 부여. 규칙 계층은 이미 <code>int</code> 인자를 받아 <strong>무변경</strong>이고,
-                갈아끼울 파생식은 <strong>8곳</strong>.</td>
+            <td class="m"><span class="chip done">해결</span></td>
+            <td>진행 지수가 고도에서 파생됨</td>
+            <td><code>DepthIndex = Math.Max(0, −floorIndex)</code> 파생을 <strong>제거</strong>했다.
+                <code>DungeonFloorInfo.ProgressIndex</code>를 1급 필드로 두고 생성기가 부여하며,
+                <code>DungeonDepthBandRules.ForFloor</code>는 삭제, 파생식 8곳은 레이아웃 조회로 교체했다.
+                부수로 <code>BottomFloorIndex</code>가 <strong>진행 최종</strong>과 <strong>공간 최하단</strong>
+                두 뜻으로 섞여 쓰이던 것도 <code>FinalFloorIndex</code>로 갈라냈다.
+                <strong>단, Unity 미검증</strong> — 로컬 회귀 실행이 남아 있다.</td>
           </tr>
           <tr>
             <td class="m"><span class="chip wip">중간</span></td>
-            <td>첫 던전 상승 전환 미착수</td>
-            <td>GDD §10.1은 <strong>폐병원 상승</strong>으로 확정됐으나 생성기는 아직 하강이다.
+            <td>생성기가 방향을 읽지 않음</td>
+            <td>방향은 던전별 데이터로 선언됐으나(폐병원=상승, 침수된 금고=진입 깊이)
+                생성기는 아직 하강만 만든다.
                 좌표계는 거의 그대로지만(<code>FloorIndex</code>는 양수도 이미 정상, <code>FallRules</code>는
                 중력 절대) <strong>층 루프 방향·링크 방향·Hole 생성 순서</strong>가 뒤집힌다.
                 표시 리스킨만 먼저 나가면 라벨과 실제 구조가 어긋나므로 <strong>묶어서</strong> 처리한다.</td>
@@ -1138,8 +1148,11 @@
 
     <h3>다음 한 걸음 (권장 순서)</h3>
     <ol>
-      <li><strong>진행 지수 분리부터.</strong> 상승 던전·비단조 경로를 지원하려면 이게 전제다.
-          던전 방향을 정체성 축으로 쓰기로 한 이상, 이 결함 위에 콘텐츠를 더 얹으면 나중이 더 비싸진다.</li>
+      <li><strong>Unity 회귀 실행.</strong> 진행 지수 분리·방향 데이터 모델이 모두 Unity 없는 환경에서
+          작성돼 컴파일·테스트가 미검증이다. 다른 무엇보다 먼저다.</li>
+      <li><strong>생성기가 방향을 읽게 한다.</strong> 하강이 박힌 곳은 세 군데뿐이며
+          (<code>FloorIndex = -depth</code> · 진출 계단을 <code>Down</code>으로 고정한 링크 · 낙하 바닥),
+          규칙과 계약 테스트는 이미 있다.</li>
       <li><strong>계측 공백.</strong> 내려치기 발동 · 높이차 사격 · 창문 파괴 · 탈출구에서 「계속 탐색」 —
           기둥 1의 v0.3 콘텐츠가 실제로 쓰였는지 지금 리포트로는 알 수 없다.
           장비는 <code>RunSaveData.carriedWeaponId/GearId</code>가 이미 있으므로 런 종료 시 스냅샷이면 된다.</li>
