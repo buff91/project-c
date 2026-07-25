@@ -324,6 +324,10 @@ namespace ProjectC.Gameplay
 
         /// <summary>장착 장비가 주는 전투 보정(사거리·넉백·방어·안전 낙하). 판 시작 때 메타에서 읽는다.</summary>
         private CombatLoadout _playerLoadout = CombatLoadout.Unarmed;
+
+        // 이번 원정에 반입한 장비 — 죽으면 잃고 살아 나와야 돌려받는다(익스트랙션 규칙).
+        private string _carriedWeaponId = "";
+        private string _carriedGearId = "";
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
@@ -458,7 +462,22 @@ namespace ProjectC.Gameplay
                 playerMaxHp = _hero.MaxHp;
                 playerAttack = _hero.Attack;
                 rangedAttackDamage = _hero.RangedDamage;
-                _playerLoadout = MetaStore.LoadOrNew().EquippedLoadout();
+                if (continueData != null)
+                {
+                    // 이어하기: 이미 반입한 장비를 그대로 들고 있다(창고에서 다시 꺼내지 않는다).
+                    _carriedWeaponId = continueData.carriedWeaponId ?? "";
+                    _carriedGearId = continueData.carriedGearId ?? "";
+                }
+                else if (_stageIndex == 1)
+                {
+                    // 새 원정 출발에서만 창고에서 꺼낸다 — 이 순간부터 잃을 수 있다.
+                    // 던전 체인 전환(_stageIndex > 1)은 이미 들고 있는 장비를 그대로 이어 간다.
+                    MetaSaveData departure = MetaStore.LoadOrNew();
+                    ForgeRules.TakeIntoExpedition(
+                        departure, out _carriedWeaponId, out _carriedGearId);
+                    MetaStore.Save(departure);
+                }
+                _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
             }
 
             if (Application.isPlaying && _moveRoutine != null)
@@ -967,6 +986,7 @@ namespace ProjectC.Gameplay
                 _runSummary.EndInDefeat(source);
                 FinishRunTelemetry(RunTelemetryOutcome.Defeat, source);
                 RunSaveStore.Clear();
+                LoseCarriedEquipment();
                 Debug.Log($"[Combat] 플레이어 사망 — 사인 {source}, " +
                           $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
                 RunEnded?.Invoke(_runSummary);

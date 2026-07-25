@@ -36,6 +36,10 @@ namespace ProjectC.Core
         public int frostShards;
         public int kills;
         public int deepestFloorIndex;
+
+        /// <summary>이번 원정에 반입한 장비. 죽으면 잃으므로 런 상태로 들고 다닌다.</summary>
+        public string carriedWeaponId = "";
+        public string carriedGearId = "";
         public List<int> usedRestFloorIndices = new List<int>();
         public RunTelemetry telemetry;
 

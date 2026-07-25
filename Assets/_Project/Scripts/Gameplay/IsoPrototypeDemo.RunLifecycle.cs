@@ -18,6 +18,24 @@ namespace ProjectC.Gameplay
                       $"HP {_playerState.Hp}, 처치 {data.kills}");
         }
 
+        /// <summary>
+        /// 사망·포기: 반입한 장비를 잃는다. 창고에서 이미 꺼냈으므로 되돌리지 않고 슬롯만 비운다 —
+        /// 창고에 남겨둔 예비 장비는 안전하다(익스트랙션: 들고 나간 것만 위험하다).
+        /// </summary>
+        private void LoseCarriedEquipment()
+        {
+            if (string.IsNullOrEmpty(_carriedWeaponId) && string.IsNullOrEmpty(_carriedGearId))
+                return;
+
+            MetaSaveData meta = MetaStore.LoadOrNew();
+            ForgeRules.LoseExpeditionEquipment(meta, _carriedWeaponId, _carriedGearId);
+            MetaStore.Save(meta);
+            Debug.Log($"[Run] 반입 장비 소실: {_carriedWeaponId} / {_carriedGearId}");
+            _carriedWeaponId = "";
+            _carriedGearId = "";
+            _playerLoadout = CombatLoadout.Unarmed;
+        }
+
         /// <summary>이어하기와 던전 전환이 공유하는 상태 이월(HP·인벤토리·전적).</summary>
         private void ApplyCarriedState(RunSaveData data, string feedback)
         {
@@ -29,6 +47,11 @@ namespace ProjectC.Gameplay
 
             data.AddItemsTo(_inventory);
             InventoryChanged?.Invoke();
+
+            // 반입 장비는 인벤토리와 같은 이월 경로를 탄다(이어하기·던전 체인 공용).
+            _carriedWeaponId = data.carriedWeaponId ?? "";
+            _carriedGearId = data.carriedGearId ?? "";
+            _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
 
             _runSummary = new RunSummary(data.deepestFloorIndex, data.kills);
             _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
@@ -64,6 +87,8 @@ namespace ProjectC.Gameplay
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
+                carriedWeaponId = _carriedWeaponId,
+                carriedGearId = _carriedGearId,
                 telemetry = _runTelemetry
             };
             data.WriteItems(_inventory);
@@ -192,6 +217,10 @@ namespace ProjectC.Gameplay
         private int BankInventoryToStash()
         {
             MetaSaveData meta = MetaStore.LoadOrNew();
+            // 살아 나왔으니 반입 장비도 창고로 돌아온다(장착 상태 유지).
+            ForgeRules.ReturnFromExpedition(meta, _carriedWeaponId, _carriedGearId);
+            _carriedWeaponId = "";
+            _carriedGearId = "";
             int gold = 0;
             foreach (ItemKind kind in ItemCatalog.AllKinds)
             {
@@ -233,6 +262,8 @@ namespace ProjectC.Gameplay
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,
                 usedRestFloorIndices = SnapshotUsedRestSites(),
+                carriedWeaponId = _carriedWeaponId,
+                carriedGearId = _carriedGearId,
                 telemetry = _runTelemetry
             };
             carry.WriteItems(_inventory);

@@ -62,6 +62,65 @@ namespace ProjectC.Core
             return true;
         }
 
+        /// <summary>
+        /// 원정 반입: 장착한 장비를 창고에서 **꺼내** 들고 나간다. 반입한 순간부터 그 장비는
+        /// 소모품과 같은 위험에 놓인다 — 죽으면 잃고, 살아 나와야 돌려받는다(익스트랙션 규칙).
+        /// 창고에 남긴 예비 장비는 안전하다. 반환값은 이번 판에 적용할 전투 보정이다.
+        /// </summary>
+        public static CombatLoadout TakeIntoExpedition(
+            MetaSaveData meta, out string weaponId, out string gearId)
+        {
+            if (meta == null) throw new ArgumentNullException(nameof(meta));
+
+            weaponId = CarryOut(meta, EquipmentSlot.Weapon);
+            gearId = CarryOut(meta, EquipmentSlot.Gear);
+            return EquipmentRules.LoadoutFor(weaponId, gearId);
+        }
+
+        /// <summary>생환·승리: 들고 나갔던 장비를 창고로 되돌리고 장착 상태를 유지한다.</summary>
+        public static void ReturnFromExpedition(MetaSaveData meta, string weaponId, string gearId)
+        {
+            if (meta == null) throw new ArgumentNullException(nameof(meta));
+
+            CarryBack(meta, weaponId, EquipmentSlot.Weapon);
+            CarryBack(meta, gearId, EquipmentSlot.Gear);
+        }
+
+        /// <summary>
+        /// 사망·포기: 반입한 장비는 돌아오지 않는다. 창고에서 이미 꺼냈으므로 되돌리지 않고,
+        /// 슬롯만 비워 허브가 "장착 중"이라고 거짓말하지 않게 한다.
+        /// </summary>
+        public static void LoseExpeditionEquipment(
+            MetaSaveData meta, string weaponId, string gearId)
+        {
+            if (meta == null) throw new ArgumentNullException(nameof(meta));
+
+            if (!string.IsNullOrEmpty(weaponId)) meta.SetEquipped(EquipmentSlot.Weapon, "");
+            if (!string.IsNullOrEmpty(gearId)) meta.SetEquipped(EquipmentSlot.Gear, "");
+        }
+
+        private static string CarryOut(MetaSaveData meta, EquipmentSlot slot)
+        {
+            EquipmentDefinition definition = EquipmentCatalog.ById(meta.GetEquipped(slot));
+            if (definition == null || !meta.OwnsEquipment(definition))
+            {
+                meta.SetEquipped(slot, "");
+                return "";
+            }
+
+            meta.RemoveCount(definition.Item, 1);
+            return definition.Id;
+        }
+
+        private static void CarryBack(MetaSaveData meta, string equipmentId, EquipmentSlot slot)
+        {
+            EquipmentDefinition definition = EquipmentCatalog.ById(equipmentId);
+            if (definition == null || definition.Slot != slot) return;
+
+            meta.AddCount(definition.Item, 1);
+            meta.SetEquipped(slot, definition.Id);
+        }
+
         /// <summary>이 장비가 현재 슬롯에 끼워져 있는가.</summary>
         public static bool IsEquipped(MetaSaveData meta, EquipmentDefinition definition)
         {

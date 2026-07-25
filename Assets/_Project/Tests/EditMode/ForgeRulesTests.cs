@@ -77,6 +77,74 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TakeIntoExpedition_RemovesFromStash_SoDeathCanTakeIt()
+        {
+            MetaSaveData meta = Rich();
+            ForgeRules.TryCraft(meta, "pipe-spear");
+            ForgeRules.TryCraft(meta, "sign-shield");
+
+            CombatLoadout carried = ForgeRules.TakeIntoExpedition(
+                meta, out string weaponId, out string gearId);
+
+            Assert.AreEqual("pipe-spear", weaponId);
+            Assert.AreEqual("sign-shield", gearId);
+            Assert.AreEqual(2, carried.MeleeReach, "반입한 장비가 이번 판의 보정을 만든다");
+            Assert.AreEqual(0, meta.GetCount(ItemKind.PipeSpear), "들고 나갔으니 창고에는 없다");
+            Assert.AreEqual(0, meta.GetCount(ItemKind.SignShield));
+        }
+
+        [Test]
+        public void DeathLosesCarriedEquipment_ButStashSpareSurvives()
+        {
+            MetaSaveData meta = Rich();
+            ForgeRules.TryCraft(meta, "pipe-spear");
+            ForgeRules.TryCraft(meta, "padded-boots");
+            // 창고에 예비 무기를 하나 더 둔다(제작이 아니라 직접 적립 — 두 자루째 시나리오).
+            meta.AddCount(ItemKind.HeavyWrench, 1);
+
+            ForgeRules.TakeIntoExpedition(meta, out string weaponId, out string gearId);
+            ForgeRules.LoseExpeditionEquipment(meta, weaponId, gearId);
+
+            Assert.AreEqual(0, meta.GetCount(ItemKind.PipeSpear), "반입한 장비는 돌아오지 않는다");
+            Assert.AreEqual(0, meta.GetCount(ItemKind.PaddedBoots));
+            Assert.AreEqual("", meta.GetEquipped(EquipmentSlot.Weapon), "슬롯도 비운다");
+            Assert.AreEqual("", meta.GetEquipped(EquipmentSlot.Gear));
+            Assert.AreEqual(1, meta.GetCount(ItemKind.HeavyWrench),
+                "창고에 남긴 예비 장비는 안전하다");
+            Assert.AreEqual(1, meta.EquippedLoadout().MeleeReach, "맨손으로 돌아간다");
+        }
+
+        [Test]
+        public void ExtractionReturnsCarriedEquipment_StillEquipped()
+        {
+            MetaSaveData meta = Rich();
+            ForgeRules.TryCraft(meta, "heavy-wrench");
+            ForgeRules.TryCraft(meta, "sign-shield");
+
+            ForgeRules.TakeIntoExpedition(meta, out string weaponId, out string gearId);
+            ForgeRules.ReturnFromExpedition(meta, weaponId, gearId);
+
+            Assert.AreEqual(1, meta.GetCount(ItemKind.HeavyWrench));
+            Assert.AreEqual(1, meta.GetCount(ItemKind.SignShield));
+            Assert.IsTrue(meta.EquippedLoadout().KnockbackOnHit, "살아 나오면 장착 그대로다");
+            Assert.AreEqual(1, meta.EquippedLoadout().Armor);
+        }
+
+        [Test]
+        public void TakeIntoExpedition_WithNothingEquipped_IsUnarmed()
+        {
+            MetaSaveData meta = Rich();
+
+            CombatLoadout carried = ForgeRules.TakeIntoExpedition(
+                meta, out string weaponId, out string gearId);
+
+            Assert.AreEqual("", weaponId);
+            Assert.AreEqual("", gearId);
+            Assert.AreEqual(1, carried.MeleeReach);
+            Assert.AreEqual(0, carried.Armor);
+        }
+
+        [Test]
         public void WeaponAndGear_OccupyIndependentSlots()
         {
             MetaSaveData meta = Rich();

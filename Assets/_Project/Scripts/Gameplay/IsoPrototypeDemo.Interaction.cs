@@ -222,7 +222,8 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || hubMode) return;
             FinishRunTelemetry(RunTelemetryOutcome.Abandoned, "Abandoned");
             RunSaveStore.Clear();
-            Debug.Log("[Run] 게임 포기 — 소지품 소실, 허브 복귀");
+            LoseCarriedEquipment();
+            Debug.Log("[Run] 게임 포기 — 소지품·반입 장비 소실, 허브 복귀");
             UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
         }
 

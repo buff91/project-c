@@ -38,7 +38,8 @@ namespace ProjectC.Core
         public int paddedBoots;
 
         // 장착 중인 장비 id (EquipmentCatalog). 빈 문자열이면 맨손이다.
-        // 장착 장비는 백팩 공간을 쓰지 않으며 판을 넘어 유지된다 — 잃는 것은 소모품 쪽이다.
+        // 장착 장비는 백팩 공간을 쓰지 않지만 **안전하지는 않다** — 원정에 반입되며(창고에서 빠짐)
+        // 죽으면 소모품과 함께 잃는다. 창고에 남긴 예비 장비만 안전하다(익스트랙션 규칙).
         public string equippedWeaponId = "";
         public string equippedGearId = "";
 
