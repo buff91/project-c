@@ -27,16 +27,21 @@
     margin-left: 3px;
 }
 
-/* 층 정보는 미니맵 왼쪽에 붙는 보조 계기다. 별도 좌측 창으로 흩어놓지 않는다. */
+/* 층 정보는 미니맵 왼쪽에 붙는 보조 계기다. 별도 좌측 창으로 흩어놓지 않는다.
+   폭은 가장 긴 줄인 location-label("B1 · HEIGHT 0 · (9,4) · 포만")이 들어갈 만큼 잡는다 —
+   106px 이던 시절엔 그 줄이 패널 밖으로 흘러 오른쪽 미니맵 위에 겹쳐 찍혔다.
+   UI Toolkit 라벨은 기본이 nowrap + overflow visible 이라 조용히 넘친다.
+   미니맵 왼쪽 끝은 right:196px 이므로 여기 오른쪽 끝(204)과 8px 간격을 유지한다. */
 .hud-root.hud-desktop .depth-panel {
     left: auto;
     right: 204px;
     top: 12px;
-    width: 106px;
+    width: 176px;
     height: 106px;
     padding: 6px 8px;
     align-items: flex-start;
     justify-content: center;
+    overflow: hidden;
 }
 
 .hud-root.hud-desktop .depth-value,
@@ -49,9 +54,14 @@
     font-size: var(--pc-fs-2);
 }
 
+/* 안전망: 문구가 더 길어져도 패널 밖으로 새지 않고 말줄임으로 끝난다.
+   겹침은 정보가 두 개 다 안 읽히지만 말줄임은 하나는 읽힌다. */
 .hud-root.hud-desktop .elevation-label {
     font-size: var(--pc-fs-1);
     margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .hud-root.hud-desktop .floor-label {
