@@ -391,6 +391,32 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void FreshSave_PutsMoreThanOneRescueRoom_InTheSameDungeon()
+        {
+            // 이 사실이 프레젠테이션 계층의 계약이다. 첫 판에는 미구출 NPC 가 전부 —
+            // 연락책(2)과 대장장이(5) — 같은 던전에 갇힌 방을 얻는다.
+            // 월드 표현이 동료를 **스칼라 한 벌**로 들면 뒤에 만들어진 쪽이 앞을 덮어써서
+            // 앞 동료가 참조를 잃은 채 씬에 남는다: 회전 때 다시 투영되지 않아 방과 따로 놀고,
+            // FOV 로 가려지지 않아 벽 너머로 보이며, 구출 판정에도 안 걸려 **시설이 영원히
+            // 안 열린다**. "등장은 확률이 아니라 보장"이 여기서 조용히 깨졌었다.
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                DungeonLayout dungeon = Build(
+                    DungeonMetaContext.FromUnlocked(new List<ItemKind>(), new List<string>()),
+                    out _, seed);
+
+                int rescueRooms = dungeon.Floors.Count(f => f.RescueNpc.HasValue);
+                Assert.AreEqual(
+                    ShelterNpcRoster.All.Count, rescueRooms,
+                    $"seed {seed}: 미구출 동료 수와 갇힌 방 수가 다르다");
+                Assert.Greater(
+                    rescueRooms, 1,
+                    "동료가 둘 이상이어야 이 계약이 의미가 있다 — 로스터가 줄었다면 " +
+                    "월드 표현이 목록을 유지할 이유도 다시 검토한다");
+            }
+        }
+
+        [Test]
         public void RescueRoomsNeverOverlapSecretRooms()
         {
             // 숨은 방은 벽처럼 위장해 못 찾을 수 있다 — 거기에 NPC 를 두면 진행이 막힌다.
