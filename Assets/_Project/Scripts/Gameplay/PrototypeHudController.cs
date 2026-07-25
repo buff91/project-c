@@ -505,5 +505,6 @@ namespace ProjectC.Gameplay
             public string IconClass;
             public Action Action;
             public bool Enabled;
-        }    }
+        }
+    }
 }
