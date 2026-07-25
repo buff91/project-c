@@ -13,9 +13,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "docs/art-direction/project-c-collapsed-transit-support-source-v2.png"
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime"
 CELL_SIZE = 627
-CANVAS_SIZE = (48, 64)
-VISIBLE_SIZE = (46, 60)
-GROUND_Y = 62
+# 128-레짐(128×64 타일 / PPU 128): 액터 캔버스 96×128, 발 기준선은 아래에서 4px.
+CANVAS_SIZE = (96, 128)
+VISIBLE_SIZE = (92, 120)
+GROUND_Y = 124
 ALPHA_CUTOFF = 80
 
 

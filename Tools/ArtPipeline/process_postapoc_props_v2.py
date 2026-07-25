@@ -26,18 +26,19 @@ class PropSpec:
     output_name: str
 
 
+# 128-레짐(128×64 타일 / PPU 128) — 모든 캔버스·접지선이 구 64-레짐의 정확히 ×2다.
 SPECS = (
-    PropSpec("drum-brazier", 0, (64, 64), (60, 58), 62, "prop-campfire"),
+    PropSpec("drum-brazier", 0, (128, 128), (120, 116), 124, "prop-campfire"),
     PropSpec(
         "fuel-canister",
         1,
-        (64, 64),
-        (56, 60),
-        62,
+        (128, 128),
+        (112, 120),
+        124,
         "prop-explosive-barrel",
     ),
-    PropSpec("anomaly-gate", 2, (64, 80), (62, 76), 78, "prop-portal"),
-    PropSpec("utility-locker", 3, (64, 64), (60, 52), 62, "prop-stash"),
+    PropSpec("anomaly-gate", 2, (128, 160), (124, 152), 156, "prop-portal"),
+    PropSpec("utility-locker", 3, (128, 128), (120, 104), 124, "prop-stash"),
 )
 
 

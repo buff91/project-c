@@ -62,6 +62,13 @@ def canvas(size=(48, 64)):
 
 def save(image: Image.Image, name: str) -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    # 128-레짐 전환: 월드 스프라이트는 수백 개 드로잉 좌표를 재작성하는 대신
+    # 저장 직전 NEAREST ×2로 승격한다(픽셀 패턴 동일). ui-* 는 UI Toolkit이
+    # 픽셀 크기로 소비하므로 64-레짐 원본 크기를 유지한다.
+    if not name.startswith("ui-"):
+        image = image.resize(
+            (image.width * 2, image.height * 2), Image.Resampling.NEAREST
+        )
     image.save(OUTPUT / f"{name}.png", optimize=True)
 
 

@@ -39,36 +39,37 @@ class SpriteSpec:
     output_names: tuple[str, ...]
 
 
+# 128-레짐(128×64 타일 / PPU 128) — 모든 캔버스가 구 64-레짐의 정확히 ×2다.
 SPECS = (
-    SpriteSpec("floor", 0, (64, 32), ("env-floor",)),
+    SpriteSpec("floor", 0, (128, 64), ("env-floor",)),
     SpriteSpec(
         "wall",
         1,
-        (32, 56),
+        (64, 112),
         ("env-wall-rising-right", "env-wall-rising-left"),
     ),
     SpriteSpec(
         "wall-light",
         2,
-        (32, 56),
+        (64, 112),
         ("env-wall-torch-rising-right", "env-wall-torch-rising-left"),
     ),
     SpriteSpec(
         "door-closed",
         3,
-        (64, 80),
+        (128, 160),
         ("env-door-closed-rising-right", "env-door-closed-rising-left"),
     ),
     SpriteSpec(
         "door-open",
         4,
-        (64, 80),
+        (128, 160),
         ("env-door-open-rising-right", "env-door-open-rising-left"),
     ),
     SpriteSpec(
         "stairs",
         5,
-        (64, 56),
+        (128, 112),
         (
             "env-stairs-rising-right",
             "env-stairs-rising-left",
@@ -198,9 +199,9 @@ def main() -> None:
         raise ValueError(f"unexpected stair source sheet size: {stairs_sheet.size}")
     stairs_down = build_fitted_sprite(
         extract_stairs_cell(stairs_sheet),
-        canvas_size=(64, 40),
-        visible_size=(64, 38),
-        ground_y=39,
+        canvas_size=(128, 80),
+        visible_size=(128, 76),
+        ground_y=78,
     )
     save(stairs_down, "env-stairs-down-rising-right")
     save(
