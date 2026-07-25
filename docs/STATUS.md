@@ -134,9 +134,20 @@
   `IsoPrototypeDemo.Sprites.cs`는 그 변환만 하는 123줄 어댑터다 — 픽셀을 다시 이 파일로
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
+- **해금 축 (진행 중)**: 도구 5종이 **조건 달성으로 열리고 다음 판부터** 드랍 풀에 들어온다
+  (`ItemUnlockRules`). 계측은 `RunTelemetry` + `BountyMetric`을 재사용하며 새로 만들지 않았다.
+  판정은 `FinishRunTelemetry` 한 곳이고 **사망에도 저장한다**(실패한 판도 전진).
+  드랍 풀 게이트는 `DungeonMetaContext`로 넘기고 **롤 결과만 치환**해 RNG 스트림을 보존한다 —
+  그래서 "전부 해금 = 게이트 없음"이고 지형·아이템 위치는 해금 상태와 무관하다.
+  - **지켜야 할 제약 둘**: ① 조건은 `StarterReachableMetrics`(시작 풀로 달성 가능한 축)에서만
+    고른다 — 빙결·기름·물을 쓰면 그 도구가 없어 영원히 못 여는 순환이다.
+    ② **해금 안내를 의뢰로 주지 않는다** — 의뢰 게시판은 B단계에서 잠기는 시설이라 순환이 된다.
+    안내는 판 종료 화면과 기록실이 맡는다.
+  - **남은 것**: 기록실(허브 전용 시설·모달) → NPC 구출로 대장간·의뢰 게시판 해금(B단계).
+    계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **816/816 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **933/933 통과**. 컴파일 에러 없음.
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **834/834 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **951/951 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
   - 옛 "673/673" 기록은 낡은 값이었다.
