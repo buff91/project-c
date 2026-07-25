@@ -281,6 +281,42 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void LayoutCarriesItsOwnLabelContext_NotAGlobalSelection()
+        {
+            // 라벨은 방향 + 시작 건물 층으로 만든다. 둘이 다른 출처에서 오면(예: 방향은 레이아웃,
+            // 시작 층은 전역 선택) 허브를 그릴 때 던전 값을 쓰거나 던전 체인의 2번째 던전이
+            // 1번째 값을 쓴다. 레이아웃이 둘 다 들고 있어야 한다.
+            var map = new GridMap();
+            DungeonLayout hospital = DungeonGenerator.Generate(
+                map, 13, 13, 10, 4, 1977,
+                DungeonProgressDirection.Ascend,
+                firstBuildingFloor: -2);
+
+            Assert.AreEqual(DungeonProgressDirection.Ascend, hospital.Direction);
+            Assert.AreEqual(-2, hospital.FirstBuildingFloor);
+            Assert.AreEqual("B2", DungeonDirectionRules.FloorLabelFor(
+                hospital.Direction, hospital.FirstBuildingFloor, 0));
+            Assert.AreEqual("1F", DungeonDirectionRules.FloorLabelFor(
+                hospital.Direction, hospital.FirstBuildingFloor, 2));
+            Assert.AreEqual("8F", DungeonDirectionRules.FloorLabelFor(
+                hospital.Direction, hospital.FirstBuildingFloor, 9));
+
+            // 표기 기준을 주지 않은 레이아웃(허브 등)은 지하 1층 기준 하강으로 떨어진다.
+            var plain = new DungeonLayout(
+                new DungeonHeightModel(4),
+                new List<DungeonFloorInfo>
+                {
+                    new DungeonFloorInfo(
+                        0, 0, new GridPos(1, 1, 0), null, null, null, null,
+                        new[] { new GridPos(2, 2, 0) }, null, null)
+                });
+            Assert.AreEqual(DungeonProgressDirection.Descend, plain.Direction);
+            Assert.AreEqual(-1, plain.FirstBuildingFloor);
+            Assert.AreEqual("B1", DungeonDirectionRules.FloorLabelFor(
+                plain.Direction, plain.FirstBuildingFloor, 0));
+        }
+
+        [Test]
         public void EveryDirection_EveryWalkableTileIsReachableFromEntry(
             [ValueSource(nameof(AllDirections))] DungeonProgressDirection direction)
         {

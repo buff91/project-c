@@ -116,6 +116,17 @@ namespace ProjectC.Core
         public DungeonProgressDirection Direction { get; }
 
         /// <summary>
+        /// 이 던전이 시작하는 <b>건물 층 번호</b>(폐병원 = −2 → B2, 지하 던전 = −1 → B1).
+        /// 층 라벨을 만들 때 <see cref="Direction"/>과 함께 쓴다.
+        /// <para>
+        /// <b>레이아웃이 직접 들고 있어야 한다.</b> 전역 선택(`DungeonSelection`)에서 읽으면
+        /// 허브를 그릴 때 던전의 값을 쓰거나, 던전 체인의 2번째 던전이 1번째 값을 쓰게 된다 —
+        /// 방향과 표기 기준이 서로 다른 출처를 갖는 순간 라벨이 조용히 어긋난다.
+        /// </para>
+        /// </summary>
+        public int FirstBuildingFloor { get; }
+
+        /// <summary>
         /// 다음 층으로 나아가는 계단. 하강 던전에서는 하행, 상승 던전에서는 상행이다.
         /// <b>"출구"를 찾는 코드는 <see cref="DungeonFloorInfo.DownStairs"/>가 아니라 이것을 써야 한다</b> —
         /// 그러지 않으면 상승 던전에서 되돌아가는 계단을 출구로 오인한다.
@@ -134,9 +145,11 @@ namespace ProjectC.Core
         public DungeonLayout(
             DungeonHeightModel height,
             List<DungeonFloorInfo> floors,
-            DungeonProgressDirection direction = DungeonProgressDirection.Descend)
+            DungeonProgressDirection direction = DungeonProgressDirection.Descend,
+            int firstBuildingFloor = -1)
         {
             Direction = direction;
+            FirstBuildingFloor = firstBuildingFloor;
             Height = height ?? throw new ArgumentNullException(nameof(height));
             if (floors == null || floors.Count == 0)
                 throw new ArgumentException("던전은 한 층 이상이어야 합니다.", nameof(floors));
@@ -200,7 +213,8 @@ namespace ProjectC.Core
             int floorCount,
             int elevationsPerFloor = 4,
             int seed = 1977,
-            DungeonProgressDirection direction = DungeonProgressDirection.Descend)
+            DungeonProgressDirection direction = DungeonProgressDirection.Descend,
+            int firstBuildingFloor = -1)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (width < 9) throw new ArgumentOutOfRangeException(nameof(width));
@@ -303,7 +317,7 @@ namespace ProjectC.Core
                     plan.ExtractionPoint));
             }
 
-            return new DungeonLayout(heightModel, floors, direction);
+            return new DungeonLayout(heightModel, floors, direction, firstBuildingFloor);
         }
 
         /// <summary>

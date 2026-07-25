@@ -658,7 +658,8 @@ namespace ProjectC.Gameplay
                 floorCount,
                 elevationsPerFloor,
                 dungeonSeed,
-                DungeonSelection.Selected.Direction);
+                DungeonSelection.Selected.Direction,
+                DungeonSelection.Selected.FirstBuildingFloor);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));
@@ -1119,7 +1120,7 @@ namespace ProjectC.Gameplay
             if (_dungeon != null && _dungeon.TryGetProgressIndex(floorIndex, out int progress))
                 return DungeonDirectionRules.FloorLabelFor(
                     _dungeon.Direction,
-                    DungeonSelection.Selected.FirstBuildingFloor,
+                    _dungeon.FirstBuildingFloor,
                     progress);
 
             return FloorLabelFallback(floorIndex);
