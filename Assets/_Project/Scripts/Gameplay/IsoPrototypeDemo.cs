@@ -313,7 +313,7 @@ namespace ProjectC.Gameplay
         public event System.Action<RunSummary> RunEnded;
         /// <summary>던전 출구 도착 — HUD 가 "다음 던전 vs 생환" 선택지를 띄운다.</summary>
         public event System.Action ExitChoiceRequested;
-        /// <summary>허브 상호작용 — id: "merchant" | "stash" | "hero:{heroId}".</summary>
+        /// <summary>허브 상호작용 — id: "merchant" | "stash" | "smith" | "bounty" | "codex".</summary>
         public event System.Action<string> HubInteractionRequested;
         /// <summary>플레이어 자신을 탭 — HUD 가 액션 휠을 토글한다.</summary>
         public event System.Action PlayerTapped;
@@ -348,7 +348,6 @@ namespace ProjectC.Gameplay
         private bool _travelCancelRequested;
         private bool _godMode;
         private int _stageIndex = 1;
-        private HeroArchetype _hero;
         private RunSummary _runSummary = new RunSummary();
         private RunTelemetry _runTelemetry;
 
@@ -370,10 +369,6 @@ namespace ProjectC.Gameplay
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
         private readonly Dictionary<GridPos, string> _hubInteractables =
             new Dictionary<GridPos, string>();
-        private readonly Dictionary<string, SpriteRenderer> _hubHeroProps =
-            new Dictionary<string, SpriteRenderer>();
-        private readonly Dictionary<string, GridPos> _hubHeroPositions =
-            new Dictionary<string, GridPos>();
         private readonly Dictionary<SpriteRenderer, GridPos> _hubPropPositions =
             new Dictionary<SpriteRenderer, GridPos>();
         private readonly Dictionary<SpriteRenderer, GridPos> _hubLightPositions =
@@ -503,12 +498,12 @@ namespace ProjectC.Gameplay
             // 영웅 프리셋: 새 판은 메뉴 선택, 이어하기는 저장된 영웅. 편집 모드 미리보기는 인스펙터 값 유지.
             if (Application.isPlaying)
             {
-                _hero = HeroRoster.ById(continueData != null ? continueData.heroId : HeroSelection.SelectedId);
+                // 직업이 없으므로 이어하기든 새 원정이든 같은 값이다.
                 // 스탯은 영웅 프리셋 그대로다 — 영구 강화는 없앴고, 장비는 숫자가 아니라
                 // 행동 규칙(사거리·넉백·방어·안전 낙하)을 바꾼다.
-                playerMaxHp = _hero.MaxHp;
-                playerAttack = _hero.Attack;
-                rangedAttackDamage = _hero.RangedDamage;
+                playerMaxHp = SurvivorProfile.MaxHp;
+                playerAttack = SurvivorProfile.Attack;
+                rangedAttackDamage = SurvivorProfile.RangedDamage;
                 if (continueData != null)
                 {
                     // 이어하기: 이미 반입한 장비를 그대로 들고 있다(창고에서 다시 꺼내지 않는다).
@@ -583,7 +578,6 @@ namespace ProjectC.Gameplay
                 {
                     _runTelemetry = RunTelemetry.Begin(
                         DungeonSelection.Selected.Id,
-                        _hero != null ? _hero.Id : HeroSelection.SelectedId,
                         dungeonSeed,
                         floorIndex,
                         System.DateTime.UtcNow,
@@ -595,12 +589,14 @@ namespace ProjectC.Gameplay
             }
             if (continueData != null)
                 ApplyContinueData(continueData);
-            else if (Application.isPlaying && !hubMode && _hero != null && _stageIndex == 1)
+            else if (Application.isPlaying && !hubMode && _stageIndex == 1)
             {
                 // 시작 키트는 첫 던전에서만 — 던전 전환은 ApplyCarriedState 가 이월한다.
-                if (_hero.StartPotions > 0) _inventory.AddUpTo(ItemKind.Potion, _hero.StartPotions);
-                if (_hero.StartBombs > 0) _inventory.AddUpTo(ItemKind.Bomb, _hero.StartBombs);
-                if (_hero.StartFrostBombs > 0) _inventory.AddUpTo(ItemKind.FrostBomb, _hero.StartFrostBombs);
+                foreach (ItemKind starter in ItemCatalog.AllKinds)
+                {
+                    int count = SurvivorProfile.StarterCount(starter);
+                    if (count > 0) _inventory.AddUpTo(starter, count);
+                }
 
                 // 허브에서 선택한 출정 백팩만 반입한다. 창고의 나머지 물품은 안전하게 유지한다.
                 MetaSaveData meta = MetaStore.LoadOrNew();
@@ -615,11 +611,11 @@ namespace ProjectC.Gameplay
                     int returned = selected - carried;
                     string leftover = returned > 0 ? $" · {returned}개는 창고 복귀" : "";
                     InteractionFeedback?.Invoke(
-                        $"{_hero.DisplayName} — 출정 물품 {carried}개 반입{leftover}");
+                        $"{SurvivorProfile.DisplayName} — 출정 물품 {carried}개 반입{leftover}");
                 }
                 else
                 {
-                    InteractionFeedback?.Invoke($"{_hero.DisplayName} — 기본 지급품으로 던전 진입");
+                    InteractionFeedback?.Invoke($"{SurvivorProfile.DisplayName} — 기본 지급품으로 던전 진입");
                 }
 
                 // 입장 카드는 새 원정 첫 층에서만. 이어하기·던전 전환에서는 띄우지 않는다 —
@@ -737,7 +733,7 @@ namespace ProjectC.Gameplay
             _playerPos = activeFloor.Entry;
             _playerState = new CombatantState("Player", _playerPos, playerMaxHp, playerAttack);
             Sprite playerSprite = visualCatalog != null
-                ? visualCatalog.HeroFor(_hero != null ? _hero.Id : HeroSelection.SelectedId)
+                ? visualCatalog.SurvivorSprite
                 : null;
             if (playerSprite == null)
                 playerSprite = ActorSprites.GetCharacterSprite(false);

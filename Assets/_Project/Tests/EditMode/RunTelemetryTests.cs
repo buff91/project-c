@@ -12,7 +12,6 @@ namespace ProjectC.Tests
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
                 "forgotten-catacombs",
-                "knight",
                 1977,
                 0,
                 new DateTime(2026, 7, 24, 0, 0, 0, DateTimeKind.Utc));
@@ -38,7 +37,6 @@ namespace ProjectC.Tests
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
                 "forgotten-catacombs",
-                "ranger",
                 11,
                 0,
                 DateTime.UtcNow);
@@ -77,7 +75,7 @@ namespace ProjectC.Tests
         public void PerFloorCounters_TrackItemsRestAndSecretsWhereTheyHappened()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "forgotten-catacombs", "knight", 5, 0, DateTime.UtcNow);
+                "forgotten-catacombs", 5, 0, DateTime.UtcNow);
 
             telemetry.RecordItemUsed(ItemKind.Potion, 0);
             telemetry.RecordItemUsed(ItemKind.Bomb, -4);
@@ -106,7 +104,7 @@ namespace ProjectC.Tests
         public void RefreshBands_RollsFloorsIntoDepthBands_InShallowToDeepOrder()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "forgotten-catacombs", "knight", 9, 0, DateTime.UtcNow);
+                "forgotten-catacombs", 9, 0, DateTime.UtcNow);
 
             // B1·B2(Shallow) · B5(Mid) · B10(Boss). B7~B9(Deep)는 방문하지 않는다.
             // 구간은 진행 지수로 묶이므로 층에 들어설 때 진행 지수를 함께 기록한다.
@@ -154,7 +152,7 @@ namespace ProjectC.Tests
         public void RefreshBands_AscendingDungeon_UsesProgressNotFloorSign()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "derelict-hospital", "knight", 9, -1, DateTime.UtcNow);
+                "derelict-hospital", 9, -1, DateTime.UtcNow);
 
             // 폐병원: B2(진행 0) → 1F(진행 2) → 5F(진행 6) → 8F(진행 9, 보스).
             telemetry.RecordTurn(-1);
@@ -182,7 +180,7 @@ namespace ProjectC.Tests
         public void Floors_AreOrderedByProgress_NotByElevation()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "derelict-hospital", "knight", 9, -1, DateTime.UtcNow);
+                "derelict-hospital", 9, -1, DateTime.UtcNow);
 
             telemetry.RecordFloorEntered(3, 1);
             telemetry.RecordFloorEntered(1, 2);   // 내려갔다 — 고도는 낮지만 나중에 방문했다
@@ -200,7 +198,7 @@ namespace ProjectC.Tests
         public void RefreshBands_IsDerived_AndIdempotent()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "forgotten-catacombs", "ranger", 3, 0, DateTime.UtcNow);
+                "forgotten-catacombs", 3, 0, DateTime.UtcNow);
             telemetry.RecordTurn(0);
             telemetry.RecordTurn(0);
 
@@ -217,7 +215,6 @@ namespace ProjectC.Tests
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
                 "forgotten-catacombs",
-                "knight",
                 1,
                 0,
                 DateTime.UtcNow);
@@ -237,7 +234,6 @@ namespace ProjectC.Tests
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
                 "forgotten-catacombs",
-                "alchemist",
                 77,
                 -2,
                 DateTime.UtcNow);

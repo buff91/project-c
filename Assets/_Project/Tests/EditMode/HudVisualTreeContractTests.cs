@@ -86,7 +86,6 @@ namespace ProjectC.Tests
             "hub-menu-resume",
             "hub-menu-quit",
             "hub-shop-modal",
-            "hub-hero-modal",
             "hub-stash-modal",
             "hub-stash-grid",
             "hub-stash-capacity",

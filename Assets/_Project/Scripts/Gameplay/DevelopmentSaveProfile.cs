@@ -44,7 +44,6 @@ namespace ProjectC.Gameplay
 
             // 서로 다른 프로필의 체크포인트/영웅 선택이 한 씬에서 섞이지 않게 한다.
             RunSaveStore.ContinueRequested = false;
-            HeroSelection.SelectedId = HeroRoster.All[0].Id;
         }
 
         /// <summary>임시 프로필의 알려진 저장 파일만 삭제한다. 실제 저장 루트는 건드리지 않는다.</summary>

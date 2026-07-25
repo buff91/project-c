@@ -13,17 +13,17 @@ namespace ProjectC.Core
 
     /// <summary>
     /// 허브 창고와 출정 백팩 사이의 이동 규칙.
-    /// 선택한 영웅의 기본 지급품도 같은 6×4 용량에 포함해 실제 던전 백팩과 결과를 맞춘다.
+    /// 기본 지급품(<see cref="SurvivorProfile"/>)도 같은 6×4 용량에 포함해
+    /// 실제 던전 백팩과 결과를 맞춘다.
     /// </summary>
     public static class ExpeditionLoadoutRules
     {
-        public static Inventory CreateInventory(MetaSaveData meta, HeroArchetype hero)
+        public static Inventory CreateInventory(MetaSaveData meta)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
-            if (hero == null) throw new ArgumentNullException(nameof(hero));
 
             var inventory = new Inventory(BackpackRules.Columns, BackpackRules.Rows);
-            AddStarterKit(inventory, hero);
+            AddStarterKit(inventory);
             foreach (ItemKind kind in ItemCatalog.AllKinds)
             {
                 int count = meta.GetLoadoutCount(kind);
@@ -32,44 +32,30 @@ namespace ProjectC.Core
             return inventory;
         }
 
-        public static BackpackLayout CreateLayout(MetaSaveData meta, HeroArchetype hero) =>
-            CreateInventory(meta, hero).CreateLayout();
+        public static BackpackLayout CreateLayout(MetaSaveData meta) =>
+            CreateInventory(meta).CreateLayout();
 
-        public static int StarterCount(HeroArchetype hero, ItemKind kind)
-        {
-            if (hero == null) throw new ArgumentNullException(nameof(hero));
-            switch (kind)
-            {
-                case ItemKind.Potion: return hero.StartPotions;
-                case ItemKind.Bomb: return hero.StartBombs;
-                case ItemKind.FrostBomb: return hero.StartFrostBombs;
-                default: return 0;
-            }
-        }
+        public static int StarterCount(ItemKind kind) => SurvivorProfile.StarterCount(kind);
 
         public static bool CanMoveToLoadout(
             MetaSaveData meta,
-            HeroArchetype hero,
             ItemKind kind)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
-            if (hero == null) throw new ArgumentNullException(nameof(hero));
             if (ItemCatalog.IsTreasure(kind) || meta.GetCount(kind) <= 0) return false;
-            Inventory inventory = CreateInventory(meta, hero);
+            Inventory inventory = CreateInventory(meta);
             return inventory.TryAdd(kind, out _);
         }
 
         public static LoadoutTransferResult TryMoveToLoadout(
             MetaSaveData meta,
-            HeroArchetype hero,
             ItemKind kind)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
-            if (hero == null) throw new ArgumentNullException(nameof(hero));
             if (ItemCatalog.IsTreasure(kind)) return LoadoutTransferResult.UnsupportedItem;
             if (meta.GetCount(kind) <= 0) return LoadoutTransferResult.MissingFromStash;
 
-            Inventory inventory = CreateInventory(meta, hero);
+            Inventory inventory = CreateInventory(meta);
             if (!inventory.TryAdd(kind, out _))
                 return LoadoutTransferResult.NoBackpackSpace;
 
@@ -93,13 +79,12 @@ namespace ProjectC.Core
         /// 영웅 교체나 구버전 저장으로 현재 구성이 넘치면 들어가는 만큼만 유지하고
         /// 나머지는 창고로 돌려보낸다. 반환값은 되돌린 아이템 개수다.
         /// </summary>
-        public static int Reconcile(MetaSaveData meta, HeroArchetype hero)
+        public static int Reconcile(MetaSaveData meta)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
-            if (hero == null) throw new ArgumentNullException(nameof(hero));
 
             var inventory = new Inventory(BackpackRules.Columns, BackpackRules.Rows);
-            AddStarterKit(inventory, hero);
+            AddStarterKit(inventory);
             var accepted = new int[ItemCatalog.AllKinds.Length];
             int returned = 0;
 
@@ -147,14 +132,18 @@ namespace ProjectC.Core
             return moved;
         }
 
-        private static void AddStarterKit(Inventory inventory, HeroArchetype hero)
+        /// <summary>
+        /// 모든 원정자가 같은 것을 들고 나간다 — 지급품은 <see cref="SurvivorProfile"/> 한 곳에 있다.
+        /// 종류를 늘릴 때 여기와 <see cref="SurvivorProfile.StarterCount"/>가 어긋나면
+        /// 출정 준비 화면의 잠금 표시와 실제 반입량이 갈리므로, 목록을 두 벌 만들지 않는다.
+        /// </summary>
+        private static void AddStarterKit(Inventory inventory)
         {
-            if (hero.StartPotions > 0)
-                inventory.AddUpTo(ItemKind.Potion, hero.StartPotions);
-            if (hero.StartBombs > 0)
-                inventory.AddUpTo(ItemKind.Bomb, hero.StartBombs);
-            if (hero.StartFrostBombs > 0)
-                inventory.AddUpTo(ItemKind.FrostBomb, hero.StartFrostBombs);
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                int count = SurvivorProfile.StarterCount(kind);
+                if (count > 0) inventory.AddUpTo(kind, count);
+            }
         }
     }
 }

@@ -11,7 +11,6 @@ namespace ProjectC.Core
     [Serializable]
     public class RunSaveData
     {
-        public string heroId;
         public string dungeonId;
         public int seed;
         public int roomSize;

@@ -109,7 +109,6 @@ namespace ProjectC.Core
         public int schemaVersion = CurrentSchemaVersion;
         public string runId;
         public string dungeonId;
-        public string heroId;
         public int seed;
         public string startedAtUtc;
         public string endedAtUtc;
@@ -162,7 +161,6 @@ namespace ProjectC.Core
 
         public static RunTelemetry Begin(
             string dungeonId,
-            string heroId,
             int seed,
             int floorIndex,
             DateTime utcNow,
@@ -172,7 +170,6 @@ namespace ProjectC.Core
             {
                 runId = $"{utcNow:yyyyMMddTHHmmssfffZ}-{seed}",
                 dungeonId = dungeonId ?? "",
-                heroId = heroId ?? "",
                 seed = seed,
                 startedAtUtc = utcNow.ToString("O"),
                 outcome = RunTelemetryOutcome.InProgress,

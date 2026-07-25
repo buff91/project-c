@@ -115,7 +115,6 @@ namespace ProjectC.Gameplay
 
             var data = new RunSaveData
             {
-                heroId = _hero != null ? _hero.Id : null,
                 dungeonId = DungeonSelection.Selected.Id,
                 seed = dungeonSeed,
                 roomSize = roomSize,
@@ -400,7 +399,6 @@ namespace ProjectC.Gameplay
 
             var carry = new RunSaveData
             {
-                heroId = _hero != null ? _hero.Id : null,
                 hp = restedHp,
                 kills = _runSummary.Kills,
                 deepestFloorIndex = _runSummary.DeepestFloorIndex,

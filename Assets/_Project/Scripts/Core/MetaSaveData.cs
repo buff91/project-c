@@ -23,7 +23,6 @@ namespace ProjectC.Core
     public class MetaSaveData
     {
         public int gold;
-        public string[] unlockedHeroes = { "knight" };
         /// <summary>
         /// 창고와 출정 로드아웃. 아이템 종류마다 필드를 늘리지 않도록 목록 하나로 둔다
         /// (연산은 <see cref="ItemStorage"/>가 공유). 전리품은 창고에 남기지 않는다 —
@@ -148,23 +147,6 @@ namespace ProjectC.Core
             if (gold < cost) return false;
             gold -= cost;
             return true;
-        }
-
-        public bool IsHeroUnlocked(string heroId)
-        {
-            if (unlockedHeroes == null) return false;
-            foreach (string id in unlockedHeroes)
-                if (id == heroId) return true;
-            return false;
-        }
-
-        public void UnlockHero(string heroId)
-        {
-            if (IsHeroUnlocked(heroId)) return;
-            var next = new string[(unlockedHeroes?.Length ?? 0) + 1];
-            unlockedHeroes?.CopyTo(next, 0);
-            next[next.Length - 1] = heroId;
-            unlockedHeroes = next;
         }
 
         /// <summary>이 조건의 최고 기록. 없으면 0.</summary>

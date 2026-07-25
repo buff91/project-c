@@ -30,24 +30,6 @@ namespace ProjectC.Core
         /// </summary>
         public static readonly GridPos Codex = new GridPos(4, 6, 0);
 
-        /// <summary>HeroRoster.All 순서와 짝을 이룬다.</summary>
-        public static readonly IReadOnlyList<GridPos> HeroPositions = new[]
-        {
-            new GridPos(4, 2, 0),
-            new GridPos(6, 1, 0),
-            new GridPos(8, 2, 0)
-        };
-
-        /// <summary>
-        /// 선택 영웅은 플레이어로 캠프에 서 있으므로 대기 위치에서는 숨긴다.
-        /// 선택이 바뀌면 이전 영웅은 다시 자신의 대기 위치에 나타난다.
-        /// </summary>
-        public static bool ShouldShowHeroAtRosterPosition(string heroId, string selectedHeroId)
-        {
-            if (string.IsNullOrEmpty(heroId)) return false;
-            return heroId != HeroRoster.ById(selectedHeroId).Id;
-        }
-
         public static DungeonLayout Build(GridMap map)
         {
             map.Clear();

@@ -67,11 +67,6 @@ namespace ProjectC.Gameplay
         private Label _codexCount;
         private VisualElement _bountyList;
         private Label _bountyGold;
-        private VisualElement _heroModal;
-        private Label _heroName;
-        private Label _heroDesc;
-        private Label _heroStats;
-        private Button _heroAction;
         private VisualElement _stashModal;
         private VisualElement _stashGrid;
         private VisualElement _loadoutGrid;
@@ -103,7 +98,6 @@ namespace ProjectC.Gameplay
         private Vector2 _dragStart;
         private bool _dragMoved;
         private bool _ignoreNextPreparationClick;
-        private string _heroModalId;
         private IsoTapInput _tapInput;
         private ResponsiveUiLayout _responsiveLayout;
         private DisplaySettingsPanelController _displaySettings;
@@ -141,11 +135,6 @@ namespace ProjectC.Gameplay
             _codexModal = root.Q<VisualElement>("hub-codex-modal");
             _codexList = root.Q<VisualElement>("hub-codex-list");
             _codexCount = root.Q<Label>("hub-codex-count");
-            _heroModal = root.Q<VisualElement>("hub-hero-modal");
-            _heroName = root.Q<Label>("hub-hero-name");
-            _heroDesc = root.Q<Label>("hub-hero-desc");
-            _heroStats = root.Q<Label>("hub-hero-stats");
-            _heroAction = root.Q<Button>("hub-hero-action");
             _stashModal = root.Q<VisualElement>("hub-stash-modal");
             _stashGrid = root.Q<VisualElement>("hub-stash-grid");
             _loadoutGrid = root.Q<VisualElement>("hub-loadout-grid");
@@ -166,13 +155,11 @@ namespace ProjectC.Gameplay
             Bind(root.Q<Button>("hub-smith-close"), CloseModals);
             Bind(root.Q<Button>("hub-bounty-close"), CloseModals);
             Bind(root.Q<Button>("hub-codex-close"), CloseModals);
-            Bind(root.Q<Button>("hub-hero-close"), CloseModals);
             Bind(root.Q<Button>("hub-stash-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-loadout"), OpenStash);
             Bind(root.Q<Button>("hub-dungeon-catacombs"), () => SelectDungeon(DungeonCatalog.DefaultId));
             Bind(_dungeonEnter, EnterSelectedDungeon);
-            Bind(_heroAction, HandleHeroAction);
             Bind(_shopBuy, BuySelected);
             Bind(_toLoadout, MoveSelectedToLoadout);
             Bind(_toStash, MoveSelectedToStash);
@@ -282,7 +269,6 @@ namespace ProjectC.Gameplay
             else if (id == "smith") OpenSmith();
             else if (id == "bounty") OpenBounty();
             else if (id == "codex") OpenCodex();
-            else if (id.StartsWith("hero:")) OpenHero(id.Substring(5));
             else if (id == "dungeon-select") OpenDungeonSelect();
         }
 
@@ -301,7 +287,6 @@ namespace ProjectC.Gameplay
             _smithModal?.RemoveFromClassList("is-open");
             _bountyModal?.RemoveFromClassList("is-open");
             _codexModal?.RemoveFromClassList("is-open");
-            _heroModal?.RemoveFromClassList("is-open");
             _stashModal?.RemoveFromClassList("is-open");
         }
 
@@ -329,7 +314,7 @@ namespace ProjectC.Gameplay
             if (_dungeonRoute != null)
             {
                 BackpackLayout loadout = ExpeditionLoadoutRules.CreateLayout(
-                    _meta, SelectedHero);
+                    _meta);
                 _dungeonRoute.text =
                     $"{dungeon.RouteLabel} · 백팩 {loadout.UsedCells}/{loadout.Capacity}칸";
             }
@@ -344,10 +329,10 @@ namespace ProjectC.Gameplay
         {
             DungeonDefinition dungeon = DungeonCatalog.ById(_selectedDungeonId);
             if (!dungeon.IsAvailable) return;
-            int returned = ExpeditionLoadoutRules.Reconcile(_meta, SelectedHero);
+            int returned = ExpeditionLoadoutRules.Reconcile(_meta);
             MetaStore.Save(_meta);
             if (returned > 0 && _statusLabel != null)
-                _statusLabel.text = $"영웅 기본 지급품 공간 확보 · {returned}개 창고 복귀";
+                _statusLabel.text = $"기본 지급품 공간 확보 · {returned}개 창고 복귀";
             DungeonSelection.SelectedId = dungeon.Id;
             demo?.BeginSelectedDungeon();
         }

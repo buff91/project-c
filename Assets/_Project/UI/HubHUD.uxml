@@ -24,7 +24,7 @@
         <ui:VisualElement class="status-zone hub-status-zone">
             <ui:VisualElement class="status-chip feedback-chip">
                 <ui:VisualElement class="chip-dot feedback-dot" />
-                <ui:Label name="hub-status" text="상인·대장간·의뢰·영웅·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
+                <ui:Label name="hub-status" text="상인·대장간·의뢰·기록실·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -33,7 +33,7 @@
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="원정지 선택" class="settings-title" />
-                        <ui:Label text="영웅 선택  →  던전 선택  →  출발" class="settings-subtitle" />
+                        <ui:Label text="던전 선택  →  출정 백팩 준비  →  출발" class="settings-subtitle" />
                     </ui:VisualElement>
                     <ui:Button name="hub-dungeon-close" text="×" class="settings-close" />
                 </ui:VisualElement>
@@ -45,7 +45,7 @@
                     </ui:VisualElement>
                     <ui:VisualElement class="hub-dungeon-detail">
                         <ui:Label name="hub-dungeon-name" text="무너진 환승역" class="hub-dungeon-name" />
-                        <ui:Label name="hub-dungeon-route" text="3개 구역 · 권장: 기사" class="hub-dungeon-route" />
+                        <ui:Label name="hub-dungeon-route" text="3개 구역" class="hub-dungeon-route" />
                         <ui:Label name="hub-dungeon-desc" text="제한된 시야 속에서 세 구역을 내려가 최심층에 도달한다." class="hub-dungeon-desc" />
                         <ui:Label text="주황: 층 이동  ·  금색: 사다리  ·  하늘색: 개구부" class="hub-dungeon-legend" />
                     </ui:VisualElement>
@@ -145,17 +145,6 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <ui:VisualElement name="hub-hero-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card gameover-card">
-                <ui:Label name="hub-hero-name" text="" class="gameover-title" />
-                <ui:Label name="hub-hero-desc" text="" class="gameover-detail" />
-                <ui:Label name="hub-hero-stats" text="" class="gameover-detail" />
-                <ui:VisualElement class="settings-actions">
-                    <ui:Button name="hub-hero-close" text="닫기" class="settings-reset" />
-                    <ui:Button name="hub-hero-action" text="선택" class="settings-done" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-        </ui:VisualElement>
 
         <ui:VisualElement name="hub-stash-modal" class="settings-modal">
             <ui:VisualElement class="artifact-panel settings-card inventory-card diablo-inventory-card stash-card expedition-card">
@@ -186,7 +175,7 @@
                             <ui:VisualElement class="inventory-section-header">
                                 <ui:VisualElement>
                                     <ui:Label text="출정 백팩" class="inventory-section-title" />
-                                    <ui:Label name="hub-loadout-hero" text="기사 기본 지급 포함" class="expedition-hero-label" />
+                                    <ui:Label name="hub-loadout-hero" text="원정자 기본 지급 포함" class="expedition-hero-label" />
                                 </ui:VisualElement>
                                 <ui:Label name="hub-loadout-capacity" text="0 / 24칸" class="inventory-capacity" />
                             </ui:VisualElement>

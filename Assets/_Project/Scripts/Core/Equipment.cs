@@ -88,6 +88,13 @@ namespace ProjectC.Core
     /// <summary>
     /// 장비 목록의 단일 출처. 무기는 "사거리 대 넉백", 보조는 "안전 대 낙하 전술"로 갈린다 —
     /// 어느 쪽도 공격력을 올리지 않으므로 영구 인플레가 생기지 않는다.
+    ///
+    /// <para>
+    /// <b>제작비는 골드의 주 목적지다.</b> 영웅 해금(사냥꾼 80 + 연금술사 120 = 200G)을
+    /// 걷어내면서 그 몫을 여기로 옮겼다 — 4종 합계 215G → 410G. 생환 보상이 갈 곳이
+    /// 소모품밖에 없으면 골드가 남아돌고, 그러면 "무엇을 걸고 나갈지"가 판돈이 아니게 된다.
+    /// 값은 실플레이 전 임시다(생환 밸런스 재조정 때 함께 본다).
+    /// </para>
     /// </summary>
     public static class EquipmentCatalog
     {
@@ -97,25 +104,25 @@ namespace ProjectC.Core
                 "pipe-spear", ItemKind.PipeSpear, EquipmentSlot.Weapon,
                 "긴 파이프",
                 "한 칸 떨어져서 직선으로 찌른다. 사수와 슬러지를 붙기 전에 다룬다.",
-                craftCost: 55,
+                craftCost: 105,
                 meleeReach: 2),
             new EquipmentDefinition(
                 "heavy-wrench", ItemKind.HeavyWrench, EquipmentSlot.Weapon,
                 "대형 렌치",
                 "때린 대상을 한 칸 밀어낸다. 구멍·창문 앞에서는 그 자체가 처형이다.",
-                craftCost: 65,
+                craftCost: 125,
                 knockbackOnHit: true),
             new EquipmentDefinition(
                 "sign-shield", ItemKind.SignShield, EquipmentSlot.Gear,
                 "표지판 방패",
                 "받는 물리 피해 -1. 대신 백팩을 2×2나 차지한다.",
-                craftCost: 50,
+                craftCost: 95,
                 armor: 1),
             new EquipmentDefinition(
                 "padded-boots", ItemKind.PaddedBoots, EquipmentSlot.Gear,
                 "완충 부츠",
                 "안전 낙하 높이 +2. 높은 곳에서 뛰어내려도 버틴다 — 지름길로도, 후퇴로도 쓴다.",
-                craftCost: 45,
+                craftCost: 85,
                 safeFallBonus: 2)
         };
 

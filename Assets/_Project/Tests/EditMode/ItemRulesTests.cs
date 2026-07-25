@@ -267,21 +267,13 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void MetaSaveData_TrySpend_And_HeroUnlock()
+        public void MetaSaveData_TrySpend()
         {
             var meta = new MetaSaveData { gold = 100 };
-
-            Assert.IsFalse(meta.TrySpend(150), "잔액 부족이면 차감하지 않는다");
-            Assert.AreEqual(100, meta.gold);
-            Assert.IsTrue(meta.TrySpend(80));
-            Assert.AreEqual(20, meta.gold);
-
-            Assert.IsTrue(meta.IsHeroUnlocked("knight"), "기사는 기본 해금");
-            Assert.IsFalse(meta.IsHeroUnlocked("ranger"));
-            meta.UnlockHero("ranger");
-            meta.UnlockHero("ranger"); // 중복 해금은 무해
-            Assert.IsTrue(meta.IsHeroUnlocked("ranger"));
-            Assert.AreEqual(2, meta.unlockedHeroes.Length);
+            Assert.IsTrue(meta.TrySpend(40));
+            Assert.AreEqual(60, meta.gold);
+            Assert.IsFalse(meta.TrySpend(61), "모자라면 차감하지 않는다");
+            Assert.AreEqual(60, meta.gold);
         }
 
         [Test]

@@ -28,7 +28,6 @@ namespace ProjectC.Gameplay
         private static void ResetForNewApplicationSession()
         {
             DungeonSelection.SelectedId = DungeonCatalog.DefaultId;
-            HeroSelection.SelectedId = null;
             RunSaveStore.ContinueRequested = false;
         }
     }

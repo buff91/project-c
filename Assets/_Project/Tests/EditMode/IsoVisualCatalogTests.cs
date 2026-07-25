@@ -172,23 +172,18 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void HeroFor_UsesDistinctRoleSprite_AndFallsBackToPlayer()
+        public void SurvivorSprite_UsesTheSurvivorSlot_AndFallsBackToPlayer()
         {
             Sprite fallback = MakeSprite();
             Sprite knight = MakeSprite();
-            Sprite ranger = MakeSprite();
-            Sprite alchemist = MakeSprite();
             _catalog.player = fallback;
+            // 직업이 사라져 원정자 스프라이트는 하나다. knight 슬롯을 그대로 쓰고,
+            // 비어 있으면 공용 player 로 떨어진다.
             _catalog.knight = knight;
-            _catalog.ranger = ranger;
-            _catalog.alchemist = alchemist;
+            Assert.AreSame(knight, _catalog.SurvivorSprite);
 
-            Assert.AreSame(knight, _catalog.HeroFor("knight"));
-            Assert.AreSame(ranger, _catalog.HeroFor("ranger"));
-            Assert.AreSame(alchemist, _catalog.HeroFor("alchemist"));
-
-            _catalog.ranger = null;
-            Assert.AreSame(fallback, _catalog.HeroFor("ranger"));
+            _catalog.knight = null;
+            Assert.AreSame(fallback, _catalog.SurvivorSprite);
         }
 
         [Test]

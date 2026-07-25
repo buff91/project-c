@@ -104,15 +104,13 @@ namespace ProjectC.Gameplay
         public Sprite playerFootprint;
         public Sprite selection;
 
-        public Sprite HeroFor(string heroId)
-        {
-            switch (heroId)
-            {
-                case "ranger": return ranger != null ? ranger : player;
-                case "alchemist": return alchemist != null ? alchemist : player;
-                default: return knight != null ? knight : player;
-            }
-        }
+        /// <summary>
+        /// 원정자 스프라이트. 직업이 사라졌으므로 하나뿐이다 —
+        /// 옛 <c>knight</c> 슬롯을 그대로 쓴다(씬 인스펙터 연결을 끊지 않으려고 필드명은 둔다).
+        /// <c>ranger</c>/<c>alchemist</c> 슬롯은 아직 비워 두지 않았다: 지역별 원정자 스킨이
+        /// 생기면 그 자리를 다시 쓸 수 있어서다.
+        /// </summary>
+        public Sprite SurvivorSprite => knight != null ? knight : player;
 
         public Sprite MonsterFor(string archetypeId)
         {

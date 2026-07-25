@@ -14,8 +14,6 @@ namespace ProjectC.Gameplay
         private void CreateHubProps()
         {
             _hubInteractables.Clear();
-            _hubHeroProps.Clear();
-            _hubHeroPositions.Clear();
             _hubPropPositions.Clear();
             _hubLightPositions.Clear();
 
@@ -61,19 +59,7 @@ namespace ProjectC.Gameplay
             CreateHubProp("Codex", ActorSprites.GetHubPropSprite("codex"), HubLayout.Codex);
             _hubInteractables[HubLayout.Codex] = "codex";
 
-            for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
-            {
-                HeroArchetype hero = HeroRoster.All[i];
-                Sprite heroSprite = visualCatalog != null ? visualCatalog.HeroFor(hero.Id) : null;
-                var prop = CreateHubProp(
-                    $"Hero {hero.Id}",
-                    heroSprite != null ? heroSprite : ActorSprites.GetCharacterSprite(false),
-                    HubLayout.HeroPositions[i]);
-                _hubHeroProps[hero.Id] = prop;
-                _hubHeroPositions[hero.Id] = HubLayout.HeroPositions[i];
-            }
-
-            RefreshHubHeroLocks();
+            ApplySurvivorStats();
         }
 
         private void CreateHubLightPatch(string kind, GridPos origin, int radius)
@@ -106,27 +92,22 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 선택 영웅은 플레이어로 표시하고 대기 위치에서는 숨긴다.
-        /// 나머지 영웅은 자기 위치에 복귀하며, 잠긴 영웅만 회색으로 표시한다.
+        /// 캠프의 플레이어에게 원정자 기본값을 입힌다. 예전에는 영웅 선택을 반영하는
+        /// 자리였는데, 고를 것이 없어졌으므로 값을 <see cref="SurvivorProfile"/>에서 바로 읽는다.
         /// </summary>
-        public void RefreshHubHeroLocks()
+        public void ApplySurvivorStats()
         {
             if (!hubMode) return;
-            MetaSaveData meta = MetaStore.LoadOrNew();
-            HeroArchetype selectedHero = HeroRoster.ById(HeroSelection.SelectedId);
 
-            _hero = selectedHero;
-            playerMaxHp = selectedHero.MaxHp;
-            playerAttack = selectedHero.Attack;
-            rangedAttackDamage = selectedHero.RangedDamage;
+            playerMaxHp = SurvivorProfile.MaxHp;
+            playerAttack = SurvivorProfile.Attack;
+            rangedAttackDamage = SurvivorProfile.RangedDamage;
 
             if (_playerRenderer != null)
             {
-                Sprite selectedSprite = visualCatalog != null
-                    ? visualCatalog.HeroFor(selectedHero.Id)
-                    : null;
-                _playerRenderer.sprite = selectedSprite != null
-                    ? selectedSprite
+                Sprite sprite = visualCatalog != null ? visualCatalog.SurvivorSprite : null;
+                _playerRenderer.sprite = sprite != null
+                    ? sprite
                     : ActorSprites.GetCharacterSprite(false);
                 _playerRenderer.color = Color.white;
             }
@@ -134,29 +115,9 @@ namespace ProjectC.Gameplay
             if (_playerState != null)
             {
                 _playerState = new CombatantState(
-                    "Player", _playerState.Position, selectedHero.MaxHp, selectedHero.Attack);
+                    "Player", _playerState.Position, SurvivorProfile.MaxHp, SurvivorProfile.Attack);
                 UpdateHealthBar(_playerHpFill, _playerState);
                 PlayerHpChanged?.Invoke();
-            }
-
-            foreach (KeyValuePair<string, SpriteRenderer> pair in _hubHeroProps)
-            {
-                HeroArchetype hero = HeroRoster.ById(pair.Key);
-                bool unlocked = hero.UnlockCost <= 0 || meta.IsHeroUnlocked(hero.Id);
-                bool showAtRosterPosition = HubLayout.ShouldShowHeroAtRosterPosition(
-                    hero.Id, selectedHero.Id);
-
-                pair.Value.gameObject.SetActive(showAtRosterPosition);
-                pair.Value.color = !unlocked
-                    ? (Color)new Color32(96, 100, 104, 255)
-                    : Color.white;
-
-                if (!_hubHeroPositions.TryGetValue(hero.Id, out GridPos position))
-                    continue;
-                if (showAtRosterPosition)
-                    _hubInteractables[position] = $"hero:{hero.Id}";
-                else
-                    _hubInteractables.Remove(position);
             }
         }
 

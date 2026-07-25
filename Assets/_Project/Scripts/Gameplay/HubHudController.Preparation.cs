@@ -19,7 +19,7 @@ namespace ProjectC.Gameplay
         {
             CloseModals();
             _meta = MetaStore.LoadOrNew();
-            int returned = ExpeditionLoadoutRules.Reconcile(_meta, SelectedHero);
+            int returned = ExpeditionLoadoutRules.Reconcile(_meta);
             if (returned > 0) MetaStore.Save(_meta);
             RefreshPreparation(returned > 0
                 ? $"영웅 기본 지급품 공간 확보 · {returned}개 창고 복귀"
@@ -27,9 +27,6 @@ namespace ProjectC.Gameplay
             _stashModal?.BringToFront();
             _stashModal?.AddToClassList("is-open");
         }
-
-        private HeroArchetype SelectedHero =>
-            HeroRoster.ById(HeroSelection.SelectedId ?? HeroRoster.All[0].Id);
 
         private void RefreshPreparation(string feedback = null)
         {
@@ -83,13 +80,12 @@ namespace ProjectC.Gameplay
             _starterSlots.Clear();
             InventoryPanelController.PopulateBackpackCells(_loadoutGrid, "loadout-cell");
 
-            HeroArchetype hero = SelectedHero;
-            BackpackLayout layout = ExpeditionLoadoutRules.CreateLayout(_meta, hero);
+            BackpackLayout layout = ExpeditionLoadoutRules.CreateLayout(_meta);
             foreach (BackpackPlacement placement in layout.Placements)
             {
                 ItemKind kind = placement.Kind;
                 bool starter =
-                    placement.InstanceIndex < ExpeditionLoadoutRules.StarterCount(hero, kind);
+                    placement.InstanceIndex < ExpeditionLoadoutRules.StarterCount(kind);
                 ItemKind captured = kind;
                 PreparationSelectionSource source = starter
                     ? PreparationSelectionSource.Starter
@@ -130,7 +126,7 @@ namespace ProjectC.Gameplay
             if (_loadoutCapacity != null)
                 _loadoutCapacity.text = $"{layout.UsedCells} / {layout.Capacity}칸";
             if (_loadoutHero != null)
-                _loadoutHero.text = $"{hero.DisplayName} 기본 지급 포함";
+                _loadoutHero.text = $"{SurvivorProfile.DisplayName} 기본 지급 포함";
         }
 
         private static void AddPreparationSlot(
@@ -211,7 +207,7 @@ namespace ProjectC.Gameplay
                 ? _meta.GetCount(kind)
                 : _preparationSource == PreparationSelectionSource.Loadout
                     ? _meta.GetLoadoutCount(kind)
-                    : ExpeditionLoadoutRules.StarterCount(SelectedHero, kind);
+                    : ExpeditionLoadoutRules.StarterCount(kind);
             string sourceLabel = _preparationSource == PreparationSelectionSource.Stash
                 ? "창고"
                 : _preparationSource == PreparationSelectionSource.Loadout
@@ -267,7 +263,7 @@ namespace ProjectC.Gameplay
         private void MoveKindToLoadout(ItemKind kind)
         {
             LoadoutTransferResult result =
-                ExpeditionLoadoutRules.TryMoveToLoadout(_meta, SelectedHero, kind);
+                ExpeditionLoadoutRules.TryMoveToLoadout(_meta, kind);
             if (result != LoadoutTransferResult.Success)
             {
                 ShowTransferFailure(result, kind, _loadoutPane);
@@ -384,7 +380,7 @@ namespace ProjectC.Gameplay
             if (_dragSource == DragSource.Stash && overLoadout)
             {
                 bool valid = ExpeditionLoadoutRules.CanMoveToLoadout(
-                    _meta, SelectedHero, _dragKind);
+                    _meta, _dragKind);
                 _loadoutPane?.AddToClassList(valid ? "drop-valid" : "drop-invalid");
             }
             else if (_dragSource == DragSource.Loadout && overStash)

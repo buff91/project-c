@@ -170,7 +170,6 @@ namespace ProjectC.Tests
             {
                 HubLayout.Portal, HubLayout.Merchant, HubLayout.Stash, HubLayout.Campfire
             };
-            pois.AddRange(HubLayout.HeroPositions);
 
             var seen = new HashSet<GridPos> { HubLayout.Entry };
             foreach (GridPos poi in pois)
@@ -182,15 +181,5 @@ namespace ProjectC.Tests
             }
         }
 
-        [Test]
-        public void HeroRosterPosition_HidesSelectedHero_AndRestoresPreviousHero()
-        {
-            Assert.IsFalse(HubLayout.ShouldShowHeroAtRosterPosition("knight", null));
-            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("ranger", null));
-
-            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("knight", "ranger"));
-            Assert.IsFalse(HubLayout.ShouldShowHeroAtRosterPosition("ranger", "ranger"));
-            Assert.IsTrue(HubLayout.ShouldShowHeroAtRosterPosition("alchemist", "ranger"));
-        }
     }
 }
