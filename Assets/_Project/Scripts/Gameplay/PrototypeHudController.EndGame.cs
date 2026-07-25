@@ -120,7 +120,17 @@ namespace ProjectC.Gameplay
                     ? $"도달 층: {demo.ReachedFloorLabel}"
                     : $"도달 층: {IsoPrototypeDemo.FloorLabelFallback(summary.DeepestFloorIndex)}";
             if (_gameoverKills != null)
-                _gameoverKills.text = $"처치: {summary.Kills}";
+            {
+                // 해금은 죽어도 남으므로 사망 화면에서도 보여준다 — 실패한 판도 전진이라는
+                // 사실이 화면에 나와야 재도전 동력이 된다.
+                string unlockLine = "";
+                if (demo != null && demo.LastRunUnlocks.Count > 0)
+                    unlockLine = $"\n새 해금: {string.Join(" · ", demo.LastRunUnlocks)}";
+                else if (demo != null && !string.IsNullOrEmpty(demo.NextUnlockHint))
+                    unlockLine = $"\n다음 해금: {demo.NextUnlockHint}";
+
+                _gameoverKills.text = $"처치: {summary.Kills}{unlockLine}";
+            }
             _gameoverOverlay.BringToFront();
             _gameoverOverlay.AddToClassList("is-open");
         }

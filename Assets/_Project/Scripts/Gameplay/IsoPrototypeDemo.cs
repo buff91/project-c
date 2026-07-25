@@ -675,7 +675,12 @@ namespace ProjectC.Gameplay
                 elevationsPerFloor,
                 dungeonSeed,
                 DungeonSelection.Selected.Direction,
-                DungeonSelection.Selected.FirstBuildingFloor);
+                DungeonSelection.Selected.FirstBuildingFloor,
+                // 해금 상태가 드랍 풀을 가른다. 편집 모드 미리보기는 메타를 읽지 않고
+                // 제약 없는 기본값을 써서 예전과 같은 던전을 보여준다.
+                Application.isPlaying
+                    ? DungeonMetaContext.FromUnlocked(MetaStore.LoadOrNew().UnlockedItemKinds())
+                    : DungeonMetaContext.Unrestricted);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));

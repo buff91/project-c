@@ -260,11 +260,68 @@ namespace ProjectC.Gameplay
             RunEnded?.Invoke(_runSummary);
         }
 
+        /// <summary>
+        /// 이번 판에 새로 열린 도구 이름들(게임오버 화면용). 비어 있으면 해금이 없었다.
+        /// </summary>
+        public IReadOnlyList<string> LastRunUnlocks => _lastRunUnlocks;
+
+        /// <summary>
+        /// 새 해금이 없을 때 보여줄 다음 목표 한 줄. 전부 열렸으면 null.
+        /// <b>안내를 의뢰로 줄 수 없어서</b> 이 화면이 맡는다 — 의뢰 게시판은 잠기는 시설이라
+        /// 거기서 안내하면 순환이 된다(<see cref="ItemUnlockRules.ClosestPending"/>).
+        /// </summary>
+        public string NextUnlockHint { get; private set; }
+
+        private readonly List<string> _lastRunUnlocks = new List<string>();
+
+        /// <summary>
+        /// 판 종료 시 해금을 판정하고 즉시 저장한다. 네 경로(생환·승리·사망·포기)가 모두
+        /// <see cref="FinishRunTelemetry"/>로 모이므로 여기 한 곳이면 된다.
+        ///
+        /// <para>
+        /// <b>죽어도 남는다</b> — 실패한 판도 전진이어야 하므로 정산(BankInventoryToStash)과
+        /// 무관하게 저장한다. 사망은 소지품을 전부 잃지만 해금은 잃지 않는다.
+        /// </para>
+        /// </summary>
+        private void ResolveUnlocks()
+        {
+            _lastRunUnlocks.Clear();
+            NextUnlockHint = null;
+            if (_runTelemetry == null) return;
+
+            MetaSaveData meta = MetaStore.LoadOrNew();
+            List<ItemUnlockCondition> opened =
+                ItemUnlockRules.EvaluateUnlocks(_runTelemetry, meta.UnlockedItemKinds());
+
+            foreach (ItemUnlockCondition condition in opened)
+            {
+                if (!meta.UnlockItem(condition.Kind)) continue;
+                _lastRunUnlocks.Add(ItemCatalog.DisplayName(condition.Kind));
+                Debug.Log($"[Unlock] {condition.Kind} 해금 — {condition.Requirement}");
+            }
+
+            if (_lastRunUnlocks.Count > 0) MetaStore.Save(meta);
+
+            if (_lastRunUnlocks.Count == 0)
+            {
+                ItemUnlockCondition next =
+                    ItemUnlockRules.ClosestPending(_runTelemetry, meta.UnlockedItemKinds());
+                if (next != null)
+                {
+                    int current = BountyRules.ReadMetric(next.Metric, _runTelemetry);
+                    NextUnlockHint =
+                        $"{ItemCatalog.DisplayName(next.Kind)} — {next.Requirement} " +
+                        $"({current}/{next.Target})";
+                }
+            }
+        }
+
         private void FinishRunTelemetry(RunTelemetryOutcome outcome, string cause)
         {
             if (_runTelemetry == null || _runTelemetry.Ended) return;
 
             _runTelemetry.End(outcome, cause, System.DateTime.UtcNow);
+            ResolveUnlocks();
             string path = RunTelemetryStore.Save(_runTelemetry);
             Debug.Log(
                 string.IsNullOrEmpty(path)
