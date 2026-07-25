@@ -134,6 +134,17 @@
     던전은 상승·하강·평면이 모두 가능하고 한 던전 안에서 방향이 섞일 수 있으므로,
     고도로 역산하는 순간 비단조 경로에서 성립하지 않는다.
   - `FloorIndex` = elevation을 던전 층으로 묶은 **공간** 구획. 진행 순서와 무관하다.
+  - **진행 방향(`DungeonProgressDirection`)** = 던전별 데이터다. 하강이 주 목적인 던전과
+    상승이 주 목적인 던전이 함께 존재하며 **전역 스위치가 아니다**. `DungeonDirectionRules`가 SSOT.
+    - **공간(위/아래) ≠ 진행(진출/귀환).** `StairsUp/Down`은 공간 이름이라 고정이고,
+      "다음 층으로 가는 계단"이 둘 중 무엇인지만 방향을 탄다 —
+      하강은 진출=`StairsDown`, 상승은 진출=`StairsUp`(`OnwardStair`/`BackStair`).
+      `FinalFloorIndex`를 `BottomFloorIndex`에서 갈라낸 것과 같은 구분이다.
+    - **중력은 방향을 타지 않는다.** 낙하·수직 시야는 언제나 아래로 향하므로 `FallRules`·
+      `SightRules`는 방향을 모른다. 바뀌는 것은 규칙이 아니라 의미다 — 하강에서 낙하는 전진
+      지름길, 상승에서는 후퇴·탈출 수단(`FallAdvancesProgress`).
+    - 표시 층 번호는 **건물에 0층이 없다**는 걸 반영한다(`B2 → B1 → 1F`). 던전은 시작 건물 층
+      (`FirstBuildingFloor`)만 선언하고 라벨은 `FloorLabelFor`가 만든다.
   - `Elevation` = 정렬·낙하·공간 연결에 쓰는 연속 높이 좌표.
   - `LocalHeight` = 같은 던전 층 안의 단차. 돌출 바닥·계단 비주얼이 사용한다.
   - `TileKind.Floor` = 걸을 수 있는 바닥 타일 타입이며 던전 층(floor)과 다른 개념이다.
