@@ -96,6 +96,7 @@ namespace ProjectC.Gameplay
         public Sprite skeleton;
         public Sprite slime;
         public Sprite slinger;
+        public Sprite graveWarden;
         public Sprite merchant;
         public Sprite explosiveBarrel;
         public Sprite hubCampfire;
@@ -112,14 +113,21 @@ namespace ProjectC.Gameplay
         /// </summary>
         public Sprite SurvivorSprite => knight != null ? knight : player;
 
+        /// <summary>
+        /// 미등록 아키타입은 goblin이 아니라 null을 돌려준다 — null이어야 호출부가
+        /// 아키타입 전용 절차 생성 폴백으로 내려가고, 몬스터끼리 같은 그림으로 뭉개지지 않는다.
+        /// (Slinger·GraveWarden이 goblin 폴백에 가려 전용 실루엣을 잃었던 회귀의 방지선.)
+        /// </summary>
         public Sprite MonsterFor(string archetypeId)
         {
             switch (archetypeId)
             {
+                case "Goblin": return goblin;
                 case "Skeleton": return skeleton;
                 case "Slime": return slime;
-                case "Slinger": return slinger != null ? slinger : goblin;
-                default: return goblin;
+                case "Slinger": return slinger;
+                case "GraveWarden": return graveWarden;
+                default: return null;
             }
         }
 

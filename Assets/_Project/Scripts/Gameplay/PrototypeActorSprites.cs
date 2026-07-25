@@ -1034,6 +1034,7 @@ namespace ProjectC.Gameplay
                 case "Skeleton": return GetSkeletonSprite();
                 case "Slime": return GetSlimeSprite();
                 case "Slinger": return GetSlingerSprite();
+                case "GraveWarden": return GetGraveWardenSprite();
                 default: return GetCharacterSprite(true);
             }
         }
@@ -1126,6 +1127,50 @@ namespace ProjectC.Gameplay
             FillRect(texture, 22, 34, 4, 3, skin);
             DrawThickLine(texture, 24, 37, 29, 43, 2, sling);
             FillRect(texture, 27, 42, 4, 4, sling);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 감시자(보스). 일반 몹 그림을 재사용하면 보스 조우가 읽히지 않으므로,
+        /// 일반 몹보다 큰 실루엣(넓은 어깨 + 센서 마스트)과 경고 네온 외눈으로 즉시 구분한다.
+        /// 경고 네온(#F0492A)은 적 신호색 — HP 적색과 역할이 분리된 팔레트 색이다.
+        /// </summary>
+        private Sprite GetGraveWardenSprite()
+        {
+            const string key = "grave-warden";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(40, 60);
+            Color32 dark = new Color32(16, 20, 24, 255);
+            Color32 hull = new Color32(74, 78, 86, 255);
+            Color32 hullLight = new Color32(104, 110, 118, 255);
+            Color32 rust = new Color32(122, 74, 46, 255);
+            Color32 neon = new Color32(240, 73, 42, 255);
+
+            FillRect(texture, 8, 2, 24, 8, dark);         // 하부 구동부
+            FillRect(texture, 9, 3, 22, 6, hull);
+            FillRect(texture, 9, 5, 22, 1, dark);         // 트레드 골
+            FillRect(texture, 6, 10, 28, 22, dark);       // 몸통 — 어깨가 넓다
+            FillRect(texture, 7, 11, 26, 20, hull);
+            FillRect(texture, 7, 28, 26, 3, hullLight);   // 어깨 판
+            FillRect(texture, 7, 11, 5, 8, rust);         // 하부 녹
+            FillRect(texture, 26, 13, 6, 5, rust);
+            FillRect(texture, 2, 18, 5, 12, dark);        // 좌우 비대칭 팔
+            FillRect(texture, 3, 19, 3, 10, hull);
+            FillRect(texture, 33, 16, 5, 14, dark);
+            FillRect(texture, 34, 17, 3, 12, hull);
+            FillRect(texture, 34, 27, 3, 2, rust);
+            FillRect(texture, 11, 32, 18, 12, dark);      // 머리 돔
+            FillRect(texture, 12, 33, 16, 10, hull);
+            FillRect(texture, 13, 36, 14, 4, dark);       // 바이저 홈
+            FillRect(texture, 15, 37, 10, 2, neon);       // 경고 네온 외눈
+            FillRect(texture, 19, 44, 2, 11, dark);       // 센서 마스트
+            FillRect(texture, 18, 54, 4, 3, dark);
+            FillRect(texture, 19, 55, 2, 1, neon);        // 마스트 표시등
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));

@@ -238,6 +238,39 @@ namespace ProjectC.Tests
             Assert.IsNull(_catalog.StatusFx(StatusKind.Burn));
         }
 
+        [Test]
+        public void MonsterFor_EachArchetype_UsesOwnSlot()
+        {
+            Sprite goblin = MakeSprite();
+            Sprite skeleton = MakeSprite();
+            Sprite slime = MakeSprite();
+            Sprite slinger = MakeSprite();
+            Sprite graveWarden = MakeSprite();
+            _catalog.goblin = goblin;
+            _catalog.skeleton = skeleton;
+            _catalog.slime = slime;
+            _catalog.slinger = slinger;
+            _catalog.graveWarden = graveWarden;
+
+            Assert.AreSame(goblin, _catalog.MonsterFor("Goblin"));
+            Assert.AreSame(skeleton, _catalog.MonsterFor("Skeleton"));
+            Assert.AreSame(slime, _catalog.MonsterFor("Slime"));
+            Assert.AreSame(slinger, _catalog.MonsterFor("Slinger"));
+            Assert.AreSame(graveWarden, _catalog.MonsterFor("GraveWarden"));
+        }
+
+        [Test]
+        public void MonsterFor_EmptySlotOrUnknownId_ReturnsNull_NeverGoblin()
+        {
+            // goblin 폴백이 살아나면 Slinger/GraveWarden이 같은 그림으로 뭉개지는 회귀가 돌아온다 —
+            // 빈 슬롯은 null이어야 호출부의 아키타입 전용 절차 폴백이 동작한다.
+            _catalog.goblin = MakeSprite();
+
+            Assert.IsNull(_catalog.MonsterFor("Slinger"));
+            Assert.IsNull(_catalog.MonsterFor("GraveWarden"));
+            Assert.IsNull(_catalog.MonsterFor("unknown-archetype"));
+        }
+
         private Sprite MakeSprite()
         {
             Sprite sprite = Sprite.Create(
