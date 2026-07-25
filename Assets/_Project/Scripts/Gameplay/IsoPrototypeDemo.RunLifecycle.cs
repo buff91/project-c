@@ -272,6 +272,12 @@ namespace ProjectC.Gameplay
         /// </summary>
         public string NextUnlockHint { get; private set; }
 
+        /// <summary>
+        /// 이번 판이 남긴 <b>기록</b>. 판 종료 화면이 이걸 알려야 "실패한 판도 전진"이 읽힌다 —
+        /// 죽고 나서 아무 숫자도 안 움직이면 계속할 이유가 없다.
+        /// </summary>
+        public int RecordsGainedThisRun { get; private set; }
+
         private readonly List<string> _lastRunUnlocks = new List<string>();
 
         /// <summary>
@@ -287,11 +293,28 @@ namespace ProjectC.Gameplay
         {
             _lastRunUnlocks.Clear();
             NextUnlockHint = null;
+            RecordsGainedThisRun = 0;
             if (_runTelemetry == null) return;
 
             MetaSaveData meta = MetaStore.LoadOrNew();
-            List<ItemUnlockCondition> opened =
-                ItemUnlockRules.EvaluateUnlocks(_runTelemetry, meta.UnlockedItemKinds());
+
+            // 1) 기록을 먼저 적립한다 — 죽음이 먹이는 유일한 축이라 정산과 무관하게 항상 준다.
+            RecordsGainedThisRun = meta.AwardRecords(
+                RunRecordRules.ReachedFloors(_runTelemetry.deepestProgressIndex),
+                _runTelemetry.secretRoomsFound);
+
+            // 2) 최고 기록을 갱신한다. **판정보다 먼저**여야 한다 — 판정이 이 값을 읽으므로,
+            //    순서가 뒤집히면 이번 판에 목표를 채우고도 다음 판까지 안 열린다.
+            foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
+            {
+                if (meta.IsItemUnlocked(condition.Kind)) continue;
+                meta.RecordUnlockProgress(
+                    condition.Kind, BountyRules.ReadMetric(condition.Metric, _runTelemetry));
+            }
+
+            // 3) 역대 최고 + 투입 기록으로 판정한다(이번 판 값만 보지 않는다).
+            List<ItemUnlockCondition> opened = ItemUnlockRules.EvaluateUnlocks(
+                meta.UnlockedItemKinds(), meta.BestUnlockProgress, meta.InvestedRecords);
 
             foreach (ItemUnlockCondition condition in opened)
             {
@@ -300,21 +323,8 @@ namespace ProjectC.Gameplay
                 Debug.Log($"[Unlock] {condition.Kind} 해금 — {condition.Requirement}");
             }
 
-            // 아직 못 연 조건의 최고 기록을 갱신한다 — 기록실이 "얼마나 가까웠나"를
-            // 보여주는 근거다. 해금이 없어도 저장해야 진행이 쌓인다.
-            bool progressChanged = false;
-            foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
-            {
-                if (meta.IsItemUnlocked(condition.Kind)) continue;
-
-                int current = BountyRules.ReadMetric(condition.Metric, _runTelemetry);
-                if (current <= meta.BestUnlockProgress(condition.Kind)) continue;
-
-                meta.RecordUnlockProgress(condition.Kind, current);
-                progressChanged = true;
-            }
-
-            if (_lastRunUnlocks.Count > 0 || progressChanged) MetaStore.Save(meta);
+            // 기록은 판마다 반드시 늘어나므로 항상 저장한다.
+            MetaStore.Save(meta);
 
             if (_lastRunUnlocks.Count == 0)
             {

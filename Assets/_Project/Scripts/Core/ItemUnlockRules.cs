@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace ProjectC.Core
@@ -136,17 +137,35 @@ namespace ProjectC.Core
         /// 이번 판 계측으로 <b>새로 열리는</b> 것들. 이미 해금한 것은 돌려주지 않으므로
         /// 두 번 불러도 중복이 생기지 않는다.
         /// </summary>
+        /// <summary>
+        /// 이번 판이 끝난 시점에 새로 열린 조건들.
+        /// <para>
+        /// <b>판정은 「이번 판」이 아니라 「역대 최고 + 투입 기록」이다</b>(<see cref="RunRecordRules"/>).
+        /// 예전에는 그 판의 계측만 봐서, 목표에 하나 모자란 판이 통째로 버려졌다 —
+        /// 화상을 11번 입히고 죽으면 0이었다. 최고 기록은 이미 저장되고 있었는데
+        /// 기록실 표시용으로만 쓰였다. 그 값을 판정에 넣는 것이 "실패한 판도 전진"의 실현이다.
+        /// </para>
+        /// <para>
+        /// 그래도 <b>한 판에 몰아치는 도전은 살아 있다</b> — 최고 기록은 한 판의 값이라
+        /// 좋은 판 한 번이 여전히 가장 빠른 길이다. 기록 투입은 그 위에 얹는 느린 길이다.
+        /// </para>
+        /// <param name="best">조건별 역대 최고 기록을 주는 함수(이번 판 값이 이미 반영돼 있어야 한다).</param>
+        /// <param name="invested">조건별 투입 기록을 주는 함수.</param>
+        /// </summary>
         public static List<ItemUnlockCondition> EvaluateUnlocks(
-            RunTelemetry telemetry,
-            IReadOnlyCollection<ItemKind> unlocked)
+            IReadOnlyCollection<ItemKind> unlocked,
+            Func<ItemKind, int> best,
+            Func<ItemKind, int> invested)
         {
             var opened = new List<ItemUnlockCondition>();
-            if (telemetry == null) return opened;
+            if (best == null || invested == null) return opened;
 
             foreach (ItemUnlockCondition condition in Conditions)
             {
                 if (Contains(unlocked, condition.Kind)) continue;
-                if (BountyRules.ReadMetric(condition.Metric, telemetry) < condition.Target) continue;
+                if (!RunRecordRules.IsConditionMet(
+                        best(condition.Kind), invested(condition.Kind), condition.Target))
+                    continue;
                 opened.Add(condition);
             }
 

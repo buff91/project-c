@@ -129,7 +129,13 @@ namespace ProjectC.Gameplay
                 else if (demo != null && !string.IsNullOrEmpty(demo.NextUnlockHint))
                     unlockLine = $"\n다음 해금: {demo.NextUnlockHint}";
 
-                _gameoverKills.text = $"처치: {summary.Kills}{unlockLine}";
+                // 기록은 죽어도 반드시 남는 유일한 값이다. 사망 화면에서 이 줄이 안 보이면
+                // 플레이어는 "아무것도 못 건졌다"로 읽고, 그게 곧 재도전하지 않는 이유가 된다.
+                string recordLine = demo != null && demo.RecordsGainedThisRun > 0
+                    ? $"\n기록 +{demo.RecordsGainedThisRun} — 기록실에서 해금에 쓸 수 있다"
+                    : "";
+
+                _gameoverKills.text = $"처치: {summary.Kills}{recordLine}{unlockLine}";
             }
             _gameoverOverlay.BringToFront();
             _gameoverOverlay.AddToClassList("is-open");

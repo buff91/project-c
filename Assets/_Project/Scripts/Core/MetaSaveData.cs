@@ -65,6 +65,25 @@ namespace ProjectC.Core
         /// </summary>
         public string[] rescuedNpcs = new string[0];
 
+        /// <summary>
+        /// 쓰지 않고 남은 <b>기록</b>. 판이 끝날 때마다 쌓이고 기록실에서 해금에 투입한다
+        /// (<see cref="RunRecordRules"/>). 죽음이 먹이는 유일한 축이라 실패한 판도 여기서 전진한다.
+        /// </summary>
+        public int records;
+
+        /// <summary>
+        /// 역대 최대 도달 층 수. <b>개척 보너스의 기준선</b>이라 여기 저장해야 한다 —
+        /// 이 값이 없으면 1~3층 왕복이 최적 파밍이 된다.
+        /// </summary>
+        public int deepestFloorsEver;
+
+        /// <summary>
+        /// 조건별로 <b>투입한</b> 기록. 최고 기록(<see cref="unlockProgress"/>)에 더해져
+        /// 목표를 넘기면 해금된다. 최고 기록과 따로 두는 이유는 둘의 출처가 다르기 때문이다 —
+        /// 하나는 플레이로 달성한 값이고 하나는 플레이어가 산 값이다.
+        /// </summary>
+        public List<UnlockProgressEntry> unlockInvested = new List<UnlockProgressEntry>();
+
         public int GetCount(ItemKind kind) => ItemStorage.Count(stash, kind);
 
         /// <summary>
@@ -171,6 +190,50 @@ namespace ProjectC.Core
             }
 
             unlockProgress.Add(new UnlockProgressEntry { kind = (int)kind, best = value });
+        }
+
+        /// <summary>이 조건에 투입한 기록. 없으면 0.</summary>
+        public int InvestedRecords(ItemKind kind)
+        {
+            if (unlockInvested == null) return 0;
+            foreach (UnlockProgressEntry entry in unlockInvested)
+                if (entry.kind == (int)kind) return entry.best;
+            return 0;
+        }
+
+        /// <summary>
+        /// 남은 기록에서 <paramref name="amount"/>만큼 이 조건에 투입한다.
+        /// 보유량을 넘으면 <b>가진 만큼만</b> 넣고 실제 투입량을 돌려준다 —
+        /// 실패시키는 대신 부분 투입을 허용해야 "조금씩 메운다"가 성립한다.
+        /// </summary>
+        public int InvestRecords(ItemKind kind, int amount)
+        {
+            int spend = Math.Min(Math.Max(0, amount), Math.Max(0, records));
+            if (spend <= 0) return 0;
+
+            records -= spend;
+            unlockInvested ??= new List<UnlockProgressEntry>();
+            foreach (UnlockProgressEntry entry in unlockInvested)
+            {
+                if (entry.kind != (int)kind) continue;
+                entry.best += spend;
+                return spend;
+            }
+
+            unlockInvested.Add(new UnlockProgressEntry { kind = (int)kind, best = spend });
+            return spend;
+        }
+
+        /// <summary>
+        /// 판이 끝날 때 기록을 적립하고 개척 기준선을 올린다. 적립량을 돌려준다.
+        /// <b>순서가 중요하다</b> — 기준선을 먼저 올리면 개척 보너스가 사라진다.
+        /// </summary>
+        public int AwardRecords(int reachedFloors, int secretRoomsFound)
+        {
+            int gained = RunRecordRules.Award(reachedFloors, deepestFloorsEver, secretRoomsFound);
+            records += gained;
+            if (reachedFloors > deepestFloorsEver) deepestFloorsEver = reachedFloors;
+            return gained;
         }
 
         public bool IsNpcRescued(string npcId)

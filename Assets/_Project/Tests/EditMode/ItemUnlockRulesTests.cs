@@ -128,26 +128,35 @@ namespace ProjectC.Tests
             var none = new List<ItemKind>();
 
             Assert.IsEmpty(
-                ItemUnlockRules.EvaluateUnlocks(
-                    TelemetryWith(knife.Metric, knife.Target - 1), none),
+                ItemUnlockRules.EvaluateUnlocks(none, Best(knife.Kind, knife.Target - 1), Zero),
                 "목표에 하나 모자라면 열리지 않는다.");
 
-            List<ItemUnlockCondition> opened = ItemUnlockRules.EvaluateUnlocks(
-                TelemetryWith(knife.Metric, knife.Target), none);
+            List<ItemUnlockCondition> opened =
+                ItemUnlockRules.EvaluateUnlocks(none, Best(knife.Kind, knife.Target), Zero);
             CollectionAssert.Contains(opened.Select(c => c.Kind).ToList(), ItemKind.ThrowingKnife);
+
+            // 모자란 진행은 버려지지 않는다 — 기록 하나가 그 판을 살린다.
+            List<ItemUnlockCondition> byRecords = ItemUnlockRules.EvaluateUnlocks(
+                none, Best(knife.Kind, knife.Target - 1), Best(knife.Kind, 1));
+            CollectionAssert.Contains(byRecords.Select(c => c.Kind).ToList(), ItemKind.ThrowingKnife);
         }
 
         [Test]
         public void EvaluateUnlocks_DoesNotReopenWhatIsAlreadyUnlocked()
         {
             ItemUnlockCondition knife = ItemUnlockRules.Find(ItemKind.ThrowingKnife);
-            RunTelemetry telemetry = TelemetryWith(knife.Metric, knife.Target);
 
             var unlocked = new List<ItemKind> { ItemKind.ThrowingKnife };
             Assert.IsEmpty(
-                ItemUnlockRules.EvaluateUnlocks(telemetry, unlocked),
+                ItemUnlockRules.EvaluateUnlocks(unlocked, Best(knife.Kind, knife.Target), Zero),
                 "두 번 불려도 중복 해금이 생기면 안 된다.");
         }
+
+        /// <summary>한 조건에만 값을 주는 조회 함수. 나머지는 0이다.</summary>
+        private static System.Func<ItemKind, int> Best(ItemKind kind, int value) =>
+            k => k == kind ? value : 0;
+
+        private static System.Func<ItemKind, int> Zero => _ => 0;
 
         [Test]
         public void ClosestPending_PicksTheNearestGoal_AndNullWhenAllOpen()
