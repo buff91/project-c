@@ -171,10 +171,17 @@ namespace ProjectC.Gameplay
                 maxY = Mathf.Max(maxY, world.y);
             }
 
+            // 최소 크기는 **던전 카메라 크기**다 — 값을 따로 들면 또 흘러내린다.
+            // 예전엔 전용 필드(2.55)를 썼고, 그래서 허브가 던전보다 1.4배 확대돼 보였다.
+            // 플로우를 오갈 때마다 배율이 바뀌면 "같은 세계"로 안 읽힌다.
+            //
+            // Fit 이 max(minimumSize, halfHeight, halfWidth/aspect) 이므로 결과는 자동으로
+            // "던전과 같은 크기, 다만 캠프가 화면 밖으로 나갈 때만 그만큼 물러남"이 된다.
+            // PC 가로(13×9 캠프)에서는 최소값이 지배하므로 던전과 정확히 같다.
             frame = OrthographicCameraFraming.Fit(
                 minX, maxX, minY, maxY,
                 aspect,
-                hubCameraMinimumSize,
+                playCameraSize,
                 hubCameraHorizontalPadding,
                 hubCameraVerticalPadding);
             return true;

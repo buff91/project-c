@@ -81,10 +81,11 @@ namespace ProjectC.Gameplay
         public bool configureMainCamera = true;
 
         [Header("카메라 구도")]
+        // 허브도 이 값을 최소 크기로 쓴다 — 모든 플로우의 배율이 같아야 "같은 세계"로 읽힌다.
+        // 허브 전용 최소 크기 필드는 제거했다: 값이 두 벌이면 한쪽이 흘러내려도 아무도 모른다
+        // (실제로 2.55 로 흘러내려 허브가 던전보다 1.4배 확대돼 있었다).
         [Range(4f, 7f)] public float playCameraSize = 5.2f;
         [Range(7f, 16f)] public float debugCameraSize = 8.8f;
-        [Tooltip("허브 가로 화면에서 방이 지나치게 작아지지 않도록 하는 전용 최소 크기.")]
-        [Min(2.2f)] public float hubCameraMinimumSize = 2.55f;
         [Min(0f)] public float hubCameraHorizontalPadding = 0.6f;
         [Min(0f)] public float hubCameraVerticalPadding = 1.2f;
 
