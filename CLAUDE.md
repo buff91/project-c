@@ -117,6 +117,16 @@ asmdef 5개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`
 - 스크립트 생성/수정 후에는 `read_console`로 컴파일 에러 확인.
 - 씬/UI 변경은 가능하면 실제 Play와 PC 가로 Game View에서 캡처 검증(현재 우선순위 절 참조).
 
+## 스킬 (반복 절차는 여기에 있다)
+
+Claude Code에서 `/이름`으로 호출한다. 절차를 매번 산문 문서에서 재현하지 말고 이걸 쓴다.
+
+- `/test` — 테스트를 올바른 경로로 실행하고 실패를 판정한다(shim / 에디터 회귀 구분).
+- `/feature-done` — 기능 마감 체크리스트(테스트·문서·파일 크기·범위·커밋).
+- `/art-conform` — 아트 시안 → 게임 에셋 마감(팔레트 잠금·임포트 규격·검증).
+
+정의는 `.claude/skills/<이름>/SKILL.md`. 절차가 바뀌면 문서가 아니라 **스킬을 고친다.**
+
 ## 작업 컨벤션
 
 - 주변 코드의 스타일(네이밍, 주석 밀도)을 따른다.
