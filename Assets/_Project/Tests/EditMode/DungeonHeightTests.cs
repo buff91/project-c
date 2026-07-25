@@ -30,21 +30,47 @@ namespace ProjectC.Tests
         [TestCase(-4, -1, 1, 0)]
         [TestCase(-3, -1, 1, 1)]
         [TestCase(-12, -3, 3, 0)]
-        public void VisualContext_SeparatesDepthElevationAndLocalHeight(
+        public void VisualContext_SeparatesProgressElevationAndLocalHeight(
             int elevation,
             int expectedFloor,
-            int expectedDepth,
+            int progressIndex,
             int expectedLocalHeight)
         {
             DungeonVisualContext context = DungeonVisualContext.From(
                 new DungeonHeightModel(4),
-                elevation);
+                elevation,
+                progressIndex);
 
             Assert.AreEqual(expectedFloor, context.FloorIndex);
-            Assert.AreEqual(expectedDepth, context.DepthIndex);
+            Assert.AreEqual(progressIndex, context.ProgressIndex);
             Assert.AreEqual(elevation, context.Elevation);
             Assert.AreEqual(expectedLocalHeight, context.LocalHeight);
             Assert.AreEqual(expectedLocalHeight > 0, context.IsRaised);
+        }
+
+        /// <summary>
+        /// 회귀 방지: 진행 지수는 elevation/floorIndex 에서 파생되지 않는다.
+        /// 예전 구현은 <c>Max(0, -floorIndex)</c>로 역산해서 상승 던전(양수 floorIndex)에서
+        /// 전부 0으로 붕괴했고, 비단조 경로에서는 애초에 성립하지 않았다(GDD §5.1).
+        /// </summary>
+        [Test]
+        public void VisualContext_ProgressIsIndependentOfElevationSign()
+        {
+            var height = new DungeonHeightModel(4);
+
+            // 지상 8층(양수 elevation)이 진행 지수 7 — 파생이었다면 0으로 뭉갰다.
+            DungeonVisualContext ascending = DungeonVisualContext.From(height, height.Elevation(7, 0), 7);
+            Assert.AreEqual(7, ascending.ProgressIndex);
+            Assert.AreEqual(DungeonDepthBand.Deep, ascending.DepthBand);
+
+            // 같은 고도라도 진행 지수가 다르면 다른 구간이다.
+            DungeonVisualContext sameHeightEarlier = DungeonVisualContext.From(height, height.Elevation(7, 0), 1);
+            Assert.AreEqual(DungeonDepthBand.Shallow, sameHeightEarlier.DepthBand);
+            Assert.AreNotEqual(ascending, sameHeightEarlier);
+
+            // 비단조 경로: 내려갔다 올라온 층은 고도로 순서를 알 수 없다.
+            DungeonVisualContext revisitedLow = DungeonVisualContext.From(height, height.Elevation(-1, 0), 9);
+            Assert.AreEqual(DungeonDepthBand.Boss, revisitedLow.DepthBand);
         }
 
         [TestCase(0, DungeonDepthBand.Shallow)]
@@ -62,10 +88,12 @@ namespace ProjectC.Tests
             int floorIndex = -depthIndex;
             DungeonVisualContext flat = DungeonVisualContext.From(
                 height,
-                height.Elevation(floorIndex, 0));
+                height.Elevation(floorIndex, 0),
+                depthIndex);
             DungeonVisualContext raised = DungeonVisualContext.From(
                 height,
-                height.Elevation(floorIndex, 1));
+                height.Elevation(floorIndex, 1),
+                depthIndex);
 
             Assert.AreEqual(expected, flat.DepthBand);
             Assert.AreEqual(expected, raised.DepthBand);

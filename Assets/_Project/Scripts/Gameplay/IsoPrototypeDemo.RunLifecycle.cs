@@ -116,6 +116,8 @@ namespace ProjectC.Gameplay
                 stageCount = stageCount,
                 stageIndex = _stageIndex,
                 currentFloorIndex = _activeFloorIndex,
+                currentProgressIndex =
+                    _dungeon != null ? _dungeon.ProgressIndexFor(_activeFloorIndex) : 0,
                 bossDefeated = _bossDefeated,
                 hp = _playerState.Hp,
                 kills = _runSummary.Kills,
@@ -140,8 +142,13 @@ namespace ProjectC.Gameplay
             UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.DungeonScene);
         }
 
-        /// <summary>던전 체인 좌표계: 스테이지 누적 깊이(몬스터 혼합용, 0부터 증가).</summary>
-        private int GlobalDepth(int floorIndex) => (_stageIndex - 1) * floorCount - floorIndex;
+        /// <summary>
+        /// 던전 체인 좌표계: 스테이지 누적 진행 지수(몬스터 혼합·구간 판정용, 0부터 증가).
+        /// 층 안 진행 지수는 레이아웃이 소유하며 elevation 으로 역산하지 않는다(GDD §5.1).
+        /// </summary>
+        private int GlobalDepth(int floorIndex) =>
+            (_stageIndex - 1) * floorCount +
+            (_dungeon != null ? _dungeon.ProgressIndexFor(floorIndex) : 0);
 
         /// <summary>스테이지 누적 층 인덱스(기록/표시용, 아래로 갈수록 음수).</summary>
         private int GlobalFloorIndex(int floorIndex) => floorIndex - (_stageIndex - 1) * floorCount;
@@ -150,7 +157,7 @@ namespace ProjectC.Gameplay
         private void TryDeclareVictory()
         {
             if (hubMode || _runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
-            if (_activeFloorIndex != _dungeon.BottomFloorIndex) return;
+            if (_activeFloorIndex != _dungeon.FinalFloorIndex) return;
 
             InteractionFeedback?.Invoke(
                 BossExitUnlocked
@@ -161,8 +168,8 @@ namespace ProjectC.Gameplay
 
         private bool IsBottomExit(GridPos pos) =>
             _dungeon != null &&
-            _activeFloorIndex == _dungeon.BottomFloorIndex &&
-            _dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo floor) &&
+            _activeFloorIndex == _dungeon.FinalFloorIndex &&
+            _dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo floor) &&
             floor.DownStairs.HasValue &&
             floor.DownStairs.Value == pos;
 

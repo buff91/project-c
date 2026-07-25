@@ -119,7 +119,7 @@ namespace ProjectC.Gameplay
         public bool DebugRequestBossExit()
         {
             if (!Application.isPlaying || _dungeon == null ||
-                !_dungeon.TryGetFloor(_dungeon.BottomFloorIndex, out DungeonFloorInfo floor) ||
+                !_dungeon.TryGetFloor(_dungeon.FinalFloorIndex, out DungeonFloorInfo floor) ||
                 !floor.DownStairs.HasValue)
                 return false;
 

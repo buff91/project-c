@@ -252,7 +252,8 @@ namespace ProjectC.Gameplay
                 if (nextFloor != _activeFloorIndex)
                 {
                     _activeFloorIndex = nextFloor;
-                    _runTelemetry?.RecordFloorEntered(GlobalFloorIndex(_activeFloorIndex));
+                    _runTelemetry?.RecordFloorEntered(
+                        GlobalFloorIndex(_activeFloorIndex), GlobalDepth(_activeFloorIndex));
                     AnnounceBossApproachIfNeeded();
                     UpdateInputFloorRange();
                     RefreshFloorVisibility();

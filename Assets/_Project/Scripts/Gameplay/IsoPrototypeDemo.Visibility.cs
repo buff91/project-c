@@ -318,7 +318,7 @@ namespace ProjectC.Gameplay
                 return FloorLabel(_dungeon.Height.FloorIndex(landmark.Destination.Value.elevation));
 
             if (landmark.Kind == TileKind.StairsDown &&
-                _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _dungeon.BottomFloorIndex)
+                _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _dungeon.FinalFloorIndex)
                 return !BossExitUnlocked
                     ? "SEALED"
                     : HasNextStage ? "NEXT" : "EXIT";
@@ -852,7 +852,8 @@ namespace ProjectC.Gameplay
             int torchRarity = hubMode || _dungeon == null
                 ? 5
                 : DungeonBandProfiles.ForDepth(
-                    Mathf.Max(0, -_dungeon.Height.FloorIndex(pos.elevation))).WallSconceRarity;
+                    _dungeon.ProgressIndexFor(
+                        _dungeon.Height.FloorIndex(pos.elevation))).WallSconceRarity;
             bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % torchRarity == 0;
             int decoration = torch
                 ? 0
@@ -1079,10 +1080,12 @@ namespace ProjectC.Gameplay
             if (!dungeonDarkness || _playerState == null) return Color.white;
             if (!_visibleTiles.Contains(pos)) return Color.white;
 
-            int depth = Mathf.Max(0, -_activeFloorIndex);
-            int deepest = Mathf.Max(0, -_dungeon.BottomFloorIndex);
+            // 앰비언트는 "얼마나 나아갔나"를 따른다. floorIndex 부호로 역산하면
+            // 상승 던전에서 전 층이 0(가장 밝음)으로 붕괴한다.
+            int progress = _dungeon.ProgressIndexFor(_activeFloorIndex);
+            int lastProgress = _dungeon.MaxProgressIndex;
             float ambient = GridLighting.AmbientForDepth(
-                depth, deepest, surfaceLightLevel, deepLightLevel);
+                progress, lastProgress, surfaceLightLevel, deepLightLevel);
 
             GridPos origin = _playerState.Position;
             float dx = pos.x - origin.x;

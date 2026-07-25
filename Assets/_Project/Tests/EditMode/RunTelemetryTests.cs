@@ -19,7 +19,7 @@ namespace ProjectC.Tests
 
             telemetry.RecordElapsed(61.5f, 0);
             telemetry.RecordTurn(0);
-            telemetry.RecordFloorEntered(-1);
+            telemetry.RecordFloorEntered(-1, 1);
             telemetry.RecordElapsed(30f, -1);
             telemetry.RecordTurn(-1);
             telemetry.RecordTurn(-1);
@@ -109,12 +109,16 @@ namespace ProjectC.Tests
                 "forgotten-catacombs", "knight", 9, 0, DateTime.UtcNow);
 
             // B1·B2(Shallow) · B5(Mid) · B10(Boss). B7~B9(Deep)는 방문하지 않는다.
+            // 구간은 진행 지수로 묶이므로 층에 들어설 때 진행 지수를 함께 기록한다.
             telemetry.RecordTurn(0);
             telemetry.RecordDamageTaken("Goblin", 3, false, 0);
+            telemetry.RecordFloorEntered(-1, 1);
             telemetry.RecordTurn(-1);
             telemetry.RecordElapsed(12f, -1);
+            telemetry.RecordFloorEntered(-4, 4);
             telemetry.RecordKill(-4, boss: false);
             telemetry.RecordItemUsed(ItemKind.Potion, -4);
+            telemetry.RecordFloorEntered(-9, 9);
             telemetry.RecordDamageTaken("Skeleton", 7, false, -9);
             telemetry.RecordKill(-9, boss: true);
 
@@ -122,24 +126,74 @@ namespace ProjectC.Tests
 
             Assert.AreEqual(3, telemetry.bands.Count, "방문하지 않은 구간은 리포트에 넣지 않는다");
             Assert.AreEqual("Shallow", telemetry.bands[0].band);
-            Assert.AreEqual("B1~B3", telemetry.bands[0].floorRange);
+            Assert.AreEqual("1~3번째", telemetry.bands[0].floorRange);
             Assert.AreEqual(2, telemetry.bands[0].floors);
             Assert.AreEqual(2, telemetry.bands[0].turns);
             Assert.AreEqual(3, telemetry.bands[0].damageTaken);
             Assert.AreEqual(12f, telemetry.bands[0].elapsedSeconds);
 
             Assert.AreEqual("Mid", telemetry.bands[1].band);
-            Assert.AreEqual("B4~B6", telemetry.bands[1].floorRange);
+            Assert.AreEqual("4~6번째", telemetry.bands[1].floorRange);
             Assert.AreEqual(1, telemetry.bands[1].kills);
             Assert.AreEqual(1, telemetry.bands[1].itemsUsed);
 
             Assert.AreEqual("Boss", telemetry.bands[2].band);
-            Assert.AreEqual("B10+", telemetry.bands[2].floorRange);
+            Assert.AreEqual("10번째+", telemetry.bands[2].floorRange);
             Assert.AreEqual(7, telemetry.bands[2].damageTaken);
             Assert.AreEqual(1, telemetry.bands[2].kills);
 
-            StringAssert.Contains("Mid B4~B6", telemetry.FormatBandSummary());
+            StringAssert.Contains("중반 4~6번째", telemetry.FormatBandSummary());
             StringAssert.Contains("구간별:", telemetry.FormatDetailedSummary());
+        }
+
+        /// <summary>
+        /// 회귀 방지: 구간 롤업은 진행 지수로 묶는다. 예전에는 floorIndex 부호로 역산해서
+        /// 상승 던전(양수 floorIndex)의 모든 층이 첫 구간(Shallow)으로 뭉개졌다.
+        /// </summary>
+        [Test]
+        public void RefreshBands_AscendingDungeon_UsesProgressNotFloorSign()
+        {
+            RunTelemetry telemetry = RunTelemetry.Begin(
+                "derelict-hospital", "knight", 9, -1, DateTime.UtcNow);
+
+            // 폐병원: B2(진행 0) → 1F(진행 2) → 5F(진행 6) → 8F(진행 9, 보스).
+            telemetry.RecordTurn(-1);
+            telemetry.RecordFloorEntered(1, 2);
+            telemetry.RecordTurn(1);
+            telemetry.RecordFloorEntered(5, 6);
+            telemetry.RecordKill(5, boss: false);
+            telemetry.RecordFloorEntered(8, 9);
+            telemetry.RecordKill(8, boss: true);
+
+            telemetry.RefreshBands();
+
+            Assert.AreEqual(3, telemetry.bands.Count,
+                "고도가 전부 양수여도 진행 지수대로 세 구간에 흩어져야 한다");
+            Assert.AreEqual("Shallow", telemetry.bands[0].band);
+            Assert.AreEqual(2, telemetry.bands[0].floors, "진행 0·2가 첫 구간");
+            Assert.AreEqual("Deep", telemetry.bands[1].band);
+            Assert.AreEqual("Boss", telemetry.bands[2].band);
+            Assert.AreEqual(1, telemetry.bands[2].kills);
+            Assert.AreEqual(9, telemetry.deepestProgressIndex);
+        }
+
+        /// <summary>층 목록은 고도가 아니라 방문 순서로 정렬된다(상승·비단조 공용).</summary>
+        [Test]
+        public void Floors_AreOrderedByProgress_NotByElevation()
+        {
+            RunTelemetry telemetry = RunTelemetry.Begin(
+                "derelict-hospital", "knight", 9, -1, DateTime.UtcNow);
+
+            telemetry.RecordFloorEntered(3, 1);
+            telemetry.RecordFloorEntered(1, 2);   // 내려갔다 — 고도는 낮지만 나중에 방문했다
+            telemetry.RecordFloorEntered(6, 3);
+
+            CollectionAssert.AreEqual(
+                new[] { 0, 1, 2, 3 },
+                telemetry.floors.ConvertAll(f => f.progressIndex));
+            CollectionAssert.AreEqual(
+                new[] { -1, 3, 1, 6 },
+                telemetry.floors.ConvertAll(f => f.floorIndex));
         }
 
         [Test]

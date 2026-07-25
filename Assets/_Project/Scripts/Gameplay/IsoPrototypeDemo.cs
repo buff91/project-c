@@ -252,7 +252,7 @@ namespace ProjectC.Gameplay
         public bool IsBossFloor =>
             !hubMode &&
             _dungeon != null &&
-            _activeFloorIndex == _dungeon.BottomFloorIndex &&
+            _activeFloorIndex == _dungeon.FinalFloorIndex &&
             DungeonSelection.Selected.Boss != null;
         public bool BossDefeated => _bossDefeated;
         public bool BossExitUnlocked =>
@@ -546,11 +546,12 @@ namespace ProjectC.Gameplay
                         _hero != null ? _hero.Id : HeroSelection.SelectedId,
                         dungeonSeed,
                         floorIndex,
-                        System.DateTime.UtcNow);
+                        System.DateTime.UtcNow,
+                        GlobalDepth(_activeFloorIndex));
                 }
 
                 if (_runTelemetry.currentFloorIndex != floorIndex)
-                    _runTelemetry.RecordFloorEntered(floorIndex);
+                    _runTelemetry.RecordFloorEntered(floorIndex, GlobalDepth(_activeFloorIndex));
             }
             if (continueData != null)
                 ApplyContinueData(continueData);
@@ -739,7 +740,7 @@ namespace ProjectC.Gameplay
             foreach (DungeonFloorInfo floor in _dungeon.Floors)
             {
                 bool bossFloor =
-                    floor.FloorIndex == _dungeon.BottomFloorIndex &&
+                    floor.FloorIndex == _dungeon.FinalFloorIndex &&
                     DungeonSelection.Selected.Boss != null;
                 GridPos bossSpawn = default;
                 bool hasBossSpawn = bossFloor &&

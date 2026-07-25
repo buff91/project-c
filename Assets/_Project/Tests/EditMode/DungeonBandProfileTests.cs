@@ -23,10 +23,10 @@ namespace ProjectC.Tests
             Assert.AreSame(DungeonBandProfiles.ForBand(expected), DungeonBandProfiles.ForDepth(depth));
         }
 
-        [TestCase(DungeonDepthBand.Shallow, "B1~B3")]
-        [TestCase(DungeonDepthBand.Mid, "B4~B6")]
-        [TestCase(DungeonDepthBand.Deep, "B7~B9")]
-        [TestCase(DungeonDepthBand.Boss, "B10+")]
+        [TestCase(DungeonDepthBand.Shallow, "1~3번째")]
+        [TestCase(DungeonDepthBand.Mid, "4~6번째")]
+        [TestCase(DungeonDepthBand.Deep, "7~9번째")]
+        [TestCase(DungeonDepthBand.Boss, "10번째+")]
         public void RangeLabel_MatchesBoundaries(DungeonDepthBand band, string expected)
         {
             Assert.AreEqual(expected, DungeonDepthBandRules.RangeLabel(band));
@@ -42,15 +42,26 @@ namespace ProjectC.Tests
                 string label = DungeonDepthBandRules.RangeLabel(band);
                 string floor = RunTelemetry.FormatFloor(-depth);
                 bool openEnded = label.EndsWith("+", StringComparison.Ordinal);
-                int firstFloor = int.Parse(label.Substring(1).Split('~')[0].TrimEnd('+'));
-                int lastFloor = openEnded
-                    ? int.MaxValue
-                    : int.Parse(label.Split('~')[1].Substring(1));
-                int floorNumber = int.Parse(floor.Substring(1));
+                string[] bounds = label.Split('~');
+                int firstFloor = LeadingNumber(bounds[0]);
+                int lastFloor = openEnded ? int.MaxValue : LeadingNumber(bounds[1]);
+                int floorNumber = LeadingNumber(floor.Substring(1));
 
                 Assert.GreaterOrEqual(floorNumber, firstFloor, $"{floor} ∉ {label}");
                 Assert.LessOrEqual(floorNumber, lastFloor, $"{floor} ∉ {label}");
             }
+        }
+
+        /// <summary>
+        /// 앞머리의 숫자만 읽는다. 라벨 표기가 바뀌어도(옛 `B1~B3` → 방향 중립 `1~3번째`)
+        /// 경계 대조가 계속 돌게 하려는 것이다 — 고정 오프셋 파싱은 표기 변경에 조용히 깨진다.
+        /// </summary>
+        private static int LeadingNumber(string text)
+        {
+            int length = 0;
+            while (length < text.Length && char.IsDigit(text[length])) length++;
+            Assert.Greater(length, 0, $"숫자로 시작하지 않는다: '{text}'");
+            return int.Parse(text.Substring(0, length));
         }
 
         [Test]

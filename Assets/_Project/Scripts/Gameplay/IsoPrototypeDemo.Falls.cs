@@ -122,7 +122,7 @@ namespace ProjectC.Gameplay
                 _runSummary.RecordFloor(GlobalFloorIndex(_activeFloorIndex));
                 int globalFloor = GlobalFloorIndex(_activeFloorIndex);
                 if (_runTelemetry != null && _runTelemetry.currentFloorIndex != globalFloor)
-                    _runTelemetry.RecordFloorEntered(globalFloor);
+                    _runTelemetry.RecordFloorEntered(globalFloor, GlobalDepth(_activeFloorIndex));
                 AnnounceBossApproachIfNeeded();
                 UpdateInputFloorRange();
                 SaveCheckpoint();
