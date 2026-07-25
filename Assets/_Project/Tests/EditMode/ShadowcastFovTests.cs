@@ -108,6 +108,40 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void Catwalk_OverRaisedFloor_ShowsBothSpans_AndOccludesBeyond()
+        {
+            // 컬럼에 솔리드 구간이 둘(올라온 단 +1, 그 위 캐치워크 +2)인 span 케이스.
+            // 표면 하나만 보던 시절에는 캐치워크만 보이고 그 아래 바닥은 안개로 남았다.
+            var map = new GridMap();
+            for (int x = 0; x < 6; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            map.Remove(new GridPos(3, 0, 0));
+            map.Set(new GridPos(3, 0, 1), TileKind.Floor); // 올라온 단
+            map.Set(new GridPos(3, 0, 2), TileKind.Floor); // 그 위에 얹힌 캐치워크
+
+            var visible = GridVisibility.Compute(map, new GridPos(0, 0, 0), 0, 3, 8);
+
+            Assert.IsTrue(visible.Contains(new GridPos(3, 0, 1)), "캐치워크 아래 지면도 보인다");
+            Assert.IsTrue(visible.Contains(new GridPos(3, 0, 2)), "머리 위 캐치워크 자체도 보인다");
+            Assert.IsFalse(visible.Contains(new GridPos(5, 0, 0)), "캐치워크 너머는 가려진다");
+        }
+
+        [Test]
+        public void StandingOnCatwalk_EyeRises_AndSeesGroundBeyond()
+        {
+            // 고지대에 서면 눈높이가 올라가 아래 바닥이 지면으로 잡힌다 — 캐치워크의 시야 이점.
+            var map = new GridMap();
+            for (int x = 0; x < 6; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            map.Remove(new GridPos(3, 0, 0));
+            map.Set(new GridPos(3, 0, 1), TileKind.Floor);
+            map.Set(new GridPos(3, 0, 2), TileKind.Floor);
+
+            var visible = GridVisibility.Compute(map, new GridPos(3, 0, 2), 0, 3, 8);
+
+            Assert.IsTrue(visible.Contains(new GridPos(5, 0, 0)),
+                "캐치워크 위에서는 아래 바닥이 이어져 보인다");
+        }
+
+        [Test]
         public void TallSurface_OccludesBeyond_ButSingleStepDoesNot()
         {
             // 2단 이상 높은 표면(벽·컨테이너 더미 같은 큰 단차)은 너머를 가린다.

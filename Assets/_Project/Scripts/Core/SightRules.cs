@@ -21,11 +21,96 @@ namespace ProjectC.Core
     ///
     /// FOV(<see cref="GridVisibility"/>) 셰도우캐스팅까지 이 규칙으로 합치는 것은 3단계 과제다.
     /// </summary>
+    /// <summary>
+    /// 한 컬럼(x, y)을 관찰자의 눈높이에서 본 결과. 컬럼에는 솔리드 구간이 여럿 있을 수 있으므로
+    /// (예: 올라온 단 위에 얹힌 캐치워크) 단순 높이맵이 아니라 <b>지면</b>과 <b>머리 위 구조물</b>을
+    /// 나눠 들고, 너머로 시야가 이어지는지도 함께 답한다.
+    /// </summary>
+    public readonly struct ColumnView
+    {
+        /// <summary>눈높이 이하에서 가장 높은 타일 — 서 있거나 넘겨다보는 표면.</summary>
+        public bool HasGround { get; }
+        public GridPos Ground { get; }
+
+        /// <summary>눈높이보다 높은 첫 타일 — 캐치워크·메자닌처럼 머리 위를 지나는 구조물.</summary>
+        public bool HasOverhead { get; }
+        public GridPos Overhead { get; }
+
+        /// <summary>이 컬럼 너머로 시야가 이어지지 않는가.</summary>
+        public bool BlocksBeyond { get; }
+
+        internal ColumnView(
+            bool hasGround, GridPos ground, bool hasOverhead, GridPos overhead, bool blocksBeyond)
+        {
+            HasGround = hasGround;
+            Ground = ground;
+            HasOverhead = hasOverhead;
+            Overhead = overhead;
+            BlocksBeyond = blocksBeyond;
+        }
+
+        /// <summary>대역에 타일이 하나도 없는 컬럼(void) — 무한 높이 벽으로 취급한다.</summary>
+        public static readonly ColumnView Opaque =
+            new ColumnView(false, default, false, default, true);
+    }
+
     public static class SightRules
     {
+        /// <summary>
+        /// 눈높이보다 이 값을 초과해 높은 타일은 벽처럼 너머 시야를 막는다.
+        /// 1단(raised) 단차는 막지 않고, 2단 이상(벽·컨테이너 더미·캐치워크)만 차폐한다.
+        /// </summary>
+        public const int HeightBlockThreshold = 1;
+
         /// <summary>이 칸이 위·아래 시야를 막는가. 허공(null)은 통로, 실제 개구부만 뚫려 있다.</summary>
         public static bool BlocksVerticalSight(TileData tile) =>
             tile != null && tile.BlocksVerticalSight;
+
+        /// <summary>
+        /// 컬럼을 눈높이 기준으로 해석한다(3D 시야선 3단계 — FOV가 쓰는 span 판정).
+        /// 지면은 눈높이 이하에서 가장 높은 타일, 머리 위 구조물은 눈높이보다 높은 첫 타일이다.
+        /// 지면보다 아래 타일은 그 지면에 덮여 보이지 않으므로 내지 않는다.
+        ///
+        /// 차단 규칙: void(대역이 통째로 빈 컬럼) · 머리 위 구조물이 있는 컬럼 ·
+        /// 지면이 벽/닫힌 문인 컬럼은 너머로 시야를 넘기지 않는다.
+        /// </summary>
+        public static ColumnView ViewColumn(
+            GridMap map, int x, int y, GridPos origin, int minElevation, int maxElevation)
+        {
+            if (map == null) return ColumnView.Opaque;
+
+            int eye = origin.elevation + HeightBlockThreshold;
+
+            bool hasGround = false;
+            GridPos ground = default;
+            bool groundBlocks = false;
+            int groundScanTop = Math.Min(maxElevation, eye);
+            for (int e = groundScanTop; e >= minElevation; e--)
+            {
+                var pos = new GridPos(x, y, e);
+                if (!map.TryGet(pos, out TileData tile)) continue;
+                hasGround = true;
+                ground = pos;
+                groundBlocks = tile.BlocksSight;
+                break;
+            }
+
+            bool hasOverhead = false;
+            GridPos overhead = default;
+            for (int e = Math.Max(minElevation, eye + 1); e <= maxElevation; e++)
+            {
+                var pos = new GridPos(x, y, e);
+                if (!map.Has(pos)) continue;
+                hasOverhead = true;
+                overhead = pos;
+                break;
+            }
+
+            if (!hasGround && !hasOverhead) return ColumnView.Opaque;
+
+            return new ColumnView(
+                hasGround, ground, hasOverhead, overhead, hasOverhead || groundBlocks);
+        }
 
         /// <summary>
         /// 높이 인식 시야선. from.elevation == to.elevation 이면 상수 보간이라

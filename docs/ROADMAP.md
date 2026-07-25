@@ -202,10 +202,10 @@
 ## 향후 기술 과제 — 3D 시야선(높이 인식) · 입체 전투
 
 > 시야/사격 판정은 원래 같은 높이만 알았고 세 곳(`GridVisibility` FOV · `CombatRules.HasLineOfSight` ·
-> `VerticalOpeningRules`)에 흩어져 있었다. 1·2단계로 전투 LoS가 높이를 알게 되었고 전투·개구부·근접
-> 판정이 `SightRules` 하나로 모였다(`VerticalOpeningRules` 흡수). 남은 축은 FOV다.
-> 목표는 **"높이가 달라도 실제로 보이면 보고 쏜다"** 로 통합하는 것 — 고지대 사격·근접 단차 타격·
-> 낙하 유발·마법 높이 반응 등 **입체 전투 전체의 토대**다.
+> `VerticalOpeningRules`)에 흩어져 있었다. **세 축 모두 `SightRules` 하나로 합쳐졌다** —
+> 전투 LoS는 높이 보간(1단계), 개구부·근접은 흡수·공유(2단계), FOV 셰도우캐스팅의 컬럼 해석은
+> `ViewColumn` 위임(3단계). "높이가 달라도 실제로 보이면 보고 쏜다"가 성립한다.
+> 남은 것은 이 토대 위에 얹을 **입체 전투 콘텐츠**(아래 "관련 향후 과제")다.
 
 지켜야 할 뿌리(불변):
 - **void = 불투명** ("닫힌 문 뒤 방 = Unknown") — void 컬럼은 무한 높이 벽으로 취급해 유지.
@@ -224,9 +224,14 @@
   사이에 낀 바닥이 시야를 막는다. 근접은 `SightRules.CanReachAcross`로 도달 기하를 공유한다
   (`CombatRules.AreAdjacent`는 위임). **마법은 아직 시스템이 없어 공유할 판정이 없다** — 도입 시 같은 함수를 쓴다.
   Core 테스트 `SightRulesTests`(옛 `VerticalOpeningRulesTests` 흡수).
-- [~] **3단계 — FOV/안개까지 높이 반영**: `GridVisibility`는 표면 스캔 + 눈높이 초과 차폐
-  (`HeightBlockThreshold`)까지 왔다. 남은 것은 컬럼당 여러 솔리드 구간(천장/공중)을 아는 span-aware
-  셰도우캐스팅으로 `SightRules`와 규칙을 합치는 일. 제일 큰 작업, 마지막.
+- [x] **3단계 — FOV/안개까지 높이 반영**: 셰도우캐스팅의 컬럼 해석을 `SightRules.ViewColumn`으로
+  옮겨 시야 판정을 전투 LoS와 한 출처로 합쳤다. 컬럼을 높이맵이 아니라 **span**으로 본다 —
+  눈높이 이하의 **지면**과 눈높이 위의 **머리 위 구조물**을 각각 결과에 넣으므로,
+  캐치워크 아래 바닥도 실제로 보이고(예전엔 맨 위 표면 하나만 보여 안개로 남았다)
+  캐치워크 위에 서면 눈높이가 올라가 아래가 이어져 보인다. 차단 규칙(void=불투명 ·
+  머리 위 구조물 · 벽/닫힌 문)과 `HeightBlockThreshold`(1단은 안 막음)는 그대로 유지했다.
+  단일 elevation 대역(테스트·대부분의 평면 층)에서는 결과가 이전과 완전히 동일하다.
+  Core 테스트 `ShadowcastFovTests`(캐치워크 span 2건) + `SightRulesTests`(ViewColumn 5건).
 - 상세 개념: `docs/ARCHITECTURE.md` §5(시야).
 
 관련 향후 과제(방향만, 미확정):

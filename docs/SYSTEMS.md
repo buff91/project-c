@@ -131,7 +131,8 @@
 ## 시야 / 안개 (FOV) — §5.2
 
 - 타일 상태: `Unknown` / `Explored` / `Visible`.
-- 알고리즘: **Recursive Shadowcasting (구현됨, `GridVisibility`)** — (x,y) 2D 8옥탄트 캐스팅 + 컬럼별 elevation 대역 표면 스캔. 반경은 체비셰프.
+- 알고리즘: **Recursive Shadowcasting (구현됨, `GridVisibility`)** — (x,y) 2D 8옥탄트 캐스팅 + 컬럼별 span 해석(`SightRules.ViewColumn`). 반경은 체비셰프.
+  - **컬럼은 높이맵이 아니라 span이다**: 눈높이 이하의 지면과 눈높이 위의 머리 위 구조물(캐치워크·메자닌)을 각각 결과에 넣는다. 캐치워크 아래 바닥도 보이고, 캐치워크 위에 서면 눈높이가 올라가 아래가 이어져 보인다. 지면보다 아래 타일은 덮여서 나오지 않는다.
   - **void(타일 없는 컬럼) = 불투명.** 이 던전은 방 경계를 벽 타일이 아니라 타일 부재로 표현하므로(벽은 비주얼 전용), 이 규칙이 "닫힌 문 뒤 방은 Unknown" 불변식의 핵심.
   - 닫힌 문/벽은 그 칸까지만 보이고 너머 차단. **Hole/약한 바닥/계단은 투과** (`SightRules.HasLineOfSight`와 동일 기준 — 원거리/폭탄과 시야가 일치).
   - 눈높이보다 1단을 초과해 높은 표면은 벽처럼 너머를 막는다(`HeightBlockThreshold`). 1단(raised)은 막지 않는다.

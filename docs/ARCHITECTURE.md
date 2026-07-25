@@ -147,10 +147,10 @@ tileFloor == activeFloor → visible || explored
 그 외 층                 → verticalPreview (Hole 국소 미리보기일 때만)
 ```
 
-> **3D(높이 인식) 시야선 — 진행 상태.** 1·2단계 완료: 전투 LoS가 높이 보간(복셀 차폐) 판정이 되었고,
-> 수평·경사·수직 판정이 `SightRules` 하나로 모였다(`VerticalOpeningRules` 흡수, 근접 도달 기하도 공유).
-> 남은 것은 3단계 — `GridVisibility` 셰도우캐스팅까지 같은 규칙으로 합치는 일이다.
-> void=불투명·렌더≠시뮬 불변식은 유지한다. 계획: `ROADMAP.md` "향후 기술 과제 — 3D 시야선".
+> **3D(높이 인식) 시야선 — 완료(1·2·3단계).** 전투 LoS는 높이 보간(복셀 차폐), 수평·경사·수직·
+> 개구부·근접 도달 기하는 `SightRules`로 통합(`VerticalOpeningRules` 흡수), FOV 셰도우캐스팅의
+> 컬럼 해석은 `SightRules.ViewColumn` 위임 — 컬럼을 span(지면 + 머리 위 구조물)으로 본다.
+> void=불투명·렌더≠시뮬 불변식은 그대로다. 남은 것은 이 토대 위의 입체 전투 콘텐츠.
 
 ---
 
@@ -256,6 +256,10 @@ tileFloor == activeFloor → visible || explored
   허공(타일 없음)은 통로, 온전한 바닥은 차단(`TileData.BlocksVerticalSight`) — 즉 실제 `Hole`만 층을 잇는다.
   "void=불투명"은 컬럼을 벽으로 읽는 수평 규칙이라 수직에는 적용하지 않는다.
 - `CanReachAcross(from, to, maxStepHeight)` — 근접 단차 타격의 기하(평면 인접+높이차). `CombatRules.AreAdjacent`가 위임.
+- `ViewColumn(map, x, y, origin, min, max)` → `ColumnView` — 컬럼을 눈높이 기준 **span**으로 해석한다.
+  **지면**(눈높이 이하 최고 타일) + **머리 위 구조물**(눈높이 위 첫 타일) + 너머 차단 여부.
+  지면 아래 타일은 덮여서 내지 않는다. `GridVisibility` 셰도우캐스팅이 이 판정만 쓴다(3단계).
+  눈높이 여유는 `HeightBlockThreshold`(1) — 1단 단차는 안 막고 2단 이상만 막는다.
 - `ViewFromFloor` — **오직 `Hole`만** 시야 포털(StairsUp/Down은 아님). 관찰자가 Hole 층이고 보이면 `Downward`,
   착지 층이고 보이면 `Upward`. 개구부↔착지 사이가 실제로 뚫려 있어야 하며 `isVisible` 델리게이트로 FOV를 존중.
 

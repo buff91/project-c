@@ -61,6 +61,72 @@ namespace ProjectC.Tests
             Assert.IsFalse(SightRules.HasVerticalSight(map, _opening, new GridPos(3, 3, -4)));
         }
 
+        // --- 컬럼 span 해석 (FOV가 쓰는 3단계 판정) ---
+
+        [Test]
+        public void ViewColumn_SplitsGroundAndOverhead_AndBlocksBeyond()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(1, 0, 0), TileKind.Floor); // 지면
+            map.Set(new GridPos(1, 0, 2), TileKind.Floor); // 머리 위 구조물
+
+            ColumnView column = SightRules.ViewColumn(map, 1, 0, new GridPos(0, 0, 0), 0, 3);
+
+            Assert.IsTrue(column.HasGround);
+            Assert.AreEqual(new GridPos(1, 0, 0), column.Ground);
+            Assert.IsTrue(column.HasOverhead);
+            Assert.AreEqual(new GridPos(1, 0, 2), column.Overhead);
+            Assert.IsTrue(column.BlocksBeyond, "머리 위 구조물은 벽처럼 너머를 막는다");
+        }
+
+        [Test]
+        public void ViewColumn_SingleStepUp_IsGroundAndDoesNotBlock()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(1, 0, 1), TileKind.Floor);
+
+            ColumnView column = SightRules.ViewColumn(map, 1, 0, new GridPos(0, 0, 0), 0, 3);
+
+            Assert.AreEqual(new GridPos(1, 0, 1), column.Ground);
+            Assert.IsFalse(column.HasOverhead);
+            Assert.IsFalse(column.BlocksBeyond, "1단 단차는 시야를 막지 않는다");
+        }
+
+        [Test]
+        public void ViewColumn_EmptyColumn_IsOpaqueVoid()
+        {
+            ColumnView column = SightRules.ViewColumn(new GridMap(), 1, 0, new GridPos(0, 0, 0), 0, 3);
+
+            Assert.IsFalse(column.HasGround);
+            Assert.IsFalse(column.HasOverhead);
+            Assert.IsTrue(column.BlocksBeyond, "void 컬럼은 무한 높이 벽");
+        }
+
+        [Test]
+        public void ViewColumn_TilesBelowGround_AreCovered()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(1, 0, 0), TileKind.Floor);
+            map.Set(new GridPos(1, 0, 1), TileKind.Floor); // 위 타일이 아래를 덮는다
+
+            ColumnView column = SightRules.ViewColumn(map, 1, 0, new GridPos(0, 0, 0), 0, 3);
+
+            Assert.AreEqual(new GridPos(1, 0, 1), column.Ground, "눈높이 이하에서 가장 높은 타일만 낸다");
+            Assert.IsFalse(column.HasOverhead);
+        }
+
+        [Test]
+        public void ViewColumn_WallGround_BlocksBeyondButIsSeen()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(1, 0, 0), TileKind.DoorClosed);
+
+            ColumnView column = SightRules.ViewColumn(map, 1, 0, new GridPos(0, 0, 0), 0, 3);
+
+            Assert.IsTrue(column.HasGround, "그 칸 자체는 보인다");
+            Assert.IsTrue(column.BlocksBeyond);
+        }
+
         // --- 근접 도달 기하 (근접·마법 공용) ---
 
         [TestCase(1, 0, 0, 1, true)]   // 같은 높이 정사각 인접

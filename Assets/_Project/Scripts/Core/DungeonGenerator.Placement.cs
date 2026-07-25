@@ -89,7 +89,7 @@ namespace ProjectC.Core
         /// 비우려 놓지 않는다. 사다리 링크로만 올라가므로 도달성 불변식이 유지되고,
         /// RNG를 쓰지 않아 생성 스트림도 흔들지 않는다.
         ///
-        /// 큰 단차(+2)는 높이 인식 FOV 차폐(<see cref="GridVisibility.HeightBlockThreshold"/>)와
+        /// 큰 단차(+2)는 높이 인식 FOV 차폐(<see cref="SightRules.HeightBlockThreshold"/>)와
         /// 내려치기·고지대 사격이 실제로 발동하는 층 내부 무대다.
         /// </summary>
         private static void PlaceCatwalk(GridMap map, FloorPlan p, int floorCount)
