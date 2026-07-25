@@ -195,7 +195,7 @@ namespace ProjectC.Gameplay
             label.color = new Color32(255, 229, 154, 255);
             MeshRenderer renderer = labelObject.GetComponent<MeshRenderer>();
             renderer.material = font.material;
-            renderer.sortingOrder = 31990;
+            renderer.sortingOrder = OverlaySorting.VerticalLabel;
             return label;
         }
 
@@ -383,7 +383,7 @@ namespace ProjectC.Gameplay
                 var backdrop = new GameObject("Dungeon Fog Backdrop");
                 backdrop.transform.SetParent(_visualRoot, false);
                 _dungeonFogBackdrop = backdrop.AddComponent<SpriteRenderer>();
-                _dungeonFogBackdrop.sortingOrder = -100000;
+                _dungeonFogBackdrop.sortingOrder = OverlaySorting.FogBackdrop;
             }
 
             int baseElevation = _dungeon.Height.Elevation(_activeFloorIndex);
@@ -504,7 +504,7 @@ namespace ProjectC.Gameplay
             shaft.transform.position = Vector3.Lerp(start, end, 0.5f) + Vector3.up * 0.05f;
             var renderer = shaft.AddComponent<SpriteRenderer>();
             renderer.sprite = GetShaftSprite(hole);
-            renderer.sortingOrder = 29980;
+            renderer.sortingOrder = OverlaySorting.Shaft;
             renderer.color = new Color(1f, 1f, 1f, viewMode == DungeonViewMode.DebugAll ? 0.72f : 0.9f);
             shaft.transform.localScale = new Vector3(1.15f, distance, 1f);
 
@@ -519,7 +519,7 @@ namespace ProjectC.Gameplay
             endpoint.transform.position = VisualPosition(pos) + Vector3.up * 0.035f;
             var renderer = endpoint.AddComponent<SpriteRenderer>();
             renderer.sprite = GetShaftEndpointSprite(hole, arrival);
-            renderer.sortingOrder = 29979;
+            renderer.sortingOrder = OverlaySorting.ShaftEndpoint;
             renderer.color = new Color(1f, 1f, 1f, arrival ? 0.72f : 0.95f);
         }
 

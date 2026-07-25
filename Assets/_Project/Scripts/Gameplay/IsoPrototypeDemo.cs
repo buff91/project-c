@@ -45,6 +45,28 @@ namespace ProjectC.Gameplay
         public const int TilePixelHeight = 32;
         public const int PixelsPerUnit = 64;
 
+        /// <summary>
+        /// IsoGrid.SortingOrder 로 배치할 수 없는 UI/오버레이 밴드의 정렬값 단일 출처.
+        /// 월드 지오메트리는 IsoGrid 로 정렬하고, 아래 값들은 항상 그 위(또는 fog 는 최후면)에 겹친다.
+        /// 절대값보다 상대 순서가 중요하다 — 값이 클수록 앞(카메라 쪽).
+        /// </summary>
+        private static class OverlaySorting
+        {
+            public const int FogBackdrop     = -100000; // 안개 배경: 항상 최후면
+            public const int ShaftEndpoint   = 29979;   // 수직 샤프트 끝점
+            public const int Shaft           = 29980;   // 수직 샤프트 본체
+            public const int PlayerFootprint = 29990;   // 플레이어 발자국 데칼
+            public const int HealthBarBack   = 30000;   // 체력바 배경
+            public const int HealthBarFill   = 30001;   // 체력바 채움
+            public const int PlayerLocator   = 30002;   // 플레이어 위치 표시(펄스)
+            public const int Burst           = 30003;   // 감정/문 상호작용 버스트 연출
+            public const int BossMarker      = 30004;   // 보스 표식
+            public const int Projectile      = 31000;   // 투사체
+            public const int Blast           = 31001;   // 폭발
+            public const int CombatFx        = 31002;   // 전투/상태이상 FX
+            public const int VerticalLabel   = 31990;   // 수직 경로 라벨
+        }
+
         [Header("프로토타입")]
         [Tooltip("층 한 변 크기. 키우면 방·복도가 넓어지고 적/아이템 밀도가 면적 비례로 따라 오른다.")]
         [Range(9, 20)] public int roomSize = 13;
@@ -580,7 +602,7 @@ namespace ProjectC.Gameplay
             locator.transform.localPosition = new Vector3(0f, 1.02f, 0f);
             var locatorRenderer = locator.AddComponent<SpriteRenderer>();
             locatorRenderer.sprite = GetPlayerLocatorSprite();
-            locatorRenderer.sortingOrder = 30002;
+            locatorRenderer.sortingOrder = OverlaySorting.PlayerLocator;
             _playerLocator = locator.transform;
 
             var footprint = new GameObject("Player Footprint");
@@ -590,7 +612,7 @@ namespace ProjectC.Gameplay
             footprintRenderer.sprite = visualCatalog != null && visualCatalog.playerFootprint != null
                 ? visualCatalog.playerFootprint
                 : GetPlayerFootprintSprite();
-            footprintRenderer.sortingOrder = 29990;
+            footprintRenderer.sortingOrder = OverlaySorting.PlayerFootprint;
             _playerFootprint = footprint.transform;
 
             Sprite barrelSprite = visualCatalog != null && visualCatalog.explosiveBarrel != null
@@ -935,14 +957,14 @@ namespace ProjectC.Gameplay
             background.transform.localPosition = new Vector3(-0.25f, 0.82f, 0f);
             var backgroundRenderer = background.AddComponent<SpriteRenderer>();
             backgroundRenderer.sprite = GetHealthBarSprite(false);
-            backgroundRenderer.sortingOrder = 30000;
+            backgroundRenderer.sortingOrder = OverlaySorting.HealthBarBack;
 
             var fill = new GameObject($"{objectName} Fill");
             fill.transform.SetParent(owner.transform, false);
             fill.transform.localPosition = new Vector3(-0.25f, 0.82f, 0f);
             var fillRenderer = fill.AddComponent<SpriteRenderer>();
             fillRenderer.sprite = GetHealthBarSprite(true);
-            fillRenderer.sortingOrder = 30001;
+            fillRenderer.sortingOrder = OverlaySorting.HealthBarFill;
             return fill.transform;
         }
 

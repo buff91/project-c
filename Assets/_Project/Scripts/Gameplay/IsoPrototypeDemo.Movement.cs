@@ -138,7 +138,7 @@ namespace ProjectC.Gameplay
             effect.transform.position = _grid.GridToWorld(door) + Vector3.up * 0.42f;
             var renderer = effect.AddComponent<SpriteRenderer>();
             renderer.sprite = GetDoorInteractionSprite(opening);
-            renderer.sortingOrder = 30003;
+            renderer.sortingOrder = OverlaySorting.Burst;
 
             float elapsed = 0f;
             const float duration = 0.16f;

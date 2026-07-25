@@ -170,11 +170,7 @@ namespace ProjectC.Gameplay
                     out int damage,
                     rangedAttackDamage))
             {
-                if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
-                yield return AnimateProjectile(_playerPos, enemy.State.Position);
-                InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
-                yield return ShowEnemyHit(enemy, damage, "Ranged");
-                yield return ResolveEnemyPhase();
+                yield return FireRanged(enemy, damage);
             }
             else
             {
@@ -209,13 +205,19 @@ namespace ProjectC.Gameplay
                         _playerState, enemy.State, _grid.Map, rangedAttackRange,
                         out int approachDamage, rangedAttackDamage))
                 {
-                    if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
-                    yield return AnimateProjectile(_playerPos, enemy.State.Position);
-                    InteractionFeedback?.Invoke($"RANGED HIT · {approachDamage} DAMAGE");
-                    yield return ShowEnemyHit(enemy, approachDamage, "Ranged");
-                    yield return ResolveEnemyPhase();
+                    yield return FireRanged(enemy, approachDamage);
                 }
             }
+        }
+
+        /// <summary>원거리 명중 연출·텔레메트리·적 페이즈 해소 — 즉시 발사와 접근 후 발사가 공유한다.</summary>
+        private IEnumerator FireRanged(EnemyAgent enemy, int damage)
+        {
+            if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
+            yield return AnimateProjectile(_playerPos, enemy.State.Position);
+            InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
+            yield return ShowEnemyHit(enemy, damage, "Ranged");
+            yield return ResolveEnemyPhase();
         }
 
         private IEnumerator DrinkPotion()
@@ -384,7 +386,7 @@ namespace ProjectC.Gameplay
             blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
             var renderer = blast.AddComponent<SpriteRenderer>();
             renderer.sprite = GetBlastSprite(fiery);
-            renderer.sortingOrder = 31001;
+            renderer.sortingOrder = OverlaySorting.Blast;
 
             float elapsed = 0f;
             const float duration = 0.24f;
@@ -409,7 +411,7 @@ namespace ProjectC.Gameplay
             projectile.transform.SetParent(_visualRoot, false);
             var renderer = projectile.AddComponent<SpriteRenderer>();
             renderer.sprite = GetProjectileSprite();
-            renderer.sortingOrder = 31000;
+            renderer.sortingOrder = OverlaySorting.Projectile;
 
             Vector3 start = _grid.GridToWorld(from) + Vector3.up * 0.42f;
             Vector3 end = _grid.GridToWorld(to) + Vector3.up * 0.42f;
