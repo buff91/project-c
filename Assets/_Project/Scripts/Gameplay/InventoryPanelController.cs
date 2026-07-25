@@ -335,6 +335,7 @@ namespace ProjectC.Gameplay
                     : kind == ItemKind.Potion ? "마시기"
                     : kind == ItemKind.RecallScroll ? "사용하기"
                     : kind == ItemKind.CannedFood ? "먹기"
+                    : kind == ItemKind.ExtractionBeacon ? "생환하기"
                     : EquipmentCatalog.IsEquipment(kind) ? "허브에서 장착"
                     : "조준하기";
             }
@@ -378,6 +379,9 @@ namespace ProjectC.Gameplay
                     break;
                 case ItemKind.CannedFood:
                     demo.EatFood();
+                    break;
+                case ItemKind.ExtractionBeacon:
+                    demo.UseExtractionBeacon();
                     break;
                 default:
                     demo.ToggleAim(selected);

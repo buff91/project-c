@@ -35,6 +35,7 @@ namespace ProjectC.Core
         public int powders;
         public int frostShards;
         public int cannedFood;
+        public int extractionBeacons;
         public int kills;
         public int deepestFloorIndex;
 
@@ -68,6 +69,7 @@ namespace ProjectC.Core
             powders = inventory.Count(ItemKind.BlastPowder);
             frostShards = inventory.Count(ItemKind.FrostShard);
             cannedFood = inventory.Count(ItemKind.CannedFood);
+            extractionBeacons = inventory.Count(ItemKind.ExtractionBeacon);
         }
 
         /// <summary>세이브에 담긴 종류별 수량을 인벤토리에 더한다(WriteItems 의 역). 0 은 건너뛴다.</summary>
@@ -87,6 +89,8 @@ namespace ProjectC.Core
             if (powders > 0) inventory.Add(ItemKind.BlastPowder, powders);
             if (frostShards > 0) inventory.Add(ItemKind.FrostShard, frostShards);
             if (cannedFood > 0) inventory.Add(ItemKind.CannedFood, cannedFood);
+            if (extractionBeacons > 0)
+                inventory.Add(ItemKind.ExtractionBeacon, extractionBeacons);
         }
     }
 

@@ -16,6 +16,22 @@ namespace ProjectC.Gameplay
         {
             if (_exitModal == null || demo == null) return;
             CloseTransientOverlays();
+
+            // 중간 탈출구: "정복/다음 던전"이 아니라 "계속 탐색 vs 여기서 생환"이다.
+            if (demo.AtExtractionPoint)
+            {
+                int carried = demo.CarriedTreasureGold();
+                if (_exitTitle != null) _exitTitle.text = "비상 탈출구";
+                if (_exitDesc != null)
+                    _exitDesc.text =
+                        $"여기서 나가면 들고 있는 것을 지킨다 · 전리품 가치 " +
+                        $"{ItemCatalog.FormatGold(carried)} · 더 내려가면 되돌아올 길이 멀어진다";
+                if (_exitAdvance != null) _exitAdvance.text = "계속 탐색";
+                _exitModal.BringToFront();
+                _exitModal.AddToClassList("is-open");
+                return;
+            }
+
             bool finalExit = !demo.HasNextStage;
             if (_exitTitle != null)
                 _exitTitle.text = finalExit ? "봉인 해제된 출구" : "던전 출구";
@@ -66,6 +82,8 @@ namespace ProjectC.Gameplay
         private void HandleExitAdvance()
         {
             _exitModal?.RemoveFromClassList("is-open");
+            // 중간 탈출구에서 "계속 탐색"은 그냥 닫는다 — 던전 전환이 아니다.
+            if (demo != null && demo.AtExtractionPoint) return;
             demo?.ConfirmAdvanceStage();
         }
 

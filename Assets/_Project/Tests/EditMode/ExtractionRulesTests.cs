@@ -1,0 +1,85 @@
+using NUnit.Framework;
+using ProjectC.Core;
+
+namespace ProjectC.Tests
+{
+    /// <summary>
+    /// 중간 탈출구: 구간마다 물러설 기회를 주되 아무 데서나 나가지는 못하게 한다.
+    /// 배고픔과 짝을 이루는 결정("다음 탈출구까지 버틸 식량이 있나")의 골격이다.
+    /// </summary>
+    public class ExtractionRulesTests
+    {
+        [TestCase(0, 10, false)] // 입구 층 — 들어가자마자 나가는 문은 두지 않는다
+        [TestCase(1, 10, false)]
+        [TestCase(2, 10, true)]  // B3
+        [TestCase(3, 10, false)]
+        [TestCase(5, 10, true)]  // B6
+        [TestCase(8, 10, true)]  // B9
+        [TestCase(9, 10, false)] // 최심층은 기존 던전 출구가 담당한다
+        public void HasExtractionPoint_EveryThirdFloor_ExceptEnds(
+            int depth, int floorCount, bool expected)
+        {
+            Assert.AreEqual(expected, ExtractionRules.HasExtractionPoint(depth, floorCount));
+        }
+
+        [Test]
+        public void ShortDungeons_HaveNoMidExtraction()
+        {
+            for (int depth = 0; depth < 3; depth++)
+            {
+                Assert.IsFalse(ExtractionRules.HasExtractionPoint(depth, 1));
+                Assert.IsFalse(ExtractionRules.HasExtractionPoint(depth, 3));
+            }
+        }
+
+        [Test]
+        public void FloorsToNextExtraction_CountsForward_AndReportsNone()
+        {
+            Assert.AreEqual(2, ExtractionRules.FloorsToNextExtraction(0, 10), "B1 → B3");
+            Assert.AreEqual(3, ExtractionRules.FloorsToNextExtraction(2, 10), "B3 → B6");
+            Assert.AreEqual(-1, ExtractionRules.FloorsToNextExtraction(8, 10),
+                "B9 아래로는 중간 탈출구가 없다");
+        }
+
+        [Test]
+        public void Generator_PlacesExtractionPoint_OnEveryExtractionFloor()
+        {
+            for (int seed = 0; seed < 16; seed++)
+            {
+                var map = new GridMap();
+                DungeonLayout layout = DungeonGenerator.Generate(map, 13, 13, floorCount: 10, seed: seed);
+
+                foreach (DungeonFloorInfo floor in layout.Floors)
+                {
+                    int depth = -floor.FloorIndex;
+                    bool expected = ExtractionRules.HasExtractionPoint(depth, layout.Floors.Count);
+                    Assert.AreEqual(expected, floor.ExtractionPoint.HasValue,
+                        $"seed {seed} depth {depth}: 탈출구 유무가 규칙과 다르다");
+
+                    if (!floor.ExtractionPoint.HasValue) continue;
+
+                    GridPos point = floor.ExtractionPoint.Value;
+                    Assert.AreEqual(TileKind.Floor, map.Get(point)?.kind, "탈출구는 걷는 바닥 위에 선다");
+                    Assert.AreNotEqual(floor.Entry, point, "입구 칸을 덮지 않는다");
+                    Assert.IsFalse(floor.EnemySpawns.Contains(point), "적 스폰과 겹치지 않는다");
+                    foreach (ItemSpawn spawn in floor.Items)
+                        Assert.AreNotEqual(spawn.Position, point, "아이템과 겹치지 않는다");
+                    Assert.Greater(
+                        GridPathfinder.FindPath(map, floor.Entry, point).Count, 0,
+                        $"seed {seed}: 탈출구는 도달 가능해야 한다");
+                }
+            }
+        }
+
+        [Test]
+        public void Beacon_IsAConsumableEscape_SoldExpensively()
+        {
+            Assert.IsFalse(ItemCatalog.IsTreasure(ItemKind.ExtractionBeacon));
+            Assert.IsFalse(ItemCatalog.IsMaterial(ItemKind.ExtractionBeacon));
+            Assert.Greater(
+                ItemCatalog.ShopPrice(ItemKind.ExtractionBeacon),
+                ItemCatalog.ShopPrice(ItemKind.CannedFood),
+                "살아 나갈 권리는 식량보다 비싸다");
+        }
+    }
+}

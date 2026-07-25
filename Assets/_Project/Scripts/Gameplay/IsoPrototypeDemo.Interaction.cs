@@ -319,6 +319,14 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            if (!hubMode && TryGetExtractionPointAt(target, out ExtractionAgent extraction))
+            {
+                if (TryFindApproach(target, out List<GridPos> extractionPath))
+                    StartPlayerAction(
+                        target, ApproachAndOfferExtraction(extractionPath, extraction));
+                return;
+            }
+
             if (!hubMode && TryGetRestSiteAt(target, out RestSiteAgent restSite))
             {
                 if (IsRestSiteUsed(restSite))

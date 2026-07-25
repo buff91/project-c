@@ -132,6 +132,40 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 중간 탈출구 — 지상으로 끌어올리는 승강 장치. 출구(틸 신호)와 같은 색군을 써서
+        /// "여기로 나간다"가 한눈에 읽히게 하고, 제단·모닥불과는 실루엣으로 구분한다.
+        /// </summary>
+        private Sprite GetExtractionPointSprite()
+        {
+            const string key = "extraction-point";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(40, 56);
+            Color32 frameDark = new Color32(28, 32, 36, 255);
+            Color32 frame = new Color32(74, 80, 86, 255);
+            Color32 teal = new Color32(45, 148, 142, 255);
+            Color32 tealCore = new Color32(103, 241, 218, 255);
+
+            FillRect(texture, 4, 2, 32, 6, frameDark);        // 발판
+            FillRect(texture, 7, 3, 26, 3, frame);
+            DrawThickLine(texture, 7, 6, 7, 50, 3, frameDark); // 좌우 기둥
+            DrawThickLine(texture, 32, 6, 32, 50, 3, frameDark);
+            FillRect(texture, 4, 48, 32, 6, frameDark);        // 상단 대들보
+            FillRect(texture, 7, 49, 26, 3, frame);
+
+            // 위로 뻗는 신호 — 올라간다는 방향을 색과 화살로 함께 말한다.
+            FillRect(texture, 18, 8, 4, 38, teal);
+            FillRect(texture, 19, 10, 2, 34, tealCore);
+            DrawThickLine(texture, 20, 46, 13, 38, 2, tealCore);
+            DrawThickLine(texture, 20, 46, 27, 38, 2, tealCore);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.06f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetLocalStairLandmarkSprite()
         {
             const string key = "landmark-local-stairs";

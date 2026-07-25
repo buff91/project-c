@@ -92,6 +92,7 @@ namespace ProjectC.Gameplay
             }
             ApplyRestSiteView();
             ApplyBossAltarView();
+            ApplyExtractionPointView();
             if (_barrelRenderer != null)
             {
                 _barrel.transform.position = _grid.GridToWorld(_barrelPos);

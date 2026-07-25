@@ -11,6 +11,7 @@ namespace ProjectC.Core
         public GridPos? DownStairs { get; }
         public GridPos? Hole { get; }
         public GridPos? RestSite { get; }
+        public GridPos? ExtractionPoint { get; }
         public GridPos? Landmark { get; }
         public IReadOnlyList<GridPos> Windows { get; }
         public IReadOnlyList<GridPos> EnemySpawns { get; }
@@ -38,7 +39,8 @@ namespace ProjectC.Core
             IReadOnlyList<GridPos> secretRoomTiles = null,
             GridPos? secretReward = null,
             GridPos? landmark = null,
-            IReadOnlyList<GridPos> windows = null)
+            IReadOnlyList<GridPos> windows = null,
+            GridPos? extractionPoint = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -55,6 +57,7 @@ namespace ProjectC.Core
             SecretReward = secretReward;
             Landmark = landmark;
             Windows = windows ?? Array.Empty<GridPos>();
+            ExtractionPoint = extractionPoint;
         }
     }
 
@@ -147,6 +150,7 @@ namespace ProjectC.Core
                 PickEnemySpawns(map, random, plan, floorCount);
                 PlaceItems(map, random, plan);
                 PlaceEquipment(map, random, plan);
+                PlaceExtractionPoint(map, plan, floorCount);
                 PlaceBossLandmark(map, plan, floorCount);
                 PlaceCatwalk(map, plan, floorCount);
                 PlaceWindows(map, heightModel, plan, bottomElevation);
@@ -169,7 +173,8 @@ namespace ProjectC.Core
                     plan.SecretRoomTiles,
                     plan.SecretReward,
                     plan.Landmark,
-                    plan.Windows));
+                    plan.Windows,
+                    plan.ExtractionPoint));
             }
 
             return new DungeonLayout(heightModel, floors);
@@ -242,6 +247,7 @@ namespace ProjectC.Core
             public GridPos? Down;
             public GridPos? Hole;
             public GridPos? RestSite;
+            public GridPos? ExtractionPoint;
             public GridPos? Landmark;
             public GridPos? SecretDoor;
             public GridPos? SecretReward;

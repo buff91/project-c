@@ -22,6 +22,7 @@ namespace ProjectC.Core
         public int powders;
         public int frostShards;
         public int cannedFood;
+        public int extractionBeacons;
         public int loadoutPotions;
         public int loadoutBombs;
         public int loadoutFrostBombs;
@@ -32,6 +33,7 @@ namespace ProjectC.Core
         public int loadoutPowders;
         public int loadoutFrostShards;
         public int loadoutCannedFood;
+        public int loadoutExtractionBeacons;
 
         // 장비 창고 (대장간에서 제작해 보관한다).
         public int pipeSpears;
@@ -62,6 +64,7 @@ namespace ProjectC.Core
                 case ItemKind.BlastPowder: return powders;
                 case ItemKind.FrostShard: return frostShards;
                 case ItemKind.CannedFood: return cannedFood;
+                case ItemKind.ExtractionBeacon: return extractionBeacons;
                 case ItemKind.PipeSpear: return pipeSpears;
                 case ItemKind.HeavyWrench: return heavyWrenches;
                 case ItemKind.SignShield: return signShields;
@@ -84,6 +87,7 @@ namespace ProjectC.Core
                 case ItemKind.BlastPowder: powders += amount; break;
                 case ItemKind.FrostShard: frostShards += amount; break;
                 case ItemKind.CannedFood: cannedFood += amount; break;
+                case ItemKind.ExtractionBeacon: extractionBeacons += amount; break;
                 case ItemKind.PipeSpear: pipeSpears += amount; break;
                 case ItemKind.HeavyWrench: heavyWrenches += amount; break;
                 case ItemKind.SignShield: signShields += amount; break;
@@ -114,6 +118,7 @@ namespace ProjectC.Core
                 case ItemKind.BlastPowder: return loadoutPowders;
                 case ItemKind.FrostShard: return loadoutFrostShards;
                 case ItemKind.CannedFood: return loadoutCannedFood;
+                case ItemKind.ExtractionBeacon: return loadoutExtractionBeacons;
                 default: return 0;
             }
         }
@@ -132,6 +137,7 @@ namespace ProjectC.Core
                 case ItemKind.BlastPowder: loadoutPowders += amount; break;
                 case ItemKind.FrostShard: loadoutFrostShards += amount; break;
                 case ItemKind.CannedFood: loadoutCannedFood += amount; break;
+                case ItemKind.ExtractionBeacon: loadoutExtractionBeacons += amount; break;
             }
         }
 
@@ -148,12 +154,13 @@ namespace ProjectC.Core
             loadoutPotions = loadoutBombs = loadoutFrostBombs = 0;
             loadoutOilFlasks = loadoutKnives = loadoutScrolls = 0;
             loadoutHerbs = loadoutPowders = loadoutFrostShards = loadoutCannedFood = 0;
+            loadoutExtractionBeacons = 0;
         }
 
         public void ClearItems()
         {
             potions = bombs = frostBombs = oilFlasks = knives = scrolls = 0;
-            herbs = powders = frostShards = cannedFood = 0;
+            herbs = powders = frostShards = cannedFood = extractionBeacons = 0;
             ClearLoadout();
         }
 

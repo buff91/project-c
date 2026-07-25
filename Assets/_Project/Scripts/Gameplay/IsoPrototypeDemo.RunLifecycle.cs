@@ -175,6 +175,7 @@ namespace ProjectC.Gameplay
                 return false;
             }
 
+            AtExtractionPoint = false;
             InteractionFeedback?.Invoke(
                 HasNextStage ? "다음 던전으로 향할 수 있다" : "정복한 던전을 떠날 시간이다");
             ExitChoiceRequested?.Invoke();

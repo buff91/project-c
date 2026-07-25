@@ -20,23 +20,26 @@ namespace ProjectC.Core
     /// 파밍이 기둥 4인 이 게임에서 시간 제한은 탐색·조합·숨은 방을 통째로 죽인다.
     /// 굶어도 즉사시키지 않고 천천히 깎아 "해결하라"는 신호만 준다.
     ///
-    /// 수치는 실플레이 전 임시다. 기준: 한 층 정리에 40~60턴을 가정하면 B1~B10 완주는
-    /// 400~600턴이므로, 가득 찬 배(<see cref="MaxSatiation"/>)로는 모자라고 통조림
-    /// 한두 개가 필요하다 — 되돌아갈수록 더 든다.
+    /// 수치는 실플레이 전 임시다. 기준: 한 층 정리에 40~60턴을 가정하면 **가득 찬 배가
+    /// 두 층을 채 못 버틴다** — 판마다 한두 번 먹는 게 아니라 중간중간 자주 먹는 리듬이다.
+    /// 그래서 한 통이 배를 다 채우지 않고, 통조림을 흔하게 뿌린다.
     /// </summary>
     public static class HungerRules
     {
-        public const int MaxSatiation = 350;
+        public const int MaxSatiation = 100;
 
-        /// <summary>이 값 아래면 <see cref="HungerStage.Hungry"/> — 경고만 한다.</summary>
-        public const int HungryThreshold = 100;
+        /// <summary>
+        /// 이 값 아래면 <see cref="HungerStage.Hungry"/> — **경고만 한다**.
+        /// 나중에 이 단계에 별도 상태이상(집중력 저하 등)을 붙일 자리다. HP는 건드리지 않는다.
+        /// </summary>
+        public const int HungryThreshold = 30;
 
         /// <summary>굶주림 상태에서 이 턴 수마다 <see cref="StarvingDamage"/> 만큼 깎인다.</summary>
-        public const int StarvingDamageInterval = 8;
+        public const int StarvingDamageInterval = 5;
         public const int StarvingDamage = 1;
 
-        /// <summary>통조림 하나가 채우는 양.</summary>
-        public const int RationSatiation = 200;
+        /// <summary>통조림 하나가 채우는 양. 배를 가득 채우지 못한다 — 자주 먹게 만드는 값.</summary>
+        public const int RationSatiation = 60;
 
         public static HungerStage StageFor(int satiation)
         {

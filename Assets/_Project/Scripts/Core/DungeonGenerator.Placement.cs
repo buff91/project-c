@@ -84,6 +84,33 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 중간 탈출구 배치. 어느 층에 두는지는 <see cref="ExtractionRules"/>가 정하고,
+        /// 자리는 입구에서 가장 먼 남쪽 방 바닥으로 결정론적으로 고른다 —
+        /// 층에 들어서자마자 나가는 게 아니라 "돌아 나오는" 동선이 되게 한다.
+        /// RNG를 쓰지 않아 생성 스트림을 흔들지 않는다.
+        /// </summary>
+        private static void PlaceExtractionPoint(GridMap map, FloorPlan p, int floorCount)
+        {
+            if (!ExtractionRules.HasExtractionPoint(-p.FloorIndex, floorCount)) return;
+
+            GridPos best = default;
+            int bestDistance = -1;
+            for (int x = 0; x < p.Width; x++)
+            for (int y = 0; y <= p.LowerMaxY; y++)
+            {
+                var pos = new GridPos(x, y, p.BaseElevation);
+                if (!IsFreeForSpawn(map, p, pos)) continue;
+
+                int distance = p.Entry.ManhattanTo(pos);
+                if (distance <= bestDistance) continue;
+                bestDistance = distance;
+                best = pos;
+            }
+
+            if (bestDistance >= 0) p.ExtractionPoint = best;
+        }
+
+        /// <summary>
         /// 던전 장비 배치 — 층당 최대 하나. 깊이 게이트·확률·종류는 <see cref="EquipmentDropRules"/>가
         /// 소유한다. 주운 장비는 백팩 면적을 먹고, 살아 나와야 창고로 들어간다(익스트랙션).
         /// 아이템 배치가 끝난 뒤 남은 빈 칸에만 놓아 기존 스폰과 겹치지 않는다.
@@ -228,23 +255,23 @@ namespace ProjectC.Core
         {
             ItemKind RollKind()
             {
-                // 분배(/21): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
-                // 통조림3(배고픔의 해답 — 굶어 죽는 게 기본값이 되지 않게 넉넉히) ·
+                // 분배(/23): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
+                // 통조림5(배고픔이 짧은 주기라 자주 먹어야 한다 — 굶어 죽는 게 기본값이 되면 안 된다) ·
                 // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
                 // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
-                int roll = random.Next(0, 21);
+                int roll = random.Next(0, 23);
                 if (roll < 3) return ItemKind.Potion;
                 if (roll < 6) return ItemKind.Bomb;
                 if (roll < 7) return ItemKind.FrostBomb;
                 if (roll < 8) return ItemKind.OilFlask;
                 if (roll < 9) return ItemKind.ThrowingKnife;
                 if (roll < 10) return ItemKind.RecallScroll;
-                if (roll < 13) return ItemKind.CannedFood;
-                if (roll < 15) return ItemKind.CoinPouch;
-                if (roll < 16) return ItemKind.Gemstone;
-                if (roll < 17) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
-                if (roll < 19) return ItemKind.Herb;
-                if (roll < 20) return ItemKind.BlastPowder;
+                if (roll < 15) return ItemKind.CannedFood;
+                if (roll < 17) return ItemKind.CoinPouch;
+                if (roll < 18) return ItemKind.Gemstone;
+                if (roll < 19) return p.FloorIndex <= -2 ? ItemKind.Relic : ItemKind.CoinPouch;
+                if (roll < 21) return ItemKind.Herb;
+                if (roll < 22) return ItemKind.BlastPowder;
                 return ItemKind.FrostShard;
             }
 
@@ -265,8 +292,12 @@ namespace ProjectC.Core
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
                 {
+                    // 숨은 방 보상: 깊은 층은 유물, 중간 깊이는 비상 송출기(살아 나갈 권리),
+                    // 얕은 층은 보석. 탈출 수단을 파밍으로도 얻을 수 있게 한다.
                     ItemKind kind = p.BranchIsSecret
-                        ? (p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone)
+                        ? (p.FloorIndex <= -5
+                            ? ItemKind.Relic
+                            : p.FloorIndex <= -2 ? ItemKind.ExtractionBeacon : ItemKind.Gemstone)
                         : RollKind();
                     p.Items.Add(new ItemSpawn(pos, kind));
                     if (p.BranchIsSecret)
