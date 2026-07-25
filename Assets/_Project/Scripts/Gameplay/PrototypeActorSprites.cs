@@ -206,6 +206,103 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 엘리베이터 설비 표지. <paramref name="powered"/>로 <b>멈춘 것과 움직이는 것</b>을 가른다 —
+        /// 플레이어는 보스로 가는 길에 멈춘 것을 먼저 보고, 보스를 잡은 뒤 같은 자리가 켜진 것을 본다.
+        /// 그 대비가 곧 "건물이 깨어났다"라서, 두 변주의 실루엣은 같고 <b>신호등과 문틈만</b> 달라진다.
+        ///
+        /// <para>
+        /// 신호색은 틸이다 — 이 게임에서 틸은 "이제 열렸다"의 어휘이고(보스 출구 해금·포탈),
+        /// 토치 골드는 물리 광원이라 해금 신호로 쓰면 두 언어가 섞인다.
+        /// </para>
+        /// </summary>
+        internal Sprite GetElevatorLandmarkSprite(bool powered)
+        {
+            string key = powered ? "landmark-elevator-on" : "landmark-elevator-off";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(40, 76);
+            Color32 outline = new Color32(18, 16, 21, 255);
+            Color32 frame = new Color32(88, 88, 95, 255);
+            Color32 frameLight = new Color32(124, 124, 130, 255);
+            Color32 door = new Color32(58, 58, 65, 255);
+            Color32 doorRib = new Color32(44, 44, 50, 255);
+            Color32 rust = new Color32(112, 66, 38, 255);
+            Color32 signal = powered
+                ? new Color32(71, 191, 181, 255)
+                : new Color32(50, 44, 49, 255);
+            Color32 signalCore = powered
+                ? new Color32(176, 244, 236, 255)
+                : new Color32(62, 55, 59, 255);
+
+            // 프레임: "문이 있는 상자". 사다리의 가로대 반복과 실루엣이 달라야 한다.
+            FillRect(texture, 4, 4, 32, 62, outline);
+            FillRect(texture, 6, 6, 28, 58, frame);
+            // 좌상단 광원 규약 — 왼쪽 레일과 인방 위쪽만 밝다.
+            FillRect(texture, 6, 6, 3, 58, frameLight);
+            FillRect(texture, 6, 61, 28, 3, frameLight);
+
+            // 문짝 두 짝. 프레임보다 어두워야 문으로 읽힌다(같은 값이면 빈 판이 된다).
+            const int doorLeft = 11;
+            const int doorRight = 29;   // exclusive
+            const int doorBottom = 10;
+            const int doorTop = 56;     // exclusive
+            int half = (doorLeft + doorRight) / 2;
+            int parting = powered ? 3 : 0;  // 전원이 들어오면 가운데가 벌어진다
+
+            FillRect(texture, doorLeft - 1, doorBottom - 1,
+                doorRight - doorLeft + 2, doorTop - doorBottom + 2, outline);
+
+            // 왼쪽 짝
+            FillRect(texture, doorLeft, doorBottom,
+                half - parting - doorLeft, doorTop - doorBottom, door);
+            // 오른쪽 짝
+            FillRect(texture, half + parting, doorBottom,
+                doorRight - half - parting, doorTop - doorBottom, door);
+
+            // 문짝 리브 — 금속 문으로 읽히게 하는 최소 디테일.
+            for (int ribY = doorBottom + 8; ribY < doorTop - 4; ribY += 14)
+            {
+                DrawThickLine(texture, doorLeft + 1, ribY, half - parting - 2, ribY, 1, doorRib);
+                DrawThickLine(texture, half + parting + 1, ribY, doorRight - 2, ribY, 1, doorRib);
+            }
+
+            if (powered)
+            {
+                // 벌어진 틈으로 보이는 켜진 승강로. 검은 슬릿으로 두면 "빛나는 기둥"처럼
+                // 보이므로, 틈 자체를 신호색으로 채우고 위아래만 어둡게 남긴다.
+                FillRect(texture, half - parting, doorBottom, parting * 2, doorTop - doorBottom, signal);
+                FillRect(texture, half - parting, doorTop - 6, parting * 2, 6, signalCore);
+                FillRect(texture, half - parting, doorBottom, parting * 2, 3, outline);
+            }
+            else
+            {
+                // 닫힌 문의 맞물림선.
+                DrawThickLine(texture, half, doorBottom, half, doorTop - 1, 1, outline);
+            }
+
+            // 층 표시등: 인방 위. 전원 상태가 가장 먼저 읽히는 지점이다.
+            FillRect(texture, 13, 67, 14, 7, outline);
+            FillRect(texture, 14, 68, 12, 5, signal);
+            FillRect(texture, 17, 69, 6, 3, signalCore);
+
+            // 문턱.
+            FillRect(texture, 7, 5, 26, 3, powered ? signal : frameLight);
+
+            if (!powered)
+            {
+                // 녹은 프레임 하단 모서리에 붙인다 — 떠 있는 얼룩이 아니라 풍화로 읽히게.
+                FillRect(texture, 6, 8, 3, 11, rust);
+                FillRect(texture, 31, 6, 3, 8, rust);
+                FillRect(texture, 6, 30, 2, 5, rust);
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.07f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         internal Sprite GetLadderLandmarkSprite()
         {
             const string key = "landmark-ladder";

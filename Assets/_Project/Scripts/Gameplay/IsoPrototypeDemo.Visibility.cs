@@ -140,6 +140,18 @@ namespace ProjectC.Gameplay
                         break;
                     case TileKind.Ladder:
                     {
+                        // 엘리베이터는 사다리 타일을 쓰지만 읽히는 것이 달라야 한다. 게다가
+                        // 아래 사다리 규칙("위로 가는 링크가 있는 아래쪽 끝")에 걸려 전원 전에는
+                        // 링크가 없어서, 전원 후에는 링크가 아래로 가서 **양쪽 다 표지가 안 세워진다**.
+                        if (IsElevatorEntrance(anchor))
+                        {
+                            IReadOnlyList<GridPos> elevatorLinks = _grid.Map.LinksFrom(anchor);
+                            if (elevatorLinks.Count > 0) destination = elevatorLinks[0];
+                            sprite = ActorSprites.GetElevatorLandmarkSprite(_elevatorPowered);
+                            labelHeight = 1.06f;
+                            break;
+                        }
+
                         IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(anchor);
                         if (links.Count == 0 || links[0].elevation < anchor.elevation)
                             continue; // 한 쌍의 낮은 끝에서만 세워진 사다리를 하나 만든다.

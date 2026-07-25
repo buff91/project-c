@@ -81,6 +81,16 @@ namespace ProjectC.Gameplay
                 1f);
         }
 
+        /// <summary>이 칸이 엘리베이터 <b>탑승구</b>인가. 표지는 탑승구에만 세운다 —
+        /// 도착 칸에도 세우면 한 대가 두 대로 보인다.</summary>
+        private bool IsElevatorEntrance(GridPos pos)
+        {
+            if (_dungeon == null) return false;
+            foreach (DungeonFloorInfo floor in _dungeon.Floors)
+                if (floor.ElevatorShaft.HasValue && floor.ElevatorShaft.Value == pos) return true;
+            return false;
+        }
+
         /// <summary>이 칸이 엘리베이터 설비(탑승구 또는 도착 칸)인가.</summary>
         private bool IsElevatorTile(GridPos pos)
         {
@@ -125,6 +135,8 @@ namespace ProjectC.Gameplay
             // 복귀 전용이라 한 방향이다 — 타고 올라오면 계단을 건너뛰는 지름길이 된다.
             _grid.Map.Connect(entrance.Value, landing.Value, bidirectional: false);
             _elevatorPowered = true;
+            // 표지를 다시 그린다 — 안 하면 다음 시야 갱신까지 멈춘 스프라이트가 남는다.
+            RefreshFloorVisibility();
             InteractionFeedback?.Invoke("건물에 전원이 들어왔다 — 엘리베이터가 움직인다");
         }
 
