@@ -120,5 +120,25 @@ namespace ProjectC.Core
 
             return field;
         }
+
+        /// <summary>
+        /// (dirX, dirY) 방향 이웃 컬럼이 이 타일에 그림자를 드리우는지. 고정 키 라이트가
+        /// 그 방향에서 온다고 볼 때, 이웃 표면이 벽이거나 이 타일보다 높으면 빛을 막아
+        /// 발치에 방향성 캐스트 그림자를 만든다(벽·융기 지형 밑동 그림자).
+        /// </summary>
+        public static bool ShadowedByNeighbor(
+            GridMap map, GridPos pos, int minElevation, int maxElevation, int dirX, int dirY)
+        {
+            if (map == null) return false;
+            int nx = pos.x + dirX;
+            int ny = pos.y + dirY;
+            for (int e = maxElevation; e >= minElevation; e--)
+            {
+                if (!map.TryGet(new GridPos(nx, ny, e), out TileData tile)) continue;
+                if (tile.BlocksSight) return true;   // 벽이 키 라이트를 막는다
+                return e > pos.elevation;            // 더 높은 표면이면 그림자, 같거나 낮으면 아니다
+            }
+            return false;
+        }
     }
 }

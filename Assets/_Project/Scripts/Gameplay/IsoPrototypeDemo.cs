@@ -131,6 +131,20 @@ namespace ProjectC.Gameplay
         [Tooltip("접촉 그림자의 최대 진하기. 밝은 곳일수록 진하게, 어두운 곳일수록 옅게 나온다.")]
         [Range(0.1f, 0.9f)] public float contactShadowStrength = 0.55f;
 
+        [Header("빛 색 / 방향성 그림자")]
+        [Tooltip("광원에 색을 입힌다: 불·등잔은 따뜻한 앰버, 개구부에서 새어드는 빛은 차가운 블루.")]
+        public bool coloredLight = true;
+        [Tooltip("색조의 세기(0이면 흑백 밝기만).")]
+        [Range(0f, 1f)] public float lightHueStrength = 0.6f;
+        [Tooltip("플레이어가 든 광원의 따뜻함(등불 색).")]
+        [Range(0f, 1f)] public float carriedWarmth = 0.45f;
+        public Color32 warmLightColor = new Color32(255, 205, 120, 255);
+        public Color32 coolLightColor = new Color32(158, 204, 255, 255);
+        [Tooltip("벽·융기 지형 발치에 고정 키라이트 방향으로 지는 캐스트 그림자 띠.")]
+        public bool directionalShadows = true;
+        [Tooltip("방향성 그림자 띠의 밝기(1이면 그림자 없음).")]
+        [Range(0.4f, 1f)] public float directionalShadowStrength = 0.78f;
+
         [Header("지상 캠프 안개")]
         [Tooltip("허브 캠프의 가장자리를 옅은 안개로 가라앉혀 중심(모닥불)만 밝게 남긴다. 시야는 건드리지 않는다.")]
         public bool hubSurfaceFog = true;
@@ -1206,6 +1220,9 @@ namespace ProjectC.Gameplay
             darknessFloor = Mathf.Clamp(darknessFloor, 0.03f, 0.4f);
             contactShadowStrength = Mathf.Clamp(contactShadowStrength, 0.1f, 0.9f);
             hubFogEdgeLevel = Mathf.Clamp(hubFogEdgeLevel, 0.4f, 1f);
+            lightHueStrength = Mathf.Clamp01(lightHueStrength);
+            carriedWarmth = Mathf.Clamp01(carriedWarmth);
+            directionalShadowStrength = Mathf.Clamp(directionalShadowStrength, 0.4f, 1f);
             // 광원 파라미터가 바뀌면 정적 광량 필드를 다시 계산한다.
             MarkStaticLightDirty();
 

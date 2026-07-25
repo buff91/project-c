@@ -152,5 +152,34 @@ namespace ProjectC.Tests
                 map, new GridLighting.PointLight[0], 0, 0);
             Assert.AreEqual(0, field.Count);
         }
+
+        [Test]
+        public void ShadowedByNeighbor_WallNeighbor_CastsShadow()
+        {
+            GridMap map = Flat(5);
+            map.Set(new GridPos(3, 2, 0), TileKind.Wall);
+            Assert.IsTrue(GridLighting.ShadowedByNeighbor(
+                map, new GridPos(2, 2, 0), 0, 0, 1, 0), "벽 이웃은 발치에 그림자를 드리운다");
+        }
+
+        [Test]
+        public void ShadowedByNeighbor_HigherNeighbor_CastsShadow()
+        {
+            var map = new GridMap();
+            map.Set(new GridPos(2, 2, 0), TileKind.Floor);
+            map.Set(new GridPos(3, 2, 2), TileKind.Floor); // 두 단 높은 이웃 표면
+            Assert.IsTrue(GridLighting.ShadowedByNeighbor(
+                map, new GridPos(2, 2, 0), 0, 3, 1, 0), "더 높은 이웃이 그림자를 드리운다");
+        }
+
+        [Test]
+        public void ShadowedByNeighbor_FlatOrEmpty_NoShadow()
+        {
+            GridMap map = Flat(5);
+            Assert.IsFalse(GridLighting.ShadowedByNeighbor(
+                map, new GridPos(2, 2, 0), 0, 0, 1, 0), "평평한 이웃은 그림자 없음");
+            Assert.IsFalse(GridLighting.ShadowedByNeighbor(
+                map, new GridPos(4, 4, 0), 0, 0, 1, 0), "이웃이 비어(맵 밖) 있으면 그림자 없음");
+        }
     }
 }

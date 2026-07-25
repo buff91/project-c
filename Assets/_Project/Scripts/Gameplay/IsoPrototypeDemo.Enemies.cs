@@ -322,11 +322,11 @@ namespace ProjectC.Gameplay
                     _turns.TurnNumber,
                     enemy.DeathTurn,
                     corpseLifetimeTurns);
-            float light = TileLightLevel(pos);
+            Color light = TileLightColor(pos);
             enemy.Renderer.color = new Color(
-                tint.r * elevationTint.r * bossTint.r * light,
-                tint.g * elevationTint.g * bossTint.g * light,
-                tint.b * elevationTint.b * bossTint.b * light,
+                tint.r * elevationTint.r * bossTint.r * light.r,
+                tint.g * elevationTint.g * bossTint.g * light.g,
+                tint.b * elevationTint.b * bossTint.b * light.b,
                 alpha);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
