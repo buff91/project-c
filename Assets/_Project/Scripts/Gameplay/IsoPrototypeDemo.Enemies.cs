@@ -167,7 +167,7 @@ namespace ProjectC.Gameplay
         private Sprite MonsterSpriteFor(MonsterArchetype archetype)
         {
             Sprite mapped = visualCatalog != null ? visualCatalog.MonsterFor(archetype.Id) : null;
-            return mapped != null ? mapped : GetMonsterSprite(archetype.Id);
+            return mapped != null ? mapped : ActorSprites.GetMonsterSprite(archetype.Id);
         }
 
         /// <summary>
@@ -477,7 +477,7 @@ namespace ProjectC.Gameplay
         {
             if (_bossExitSealRenderer == null || _dungeon == null) return;
 
-            _bossExitSealRenderer.sprite = GetBossExitSealSprite(_bossDefeated);
+            _bossExitSealRenderer.sprite = ActorSprites.GetBossExitSealSprite(_bossDefeated);
             bool onFloor = _activeFloorIndex == _dungeon.FinalFloorIndex;
             bool seen = viewMode == DungeonViewMode.DebugAll ||
                         _visibleTiles.Contains(_bossExitPos) ||

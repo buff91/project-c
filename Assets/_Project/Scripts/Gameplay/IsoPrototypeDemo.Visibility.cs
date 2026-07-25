@@ -135,7 +135,7 @@ namespace ProjectC.Gameplay
                     case TileKind.Stairs:
                         if (StairTopology.TryGetHigherLanding(_grid.Map, anchor, out GridPos landing))
                             destination = landing;
-                        sprite = GetLocalStairLandmarkSprite();
+                        sprite = ActorSprites.GetLocalStairLandmarkSprite();
                         labelHeight = 0.48f;
                         break;
                     case TileKind.Ladder:
@@ -144,7 +144,7 @@ namespace ProjectC.Gameplay
                         if (links.Count == 0 || links[0].elevation < anchor.elevation)
                             continue; // 한 쌍의 낮은 끝에서만 세워진 사다리를 하나 만든다.
                         destination = links[0];
-                        sprite = GetLadderLandmarkSprite();
+                        sprite = ActorSprites.GetLadderLandmarkSprite();
                         labelHeight = 0.58f;
                         break;
                     }
@@ -153,13 +153,13 @@ namespace ProjectC.Gameplay
                     {
                         IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(anchor);
                         if (links.Count > 0) destination = links[0];
-                        sprite = GetFloorTransitionLandmarkSprite(kind == TileKind.StairsDown);
+                        sprite = ActorSprites.GetFloorTransitionLandmarkSprite(kind == TileKind.StairsDown);
                         labelHeight = 1.02f;
                         break;
                     }
                     case TileKind.Hole:
                         destination = _grid.Map.FindLandingBelow(anchor, BottomElevation);
-                        sprite = GetHoleLandmarkSprite();
+                        sprite = ActorSprites.GetHoleLandmarkSprite();
                         labelHeight = 0.62f;
                         break;
                     default:
@@ -445,7 +445,7 @@ namespace ProjectC.Gameplay
                 var renderer = marker.AddComponent<SpriteRenderer>();
                 renderer.sprite = visualCatalog != null && visualCatalog.selection != null
                     ? visualCatalog.selection
-                    : GetSelectionSprite();
+                    : ActorSprites.GetSelectionSprite();
                 renderer.sortingOrder = _grid.iso.SortingOrder(pair.Key, 0);
                 Color markerColor = new Color(0.33f, 0.83f, 0.77f);
                 markerColor.a = _visibleTiles.Contains(pair.Key) ? 0.5f : 0.22f;
@@ -512,7 +512,7 @@ namespace ProjectC.Gameplay
             shaft.transform.SetParent(_shaftRoot, false);
             shaft.transform.position = Vector3.Lerp(start, end, 0.5f) + Vector3.up * 0.05f;
             var renderer = shaft.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetShaftSprite(hole);
+            renderer.sprite = ActorSprites.GetShaftSprite(hole);
             renderer.sortingOrder = OverlaySorting.Shaft;
             renderer.color = new Color(1f, 1f, 1f, viewMode == DungeonViewMode.DebugAll ? 0.72f : 0.9f);
             shaft.transform.localScale = new Vector3(1.15f, distance, 1f);
@@ -527,7 +527,7 @@ namespace ProjectC.Gameplay
             endpoint.transform.SetParent(_shaftRoot, false);
             endpoint.transform.position = VisualPosition(pos) + Vector3.up * 0.035f;
             var renderer = endpoint.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetShaftEndpointSprite(hole, arrival);
+            renderer.sprite = ActorSprites.GetShaftEndpointSprite(hole, arrival);
             renderer.sortingOrder = OverlaySorting.ShaftEndpoint;
             renderer.color = new Color(1f, 1f, 1f, arrival ? 0.72f : 0.95f);
         }
@@ -873,8 +873,8 @@ namespace ProjectC.Gameplay
                 : mapped != null
                     ? GetToneMappedEnvironmentSprite(
                         mapped,
-                        DungeonWallColor,
-                        torch ? EnvironmentAccentMode.Signal : EnvironmentAccentMode.None)
+                        Palette.Wall,
+                        torch ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal : PrototypeEnvironmentSprites.EnvironmentAccentMode.None)
                     : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);

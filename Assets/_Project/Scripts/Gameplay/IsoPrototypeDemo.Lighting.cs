@@ -135,7 +135,7 @@ namespace ProjectC.Gameplay
             obj.transform.SetParent(parent, false);
             obj.transform.localPosition = new Vector3(0f, -0.03f, 0f);
             var renderer = obj.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetContactShadowSprite();
+            renderer.sprite = ActorSprites.GetContactShadowSprite();
             renderer.color = new Color32(0, 0, 0, 0);
             return renderer;
         }
@@ -155,7 +155,7 @@ namespace ProjectC.Gameplay
             shadow.sortingOrder = actorSortingOrder - 1;
             Color light = TileLightColor(groundPos);
             float lit = Mathf.Max(light.r, Mathf.Max(light.g, light.b)); // 얼마나 밝은가
-            Color32 v = DungeonVoidColor;
+            Color32 v = Palette.Void;
             int alpha = Mathf.Clamp(
                 Mathf.RoundToInt(255f * contactShadowStrength * lit), 0, 255);
             shadow.color = new Color32(v.r, v.g, v.b, (byte)alpha);

@@ -7,9 +7,13 @@
 ## 리팩토링 원칙 (이 구조가 나온 이유)
 
 - **로직 ↔ 비주얼 분리**는 그대로: 순수 C#은 `Scripts/Core`, MonoBehaviour/씬 연동은 `Scripts/Gameplay`.
-- 3,000줄급 **신(神) 클래스는 새 클래스로 추출하지 않고 `partial` 파일로 분할**했다.
+- 3,000줄급 **신(神) 클래스는 우선 `partial` 파일로 분할**했다.
   컴파일러가 파셜을 이어붙이므로 **순수 코드 이동 = 동작 불변**이고, 필드·이벤트를
   모든 파셜이 공유한다. 큰 파일을 관심사별로 나누되 타입 경계는 건드리지 않는 선택이다.
+- **다만 파셜 분할로는 결합이 줄지 않는다** — 모든 파셜이 같은 필드에 손댈 수 있어서
+  "격자를 안 봐야 하는 코드"가 격자를 본다. 그래서 파셜 수가 19개까지 자란 뒤
+  **스프라이트 생성은 실제 별 클래스로 추출**했다(아래 "절차 생성 임시 아트"). 판단 기준은
+  *그 코드가 게임 상태를 알아야 하는가*다 — 몰라도 되는 것은 타입 경계 밖으로 내보낸다.
 - 흩어진 상수·매핑은 **단일 출처(SSOT)**로 모았다(아래 표 참조).
 
 ---
@@ -32,15 +36,34 @@
 | `IsoPrototypeDemo.Enemies.cs` | 572 | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 406 | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
 | `IsoPrototypeDemo.RestSites.cs` | 155 | 휴식 지점(모닥불) |
+| `IsoPrototypeDemo.Extraction.cs` | 132 | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.BossArena.cs` | 106 | 최심층 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 453 | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | ~1137 | FOV·수직 포털·후면 벽·플레이어 가림 |
 | `IsoPrototypeDemo.Lighting.cs` | 159 | 지하 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
-| `IsoPrototypeDemo.Sprites.cs` | 875 | 런타임 스프라이트 — 환경·타일·벽·문·광원 타일 |
-| `IsoPrototypeDemo.Sprites.Actors.cs` | 795 | 런타임 스프라이트 — 플레이어·몬스터·아이템·프롭·FX·`GetContactShadowSprite` |
-| `IsoPrototypeDemo.Sprites.Primitives.cs` | 128 | 저수준 드로잉 프리미티브(`NewTexture`·`FillRect`·`Blend` 등) |
+| `IsoPrototypeDemo.Sprites.cs` | 123 | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
 > 본체 파일 클래스 요약 주석에 위 목록이 최신으로 유지된다.
+
+## 절차 생성 임시 아트 — `IsoPrototypeDemo` **밖의** 독립 클래스
+
+외부 아트가 없을 때 64×32 규격으로 그리는 런타임 스프라이트. 파셜이 아니라 별 타입이며,
+**격자·던전·플레이어를 참조하지 않는다** — 필요한 사실은 인자로 받는다. 이 무지(無知)가
+경계를 지키는 장치다. 다시 `IsoPrototypeDemo`로 끌어들이면 신 클래스로 되돌아간다.
+
+| 파일 | 줄수 | 담당 |
+|------|-----:|------|
+| `PrototypeSpriteCanvas.cs` | 140 | 저수준 드로잉 프리미티브(`NewTexture`·`FillRect`·`DrawThickLine`·`Blend`)와 **64×32/PPU 상수 SSOT**. `using static`으로 끌어다 쓴다 |
+| `PrototypeSpriteCache.cs` | 26 | 키 → 스프라이트 캐시. 두 팩토리가 공유한다 |
+| `PrototypePalette.cs` | 147 | 던전 역할색 해석 — `IsoVisualCatalog` 슬롯이 있으면 그 값, 없으면 인스펙터 폴백. 그리기 코드는 여기만 묻는다 |
+| `PrototypeActorSprites.cs` | 942 | 액터·몬스터·아이템·프롭·랜드마크·FX. 팔레트도 안 쓰고 **캐시만** 의존한다 |
+| `PrototypeEnvironmentSprites.cs` | 774 | 타일·벽·문·비밀문·안개·광원 타일. 캐시 + 팔레트 의존 |
+| `TileVisualFacts.cs` | 49 | 호스트가 풀어 넘기는 격자 사실 묶음(진행 맥락·전면 여부·평면 방향·비밀문 힌트·허브 여부) |
+
+> 리팩토링 시 픽셀 동일성은 **씬 렌더 지문**으로 검증했다 — `IsoPrototype`/`Hub` 씬을 빌드해
+> 생성된 모든 텍스처를 RenderTexture 로 되읽어 해시했고 전/후가 같았다
+> (`871de8c9bc421ffe` / `ab629c527bea784c`). 테스트는 이 그림 변화를 잡지 못하므로
+> 그리기 코드를 손댈 때는 같은 방식으로 확인한다.
 
 ## HUD 컨트롤러 파셜
 
@@ -77,6 +100,9 @@
 | 관심사 | SSOT 위치 |
 |--------|-----------|
 | 오버레이(UI) 정렬값 | `IsoPrototypeDemo` 중첩 `OverlaySorting` 상수 |
+| 타일 픽셀 규격(64×32·PPU 64) | `PrototypeSpriteCanvas` 상수 (`IsoPrototypeDemo`의 동명 상수가 이 값을 참조) |
+| 절차 생성 아트의 던전 역할색 | `PrototypePalette` (카탈로그 슬롯 → 없으면 인스펙터 폴백) |
+| 저수준 픽셀 드로잉 | `PrototypeSpriteCanvas` (`FillRect`·`DrawThickLine`·`Blend` 등) |
 | 월드 정렬 배수·대역 불변식 | `IsoGrid.DepthResolution` / `MicroResolution` |
 | 백팩 ↔ 세이브 아이템 수량 매핑 | `RunSaveData.WriteItems` / `AddItemsTo` |
 | 몬스터 표시명·피해소스 매칭 | `MonsterArchetype.DisplayName` + `MonsterRoster.MatchSource` |

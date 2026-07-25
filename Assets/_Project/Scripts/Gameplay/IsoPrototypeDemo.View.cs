@@ -146,7 +146,7 @@ namespace ProjectC.Gameplay
             _lastCameraAspect = camera.aspect;
             camera.backgroundColor = hubMode
                 ? new Color32(9, 7, 14, 255)
-                : DungeonVoidColor;
+                : Palette.Void;
             camera.clearFlags = CameraClearFlags.SolidColor;
         }
 

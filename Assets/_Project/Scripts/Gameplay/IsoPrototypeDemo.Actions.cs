@@ -428,7 +428,7 @@ namespace ProjectC.Gameplay
             blast.transform.SetParent(_visualRoot, false);
             blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
             var renderer = blast.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetBlastSprite(fiery);
+            renderer.sprite = ActorSprites.GetBlastSprite(fiery);
             renderer.sortingOrder = OverlaySorting.Blast;
 
             float elapsed = 0f;
@@ -453,7 +453,7 @@ namespace ProjectC.Gameplay
             var projectile = new GameObject("Ranged Projectile");
             projectile.transform.SetParent(_visualRoot, false);
             var renderer = projectile.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetProjectileSprite();
+            renderer.sprite = ActorSprites.GetProjectileSprite();
             renderer.sortingOrder = OverlaySorting.Projectile;
 
             Vector3 start = _grid.GridToWorld(from) + Vector3.up * 0.42f;

@@ -53,6 +53,13 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 의존은 항상 한 방향(Gameplay → Core)이다. Core는 Gameplay/Unity를 **모른다**. 크로스-레이어가
 필요하면 Core가 콜백(`Func`/`Action`)을 인자로 받는다 (예: `MonsterBrainContext.SeenByPlayer`).
 
+**Gameplay 안에서도 같은 원리를 쓴다.** UnityEngine 타입이 필요해서 Core로 못 내리는 코드라도,
+게임 상태를 몰라도 되면 씬 참조 없는 별 타입으로 뺀다. 절차 생성 임시 아트가 그 예다 —
+`PrototypeSpriteCanvas`·`PrototypePalette`·`PrototypeActorSprites`·`PrototypeEnvironmentSprites`는
+`Texture2D`/`Sprite`를 다루므로 Gameplay에 남지만 격자·던전·플레이어를 참조하지 않고,
+필요한 사실은 `TileVisualFacts`로 받는다. "Unity에 의존한다"와 "게임 상태에 의존한다"는
+**다른 축**이고, 후자를 끊는 것만으로 신(神) 클래스의 성장이 멈춘다.
+
 ---
 
 ## 3. 디렉터리 구조

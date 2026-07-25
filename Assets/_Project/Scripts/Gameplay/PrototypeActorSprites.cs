@@ -1,16 +1,32 @@
 using ProjectC.Core;
 using UnityEngine;
+using static ProjectC.Gameplay.PrototypeSpriteCanvas;
 
 namespace ProjectC.Gameplay
 {
-    public partial class IsoPrototypeDemo
+    /// <summary>
+    /// 액터·프롭·아이템·랜드마크의 런타임 임시 아트. 64×32 타일 규격 위에 절차적으로 그린다.
+    /// IsoVisualCatalog 슬롯이 채워지면 호출부가 해당 항목에 한해 이 코드를 우회한다.
+    ///
+    /// **게임 상태를 알지 못한다** — 격자·던전·플레이어를 참조하지 않고, 그림을 결정하는 값은
+    /// 전부 인자로 받는다(`bool goblin`, `ItemKind kind` 처럼). 그래서 이 클래스는 캐시만 있으면
+    /// 어디서든 같은 그림을 낸다. 이 무지(無知)를 깨지 말 것 — 깨는 순간 신 클래스로 되돌아간다.
+    /// 환경(타일·벽·문)은 팔레트가 필요해서 <see cref="PrototypeEnvironmentSprites"/>가 따로 그린다.
+    /// </summary>
+    internal sealed class PrototypeActorSprites
     {
+        private readonly PrototypeSpriteCache _spriteCache;
+
+        internal PrototypeActorSprites(PrototypeSpriteCache spriteCache)
+        {
+            _spriteCache = spriteCache;
+        }
 
         /// <summary>
         /// 액터 발밑 접촉 그림자: 납작한 다이아몬드로 중심이 진하고 가장자리로 부드럽게 사라진다.
         /// 흰색으로 굽고 알파에 모양을 담아, 런타임에 renderer.color로 void색·세기를 입힌다.
         /// </summary>
-        private Sprite GetContactShadowSprite()
+        internal Sprite GetContactShadowSprite()
         {
             const string key = "contact-shadow";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -33,7 +49,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetSelectionSprite()
+        internal Sprite GetSelectionSprite()
         {
             const string key = "selection";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -53,7 +69,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetBossExitSealSprite(bool unlocked)
+        internal Sprite GetBossExitSealSprite(bool unlocked)
         {
             string key = unlocked ? "boss-exit-unlocked" : "boss-exit-locked";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -99,7 +115,7 @@ namespace ProjectC.Gameplay
         /// 최심층 아레나의 제단. 공용 톤을 따른다 — 횃불에 데워진 석재 몸통 위에
         /// 마법/출구 신호색인 틸 코어. 보스를 쓰러뜨리면 런타임 틴트로 식힌다.
         /// </summary>
-        private Sprite GetBossAltarSprite()
+        internal Sprite GetBossAltarSprite()
         {
             const string key = "boss-altar";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -136,7 +152,7 @@ namespace ProjectC.Gameplay
         /// 중간 탈출구 — 지상으로 끌어올리는 승강 장치. 출구(틸 신호)와 같은 색군을 써서
         /// "여기로 나간다"가 한눈에 읽히게 하고, 제단·모닥불과는 실루엣으로 구분한다.
         /// </summary>
-        private Sprite GetExtractionPointSprite()
+        internal Sprite GetExtractionPointSprite()
         {
             const string key = "extraction-point";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -166,7 +182,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetLocalStairLandmarkSprite()
+        internal Sprite GetLocalStairLandmarkSprite()
         {
             const string key = "landmark-local-stairs";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -190,7 +206,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetLadderLandmarkSprite()
+        internal Sprite GetLadderLandmarkSprite()
         {
             const string key = "landmark-ladder";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -219,7 +235,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetFloorTransitionLandmarkSprite(bool down)
+        internal Sprite GetFloorTransitionLandmarkSprite(bool down)
         {
             string key = down ? "landmark-floor-down" : "landmark-floor-up";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -268,7 +284,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetHoleLandmarkSprite()
+        internal Sprite GetHoleLandmarkSprite()
         {
             const string key = "landmark-hole";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -301,7 +317,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetPlayerFootprintSprite()
+        internal Sprite GetPlayerFootprintSprite()
         {
             const string key = "player-footprint";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -325,7 +341,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetPlayerLocatorSprite()
+        internal Sprite GetPlayerLocatorSprite()
         {
             const string key = "player-locator";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -346,7 +362,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetProjectileSprite()
+        internal Sprite GetProjectileSprite()
         {
             const string key = "ranged-projectile";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -361,7 +377,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetDoorInteractionSprite(bool opening)
+        internal Sprite GetDoorInteractionSprite(bool opening)
         {
             string key = opening ? "door-open-burst" : "door-close-burst";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -392,7 +408,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetShaftSprite(bool hole)
+        internal Sprite GetShaftSprite(bool hole)
         {
             string key = hole ? "shaft-hole" : "shaft-stairs";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -424,7 +440,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetShaftEndpointSprite(bool hole, bool arrival)
+        internal Sprite GetShaftEndpointSprite(bool hole, bool arrival)
         {
             string key = $"shaft-end-{hole}-{arrival}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -465,7 +481,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetHealthBarSprite(bool filled)
+        internal Sprite GetHealthBarSprite(bool filled)
         {
             string key = filled ? "health-filled" : "health-background";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -482,7 +498,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetCharacterSprite(bool goblin)
+        internal Sprite GetCharacterSprite(bool goblin)
         {
             string key = goblin ? "goblin" : "player";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -539,7 +555,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetBlastSprite(bool fiery = true)
+        internal Sprite GetBlastSprite(bool fiery = true)
         {
             string key = fiery ? "bomb-blast" : "frost-blast";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -566,7 +582,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetItemSprite(ItemKind kind)
+        internal Sprite GetItemSprite(ItemKind kind)
         {
             string key = $"item-{kind}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -730,7 +746,7 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>허브 캠프 프롭 임시 아트: campfire / stash / portal.</summary>
-        private Sprite GetHubPropSprite(string kind)
+        internal Sprite GetHubPropSprite(string kind)
         {
             string key = $"hub-{kind}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
@@ -797,7 +813,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetMonsterSprite(string archetypeId)
+        internal Sprite GetMonsterSprite(string archetypeId)
         {
             switch (archetypeId)
             {
@@ -903,7 +919,7 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetBarrelSprite()
+        internal Sprite GetBarrelSprite()
         {
             const string key = "barrel";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;

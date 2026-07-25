@@ -30,7 +30,7 @@ namespace ProjectC.Gameplay
             GridPos position = floor.ExtractionPoint.Value;
             GameObject root = CreateStandingSprite(
                 $"Extraction Point {FloorLabel(floor.FloorIndex)}",
-                GetExtractionPointSprite(),
+                ActorSprites.GetExtractionPointSprite(),
                 position,
                 out SpriteRenderer renderer,
                 microOffset: 1);

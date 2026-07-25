@@ -1,6 +1,7 @@
 using System.Collections;
 using ProjectC.Core;
 using UnityEngine;
+using static ProjectC.Gameplay.PrototypeSpriteCanvas;
 
 namespace ProjectC.Gameplay
 {

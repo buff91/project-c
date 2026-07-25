@@ -35,15 +35,21 @@ namespace ProjectC.Gameplay
     ///  - IsoPrototypeDemo.RestSites.cs  : 휴식 지점
     ///  - IsoPrototypeDemo.CombatFx.cs   : 전투/상태이상 연출
     ///  - IsoPrototypeDemo.Visibility.cs : FOV·수직 포털·후면 벽·가림
-    ///  - IsoPrototypeDemo.Sprites*.cs   : 런타임 임시 스프라이트 생성(.Sprites/.Sprites.Actors/.Sprites.Primitives)
+    ///  - IsoPrototypeDemo.Sprites.cs    : 환경 스프라이트 호출부 + 격자 기하 질의(팩토리에 넘길 값 계산)
+    ///
+    /// 절차 생성 임시 아트는 이 클래스 밖에 있다 — PrototypeSpriteCanvas(프리미티브),
+    /// PrototypeSpriteCache(캐시), PrototypePalette(역할색), PrototypeActorSprites(액터·프롭).
+    /// 이들은 게임 상태를 참조하지 않는다. 다시 끌어들이지 말 것.
     /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(GridManager), typeof(IsoTapInput))]
     public partial class IsoPrototypeDemo : MonoBehaviour
     {
-        public const int TilePixelWidth = 64;
-        public const int TilePixelHeight = 32;
-        public const int PixelsPerUnit = 64;
+        // 64×32 규격의 SSOT 는 PrototypeSpriteCanvas 다 — 여기서는 기존 공개 API 를 유지하기 위해
+        // 그 값을 그대로 노출한다. 값을 바꿀 일이면 캔버스 쪽만 고친다.
+        public const int TilePixelWidth = PrototypeSpriteCanvas.TilePixelWidth;
+        public const int TilePixelHeight = PrototypeSpriteCanvas.TilePixelHeight;
+        public const int PixelsPerUnit = PrototypeSpriteCanvas.PixelsPerUnit;
 
         /// <summary>
         /// IsoGrid.SortingOrder 로 배치할 수 없는 UI/오버레이 밴드의 정렬값 단일 출처.
@@ -355,7 +361,17 @@ namespace ProjectC.Gameplay
             new Dictionary<GridPos, SpriteRenderer>();
         private readonly Dictionary<SpriteRenderer, GridPos> _rearWallRenderers =
             new Dictionary<SpriteRenderer, GridPos>();
-        private readonly Dictionary<string, Sprite> _spriteCache = new Dictionary<string, Sprite>();
+        // 절차 생성 임시 아트는 이 클래스가 그리지 않는다 — 캐시를 공유하는 두 팩토리가 소유한다.
+        // 액터 팩토리는 게임 상태를 아예 모르고, 환경 팩토리는 팔레트까지만 안다.
+        private readonly PrototypeSpriteCache _spriteCache = new PrototypeSpriteCache();
+        private PrototypeActorSprites _actorSpritesInstance;
+
+        /// <summary>
+        /// 액터·프롭·아이템 임시 아트 팩토리. 지연 생성하는 이유는 편집 모드에서 Awake 없이
+        /// OnEnable -> BuildPrototype 이 돌기 때문이다(Awake 에서 만들면 미리보기에서 null).
+        /// </summary>
+        private PrototypeActorSprites ActorSprites =>
+            _actorSpritesInstance ??= new PrototypeActorSprites(_spriteCache);
         private readonly HashSet<GridPos> _visibleTiles = new HashSet<GridPos>();
         private readonly HashSet<GridPos> _exploredTiles = new HashSet<GridPos>();
         private readonly HashSet<GridPos> _verticalPreviewTiles = new HashSet<GridPos>();
@@ -684,7 +700,7 @@ namespace ProjectC.Gameplay
                 ? visualCatalog.HeroFor(_hero != null ? _hero.Id : HeroSelection.SelectedId)
                 : null;
             if (playerSprite == null)
-                playerSprite = GetCharacterSprite(false);
+                playerSprite = ActorSprites.GetCharacterSprite(false);
             _player = CreateStandingSprite("Player", playerSprite, _playerPos, out _playerRenderer);
             _playerShadow = CreateContactShadow(_player.transform);
             _playerSorting = _player.AddComponent<GridSortingObject>();
@@ -696,7 +712,7 @@ namespace ProjectC.Gameplay
             locator.transform.SetParent(_player.transform, false);
             locator.transform.localPosition = new Vector3(0f, 1.02f, 0f);
             var locatorRenderer = locator.AddComponent<SpriteRenderer>();
-            locatorRenderer.sprite = GetPlayerLocatorSprite();
+            locatorRenderer.sprite = ActorSprites.GetPlayerLocatorSprite();
             locatorRenderer.sortingOrder = OverlaySorting.PlayerLocator;
             _playerLocator = locator.transform;
 
@@ -706,13 +722,13 @@ namespace ProjectC.Gameplay
             var footprintRenderer = footprint.AddComponent<SpriteRenderer>();
             footprintRenderer.sprite = visualCatalog != null && visualCatalog.playerFootprint != null
                 ? visualCatalog.playerFootprint
-                : GetPlayerFootprintSprite();
+                : ActorSprites.GetPlayerFootprintSprite();
             footprintRenderer.sortingOrder = OverlaySorting.PlayerFootprint;
             _playerFootprint = footprint.transform;
 
             Sprite barrelSprite = visualCatalog != null && visualCatalog.explosiveBarrel != null
                 ? visualCatalog.explosiveBarrel
-                : GetBarrelSprite();
+                : ActorSprites.GetBarrelSprite();
 
             if (hubMode)
             {
@@ -726,7 +742,7 @@ namespace ProjectC.Gameplay
                 var hubSelection = _selection.AddComponent<SpriteRenderer>();
                 hubSelection.sprite = visualCatalog != null && visualCatalog.selection != null
                     ? visualCatalog.selection
-                    : GetSelectionSprite();
+                    : ActorSprites.GetSelectionSprite();
                 hubSelection.sortingOrder = _grid.iso.SortingOrder(_playerPos, -1);
                 _selection.transform.position = _grid.GridToWorld(_playerPos);
                 _selectionPos = _playerPos;
@@ -776,7 +792,7 @@ namespace ProjectC.Gameplay
                     var item = new ItemAgent { Spawn = itemSpawn };
                     item.Root = CreateStandingSprite(
                         $"Item {itemSpawn.Kind} {itemSpawn.Position}",
-                        mapped != null ? mapped : GetItemSprite(itemSpawn.Kind),
+                        mapped != null ? mapped : ActorSprites.GetItemSprite(itemSpawn.Kind),
                         itemSpawn.Position,
                         out SpriteRenderer itemRenderer,
                         microOffset: 0);
@@ -801,7 +817,7 @@ namespace ProjectC.Gameplay
             var selectionRenderer = _selection.AddComponent<SpriteRenderer>();
             selectionRenderer.sprite = visualCatalog != null && visualCatalog.selection != null
                 ? visualCatalog.selection
-                : GetSelectionSprite();
+                : ActorSprites.GetSelectionSprite();
             selectionRenderer.sortingOrder = _grid.iso.SortingOrder(_playerPos, -1);
             _selection.transform.position = _grid.GridToWorld(_playerPos);
             _selectionPos = _playerPos;
@@ -1057,14 +1073,14 @@ namespace ProjectC.Gameplay
             background.transform.SetParent(owner.transform, false);
             background.transform.localPosition = new Vector3(-0.25f, 0.82f, 0f);
             var backgroundRenderer = background.AddComponent<SpriteRenderer>();
-            backgroundRenderer.sprite = GetHealthBarSprite(false);
+            backgroundRenderer.sprite = ActorSprites.GetHealthBarSprite(false);
             backgroundRenderer.sortingOrder = OverlaySorting.HealthBarBack;
 
             var fill = new GameObject($"{objectName} Fill");
             fill.transform.SetParent(owner.transform, false);
             fill.transform.localPosition = new Vector3(-0.25f, 0.82f, 0f);
             var fillRenderer = fill.AddComponent<SpriteRenderer>();
-            fillRenderer.sprite = GetHealthBarSprite(true);
+            fillRenderer.sprite = ActorSprites.GetHealthBarSprite(true);
             fillRenderer.sortingOrder = OverlaySorting.HealthBarFill;
             return fill.transform;
         }

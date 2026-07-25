@@ -27,22 +27,22 @@ namespace ProjectC.Gameplay
             CreateHubLightPatch("campfire", HubLayout.Campfire, 2);
             CreateHubLightPatch("portal", HubLayout.Portal, 1);
 
-            CreateHubProp("Campfire", campfire != null ? campfire : GetHubPropSprite("campfire"), HubLayout.Campfire);
-            CreateHubProp("Portal", portal != null ? portal : GetHubPropSprite("portal"), HubLayout.Portal);
+            CreateHubProp("Campfire", campfire != null ? campfire : ActorSprites.GetHubPropSprite("campfire"), HubLayout.Campfire);
+            CreateHubProp("Portal", portal != null ? portal : ActorSprites.GetHubPropSprite("portal"), HubLayout.Portal);
 
             CreateHubProp(
                 "Merchant",
-                merchantSprite != null ? merchantSprite : GetCharacterSprite(true),
+                merchantSprite != null ? merchantSprite : ActorSprites.GetCharacterSprite(true),
                 HubLayout.Merchant);
             _hubInteractables[HubLayout.Merchant] = "merchant";
 
-            CreateHubProp("Stash", stash != null ? stash : GetHubPropSprite("stash"), HubLayout.Stash);
+            CreateHubProp("Stash", stash != null ? stash : ActorSprites.GetHubPropSprite("stash"), HubLayout.Stash);
             _hubInteractables[HubLayout.Stash] = "stash";
 
-            CreateHubProp("Smith", GetHubPropSprite("smith"), HubLayout.Smith);
+            CreateHubProp("Smith", ActorSprites.GetHubPropSprite("smith"), HubLayout.Smith);
             _hubInteractables[HubLayout.Smith] = "smith";
 
-            CreateHubProp("BountyBoard", GetHubPropSprite("bounty"), HubLayout.BountyBoard);
+            CreateHubProp("BountyBoard", ActorSprites.GetHubPropSprite("bounty"), HubLayout.BountyBoard);
             _hubInteractables[HubLayout.BountyBoard] = "bounty";
 
             for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
@@ -51,7 +51,7 @@ namespace ProjectC.Gameplay
                 Sprite heroSprite = visualCatalog != null ? visualCatalog.HeroFor(hero.Id) : null;
                 var prop = CreateHubProp(
                     $"Hero {hero.Id}",
-                    heroSprite != null ? heroSprite : GetCharacterSprite(false),
+                    heroSprite != null ? heroSprite : ActorSprites.GetCharacterSprite(false),
                     HubLayout.HeroPositions[i]);
                 _hubHeroProps[hero.Id] = prop;
                 _hubHeroPositions[hero.Id] = HubLayout.HeroPositions[i];
@@ -111,7 +111,7 @@ namespace ProjectC.Gameplay
                     : null;
                 _playerRenderer.sprite = selectedSprite != null
                     ? selectedSprite
-                    : GetCharacterSprite(false);
+                    : ActorSprites.GetCharacterSprite(false);
                 _playerRenderer.color = Color.white;
             }
 

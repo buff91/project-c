@@ -27,7 +27,7 @@ namespace ProjectC.Gameplay
             Sprite sprite = visualCatalog != null ? visualCatalog.hubCampfire : null;
             GameObject root = CreateStandingSprite(
                 $"Rest Site {FloorLabel(floor.FloorIndex)}",
-                sprite != null ? sprite : GetHubPropSprite("campfire"),
+                sprite != null ? sprite : ActorSprites.GetHubPropSprite("campfire"),
                 position,
                 out SpriteRenderer renderer,
                 microOffset: 1);

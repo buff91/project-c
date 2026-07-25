@@ -37,7 +37,7 @@ namespace ProjectC.Gameplay
             _bossAltarFloorIndex = floor.FloorIndex;
             _bossAltar = CreateStandingSprite(
                 $"Boss Altar {FloorLabel(floor.FloorIndex)}",
-                GetBossAltarSprite(),
+                ActorSprites.GetBossAltarSprite(),
                 _bossAltarPos,
                 out _bossAltarRenderer,
                 microOffset: 1);

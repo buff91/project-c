@@ -229,8 +229,17 @@
 - [x] **아이템 분류 일원화** — `IsTreasure`/`IsMaterial`/`IsEquipment`가 흩어져 있어 새 아이템마다
   조건문을 빠뜨릴 위험이 있었다. `ItemCatalog.CategoryOf` 하나로 모으고 장비 여부는
   `EquipmentCatalog`에서 파생시켜 목록이 두 벌 생기지 않게 했다.
-- [ ] `IsoPrototypeDemo` 신(神) 클래스 — 파셜이 20개를 넘었다. 쪼개는 것으로는 해결되지 않고
-  실제 분리(월드 빌드/턴 실행/연출)가 필요한데, **테스트를 돌릴 수 있을 때** 손대는 게 맞다.
+- [x] **`IsoPrototypeDemo` 1단계 — 절차 생성 임시 아트를 타입 밖으로** — 8,551줄/19파셜 →
+  6,750줄/17파셜. 분리 기준은 크기가 아니라 **그 코드가 게임 상태를 알아야 하는가**였다.
+  스프라이트 생성은 몰라도 되는데 같은 파셜 안에 있어서 `_grid`·`_dungeon`·`_playerState`에
+  손이 닿았다. `PrototypeSpriteCanvas`(프리미티브+64×32 상수 SSOT)·`PrototypeSpriteCache`·
+  `PrototypePalette`(역할색)·`PrototypeActorSprites`·`PrototypeEnvironmentSprites`로 빼고,
+  격자 질의는 호스트가 풀어 `TileVisualFacts`로 넘긴다 — 이제 **팩토리가 격자를 못 본다**(컴파일러가 강제).
+  `Sprites.cs`는 887 → 123줄 어댑터로 남았다.
+  픽셀 동일성은 씬 렌더 지문으로 검증했다(전/후 `871de8c9bc421ffe`·`ab629c527bea784c` 일치) —
+  테스트는 그림 변화를 못 잡으므로 이 방식이 필요했다.
+- [ ] `IsoPrototypeDemo` 2단계 — 남은 6,750줄의 실제 분리(월드 빌드 / 턴 실행 / 연출).
+  1단계와 달리 이쪽은 **상태를 진짜 공유**해서 경계를 새로 설계해야 한다. 파셜 쪼개기로는 안 된다.
 
 ## 쉘터(허브) — 진행 중
 

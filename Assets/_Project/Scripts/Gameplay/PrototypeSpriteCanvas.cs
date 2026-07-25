@@ -1,12 +1,21 @@
-using ProjectC.Core;
 using UnityEngine;
 
 namespace ProjectC.Gameplay
 {
-    public partial class IsoPrototypeDemo
+    /// <summary>
+    /// 절차적 임시 아트의 저수준 캔버스 — 텍스처 생성과 픽셀 드로잉 프리미티브만 소유한다.
+    /// **게임 상태를 알지 못한다**(격자·던전·플레이어 참조 없음). 그리기에 필요한 값은 전부 인자로 받는다.
+    /// 스프라이트를 만드는 쪽은 `using static ProjectC.Gameplay.PrototypeSpriteCanvas;`로 끌어다 쓴다.
+    ///
+    /// 64×32 타일 픽셀 규격의 SSOT가 여기다 — `IsoPrototypeDemo`의 동명 상수가 이 값을 참조한다.
+    /// </summary>
+    internal static class PrototypeSpriteCanvas
     {
+        internal const int TilePixelWidth = 64;
+        internal const int TilePixelHeight = 32;
+        internal const int PixelsPerUnit = 64;
 
-        private static Texture2D NewTexture(int width, int height)
+        internal static Texture2D NewTexture(int width, int height)
         {
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
             {
@@ -20,7 +29,7 @@ namespace ProjectC.Gameplay
             return texture;
         }
 
-        private static Sprite CreateSprite(Texture2D texture, Vector2 pivot)
+        internal static Sprite CreateSprite(Texture2D texture, Vector2 pivot)
         {
             return Sprite.Create(
                 texture,
@@ -31,7 +40,7 @@ namespace ProjectC.Gameplay
                 SpriteMeshType.FullRect);
         }
 
-        private static void FillSlantedPanel(
+        internal static void FillSlantedPanel(
             Texture2D texture,
             int x0,
             int y0,
@@ -60,7 +69,7 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private static void DrawThickLine(
+        internal static void DrawThickLine(
             Texture2D texture,
             int x0,
             int y0,
@@ -86,7 +95,7 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private static void FillRect(Texture2D texture, int x, int y, int width, int height, Color32 color)
+        internal static void FillRect(Texture2D texture, int x, int y, int width, int height, Color32 color)
         {
             for (int py = y; py < y + height; py++)
             for (int px = x; px < x + width; px++)
@@ -96,14 +105,14 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private static bool IsCrackPixel(int x, int y)
+        internal static bool IsCrackPixel(int x, int y)
         {
             return (x >= 28 && x <= 34 && y == 14 + (x % 3)) ||
                    (y >= 9 && y <= 15 && x == 29 - (y % 2) * 3) ||
                    (y >= 15 && y <= 20 && x == 35 + (y % 3));
         }
 
-        private static Color32 Shift(Color32 color, int amount)
+        internal static Color32 Shift(Color32 color, int amount)
         {
             return new Color32(
                 (byte)Mathf.Clamp(color.r + amount, 0, 255),
@@ -112,10 +121,10 @@ namespace ProjectC.Gameplay
                 color.a);
         }
 
-        private static Color32 WithAlpha(Color32 color, byte alpha) =>
+        internal static Color32 WithAlpha(Color32 color, byte alpha) =>
             new Color32(color.r, color.g, color.b, alpha);
 
-        private static Color32 Blend(Color32 from, Color32 to, float amount)
+        internal static Color32 Blend(Color32 from, Color32 to, float amount)
         {
             float t = Mathf.Clamp01(amount);
             return new Color32(
@@ -124,5 +133,8 @@ namespace ProjectC.Gameplay
                 (byte)Mathf.RoundToInt(Mathf.Lerp(from.b, to.b, t)),
                 (byte)Mathf.RoundToInt(Mathf.Lerp(from.a, to.a, t)));
         }
+
+        internal static Color ToRuntimeColor(Color32 color, float alpha) =>
+            new Color(color.r / 255f, color.g / 255f, color.b / 255f, alpha);
     }
 }
