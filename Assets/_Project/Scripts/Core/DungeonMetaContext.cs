@@ -16,10 +16,15 @@ namespace ProjectC.Core
     public readonly struct DungeonMetaContext
     {
         private readonly IReadOnlyCollection<ItemKind> _unlockedItems;
+        private readonly IReadOnlyCollection<string> _rescuedNpcs;
 
-        private DungeonMetaContext(IReadOnlyCollection<ItemKind> unlockedItems, bool gated)
+        private DungeonMetaContext(
+            IReadOnlyCollection<ItemKind> unlockedItems,
+            IReadOnlyCollection<string> rescuedNpcs,
+            bool gated)
         {
             _unlockedItems = unlockedItems;
+            _rescuedNpcs = rescuedNpcs;
             Gated = gated;
         }
 
@@ -30,11 +35,17 @@ namespace ProjectC.Core
         public IReadOnlyCollection<ItemKind> UnlockedItems =>
             _unlockedItems ?? Array.Empty<ItemKind>();
 
+        /// <summary>구출한 동료들. 미구출 NPC가 있는 층에 갇힌 방이 생긴다.</summary>
+        public IReadOnlyCollection<string> RescuedNpcs =>
+            _rescuedNpcs ?? Array.Empty<string>();
+
         /// <summary>
         /// 실제 메타에서 만든다 — 이때부터 미해금 도구가 드랍 풀에서 빠진다.
         /// </summary>
-        public static DungeonMetaContext FromUnlocked(IReadOnlyCollection<ItemKind> unlockedItems) =>
-            new DungeonMetaContext(unlockedItems, gated: true);
+        public static DungeonMetaContext FromUnlocked(
+            IReadOnlyCollection<ItemKind> unlockedItems,
+            IReadOnlyCollection<string> rescuedNpcs = null) =>
+            new DungeonMetaContext(unlockedItems, rescuedNpcs, gated: true);
 
         /// <summary>게이트 없음 — 모든 도구가 나온다. 테스트·미리보기의 기본값.</summary>
         public static DungeonMetaContext Unrestricted => default;
@@ -46,5 +57,20 @@ namespace ProjectC.Core
         /// <summary>굴린 결과를 실제로 놓을 종류로 바꾼다(미해금이면 형제로 치환).</summary>
         public ItemKind Resolve(ItemKind rolled) =>
             !Gated ? rolled : ItemUnlockRules.Resolve(rolled, UnlockedItems);
+
+        /// <summary>
+        /// 이 층에 갇힌 방을 둘 NPC. 게이트가 없으면(테스트·미리보기) 아무도 두지 않는다 —
+        /// 예전과 같은 던전을 유지해야 한다.
+        /// </summary>
+        public ShelterNpcDefinition PendingNpcAt(int progressIndex) =>
+            !Gated ? null : ShelterNpcRoster.PendingAt(progressIndex, RescuedNpcs);
+
+        /// <summary>갇힌 방이 생길 층들 — 숨은 방 후보에서 뺀다(못 찾으면 진행이 막힌다).</summary>
+        public HashSet<int> PendingNpcFloors() =>
+            !Gated ? new HashSet<int>() : ShelterNpcRoster.PendingFloors(RescuedNpcs);
+
+        /// <summary>이 시설이 쉘터에 있는가. 장비 게이트가 이 값을 본다.</summary>
+        public bool IsFacilityOpen(ShelterFacility facility) =>
+            !Gated || ShelterNpcRoster.IsFacilityOpen(facility, RescuedNpcs);
     }
 }

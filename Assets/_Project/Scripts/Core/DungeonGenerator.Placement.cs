@@ -183,6 +183,19 @@ namespace ProjectC.Core
             return map.LinksFrom(pos).Count == 0;
         }
 
+        /// <summary>
+        /// 갇힌 동료의 자리. 분기 방 안쪽(문에서 가장 먼 칸)에 세워 "갇혀 있다"가 읽히게 한다.
+        /// RNG 를 쓰지 않아 생성 스트림을 흔들지 않는다.
+        /// </summary>
+        private static void PlaceRescueNpc(FloorPlan p)
+        {
+            if (string.IsNullOrEmpty(p.BranchNpcId) || !p.HasBranch) return;
+
+            // 문은 (BranchDoorX, LowerMaxY+1) 이므로 방의 반대쪽 위 모서리가 가장 안쪽이다.
+            var spot = new GridPos(p.BranchMaxX, p.BranchMaxY, p.BaseElevation);
+            p.RescueNpc = spot;
+        }
+
         /// <summary>스폰이 겹치지 않는 빈 바닥인가. 아이템·장비 배치가 공유하는 판정.</summary>
         private static bool IsFreeForSpawn(GridMap map, FloorPlan p, GridPos pos)
         {

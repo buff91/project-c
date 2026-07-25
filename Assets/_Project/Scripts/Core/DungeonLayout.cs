@@ -34,6 +34,15 @@ namespace ProjectC.Core
         /// <summary>다른 층의 통로가 이 층으로 내려오는 착지 칸.</summary>
         public GridPos? ElevatorLanding { get; }
 
+        /// <summary>
+        /// 이 층 갇힌 방에 있는 동료의 칸. 구출하면 쉘터에 시설이 생긴다
+        /// (<see cref="ShelterNpcRoster"/>). 없으면 이 층에 구출 대상이 없다.
+        /// </summary>
+        public GridPos? RescueNpc { get; }
+
+        /// <summary>구출 대상 동료의 id. <see cref="RescueNpc"/>와 짝이다.</summary>
+        public string RescueNpcId { get; }
+
         public GridPos? RestSite { get; }
         public GridPos? ExtractionPoint { get; }
         public GridPos? Landmark { get; }
@@ -67,7 +76,9 @@ namespace ProjectC.Core
             IReadOnlyList<GridPos> windows = null,
             GridPos? extractionPoint = null,
             GridPos? elevatorShaft = null,
-            GridPos? elevatorLanding = null)
+            GridPos? elevatorLanding = null,
+            GridPos? rescueNpc = null,
+            string rescueNpcId = null)
         {
             // 던전 생성기는 층마다 적을 보장하지만, 허브 캠프처럼 적 없는 층도 허용한다.
             FloorIndex = floorIndex;
@@ -88,6 +99,8 @@ namespace ProjectC.Core
             ExtractionPoint = extractionPoint;
             ElevatorShaft = elevatorShaft;
             ElevatorLanding = elevatorLanding;
+            RescueNpc = rescueNpc;
+            RescueNpcId = rescueNpcId;
         }
     }
 
@@ -239,7 +252,11 @@ namespace ProjectC.Core
             map.Clear();
             var heightModel = new DungeonHeightModel(elevationsPerFloor);
             var random = new Random(seed);
-            HashSet<int> secretDepths = PickSecretDepths(random, floorCount);
+            // 갇힌 방을 먼저 정하고 숨은 방 후보에서 뺀다 — 숨은 방은 못 찾을 수 있어서
+            // 거기에 NPC 를 두면 진행이 막힌다. 미구출 NPC 가 없으면 빈 집합이므로
+            // 후보 목록이 그대로이고 RNG 소비도 예전과 같다(같은 seed = 같은 던전).
+            HashSet<int> npcDepths = meta.PendingNpcFloors();
+            HashSet<int> secretDepths = PickSecretDepths(random, floorCount, npcDepths);
 
             // 1) 층 골격을 계획하고 새긴다. 인접 진행 층끼리 북쪽 방 기둥이 겹치도록 제약해
             //    구멍 착지 후보가 항상 남게 한다(방향과 무관하게 인접 층이 공간적으로도 인접하다).
@@ -256,7 +273,8 @@ namespace ProjectC.Core
                     heightModel,
                     previous,
                     secretDepths.Contains(depth),
-                    direction);
+                    direction,
+                    meta.PendingNpcAt(depth));
                 CarveFloor(map, plan, height, direction);
                 plans.Add(plan);
             }
@@ -314,6 +332,7 @@ namespace ProjectC.Core
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.
             foreach (FloorPlan plan in plans)
             {
+                PlaceRescueNpc(plan);
                 PlaceRestSite(map, random, plan, floorCount);
                 PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan, floorCount);
@@ -350,7 +369,9 @@ namespace ProjectC.Core
                     plan.Windows,
                     plan.ExtractionPoint,
                     plan.ElevatorShaft,
-                    plan.ElevatorLanding));
+                    plan.ElevatorLanding,
+                    plan.RescueNpc,
+                    plan.BranchNpcId));
             }
 
             return new DungeonLayout(heightModel, floors, direction, firstBuildingFloor);
@@ -363,13 +384,20 @@ namespace ProjectC.Core
         public static int AreaSpawnBonus(int width, int height) =>
             Math.Max(0, (width * height - 121) / 60);
 
-        private static HashSet<int> PickSecretDepths(Random random, int floorCount)
+        private static HashSet<int> PickSecretDepths(
+            Random random,
+            int floorCount,
+            HashSet<int> excluded)
         {
             int candidateCount = floorCount > 1 ? floorCount - 1 : floorCount;
             int desired = Math.Min(SecretRoomRules.DesiredCount(floorCount), candidateCount);
             var candidates = new List<int>(candidateCount);
             for (int depth = 0; depth < candidateCount; depth++)
+            {
+                if (excluded != null && excluded.Contains(depth)) continue;
                 candidates.Add(depth);
+            }
+            if (desired > candidates.Count) desired = candidates.Count;
 
             var selected = new HashSet<int>();
             for (int i = 0; i < desired; i++)
@@ -443,6 +471,15 @@ namespace ProjectC.Core
             /// </summary>
             public GridPos? Onward;
             public GridPos? Hole;
+
+            /// <summary>
+            /// 이 분기 방에 갇힌 동료의 id. 비어 있으면 평범한 파밍 방이다.
+            /// 숨은 방(<c>BranchIsSecret</c>)과는 배타적이다 — 생성기가 층을 갈라 놓는다.
+            /// </summary>
+            public string BranchNpcId;
+
+            /// <summary>갇힌 동료가 서 있는 칸. 없으면 이 층에 구출 대상이 없다.</summary>
+            public GridPos? RescueNpc;
 
             /// <summary>이 층에 있는 엘리베이터 통로 입구(아래로만 내려간다).</summary>
             public GridPos? ElevatorShaft;

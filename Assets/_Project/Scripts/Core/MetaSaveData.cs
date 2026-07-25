@@ -58,6 +58,13 @@ namespace ProjectC.Core
         /// </summary>
         public List<UnlockProgressEntry> unlockProgress = new List<UnlockProgressEntry>();
 
+        /// <summary>
+        /// 던전에서 구출해 쉘터에 합류한 동료들(<see cref="ShelterNpcRoster"/>).
+        /// 이들이 시설을 연다 — 미구출 시설은 허브에 프롭도 상호작용도 없다.
+        /// <b>죽어도 남는다</b>: 구출은 소지품이 아니라 진행이다.
+        /// </summary>
+        public string[] rescuedNpcs = new string[0];
+
         public int GetCount(ItemKind kind) => ItemStorage.Count(stash, kind);
 
         /// <summary>
@@ -165,6 +172,30 @@ namespace ProjectC.Core
 
             unlockProgress.Add(new UnlockProgressEntry { kind = (int)kind, best = value });
         }
+
+        public bool IsNpcRescued(string npcId)
+        {
+            if (rescuedNpcs == null || string.IsNullOrEmpty(npcId)) return false;
+            foreach (string id in rescuedNpcs)
+                if (id == npcId) return true;
+            return false;
+        }
+
+        /// <summary>새로 구출했으면 true. 이미 합류했으면 아무것도 하지 않는다.</summary>
+        public bool RescueNpc(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId) || IsNpcRescued(npcId)) return false;
+
+            var next = new string[(rescuedNpcs?.Length ?? 0) + 1];
+            rescuedNpcs?.CopyTo(next, 0);
+            next[next.Length - 1] = npcId;
+            rescuedNpcs = next;
+            return true;
+        }
+
+        /// <summary>이 시설이 지금 쉘터에 있는가.</summary>
+        public bool IsFacilityOpen(ShelterFacility facility) =>
+            ShelterNpcRoster.IsFacilityOpen(facility, rescuedNpcs ?? new string[0]);
 
         public bool IsItemUnlocked(ItemKind kind)
         {

@@ -16,7 +16,8 @@ namespace ProjectC.Core
             DungeonHeightModel heightModel,
             FloorPlan previous,
             bool forceSecretBranch,
-            DungeonProgressDirection direction)
+            DungeonProgressDirection direction,
+            ShelterNpcDefinition pendingNpc)
         {
             var p = new FloorPlan
             {
@@ -39,7 +40,9 @@ namespace ProjectC.Core
             int upperMinCap = Math.Min(
                 p.RightMinX - 2,
                 previous != null ? previous.UpperMaxX - 1 : int.MaxValue);
-            int upperMinFloor = forceSecretBranch ? 3 : 1;
+            // 분기 방을 보장해야 하는 층은 북쪽 방을 오른쪽으로 밀어 왼쪽 공간을 확보한다
+            // (분기 방이 들어갈 자리가 없으면 아래 조건에서 떨어진다).
+            int upperMinFloor = forceSecretBranch || pendingNpc != null ? 3 : 1;
             int upperMinCeiling = Math.Max(upperMinFloor, upperMinCap);
             p.UpperMinX = random.Next(upperMinFloor, upperMinCeiling + 1);
             int upperMaxFloor = Math.Max(
@@ -58,13 +61,18 @@ namespace ProjectC.Core
 
             // 확률적 막다른 분기 방: 북서쪽 빈 공간이 충분할 때만 문 하나로 매달린다.
             // 분기 확률은 깊이 밴드별로 다르다(깊을수록 파밍 방이 잦다).
+            //
+            // 갇힌 방(NPC)과 숨은 방은 **확률을 타지 않는다**. 특히 NPC 는 확률로 두면
+            // 운이 나쁜 플레이어의 시설이 영원히 안 열리고 되돌릴 방법이 없다.
             int branchChance = DungeonBandProfiles.ForDepth(depth).BranchChancePercent;
-            bool wantBranch = forceSecretBranch || random.Next(0, 100) < branchChance;
+            bool wantBranch =
+                forceSecretBranch || pendingNpc != null || random.Next(0, 100) < branchChance;
             int branchDoorCap = Math.Min(p.LeftMaxX, p.UpperMinX - 2);
             if (wantBranch && p.UpperMinX >= 3 && branchDoorCap >= 0)
             {
                 p.HasBranch = true;
                 p.BranchIsSecret = forceSecretBranch;
+                p.BranchNpcId = pendingNpc?.Id;
                 p.BranchDoorX = random.Next(0, branchDoorCap + 1);
                 p.BranchMinX = Math.Max(0, p.BranchDoorX - 1);
                 p.BranchMaxX = Math.Min(p.UpperMinX - 2, p.BranchMinX + 1 + random.Next(0, 2));
