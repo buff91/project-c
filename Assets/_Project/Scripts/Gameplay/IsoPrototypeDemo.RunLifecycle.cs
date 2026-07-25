@@ -13,6 +13,9 @@ namespace ProjectC.Gameplay
         {
             ApplyCarriedState(data, $"이어하기 — {FloorLabel(_activeFloorIndex)} 입구에서 재개");
             RefreshBossExitSeal();
+            // 이미 보스를 잡은 세이브라면 전원도 들어온 상태여야 한다 —
+            // 링크는 맵에 저장되지 않고 매번 seed 로 재생성되므로 여기서 다시 넣는다.
+            PowerElevatorIfUnlocked();
             BossStateChanged?.Invoke();
             Debug.Log($"[Save] 이어하기: {StageLabel} {FloorLabel(_activeFloorIndex)}, " +
                       $"HP {_playerState.Hp}, 처치 {data.kills}");

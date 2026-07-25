@@ -68,10 +68,14 @@
   - **중력은 방향을 타지 않는다.** `FallRules`·`SightRules`는 던전 방향을 모른다.
     다만 **낙하의 의미**는 방향을 탄다(`FallMeaningFor`) — 하강=지름길, 상승=후퇴로,
     진입깊이=지형 위험. 안내 문구는 `FallMeaningHint` 하나에서만 나온다.
-  - **엘리베이터 통로**(`ElevatorShaftRules`)는 상승 던전에만 있고 **아래로만** 간다.
-    낙하가 아니라 `Ladder` 링크(안전·낙뎀 0)이며 입구·착지 두 칸만 둔다.
-    진행 3부터 2층씩 하강, 아레나 제외. 낙뎀 곡선은 건드리지 않았다 —
-    3층 자유낙하는 12 피해로 영웅 HP(8~10)를 넘어 "빠르게 하강"이 성립하지 않는다.
+  - **엘리베이터**(`ElevatorShaftRules`)는 **던전당 한 대**이고 보스를 잡아 건물 전원이
+    들어온 뒤에만 움직인다. 탑승구는 보스 아레나 바로 앞 층(폐병원 7F), 도착은 B1.
+    **복귀 전용·한 방향**이라 진행의 반대로만 간다(상승=아래, 하강=위).
+    생성기는 설비 타일만 놓고 **링크를 만들지 않는다** — 링크가 곧 "움직인다"이며
+    `GridPathfinder`가 링크를 따라가므로 전원 전에 링크가 있으면 즉시 지름길이 된다.
+    전원은 `PowerElevatorIfUnlocked`가 보스 처치·이어하기 복원 양쪽에서 넣는다.
+    낙하가 아니라 탑승이므로 낙뎀 곡선은 건드리지 않았다 — 3층 자유낙하는 12 피해로
+    영웅 HP(8~10)를 넘어 "뛰어내려 빠르게 하강"이 성립하지 않는다.
   - **지상 진입(B1 → 1F)은 한 판에 한 번 알린다**(`CrossesIntoAboveGround`).
     상승 구조가 공짜로 주는 전환점이라 여기서 짚으면 건물을 타고 오른다는 구조가 읽힌다.
 - **전투 표현**: `CombatPresentationRules`가 물리/화염/냉기/강타를 분리한다. Gameplay는
@@ -131,8 +135,8 @@
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
 - **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **811/811 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **928/928 통과**. 컴파일 에러 없음.
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **816/816 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **933/933 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
   - 옛 "673/673" 기록은 낡은 값이었다.

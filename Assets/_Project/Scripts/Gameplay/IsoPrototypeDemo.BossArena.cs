@@ -21,6 +21,9 @@ namespace ProjectC.Gameplay
         /// <summary>지상 진입(B1 → 1F) 알림을 한 판에 한 번만 띄우기 위한 플래그.</summary>
         private bool _surfaceCrossingAnnounced;
 
+        /// <summary>건물 전원이 들어와 엘리베이터가 움직이는 상태인지(표시·안내용).</summary>
+        private bool _elevatorPowered;
+
         public bool HasBossAltar => _hasBossAltar;
 
         private void ResetBossArenaForBuild()
@@ -30,6 +33,7 @@ namespace ProjectC.Gameplay
             _hasBossAltar = false;
             _bossApproachAnnounced = false;
             _surfaceCrossingAnnounced = false;
+            _elevatorPowered = false;
         }
 
         /// <summary>아레나 층의 제단을 만든다. 랜드마크가 없는 층(=최심층이 아닌 층)은 그냥 지나간다.</summary>
@@ -75,6 +79,53 @@ namespace ProjectC.Gameplay
                 tint.g * light.g * spent,
                 tint.b * light.b * spent,
                 1f);
+        }
+
+        /// <summary>이 칸이 엘리베이터 설비(탑승구 또는 도착 칸)인가.</summary>
+        private bool IsElevatorTile(GridPos pos)
+        {
+            if (_dungeon == null) return false;
+            foreach (DungeonFloorInfo floor in _dungeon.Floors)
+            {
+                if (floor.ElevatorShaft.HasValue && floor.ElevatorShaft.Value == pos) return true;
+                if (floor.ElevatorLanding.HasValue && floor.ElevatorLanding.Value == pos) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 건물 전원이 들어오면 엘리베이터에 링크를 넣는다 — 생성기는 설비만 놓고
+        /// 링크를 만들지 않는다(<see cref="ElevatorShaftRules"/>). 링크가 곧 "움직인다"이며,
+        /// 없는 동안은 경로 탐색도 이 칸을 지름길로 쓰지 않는다.
+        ///
+        /// <para>
+        /// 보스 처치 직후와 <b>이어하기 복원</b> 양쪽에서 불린다. 여러 번 불려도 안전하도록
+        /// 이미 링크가 있으면 그냥 돌아간다.
+        /// </para>
+        /// </summary>
+        private void PowerElevatorIfUnlocked()
+        {
+            if (hubMode || _dungeon == null) return;
+            if (!ElevatorShaftRules.IsPowered(
+                    DungeonSelection.Selected?.Boss != null,
+                    _bossDefeated))
+                return;
+
+            GridPos? entrance = null;
+            GridPos? landing = null;
+            foreach (DungeonFloorInfo floor in _dungeon.Floors)
+            {
+                if (floor.ElevatorShaft.HasValue) entrance = floor.ElevatorShaft;
+                if (floor.ElevatorLanding.HasValue) landing = floor.ElevatorLanding;
+            }
+
+            if (!entrance.HasValue || !landing.HasValue) return;
+            if (_grid.Map.LinksFrom(entrance.Value).Count > 0) return;
+
+            // 복귀 전용이라 한 방향이다 — 타고 올라오면 계단을 건너뛰는 지름길이 된다.
+            _grid.Map.Connect(entrance.Value, landing.Value, bidirectional: false);
+            _elevatorPowered = true;
+            InteractionFeedback?.Invoke("건물에 전원이 들어왔다 — 엘리베이터가 움직인다");
         }
 
         /// <summary>

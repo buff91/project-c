@@ -294,20 +294,20 @@ namespace ProjectC.Core
             // 2-b) 엘리베이터 통로(상승 던전의 후퇴 동선). 스폰보다 **먼저** 놓아야
             //      사다리 타일이 IsFreeForSpawn 에 걸러진다 — 적·아이템이 통로에 갇히지 않는다.
             //      하강 던전에서는 아예 돌지 않으므로 기존 생성이 흔들리지 않는다.
-            if (ElevatorShaftRules.AppliesTo(direction))
+            // 던전당 하나. 탑승구는 보스 아레나 바로 앞 층이라 보스로 가는 길에 반드시 지나가고,
+            // 그때는 전원이 없어 멈춰 있다 — 링크는 보스를 잡을 때 Gameplay 가 넣는다.
+            if (ElevatorShaftRules.AppliesToDungeon(direction, floorCount))
             {
                 var byProgress = new Dictionary<int, FloorPlan>(plans.Count);
                 foreach (FloorPlan plan in plans) byProgress[plan.ProgressIndex] = plan;
 
-                foreach (FloorPlan plan in plans)
-                {
-                    if (!ElevatorShaftRules.ShouldPlace(direction, plan.ProgressIndex, floorCount))
-                        continue;
-
-                    int target = ElevatorShaftRules.DestinationProgressIndex(plan.ProgressIndex);
-                    if (byProgress.TryGetValue(target, out FloorPlan destination))
-                        PlaceElevatorShaft(map, random, plan, destination);
-                }
+                if (byProgress.TryGetValue(
+                        ElevatorShaftRules.EntranceProgressIndex(floorCount),
+                        out FloorPlan entrance) &&
+                    byProgress.TryGetValue(
+                        ElevatorShaftRules.LandingProgressIndex,
+                        out FloorPlan landing))
+                    PlaceElevatorShaft(map, random, entrance, landing);
             }
 
             // 3) 적·아이템 스폰은 구멍·계단이 확정된 최종 타일 상태에서 고른다.

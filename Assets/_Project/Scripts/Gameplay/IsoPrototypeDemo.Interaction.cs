@@ -72,7 +72,14 @@ namespace ProjectC.Gameplay
             if (kind == TileKind.Ladder)
             {
                 IReadOnlyList<GridPos> ladderLinks = _grid.Map.LinksFrom(_playerPos);
-                if (ladderLinks.Count == 0) return false;
+                if (ladderLinks.Count == 0)
+                {
+                    // 링크 없는 사다리 타일은 전원이 없는 엘리베이터다. 아무 말도 없으면
+                    // 플레이어는 고장인지 조작 실수인지 구분할 수 없다.
+                    if (!IsElevatorTile(_playerPos)) return false;
+                    label = $"멈춘 엘리베이터 — {BossName}를 쓰러뜨리면 전원이 들어온다";
+                    return true;
+                }
 
                 GridPos destination = ladderLinks[0];
                 // 층을 건너는 사다리 링크는 엘리베이터 통로다 — 같은 층 사다리와 다르게 읽혀야

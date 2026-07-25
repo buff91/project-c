@@ -529,6 +529,7 @@ namespace ProjectC.Gameplay
                     "EXIT UNSEALED",
                     FloatingTextKind.Alert);
                 RefreshBossExitSeal();
+                PowerElevatorIfUnlocked();
                 BossStateChanged?.Invoke();
                 SaveCheckpoint();
                 StartCoroutine(AnimateBossExitSealUnlock());

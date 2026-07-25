@@ -339,110 +339,136 @@ namespace ProjectC.Tests
                     $"{pair.Key} 에 입구에서 도달할 수 없다.");
             }
         }
-        // ── 엘리베이터 통로 (상승 던전의 후퇴 동선) ────────────────────
+        // ── 엘리베이터 (보스 처치로 전원이 들어오는 복귀 수단) ─────────
+
+        private static readonly DungeonProgressDirection[] VerticalDirections =
+        {
+            DungeonProgressDirection.Descend,
+            DungeonProgressDirection.Ascend
+        };
 
         [Test]
-        public void Ascend_HasElevatorShafts_ThatOnlyGoDown()
+        public void VerticalDungeons_HaveExactlyOneElevator(
+            [ValueSource(nameof(VerticalDirections))] DungeonProgressDirection direction)
         {
-            DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out GridMap map);
+            DungeonLayout dungeon = Build(direction, out _);
 
-            int shafts = 0;
-            foreach (DungeonFloorInfo floor in dungeon.Floors)
-            {
-                if (!floor.ElevatorShaft.HasValue) continue;
-                shafts++;
-
-                GridPos entrance = floor.ElevatorShaft.Value;
-                Assert.AreEqual(TileKind.Ladder, map.Get(entrance).kind);
-
-                var links = map.LinksFrom(entrance);
-                Assert.AreEqual(1, links.Count, "통로 입구의 링크는 정확히 하나여야 한다.");
-
-                GridPos landing = links[0];
-                Assert.Less(
-                    landing.elevation,
-                    entrance.elevation,
-                    "통로는 아래로만 내려간다.");
-                Assert.AreEqual(TileKind.Ladder, map.Get(landing).kind);
-
-                // 한 방향이다 — 착지점에서 다시 올라갈 수 없다.
-                CollectionAssert.DoesNotContain(
-                    map.LinksFrom(landing).ToList(),
-                    entrance,
-                    "통로로 올라갈 수 있으면 계단을 건너뛰는 진행 지름길이 된다.");
-            }
-
-            Assert.Greater(shafts, 0, "상승 던전에는 후퇴 동선이 있어야 한다.");
+            Assert.AreEqual(
+                ElevatorShaftRules.ShaftsPerDungeon,
+                dungeon.Floors.Count(f => f.ElevatorShaft.HasValue),
+                "여러 대면 '모든 층에서 복귀'가 되어 진행의 무게가 사라진다.");
+            Assert.AreEqual(1, dungeon.Floors.Count(f => f.ElevatorLanding.HasValue));
         }
 
         [Test]
-        public void Ascend_ElevatorShaftDropsTheConfiguredNumberOfProgressFloors()
-        {
-            DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out GridMap map);
-
-            foreach (DungeonFloorInfo floor in dungeon.Floors)
-            {
-                if (!floor.ElevatorShaft.HasValue) continue;
-
-                GridPos landing = map.LinksFrom(floor.ElevatorShaft.Value)[0];
-                int landingFloorIndex = dungeon.Height.FloorIndex(landing.elevation);
-                Assert.IsTrue(dungeon.TryGetFloor(landingFloorIndex, out DungeonFloorInfo target));
-                Assert.AreEqual(
-                    ElevatorShaftRules.DestinationProgressIndex(floor.ProgressIndex),
-                    target.ProgressIndex);
-            }
-        }
-
-        [Test]
-        public void Ascend_BossArenaHasNoElevatorShaft()
+        public void Elevator_EntranceIsOnTheFloorBeforeTheBossArena()
         {
             DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out _);
 
-            DungeonFloorInfo arena = dungeon.Floors[dungeon.Floors.Count - 1];
-            Assert.IsFalse(
-                arena.ElevatorShaft.HasValue,
-                "보스전 중 아레나를 벗어나게 만들지 않는다 — 구멍을 두지 않는 것과 같은 이유다.");
+            DungeonFloorInfo entrance = dungeon.Floors.Single(f => f.ElevatorShaft.HasValue);
+            Assert.AreEqual(
+                ElevatorShaftRules.EntranceProgressIndex(dungeon.Floors.Count),
+                entrance.ProgressIndex,
+                "보스로 가는 길에 멈춘 엘리베이터를 먼저 봐야 전원이 들어온 것이 사건이 된다.");
+            Assert.IsTrue(
+                DungeonBossArenaRules.IsApproachFloor(entrance.ProgressIndex, dungeon.Floors.Count));
         }
 
         [Test]
-        public void DescendAndInward_HaveNoElevatorShafts()
+        public void Elevator_LandsNearTheDungeonEntrance_ButNotOnIt()
         {
-            foreach (DungeonProgressDirection direction in new[]
-                     {
-                         DungeonProgressDirection.Descend,
-                         DungeonProgressDirection.Inward
-                     })
-            {
-                DungeonLayout dungeon = Build(direction, out _);
-                foreach (DungeonFloorInfo floor in dungeon.Floors)
-                    Assert.IsFalse(
-                        floor.ElevatorShaft.HasValue,
-                        $"{direction}: 아래가 전진이거나 진행과 무관한 던전에 후퇴 통로는 의미가 없다.");
-            }
+            DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out _);
+
+            DungeonFloorInfo landing = dungeon.Floors.Single(f => f.ElevatorLanding.HasValue);
+            Assert.AreEqual(ElevatorShaftRules.LandingProgressIndex, landing.ProgressIndex);
+            Assert.AreNotEqual(
+                0,
+                landing.ProgressIndex,
+                "첫 층 입구 방은 진입 연출·세이브 복원이 얽혀 있어 건드리지 않는다.");
         }
 
         [Test]
-        public void Ascend_ShaftDoesNotStrandSpawnsOrSpecials()
+        public void Elevator_IsNotLinkedUntilPowered()
+        {
+            DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out GridMap map);
+
+            GridPos shaft = dungeon.Floors.Single(f => f.ElevatorShaft.HasValue).ElevatorShaft.Value;
+
+            Assert.AreEqual(TileKind.Ladder, map.Get(shaft).kind, "설비는 처음부터 보인다.");
+            Assert.AreEqual(
+                0,
+                map.LinksFrom(shaft).Count,
+                "전원 전에 링크가 있으면 경로 탐색이 곧바로 지름길로 쓴다 " +
+                "(GridPathfinder 는 링크를 따라간다).");
+        }
+
+        [Test]
+        public void Elevator_IsPoweredOnlyByDefeatingTheBoss()
+        {
+            Assert.IsFalse(
+                ElevatorShaftRules.IsPowered(dungeonHasBoss: true, bossDefeated: false),
+                "보스가 살아 있으면 건물에 전원이 없다.");
+            Assert.IsTrue(ElevatorShaftRules.IsPowered(dungeonHasBoss: true, bossDefeated: true));
+            Assert.IsTrue(
+                ElevatorShaftRules.IsPowered(dungeonHasBoss: false, bossDefeated: false),
+                "보스가 없는 던전은 게이트할 사건이 없다.");
+        }
+
+        [Test]
+        public void Elevator_ReturnsAgainstProgress_NotAlongIt(
+            [ValueSource(nameof(VerticalDirections))] DungeonProgressDirection direction)
+        {
+            DungeonLayout dungeon = Build(direction, out _);
+            DungeonFloorInfo entrance = dungeon.Floors.Single(f => f.ElevatorShaft.HasValue);
+            DungeonFloorInfo landing = dungeon.Floors.Single(f => f.ElevatorLanding.HasValue);
+
+            Assert.Less(
+                landing.ProgressIndex,
+                entrance.ProgressIndex,
+                "엘리베이터는 진행을 되감는 방향으로만 간다 — 진행 방향이면 지름길이 된다.");
+
+            // 공간 방향은 던전 방향에 따라 뒤집힌다. 상승 던전에서는 내려가고,
+            // 하강 던전에서는 올라간다 — 둘 다 "진행의 반대"다.
+            bool goesDownInSpace =
+                landing.ElevatorLanding.Value.elevation < entrance.ElevatorShaft.Value.elevation;
+            Assert.AreEqual(
+                direction == DungeonProgressDirection.Ascend,
+                goesDownInSpace,
+                "복귀의 공간 방향이 던전 방향과 맞지 않는다.");
+        }
+
+        [Test]
+        public void Inward_HasNoElevator()
+        {
+            DungeonLayout dungeon = Build(DungeonProgressDirection.Inward, out _);
+
+            Assert.IsFalse(
+                dungeon.Floors.Any(f => f.ElevatorShaft.HasValue),
+                "오르내림이 진행이 아니라고 선언한 던전에 승강 연출은 화면과 어긋난다.");
+        }
+
+        [Test]
+        public void Elevator_DoesNotStrandSpawnsOrSpecials()
         {
             DungeonLayout dungeon = Build(DungeonProgressDirection.Ascend, out GridMap map);
             OpenAllDoors(map, dungeon);
 
             foreach (DungeonFloorInfo floor in dungeon.Floors)
+            foreach (GridPos? candidate in new[] { floor.ElevatorShaft, floor.ElevatorLanding })
             {
-                if (!floor.ElevatorShaft.HasValue) continue;
-                GridPos shaft = floor.ElevatorShaft.Value;
+                if (!candidate.HasValue) continue;
+                GridPos pos = candidate.Value;
 
-                CollectionAssert.DoesNotContain(floor.EnemySpawns.ToList(), shaft);
-                Assert.IsFalse(floor.Items.Any(item => item.Position == shaft));
-                Assert.AreNotEqual(floor.Entry, shaft);
-                Assert.AreNotEqual(floor.RestSite, shaft);
-                Assert.AreNotEqual(floor.ExtractionPoint, shaft);
-                Assert.AreNotEqual(floor.Hole, shaft);
+                CollectionAssert.DoesNotContain(floor.EnemySpawns.ToList(), pos);
+                Assert.IsFalse(floor.Items.Any(item => item.Position == pos));
+                Assert.AreNotEqual(floor.Entry, pos);
+                Assert.AreNotEqual(floor.RestSite, pos);
+                Assert.AreNotEqual(floor.ExtractionPoint, pos);
+                Assert.AreNotEqual(floor.Hole, pos);
 
-                // 통로 입구는 걸어서 닿을 수 있어야 한다 — 못 닿으면 탈출 수단이 아니다.
                 Assert.Greater(
-                    GridPathfinder.FindPath(map, floor.Entry, shaft).Count, 0,
-                    "통로 입구에 걸어갈 수 없다.");
+                    GridPathfinder.FindPath(map, floor.Entry, pos).Count, 0,
+                    "엘리베이터 칸에 걸어갈 수 없다.");
             }
         }
 
