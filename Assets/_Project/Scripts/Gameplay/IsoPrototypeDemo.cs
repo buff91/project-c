@@ -98,6 +98,20 @@ namespace ProjectC.Gameplay
         public Color32 unknownFogColor = new Color32(7, 9, 14, 210);
         public Color32 unknownFogEdge = new Color32(10, 13, 19, 228);
 
+        [Header("지하 어둠 / 광원")]
+        [Tooltip("깊이에 따라 어두워지고 플레이어 광원 주변만 밝히는 동적 조명. 허브·디버그에는 적용하지 않는다.")]
+        public bool dungeonDarkness = true;
+        [Tooltip("가장 얕은 층의 앰비언트 밝기(지상에 가까움). 1이면 어둠 없음.")]
+        [Range(0.3f, 1f)] public float surfaceLightLevel = 0.9f;
+        [Tooltip("최심층의 앰비언트 밝기. 낮을수록 광원 밖이 짙은 어둠에 잠긴다.")]
+        [Range(0.02f, 0.6f)] public float deepLightLevel = 0.14f;
+        [Tooltip("플레이어가 든 광원의 반경(타일). 이 안이 빛 웅덩이가 된다.")]
+        [Range(2, 8)] public int carriedLightRadius = 4;
+        [Tooltip("플레이어 광원의 세기 — 웅덩이 중심 밝기.")]
+        [Range(0.3f, 1f)] public float carriedLightIntensity = 0.95f;
+        [Tooltip("완전한 어둠에서도 실루엣이 읽히도록 남기는 최소 밝기(순검정 방지).")]
+        [Range(0.03f, 0.4f)] public float darknessFloor = 0.12f;
+
         [Header("플레이어 가림 처리")]
         [Tooltip("플레이어와 화면상 겹치는 앞쪽 타일·벽을 자동으로 투명하게 만든다.")]
         public bool fadePlayerOccluders = true;
@@ -1155,6 +1169,11 @@ namespace ProjectC.Gameplay
             exploredAlpha = Mathf.Clamp(exploredAlpha, 0.05f, 0.4f);
             verticalPreviewAlpha = Mathf.Clamp(verticalPreviewAlpha, 0.1f, 0.8f);
             playerOccluderAlpha = Mathf.Clamp(playerOccluderAlpha, 0.12f, 0.7f);
+
+            // 지하 어둠: 깊은 층 앰비언트가 얕은 층보다 밝아지지 않도록 상한을 건다.
+            surfaceLightLevel = Mathf.Clamp(surfaceLightLevel, 0.3f, 1f);
+            deepLightLevel = Mathf.Clamp(deepLightLevel, 0.02f, surfaceLightLevel);
+            darknessFloor = Mathf.Clamp(darknessFloor, 0.03f, 0.4f);
 
             if (_dungeon == null) return;
             RefreshFloorVisibility();

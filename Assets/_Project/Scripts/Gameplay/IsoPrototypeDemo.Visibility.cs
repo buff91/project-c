@@ -42,8 +42,12 @@ namespace ProjectC.Gameplay
                     : tileData.wet
                         ? new Color(0.55f, 0.72f, 0.95f)
                         : Color.white;
+                float light = TileLightLevel(pair.Key);
                 pair.Value.color = new Color(
-                    baseColor.r * tint.r, baseColor.g * tint.g, baseColor.b * tint.b, alpha);
+                    baseColor.r * tint.r * light,
+                    baseColor.g * tint.g * light,
+                    baseColor.b * tint.b * light,
+                    alpha);
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
@@ -62,7 +66,9 @@ namespace ProjectC.Gameplay
                     _dungeon.Height.FloorIndex(item.Spawn.Position.elevation) == _activeFloorIndex &&
                     (viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(item.Spawn.Position)));
                 Color itemTint = ElevationTint(item.Spawn.Position);
-                item.Renderer.color = new Color(itemTint.r, itemTint.g, itemTint.b, 1f);
+                float itemLight = TileLightLevel(item.Spawn.Position);
+                item.Renderer.color = new Color(
+                    itemTint.r * itemLight, itemTint.g * itemLight, itemTint.b * itemLight, 1f);
             }
 
             RefreshRestSiteVisibility();
@@ -862,7 +868,10 @@ namespace ProjectC.Gameplay
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             Color wallTint = ElevationTint(pos);
-            renderer.color = new Color(wallTint.r, wallTint.g, wallTint.b, VisibilityAlpha(pos));
+            float wallLight = TileLightLevel(pos);
+            renderer.color = new Color(
+                wallTint.r * wallLight, wallTint.g * wallLight, wallTint.b * wallLight,
+                VisibilityAlpha(pos));
             _rearWallRenderers.Add(renderer, pos);
         }
 
@@ -1024,6 +1033,35 @@ namespace ProjectC.Gameplay
             if (_visibleTiles.Contains(pos)) return 1f;
             if (_verticalPreviewTiles.Contains(pos)) return verticalPreviewAlpha;
             return exploredAlpha;
+        }
+
+        /// <summary>
+        /// 지금 보고 있는 타일의 밝기 배수(0..1). 깊이 앰비언트(지상 밝음 → 지하 어둠)와
+        /// 플레이어 광원 웅덩이를 합쳐 SpriteRenderer.color RGB에 곱한다.
+        /// 알파(시야 상태)와 직교하는 축이다. 허브·디버그·비활성에서는 1(어둠 없음)이고,
+        /// 기억(Explored) 타일도 기존 알파-딤을 그대로 유지하도록 1을 돌려준다 —
+        /// 어둠은 "지금 현장"에만 걸고, 이미 지나온 지도의 가독성은 건드리지 않는다.
+        /// </summary>
+        private float TileLightLevel(GridPos pos)
+        {
+            if (!dungeonDarkness || hubMode || viewMode == DungeonViewMode.DebugAll ||
+                _dungeon == null || _playerState == null)
+                return 1f;
+            if (!_visibleTiles.Contains(pos)) return 1f;
+
+            int depth = Mathf.Max(0, -_activeFloorIndex);
+            int deepest = Mathf.Max(0, -_dungeon.BottomFloorIndex);
+            float ambient = GridLighting.AmbientForDepth(
+                depth, deepest, surfaceLightLevel, deepLightLevel);
+
+            GridPos origin = _playerState.Position;
+            float dx = pos.x - origin.x;
+            float dy = pos.y - origin.y;
+            float distance = Mathf.Sqrt(dx * dx + dy * dy);
+            float light = GridLighting.TileLight(
+                ambient, distance, carriedLightRadius, carriedLightIntensity);
+
+            return Mathf.Lerp(darknessFloor, 1f, light);
         }
 
         /// <summary>
