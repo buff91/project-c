@@ -129,6 +129,22 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="hub-codex-modal" class="settings-modal">
+            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+                <ui:VisualElement class="settings-header">
+                    <ui:VisualElement>
+                        <ui:Label text="기록실" class="settings-title" />
+                        <ui:Label text="조건을 채우면 다음 원정부터 그 도구가 나온다" class="settings-subtitle" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="hub-header-right">
+                        <ui:Label name="hub-codex-count" text="기록 0/5" class="hub-modal-gold" />
+                        <ui:Button name="hub-codex-close" text="×" class="settings-close" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="hub-codex-list" class="hub-bounty-list" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <ui:VisualElement name="hub-hero-modal" class="settings-modal">
             <ui:VisualElement class="artifact-panel settings-card gameover-card">
                 <ui:Label name="hub-hero-name" text="" class="gameover-title" />

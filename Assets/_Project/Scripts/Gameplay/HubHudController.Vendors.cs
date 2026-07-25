@@ -249,6 +249,60 @@ namespace ProjectC.Gameplay
             UpdateGoldLabel();
         }
 
+        // ── 기록실 ───────────────────────────────────────────
+
+        /// <summary>
+        /// 해금 조건과 진행값을 보여준다. <b>이 화면이 안내를 맡는 이유</b>는 해금 안내를
+        /// 의뢰로 줄 수 없기 때문이다 — 의뢰 게시판은 잠기는 시설이라 거기서 안내하면 순환이 된다.
+        /// 그래서 기록실은 항상 열려 있다.
+        /// </summary>
+        private void OpenCodex()
+        {
+            CloseModals();
+            RefreshCodex();
+            _codexModal?.BringToFront();
+            _codexModal?.AddToClassList("is-open");
+        }
+
+        private void RefreshCodex()
+        {
+            if (_codexList == null) return;
+            _codexList.Clear();
+
+            List<ItemKind> unlocked = _meta.UnlockedItemKinds();
+            if (_codexCount != null)
+                _codexCount.text =
+                    $"기록 {ItemUnlockRules.UnlockedCount(unlocked)}/{ItemUnlockRules.TotalCount}";
+
+            foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
+            {
+                bool open = _meta.IsItemUnlocked(condition.Kind);
+                var row = new VisualElement { name = $"codex-row-{condition.Kind}" };
+                row.AddToClassList("hub-bounty-row");
+                row.EnableInClassList("is-locked", !open);
+
+                // 해금은 이름을 드러내고, 미해금은 가린다 — 무엇이 남았는지가 궁금함으로 남게.
+                var title = new Label(open ? ItemCatalog.DisplayName(condition.Kind) : "???");
+                title.AddToClassList("hub-row-title");
+                row.Add(title);
+
+                var desc = new Label(
+                    open ? ItemCatalog.Description(condition.Kind) : condition.Requirement);
+                desc.AddToClassList("hub-row-desc");
+                row.Add(desc);
+
+                // 최고 기록을 보여준다 — 조건이 한 판 기준이라 지난 판 값을 쓰면
+                // 나쁜 판 뒤에 0 으로 돌아가 안내가 쓸모없어진다.
+                var status = new Label(open
+                    ? "해금됨 · 원정에서 등장한다"
+                    : $"최고 기록 {_meta.BestUnlockProgress(condition.Kind)}/{condition.Target}");
+                status.AddToClassList("hub-bounty-reward");
+                row.Add(status);
+
+                _codexList.Add(row);
+            }
+        }
+
         // ── 영웅 ─────────────────────────────────────────────
 
         private void OpenHero(string heroId)

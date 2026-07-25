@@ -143,11 +143,14 @@
     고른다 — 빙결·기름·물을 쓰면 그 도구가 없어 영원히 못 여는 순환이다.
     ② **해금 안내를 의뢰로 주지 않는다** — 의뢰 게시판은 B단계에서 잠기는 시설이라 순환이 된다.
     안내는 판 종료 화면과 기록실이 맡는다.
-  - **남은 것**: 기록실(허브 전용 시설·모달) → NPC 구출로 대장간·의뢰 게시판 해금(B단계).
+  - **기록실**(`HubLayout.Codex`, `hub-codex-modal`)이 조건·최고 기록을 보여준다. 항상 열려 있다.
+    진행값은 **최고 기록**(`MetaSaveData.unlockProgress`, 단조 증가)이다 — 조건이 한 판
+    기준이라 지난 판 값을 쓰면 나쁜 판 뒤에 0으로 돌아가 안내가 죽는다.
+  - **남은 것**: B단계 — NPC 구출로 대장간·의뢰 게시판 해금(장비 4종은 대장간에 종속).
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **834/834 통과**(방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **951/951 통과**. 컴파일 에러 없음.
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **837/837 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **954/954 통과**. 컴파일 에러 없음.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
     폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
   - 옛 "673/673" 기록은 낡은 값이었다.

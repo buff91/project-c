@@ -45,6 +45,11 @@ namespace ProjectC.Gameplay
             CreateHubProp("BountyBoard", ActorSprites.GetHubPropSprite("bounty"), HubLayout.BountyBoard);
             _hubInteractables[HubLayout.BountyBoard] = "bounty";
 
+            // 기록실은 항상 열려 있다 — 해금 조건을 배우는 유일한 창구이고, 그 안내를
+            // 의뢰로 줄 수 없기 때문이다(의뢰 게시판은 잠기는 시설이라 순환이 된다).
+            CreateHubProp("Codex", ActorSprites.GetHubPropSprite("codex"), HubLayout.Codex);
+            _hubInteractables[HubLayout.Codex] = "codex";
+
             for (int i = 0; i < HeroRoster.All.Count && i < HubLayout.HeroPositions.Count; i++)
             {
                 HeroArchetype hero = HeroRoster.All[i];

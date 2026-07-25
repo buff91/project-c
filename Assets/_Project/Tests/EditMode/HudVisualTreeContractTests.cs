@@ -92,7 +92,13 @@ namespace ProjectC.Tests
             "hub-loadout-grid",
             "hub-loadout-capacity",
             "hub-to-loadout",
-            "hub-to-stash"
+            "hub-to-stash",
+            // 기록실 — UXML 이름과 컨트롤러 바인딩이 어긋나면 모달이 조용히 안 열린다
+            // (컨트롤러가 null 참조를 null-conditional 로 넘겨서 예외도 안 난다).
+            "hub-codex-modal",
+            "hub-codex-list",
+            "hub-codex-count",
+            "hub-codex-close"
         };
 
         private static readonly string[] MainMenuRequiredNames =

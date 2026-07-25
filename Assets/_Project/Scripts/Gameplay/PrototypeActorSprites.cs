@@ -892,6 +892,27 @@ namespace ProjectC.Gameplay
                 FillRect(texture, 15, 16, 6, 8, paper);     // 공고문 2
                 FillRect(texture, 10, 24, 2, 2, wax);       // 봉랍
             }
+            else if (kind == "codex")
+            {
+                // 기록실: 받침대 위에 펼쳐진 기록부. 게시판(bounty)과 헷갈리지 않게
+                // 세로 기둥 대신 낮은 받침대 + 펼친 양면으로 실루엣을 만든다.
+                // 틸 표식은 이 게임의 "열렸다" 신호색과 같은 언어다(해금을 다루는 시설이라).
+                Color32 stand = new Color32(74, 64, 56, 255);
+                Color32 standDark = new Color32(48, 42, 38, 255);
+                Color32 page = new Color32(214, 203, 172, 255);
+                Color32 pageShade = new Color32(176, 164, 138, 255);
+                Color32 mark = new Color32(71, 191, 181, 255);
+                FillRect(texture, 8, 2, 12, 5, standDark);   // 받침 그림자
+                FillRect(texture, 9, 6, 10, 8, stand);       // 받침대
+                FillRect(texture, 3, 13, 10, 11, page);      // 왼쪽 면
+                FillRect(texture, 15, 13, 10, 11, page);     // 오른쪽 면
+                FillRect(texture, 13, 13, 2, 11, pageShade); // 접힌 골
+                FillRect(texture, 5, 16, 6, 1, pageShade);   // 글줄
+                FillRect(texture, 5, 19, 6, 1, pageShade);
+                FillRect(texture, 17, 16, 6, 1, pageShade);
+                FillRect(texture, 17, 19, 6, 1, pageShade);
+                FillRect(texture, 12, 25, 4, 3, mark);       // 해금 표식
+            }
             else // portal
             {
                 Color32 rim = new Color32(84, 211, 197, 255);

@@ -22,6 +22,14 @@ namespace ProjectC.Core
         public static readonly GridPos Smith = new GridPos(2, 2, 0);
         public static readonly GridPos BountyBoard = new GridPos(10, 2, 0);
 
+        /// <summary>
+        /// 기록실 — 해금 조건과 진행값을 보는 곳(<see cref="ItemUnlockRules"/>).
+        /// <b>항상 열려 있어야 한다</b>: 무엇을 해야 하는지 배우는 유일한 창구이고,
+        /// 해금 안내를 의뢰로 줄 수 없기 때문이다(의뢰 게시판은 잠기는 시설이라 순환이 된다).
+        /// 자리는 중앙 통로(x=6, 입구→모닥불→포탈)를 비켜 왼쪽 앞쪽에 둔다.
+        /// </summary>
+        public static readonly GridPos Codex = new GridPos(4, 6, 0);
+
         /// <summary>HeroRoster.All 순서와 짝을 이룬다.</summary>
         public static readonly IReadOnlyList<GridPos> HeroPositions = new[]
         {

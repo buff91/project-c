@@ -62,6 +62,9 @@ namespace ProjectC.Gameplay
         private Label _smithGold;
         private Label _smithFeedback;
         private VisualElement _bountyModal;
+        private VisualElement _codexModal;
+        private VisualElement _codexList;
+        private Label _codexCount;
         private VisualElement _bountyList;
         private Label _bountyGold;
         private VisualElement _heroModal;
@@ -135,6 +138,9 @@ namespace ProjectC.Gameplay
             _bountyModal = root.Q<VisualElement>("hub-bounty-modal");
             _bountyList = root.Q<VisualElement>("hub-bounty-list");
             _bountyGold = root.Q<Label>("hub-bounty-gold");
+            _codexModal = root.Q<VisualElement>("hub-codex-modal");
+            _codexList = root.Q<VisualElement>("hub-codex-list");
+            _codexCount = root.Q<Label>("hub-codex-count");
             _heroModal = root.Q<VisualElement>("hub-hero-modal");
             _heroName = root.Q<Label>("hub-hero-name");
             _heroDesc = root.Q<Label>("hub-hero-desc");
@@ -159,6 +165,7 @@ namespace ProjectC.Gameplay
             Bind(root.Q<Button>("hub-shop-close"), CloseModals);
             Bind(root.Q<Button>("hub-smith-close"), CloseModals);
             Bind(root.Q<Button>("hub-bounty-close"), CloseModals);
+            Bind(root.Q<Button>("hub-codex-close"), CloseModals);
             Bind(root.Q<Button>("hub-hero-close"), CloseModals);
             Bind(root.Q<Button>("hub-stash-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-close"), CloseModals);
@@ -274,6 +281,7 @@ namespace ProjectC.Gameplay
             else if (id == "stash") OpenStash();
             else if (id == "smith") OpenSmith();
             else if (id == "bounty") OpenBounty();
+            else if (id == "codex") OpenCodex();
             else if (id.StartsWith("hero:")) OpenHero(id.Substring(5));
             else if (id == "dungeon-select") OpenDungeonSelect();
         }
@@ -292,6 +300,7 @@ namespace ProjectC.Gameplay
             _shopModal?.RemoveFromClassList("is-open");
             _smithModal?.RemoveFromClassList("is-open");
             _bountyModal?.RemoveFromClassList("is-open");
+            _codexModal?.RemoveFromClassList("is-open");
             _heroModal?.RemoveFromClassList("is-open");
             _stashModal?.RemoveFromClassList("is-open");
         }

@@ -8,6 +8,17 @@ namespace ProjectC.Core
     /// 생환 시: 전리품은 골드로 환산해 적립, 남은 소모품은 여기 보관된다.
     /// 허브에서 출정 백팩으로 고른 물품만 새 판에 반입하며, 죽으면 그 판 소지품은 소실된다.
     /// </summary>
+    /// <summary>
+    /// 해금 조건 하나의 최고 기록. <c>JsonUtility</c>가 직렬화할 수 있게 클래스로 둔다
+    /// (구조체 목록은 Unity JSON 직렬화에서 다루기 번거롭다).
+    /// </summary>
+    [Serializable]
+    public class UnlockProgressEntry
+    {
+        public int kind;
+        public int best;
+    }
+
     [Serializable]
     public class MetaSaveData
     {
@@ -36,6 +47,16 @@ namespace ProjectC.Core
         /// 옛 세이브는 빈 목록으로 들어와 "아직 아무것도 안 열림"이 되므로 마이그레이션이 없다.
         /// </summary>
         public List<int> unlockedItems = new List<int>();
+
+        /// <summary>
+        /// 해금 조건별 <b>최고 기록</b>. 기록실이 "얼마나 가까웠나"를 보여주는 데 쓴다.
+        /// <para>
+        /// 지난 판 값이 아니라 최고 기록인 이유: 조건은 한 판 기준이라 나쁜 판 뒤에 0으로
+        /// 돌아가면 안내가 쓸모없어진다. 최고 기록은 단조 증가해서 "8/12 까지 갔었다"가 남는다.
+        /// 텔레메트리 리포트는 개발 빌드에서만 저장되므로 여기 담아야 배포 빌드에서도 보인다.
+        /// </para>
+        /// </summary>
+        public List<UnlockProgressEntry> unlockProgress = new List<UnlockProgressEntry>();
 
         public int GetCount(ItemKind kind) => ItemStorage.Count(stash, kind);
 
@@ -118,6 +139,31 @@ namespace ProjectC.Core
             unlockedHeroes?.CopyTo(next, 0);
             next[next.Length - 1] = heroId;
             unlockedHeroes = next;
+        }
+
+        /// <summary>이 조건의 최고 기록. 없으면 0.</summary>
+        public int BestUnlockProgress(ItemKind kind)
+        {
+            if (unlockProgress == null) return 0;
+            foreach (UnlockProgressEntry entry in unlockProgress)
+                if (entry.kind == (int)kind) return entry.best;
+            return 0;
+        }
+
+        /// <summary>최고 기록을 갱신한다(줄어들지 않는다).</summary>
+        public void RecordUnlockProgress(ItemKind kind, int value)
+        {
+            if (value <= 0) return;
+            unlockProgress ??= new List<UnlockProgressEntry>();
+
+            foreach (UnlockProgressEntry entry in unlockProgress)
+            {
+                if (entry.kind != (int)kind) continue;
+                if (value > entry.best) entry.best = value;
+                return;
+            }
+
+            unlockProgress.Add(new UnlockProgressEntry { kind = (int)kind, best = value });
         }
 
         public bool IsItemUnlocked(ItemKind kind)

@@ -300,7 +300,21 @@ namespace ProjectC.Gameplay
                 Debug.Log($"[Unlock] {condition.Kind} 해금 — {condition.Requirement}");
             }
 
-            if (_lastRunUnlocks.Count > 0) MetaStore.Save(meta);
+            // 아직 못 연 조건의 최고 기록을 갱신한다 — 기록실이 "얼마나 가까웠나"를
+            // 보여주는 근거다. 해금이 없어도 저장해야 진행이 쌓인다.
+            bool progressChanged = false;
+            foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
+            {
+                if (meta.IsItemUnlocked(condition.Kind)) continue;
+
+                int current = BountyRules.ReadMetric(condition.Metric, _runTelemetry);
+                if (current <= meta.BestUnlockProgress(condition.Kind)) continue;
+
+                meta.RecordUnlockProgress(condition.Kind, current);
+                progressChanged = true;
+            }
+
+            if (_lastRunUnlocks.Count > 0 || progressChanged) MetaStore.Save(meta);
 
             if (_lastRunUnlocks.Count == 0)
             {

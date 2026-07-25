@@ -305,5 +305,51 @@ namespace ProjectC.Tests
             }
         }
 
+        // ── 최고 기록 (기록실 안내의 근거) ──────────────────────────────
+
+        [Test]
+        public void BestUnlockProgress_OnlyGoesUp()
+        {
+            // 조건이 한 판 기준이라 지난 판 값을 쓰면 나쁜 판 뒤에 0 으로 돌아가
+            // 안내가 쓸모없어진다. 최고 기록은 단조 증가해야 한다.
+            var meta = new MetaSaveData();
+            Assert.AreEqual(0, meta.BestUnlockProgress(ItemKind.FrostBomb));
+
+            meta.RecordUnlockProgress(ItemKind.FrostBomb, 8);
+            Assert.AreEqual(8, meta.BestUnlockProgress(ItemKind.FrostBomb));
+
+            meta.RecordUnlockProgress(ItemKind.FrostBomb, 3);
+            Assert.AreEqual(8, meta.BestUnlockProgress(ItemKind.FrostBomb),
+                "더 낮은 값이 최고 기록을 깎으면 안 된다.");
+
+            meta.RecordUnlockProgress(ItemKind.FrostBomb, 11);
+            Assert.AreEqual(11, meta.BestUnlockProgress(ItemKind.FrostBomb));
+        }
+
+        [Test]
+        public void BestUnlockProgress_IgnoresNonPositiveAndSurvivesNullList()
+        {
+            var meta = new MetaSaveData { unlockProgress = null };
+
+            Assert.AreEqual(0, meta.BestUnlockProgress(ItemKind.OilFlask), "옛 세이브는 null 이다.");
+            meta.RecordUnlockProgress(ItemKind.OilFlask, 0);
+            Assert.AreEqual(0, meta.BestUnlockProgress(ItemKind.OilFlask), "0 은 기록하지 않는다.");
+
+            meta.RecordUnlockProgress(ItemKind.OilFlask, 2);
+            Assert.AreEqual(2, meta.BestUnlockProgress(ItemKind.OilFlask));
+        }
+
+        [Test]
+        public void BestUnlockProgress_TracksEachConditionSeparately()
+        {
+            var meta = new MetaSaveData();
+            meta.RecordUnlockProgress(ItemKind.FrostBomb, 5);
+            meta.RecordUnlockProgress(ItemKind.RecallScroll, 1);
+
+            Assert.AreEqual(5, meta.BestUnlockProgress(ItemKind.FrostBomb));
+            Assert.AreEqual(1, meta.BestUnlockProgress(ItemKind.RecallScroll));
+            Assert.AreEqual(0, meta.BestUnlockProgress(ItemKind.ThrowingKnife));
+        }
+
     }
 }
