@@ -9,19 +9,32 @@ namespace ProjectC.Core
     /// </summary>
     public static class ExtractionRules
     {
-        /// <summary>탈출구 간격(깊이). 3이면 B3·B6·B9에 하나씩 생긴다.</summary>
-        public const int FloorInterval = 3;
+        /// <summary>
+        /// 중간 탈출구가 있는 깊이(0 = B1). B4·B8 두 곳뿐이다 —
+        /// 잦으면 판돈이 사라지고, 없으면 최심층까지 한 번의 결정이 된다.
+        /// 사이 구간(B1~B3 / B5~B7 / B9~B10)이 곧 물러설 수 없는 구간이다.
+        /// </summary>
+        public static readonly int[] ExtractionDepths = { 3, 7 };
 
         /// <summary>
-        /// 이 깊이에 중간 탈출구가 있는가. 최심층은 기존 던전 출구가 담당하므로 제외하고,
-        /// 첫 층(입구)에도 두지 않는다 — 들어가자마자 나가는 문은 의미가 없다.
+        /// 이 깊이에 중간 탈출구가 있는가. 최심층은 보스를 잡고 나가는 것이 유일한 길이므로
+        /// 제외하고, 첫 층(입구)에도 두지 않는다 — 들어가자마자 나가는 문은 의미가 없다.
         /// </summary>
         public static bool HasExtractionPoint(int depthIndex, int floorCount)
         {
             if (floorCount <= 1) return false;
             if (depthIndex <= 0 || depthIndex >= floorCount - 1) return false;
-            return (depthIndex + 1) % FloorInterval == 0;
+
+            foreach (int depth in ExtractionDepths)
+                if (depth == depthIndex) return true;
+            return false;
         }
+
+        /// <summary>
+        /// 숨은 방 보상이 비상 송출기일 확률(%). **아주 가끔**이어야 한다 —
+        /// 흔하면 "살아 나갈 권리"가 아니라 기본 소지품이 되고 탈출구가 무의미해진다.
+        /// </summary>
+        public const int BeaconRewardChancePercent = 20;
 
         /// <summary>이 깊이에서 다음 탈출구까지 남은 층 수(없으면 -1). 안내 문구용.</summary>
         public static int FloorsToNextExtraction(int depthIndex, int floorCount)

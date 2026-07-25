@@ -292,13 +292,21 @@ namespace ProjectC.Core
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
                 {
-                    // 숨은 방 보상: 깊은 층은 유물, 중간 깊이는 비상 송출기(살아 나갈 권리),
-                    // 얕은 층은 보석. 탈출 수단을 파밍으로도 얻을 수 있게 한다.
-                    ItemKind kind = p.BranchIsSecret
-                        ? (p.FloorIndex <= -5
-                            ? ItemKind.Relic
-                            : p.FloorIndex <= -2 ? ItemKind.ExtractionBeacon : ItemKind.Gemstone)
-                        : RollKind();
+                    // 숨은 방 보상: 기본은 깊이에 따라 유물/보석이고, 아주 가끔만 비상 송출기가
+                    // 나온다(살아 나갈 권리). 롤은 비밀 방일 때 항상 한 번만 소비해 재현성을 지킨다.
+                    ItemKind kind;
+                    if (p.BranchIsSecret)
+                    {
+                        bool beacon =
+                            random.Next(0, 100) < ExtractionRules.BeaconRewardChancePercent;
+                        kind = beacon
+                            ? ItemKind.ExtractionBeacon
+                            : p.FloorIndex <= -3 ? ItemKind.Relic : ItemKind.Gemstone;
+                    }
+                    else
+                    {
+                        kind = RollKind();
+                    }
                     p.Items.Add(new ItemSpawn(pos, kind));
                     if (p.BranchIsSecret)
                         p.SecretReward = pos;

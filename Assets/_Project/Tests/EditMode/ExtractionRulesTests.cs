@@ -10,16 +10,26 @@ namespace ProjectC.Tests
     public class ExtractionRulesTests
     {
         [TestCase(0, 10, false)] // 입구 층 — 들어가자마자 나가는 문은 두지 않는다
-        [TestCase(1, 10, false)]
-        [TestCase(2, 10, true)]  // B3
-        [TestCase(3, 10, false)]
-        [TestCase(5, 10, true)]  // B6
-        [TestCase(8, 10, true)]  // B9
-        [TestCase(9, 10, false)] // 최심층은 기존 던전 출구가 담당한다
-        public void HasExtractionPoint_EveryThirdFloor_ExceptEnds(
-            int depth, int floorCount, bool expected)
+        [TestCase(2, 10, false)]
+        [TestCase(3, 10, true)]  // B4
+        [TestCase(4, 10, false)]
+        [TestCase(6, 10, false)]
+        [TestCase(7, 10, true)]  // B8
+        [TestCase(8, 10, false)]
+        [TestCase(9, 10, false)] // 최심층은 보스를 잡고 나가는 것이 유일한 길이다
+        public void HasExtractionPoint_OnlyOnB4AndB8(int depth, int floorCount, bool expected)
         {
             Assert.AreEqual(expected, ExtractionRules.HasExtractionPoint(depth, floorCount));
+        }
+
+        [Test]
+        public void ExtractionPoints_AreExactlyTwo_InTheFirstDungeon()
+        {
+            int count = 0;
+            for (int depth = 0; depth < 10; depth++)
+                if (ExtractionRules.HasExtractionPoint(depth, 10)) count++;
+
+            Assert.AreEqual(2, count, "B4·B8 두 곳뿐이어야 구간이 판돈이 된다");
         }
 
         [Test]
@@ -35,10 +45,10 @@ namespace ProjectC.Tests
         [Test]
         public void FloorsToNextExtraction_CountsForward_AndReportsNone()
         {
-            Assert.AreEqual(2, ExtractionRules.FloorsToNextExtraction(0, 10), "B1 → B3");
-            Assert.AreEqual(3, ExtractionRules.FloorsToNextExtraction(2, 10), "B3 → B6");
-            Assert.AreEqual(-1, ExtractionRules.FloorsToNextExtraction(8, 10),
-                "B9 아래로는 중간 탈출구가 없다");
+            Assert.AreEqual(3, ExtractionRules.FloorsToNextExtraction(0, 10), "B1 → B4");
+            Assert.AreEqual(4, ExtractionRules.FloorsToNextExtraction(3, 10), "B4 → B8");
+            Assert.AreEqual(-1, ExtractionRules.FloorsToNextExtraction(7, 10),
+                "B8 아래로는 중간 탈출구가 없다 — 보스를 잡아야 나간다");
         }
 
         [Test]
@@ -69,6 +79,30 @@ namespace ProjectC.Tests
                         $"seed {seed}: 탈출구는 도달 가능해야 한다");
                 }
             }
+        }
+
+        [Test]
+        public void SecretRewards_YieldBeaconsRarely_NotAsStandardLoot()
+        {
+            int secrets = 0;
+            int beacons = 0;
+            for (int seed = 0; seed < 40; seed++)
+            {
+                var map = new GridMap();
+                DungeonLayout layout = DungeonGenerator.Generate(map, 13, 13, floorCount: 10, seed: seed);
+                foreach (DungeonFloorInfo floor in layout.Floors)
+                {
+                    if (!floor.SecretReward.HasValue) continue;
+                    secrets++;
+                    foreach (ItemSpawn spawn in floor.Items)
+                        if (spawn.Position == floor.SecretReward.Value &&
+                            spawn.Kind == ItemKind.ExtractionBeacon)
+                            beacons++;
+                }
+            }
+
+            Assert.Greater(secrets, 0, "표본이 있어야 확률을 말할 수 있다");
+            Assert.Less(beacons * 2, secrets, "송출기는 숨은 방 보상의 예외여야 한다(절반 미만)");
         }
 
         [Test]
