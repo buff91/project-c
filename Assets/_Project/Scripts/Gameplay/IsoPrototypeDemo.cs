@@ -471,6 +471,7 @@ namespace ProjectC.Gameplay
             _enemies.Clear();
             _items.Clear();
             ResetRestSitesForBuild();
+            ResetBossArenaForBuild();
             _inventory.Clear();
             _boss = null;
             _bossExitSeal = null;
@@ -748,6 +749,7 @@ namespace ProjectC.Gameplay
                 }
 
                 CreateRestSite(floor);
+                CreateBossAltar(floor);
             }
             CreateBossExitSeal();
 
@@ -767,6 +769,7 @@ namespace ProjectC.Gameplay
             _selection.transform.position = _grid.GridToWorld(_playerPos);
             _selectionPos = _playerPos;
             RefreshFloorVisibility();
+            AnnounceBossApproachIfNeeded();
         }
 
         private void LateUpdate()

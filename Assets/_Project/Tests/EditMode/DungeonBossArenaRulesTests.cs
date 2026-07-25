@@ -27,6 +27,32 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TryApproachCue_OnlyOnFloorAboveArena_AndNamesTheBoss()
+        {
+            Assert.IsTrue(
+                DungeonBossArenaRules.TryApproachCue("묘지기", 8, 10, bossDefeated: false, out string message));
+            StringAssert.Contains("묘지기", message);
+
+            Assert.IsFalse(
+                DungeonBossArenaRules.TryApproachCue("묘지기", 7, 10, bossDefeated: false, out _),
+                "두 층 위에서는 아직 알리지 않는다");
+            Assert.IsFalse(
+                DungeonBossArenaRules.TryApproachCue("묘지기", 9, 10, bossDefeated: false, out _),
+                "아레나 층에서는 전조가 아니라 실물이 기다린다");
+        }
+
+        [Test]
+        public void TryApproachCue_SilentWhenBossIsGoneOrAbsent()
+        {
+            Assert.IsFalse(
+                DungeonBossArenaRules.TryApproachCue("묘지기", 8, 10, bossDefeated: true, out _),
+                "이미 처치한 위협은 다시 예고하지 않는다");
+            Assert.IsFalse(
+                DungeonBossArenaRules.TryApproachCue(null, 8, 10, bossDefeated: false, out _),
+                "보스 없는 던전은 전조도 없다");
+        }
+
+        [Test]
         public void Generator_PlacesLandmark_OnlyOnDeepestFloor_OnRaisedDais()
         {
             for (int seed = 0; seed < 24; seed++)

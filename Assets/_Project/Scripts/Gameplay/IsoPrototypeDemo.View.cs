@@ -91,6 +91,7 @@ namespace ProjectC.Gameplay
                 item.Renderer.sortingOrder = _grid.iso.SortingOrder(item.Spawn.Position, 0);
             }
             ApplyRestSiteView();
+            ApplyBossAltarView();
             if (_barrelRenderer != null)
             {
                 _barrel.transform.position = _grid.GridToWorld(_barrelPos);

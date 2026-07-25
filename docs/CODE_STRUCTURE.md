@@ -32,6 +32,7 @@
 | `IsoPrototypeDemo.Enemies.cs` | 572 | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 406 | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
 | `IsoPrototypeDemo.RestSites.cs` | 155 | 휴식 지점(모닥불) |
+| `IsoPrototypeDemo.BossArena.cs` | 106 | 최심층 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 453 | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | ~1137 | FOV·수직 포털·후면 벽·플레이어 가림 |
 | `IsoPrototypeDemo.Lighting.cs` | 159 | 지하 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
@@ -56,8 +57,10 @@
 
 ## Core 모듈 정리
 
-- **전투**: `CombatantState.cs`(엔티티만) · `CombatRules.cs`(사거리·시야선·`RangedBlockReason`) —
-  기존 한 파일에서 규칙을 분리.
+- **전투**: `CombatantState.cs`(엔티티만) · `CombatRules.cs`(사거리·피해·`RangedBlockReason`) —
+  기존 한 파일에서 규칙을 분리. 시야선·도달 기하 자체는 `SightRules.cs`가 소유하고 `CombatRules`는 위임한다.
+- **시야**: `SightRules.cs`(수평·경사·수직 시야선 + 개구부 투시 + 근접 도달 기하) ·
+  `GridVisibility.cs`(FOV 셰도우캐스팅) — 옛 `VerticalOpeningRules`는 `SightRules`에 흡수됐다.
 - **아이템/상호작용**: `Items.cs`(`ItemKind`·`ItemCatalog`·`Inventory`·`ItemSpawn`) ·
   `Interactions.cs`(`OilRules`·`BombRules`·`BombResult`) — 데이터와 상호작용 로직 분리.
 - **던전 생성**: `DungeonLayout.cs`(`DungeonFloorInfo`·`DungeonLayout`·`DungeonGenerator.Generate`+헬퍼)
@@ -78,6 +81,11 @@
 | 아이템 표시 정보(이름·설명·가격) | `ItemCatalog` |
 | 원소 반응 상태 부여(폭발 후) | `IsoPrototypeDemo.Falls.ApplyStatusToCombatantsInRegion` |
 | 원거리 명중 연출 | `IsoPrototypeDemo.Actions.FireRanged` |
+| 시야선·수직 개구부·근접 도달 기하 | `SightRules` (`CombatRules`는 위임) |
+| 수직 시야 차단 여부(타일) | `TileData.BlocksVerticalSight` |
+| 깊이 구간 경계·라벨 | `DungeonDepthBandRules` (판정과 `RangeLabel`이 같은 상수 사용) |
+| 텔레메트리 구간 롤업 | `RunTelemetry.RefreshBands` (파생 값 — 저장·요약 직전 재계산) |
+| 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 검증 필요)
 

@@ -95,6 +95,43 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 최심층 아레나의 제단. 공용 톤을 따른다 — 횃불에 데워진 석재 몸통 위에
+        /// 마법/출구 신호색인 틸 코어. 보스를 쓰러뜨리면 런타임 틴트로 식힌다.
+        /// </summary>
+        private Sprite GetBossAltarSprite()
+        {
+            const string key = "boss-altar";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(48, 64);
+            Color32 stoneDark = new Color32(31, 34, 38, 255);
+            Color32 stone = new Color32(67, 65, 61, 255);
+            Color32 stoneLight = new Color32(126, 112, 91, 255);
+            Color32 teal = new Color32(45, 148, 142, 255);
+            Color32 tealCore = new Color32(103, 241, 218, 255);
+
+            // 받침 → 기둥 → 상단 접시 순으로 아래에서 위로 쌓는다.
+            FillRect(texture, 6, 4, 36, 9, stoneDark);
+            FillRect(texture, 9, 6, 30, 5, stone);
+            FillRect(texture, 15, 13, 18, 21, stoneDark);
+            FillRect(texture, 18, 13, 12, 19, stone);
+            FillRect(texture, 10, 34, 28, 7, stoneDark);
+            FillRect(texture, 12, 35, 24, 4, stoneLight);
+
+            // 틸 코어: 접시 위에 뜬 균열의 빛.
+            FillRect(texture, 19, 41, 10, 12, teal);
+            FillRect(texture, 22, 43, 4, 14, tealCore);
+            DrawThickLine(texture, 24, 57, 18, 47, 2, teal);
+            DrawThickLine(texture, 24, 57, 30, 47, 2, teal);
+            FillRect(texture, 21, 39, 6, 2, tealCore);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         private Sprite GetLocalStairLandmarkSprite()
         {
             const string key = "landmark-local-stairs";

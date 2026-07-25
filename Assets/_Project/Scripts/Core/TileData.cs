@@ -59,11 +59,18 @@ namespace ProjectC.Core
                                    kind != TileKind.SecretDoor) ||
                                   kind == TileKind.WeakFloor;
 
-        /// <summary>시야를 차단하는가. (FOV / 조준용)</summary>
+        /// <summary>시야를 차단하는가. (FOV / 조준용 — 같은 높이 기준)</summary>
         public bool BlocksSight =>
             kind == TileKind.Wall ||
             kind == TileKind.DoorClosed ||
             kind == TileKind.SecretDoor;
+
+        /// <summary>
+        /// 위·아래 시야를 차단하는가. 실제 개구부(Hole)만 층을 잇는 통로다 —
+        /// 온전한 바닥은 시야를 통과시키는 <see cref="BlocksSight"/>=false 라도 수직으로는 막는다.
+        /// (판정 사용처의 단일 출처는 <see cref="SightRules"/>)
+        /// </summary>
+        public bool BlocksVerticalSight => kind != TileKind.Hole;
 
         public bool CanOpen => kind == TileKind.DoorClosed;
         public bool CanClose => kind == TileKind.DoorOpen;

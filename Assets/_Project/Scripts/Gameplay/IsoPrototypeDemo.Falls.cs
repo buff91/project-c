@@ -122,6 +122,7 @@ namespace ProjectC.Gameplay
                 int globalFloor = GlobalFloorIndex(_activeFloorIndex);
                 if (_runTelemetry != null && _runTelemetry.currentFloorIndex != globalFloor)
                     _runTelemetry.RecordFloorEntered(globalFloor);
+                AnnounceBossApproachIfNeeded();
                 UpdateInputFloorRange();
                 SaveCheckpoint();
             }
@@ -198,7 +199,7 @@ namespace ProjectC.Gameplay
             BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
             List<GridPos> revealedSecretDoors = SecretRoomRules.RevealInBlast(_grid.Map, center);
             foreach (GridPos _ in revealedSecretDoors)
-                _runTelemetry?.RecordSecretRoomFound();
+                _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
             int visibleHitCount = 0;
             foreach (CombatantState damaged in result.Damaged)
             {

@@ -142,11 +142,16 @@
 - [~] 깊이 구간 변주 — 적 조합·방 구조는 완료(`DungeonBandProfile` 밴드 테이블: Shallow/Mid/Deep로
   드론 비중·분기/웅덩이 확률·적 수 조정, 기존 `DungeonDepthBandRules` 경계 재사용). **소품·팔레트 변주는 후속**
   (`DungeonSurfaceFor` 공통 톤 불변 유지, 밴드 스프라이트 슬롯 위에서만). Core 테스트 `DungeonBandProfileTests`.
-- [~] B10 전조와 보스 공간 — 전투 공간(최심층 하행 경비병 무리 생략=1:1 결투감)과 랜드마크 데이터
-  (`DungeonFloorInfo.Landmark`, 뒤쪽 단에 결정론적 배치, `DungeonBossArenaRules`)는 완료+테스트.
-  **랜드마크 스프라이트 렌더·B9 접근 전조 메시지는 후속(Gameplay, Unity 시각 검증 필요).**
-- [ ] 각 변주의 텔레메트리 태그 — 휴식 사용·숨은 방 발견 계측은 완료. 구간별 체류/피해를
-  같은 리포트에서 비교 가능하게 한다.
+- [x] **B10 전조와 보스 공간** — 전투 공간(최심층 하행 경비병 무리 생략=1:1 결투감)과 랜드마크 데이터
+  (`DungeonFloorInfo.Landmark`, 뒤쪽 단에 결정론적 배치, `DungeonBossArenaRules`)에 더해
+  제단 스프라이트 렌더(`IsoPrototypeDemo.BossArena.cs`, FOV·활성 층 추종, 처치 후 신호색이 식음)와
+  B9 접근 전조 메시지(`DungeonBossArenaRules.TryApproachCue`, 한 판에 한 번, 보스 처치 후엔 침묵)를 붙였다.
+  **Unity Game View 시각 확인은 남아 있다(제단 실루엣·전조 문구 노출 타이밍).**
+- [x] **각 변주의 텔레메트리 태그** — 층별 계측에 아이템 사용/조합·휴식·숨은 방을 추가하고,
+  `RunTelemetry.RefreshBands()`가 이를 깊이 구간(Shallow B1~B3 / Mid B4~B6 / Deep B7~B9 / Boss B10+)으로
+  롤업한다(`RunBandTelemetry`, 스키마 v4). 구간 롤업은 **파생 값**이라 경계를 바꾸면 과거 리포트도 같은
+  규칙으로 다시 묶인다. JSON 리포트와 개발 디버그 창에서 구간별 체류/피해/처치/아이템을 나란히 비교한다.
+  경계는 `DungeonDepthBandRules` 상수 하나에서 판정과 라벨을 함께 만든다(라벨↔판정 대조 테스트 포함).
 
 ## 향후 기술 과제 — 던전 생성기 BSP/룸-앤-코리더 전환
 
@@ -165,9 +170,9 @@
 
 ## 향후 기술 과제 — 3D 시야선(높이 인식) · 입체 전투
 
-> 지금 시야/사격 판정은 **같은 높이(elevation)에서만** 동작하고 세 곳에 흩어져 있다:
-> `GridVisibility`(FOV) · `CombatRules.HasLineOfSight`(같은 층 Bresenham) ·
-> `VerticalOpeningRules`(Hole만 특수 처리). 높이가 다르면 "무조건 안 보임"으로 막는다.
+> 시야/사격 판정은 원래 같은 높이만 알았고 세 곳(`GridVisibility` FOV · `CombatRules.HasLineOfSight` ·
+> `VerticalOpeningRules`)에 흩어져 있었다. 1·2단계로 전투 LoS가 높이를 알게 되었고 전투·개구부·근접
+> 판정이 `SightRules` 하나로 모였다(`VerticalOpeningRules` 흡수). 남은 축은 FOV다.
 > 목표는 **"높이가 달라도 실제로 보이면 보고 쏜다"** 로 통합하는 것 — 고지대 사격·근접 단차 타격·
 > 낙하 유발·마법 높이 반응 등 **입체 전투 전체의 토대**다.
 
@@ -181,8 +186,16 @@
   평면(from.e==to.e)은 기존과 완전히 동일, void=불투명 유지, 같은 컬럼 수직 투시는 2단계로 보류.
   높이차 사격 개방 + `RangedReachCost`(맨해튼+|Δe|)로 고지대에 사거리 비용 부과(카이팅 억제).
   Core 테스트 `LineOfSight3DTests` + `FiringPositionTests` 갱신.
-- [ ] **2단계 — 근접·마법 재사용**: 1단계 함수를 근접 단차 타격·마법 판정이 공유. `VerticalOpeningRules` 흡수.
-- [ ] **3단계 — FOV/안개까지 높이 반영**: `GridVisibility` 셰도우캐스팅을 높이 인식으로. 제일 큰 작업, 마지막.
+- [x] **2단계 — 판정 통합**: 시야·도달 판정을 `SightRules` 하나로 모았다.
+  `VerticalOpeningRules`는 **흡수·삭제**(`ViewFromFloor`/`VerticalOpeningView`가 `SightRules`로 이사)했고,
+  같은 컬럼 수직 시야(`HasVerticalSight`)가 열렸다 — 허공은 통로, 온전한 바닥은 차단
+  (`TileData.BlocksVerticalSight`)이라 실제 개구부만 층을 잇는다. 개구부 투시도 이 함수를 거치므로
+  사이에 낀 바닥이 시야를 막는다. 근접은 `SightRules.CanReachAcross`로 도달 기하를 공유한다
+  (`CombatRules.AreAdjacent`는 위임). **마법은 아직 시스템이 없어 공유할 판정이 없다** — 도입 시 같은 함수를 쓴다.
+  Core 테스트 `SightRulesTests`(옛 `VerticalOpeningRulesTests` 흡수).
+- [~] **3단계 — FOV/안개까지 높이 반영**: `GridVisibility`는 표면 스캔 + 눈높이 초과 차폐
+  (`HeightBlockThreshold`)까지 왔다. 남은 것은 컬럼당 여러 솔리드 구간(천장/공중)을 아는 span-aware
+  셰도우캐스팅으로 `SightRules`와 규칙을 합치는 일. 제일 큰 작업, 마지막.
 - 상세 개념: `docs/ARCHITECTURE.md` §5(시야).
 
 관련 향후 과제(방향만, 미확정):

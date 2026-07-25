@@ -13,9 +13,10 @@ namespace ProjectC.Core
     ///   타일 부재로 표현하므로(벽은 비주얼 전용), void가 투명하면 닫힌 문 뒤 방이
     ///   빈 공간 너머로 통째로 드러나 문 불변식이 깨진다.
     /// - Wall/DoorClosed = 그 칸 자체는 보이지만 너머로 전파되지 않는다.
-    /// - Hole/WeakFloor/Stairs/DoorOpen = 투과. (CombatRules.HasLineOfSight와 동일 기준)
-    /// - 1단 높이차(raised)는 시야를 막지 않는다. 필요해지면 여기의 표면 판정에
-    ///   "표면 elevation − 눈높이 > 임계 → 불투명" 규칙을 추가한다.
+    /// - Hole/WeakFloor/Stairs/DoorOpen = 투과. (SightRules.HasLineOfSight와 동일 기준)
+    /// - 눈높이보다 <see cref="HeightBlockThreshold"/>를 초과해 높은 표면은 벽처럼 너머를 막는다.
+    ///   컬럼당 여러 솔리드 구간(천장/공중)까지 아는 span-aware 판정으로 SightRules와 합치는 것은
+    ///   3D 시야선 3단계 과제다.
     /// </summary>
     public static class GridVisibility
     {

@@ -44,7 +44,7 @@ namespace ProjectC.Gameplay
                 yield break;
 
             yield return SetDoorState(secretDoor, TileKind.SecretPassage);
-            _runTelemetry?.RecordSecretRoomFound();
+            _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
             RefreshFloorVisibility();
             FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
             InteractionFeedback?.Invoke("숨은 통로 발견 — 안쪽에서 희귀한 기운이 느껴진다");
@@ -253,6 +253,7 @@ namespace ProjectC.Gameplay
                 {
                     _activeFloorIndex = nextFloor;
                     _runTelemetry?.RecordFloorEntered(GlobalFloorIndex(_activeFloorIndex));
+                    AnnounceBossApproachIfNeeded();
                     UpdateInputFloorRange();
                     RefreshFloorVisibility();
                     PositionSelection(next);

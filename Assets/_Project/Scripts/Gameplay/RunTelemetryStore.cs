@@ -22,6 +22,9 @@ namespace ProjectC.Gameplay
         {
             if (!IsAvailable || telemetry == null) return null;
 
+            // 구간 롤업은 파생 값이라 저장 직전에 다시 계산한다 — 리포트만 봐도 구간 비교가 된다.
+            telemetry.RefreshBands();
+
             string directory = ReportDirectoryPath;
             Directory.CreateDirectory(directory);
 

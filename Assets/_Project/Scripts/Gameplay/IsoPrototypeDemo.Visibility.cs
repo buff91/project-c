@@ -73,6 +73,7 @@ namespace ProjectC.Gameplay
             }
 
             RefreshRestSiteVisibility();
+            RefreshBossAltarVisibility();
 
             if (_barrelRenderer != null && _barrelExploded)
             {
@@ -478,7 +479,7 @@ namespace ProjectC.Gameplay
             foreach (var pair in _grid.Map.All())
             {
                 if (pair.Value.kind != TileKind.Hole) continue;
-                VerticalOpeningView view = VerticalOpeningRules.ViewFromFloor(
+                VerticalOpeningView view = SightRules.ViewFromFloor(
                     _grid.Map,
                     _dungeon.Height,
                     _activeFloorIndex,
@@ -575,7 +576,7 @@ namespace ProjectC.Gameplay
             foreach (var pair in _grid.Map.All())
             {
                 if (pair.Value.kind != TileKind.Hole) continue;
-                VerticalOpeningView view = VerticalOpeningRules.ViewFromFloor(
+                VerticalOpeningView view = SightRules.ViewFromFloor(
                     _grid.Map,
                     _dungeon.Height,
                     _activeFloorIndex,
@@ -631,7 +632,7 @@ namespace ProjectC.Gameplay
             foreach (var pair in _grid.Map.All())
             {
                 if (pair.Value.kind != TileKind.Hole) continue;
-                VerticalOpeningView openingView = VerticalOpeningRules.ViewFromFloor(
+                VerticalOpeningView openingView = SightRules.ViewFromFloor(
                     _grid.Map,
                     _dungeon.Height,
                     _activeFloorIndex,

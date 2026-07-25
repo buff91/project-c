@@ -1,0 +1,134 @@
+using System;
+
+namespace ProjectC.Core
+{
+    /// <summary>수직 개구부를 어느 방향으로 들여다보는가.</summary>
+    public enum VerticalOpeningView
+    {
+        None = 0,
+        Downward,
+        Upward
+    }
+
+    /// <summary>
+    /// 시야·도달 판정의 단일 출처(3D 시야선 2단계). 원거리 사격·근접 단차 타격·개구부 투시가
+    /// 모두 이 함수들을 공유한다. 판정이 세 곳(전투/개구부/FOV)으로 흩어지지 않게 하는 자리다.
+    ///
+    /// - 수평·경사 시선: 2D 브레젠험으로 걷되 각 중간 칸에서 시선 elevation 을 보간해
+    ///   그 복셀의 차폐를 본다. void(타일 부재)=불투명 — 이 던전의 벽은 타일 부재로 표현된다.
+    /// - 수직 시선(같은 컬럼): 실제 개구부(Hole)만 통과한다. 허공(타일 없음)은 통로다 —
+    ///   "void=불투명"은 컬럼을 벽으로 읽는 수평 규칙이라 위·아래 판정에는 적용하지 않는다.
+    ///
+    /// FOV(<see cref="GridVisibility"/>) 셰도우캐스팅까지 이 규칙으로 합치는 것은 3단계 과제다.
+    /// </summary>
+    public static class SightRules
+    {
+        /// <summary>이 칸이 위·아래 시야를 막는가. 허공(null)은 통로, 실제 개구부만 뚫려 있다.</summary>
+        public static bool BlocksVerticalSight(TileData tile) =>
+            tile != null && tile.BlocksVerticalSight;
+
+        /// <summary>
+        /// 높이 인식 시야선. from.elevation == to.elevation 이면 상수 보간이라
+        /// 기존 평면 판정과 완전히 같고, 같은 컬럼이면 수직 개구부 판정으로 넘긴다.
+        /// </summary>
+        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to)
+        {
+            if (map == null) return false;
+            if (from.x == to.x && from.y == to.y) return HasVerticalSight(map, from, to);
+
+            int x = from.x;
+            int y = from.y;
+            int dx = Math.Abs(to.x - from.x);
+            int dy = Math.Abs(to.y - from.y);
+            int sx = from.x < to.x ? 1 : -1;
+            int sy = from.y < to.y ? 1 : -1;
+            int error = dx - dy;
+
+            int steps = Math.Max(dx, dy); // 체비셰프 단계 수 = elevation 보간 분모(>=1)
+            int k = 0;
+
+            while (x != to.x || y != to.y)
+            {
+                int twiceError = error * 2;
+                if (twiceError > -dy) { error -= dy; x += sx; }
+                if (twiceError < dx) { error += dx; y += sy; }
+                k++;
+                if (x == to.x && y == to.y) break;
+
+                int e = (int)Math.Round(
+                    from.elevation + (to.elevation - from.elevation) * (double)k / steps,
+                    MidpointRounding.AwayFromZero);
+
+                TileData tile = map.Get(new GridPos(x, y, e));
+                if (tile == null || tile.BlocksSight) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 같은 컬럼의 수직 시야. 낮은 쪽 바로 위부터 <b>높은 쪽 칸까지</b>가 모두 뚫려 있어야 한다.
+        /// 높은 쪽 칸 자신을 포함하는 이유: 단단한 바닥 위에 선 대상은 그 바닥에 가려 아래에서
+        /// 보이지 않고, 반대로 자기 발밑 바닥을 뚫고 내려다볼 수도 없다. 즉 실제 개구부만 층을 잇는다.
+        /// </summary>
+        public static bool HasVerticalSight(GridMap map, GridPos from, GridPos to)
+        {
+            if (map == null || from.x != to.x || from.y != to.y) return false;
+            if (from.elevation == to.elevation) return true;
+
+            int upper = Math.Max(from.elevation, to.elevation);
+            int lower = Math.Min(from.elevation, to.elevation);
+            for (int e = lower + 1; e <= upper; e++)
+            {
+                if (BlocksVerticalSight(map.Get(new GridPos(from.x, from.y, e))))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 옆칸에 높이차를 감수하고 닿는가 — 근접 단차 타격의 기하 판정.
+        /// 마법·특수 사거리도 같은 함수를 쓰도록 순수 기하(맵 비의존)로 둔다.
+        /// </summary>
+        public static bool CanReachAcross(GridPos from, GridPos to, int maxStepHeight) =>
+            from.ManhattanTo(to) == 1 &&
+            Math.Abs(from.elevation - to.elevation) <= maxStepHeight;
+
+        /// <summary>
+        /// 실제로 뚫린 Hole을 통한 층간 시야를 판정한다.
+        /// StairsUp/Down은 던전 층 전환 링크일 뿐 시야 포털이 아니다.
+        /// </summary>
+        public static VerticalOpeningView ViewFromFloor(
+            GridMap map,
+            DungeonHeightModel height,
+            int observerFloorIndex,
+            GridPos opening,
+            int minimumElevation,
+            Func<GridPos, bool> isVisible,
+            out GridPos landing)
+        {
+            landing = default;
+            if (map == null || height == null || isVisible == null ||
+                map.Get(opening)?.kind != TileKind.Hole)
+                return VerticalOpeningView.None;
+
+            GridPos? foundLanding = map.FindLandingBelow(opening, minimumElevation);
+            if (!foundLanding.HasValue)
+                return VerticalOpeningView.None;
+
+            // 개구부와 착지 사이가 실제로 뚫려 있어야 한다 — 사이에 온전한 바닥이 끼면 못 본다.
+            if (!HasVerticalSight(map, opening, foundLanding.Value))
+                return VerticalOpeningView.None;
+
+            landing = foundLanding.Value;
+            int openingFloor = height.FloorIndex(opening.elevation);
+            int landingFloor = height.FloorIndex(landing.elevation);
+
+            if (observerFloorIndex == openingFloor && isVisible(opening))
+                return VerticalOpeningView.Downward;
+            if (observerFloorIndex == landingFloor && isVisible(landing))
+                return VerticalOpeningView.Upward;
+            return VerticalOpeningView.None;
+        }
+    }
+}

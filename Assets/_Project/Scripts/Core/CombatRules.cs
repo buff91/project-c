@@ -20,12 +20,15 @@ namespace ProjectC.Core
         /// <summary>위에서 아래로 내려칠 때의 추가 피해 — 높이 이점을 근접에도 부여. (한 줄 콘셉트 "위에서 내려치며")</summary>
         public const int DownStrikeBonus = 1;
 
-        /// <summary>근접 사거리 판정: 평면 정사각 인접 + 높이차가 <see cref="MeleeReachHeight"/> 이내.</summary>
+        /// <summary>
+        /// 근접 사거리 판정: 평면 정사각 인접 + 높이차가 <see cref="MeleeReachHeight"/> 이내.
+        /// 기하 판정 자체는 <see cref="SightRules.CanReachAcross"/>가 소유한다 — 마법·특수
+        /// 사거리가 생겨도 "높이차를 얼마까지 넘어 닿는가"를 한 곳에서만 정의하기 위해서다.
+        /// </summary>
         public static bool AreAdjacent(CombatantState first, CombatantState second)
         {
             if (first == null || second == null) return false;
-            return first.Position.ManhattanTo(second.Position) == 1 &&
-                   Math.Abs(first.Position.elevation - second.Position.elevation) <= MeleeReachHeight;
+            return SightRules.CanReachAcross(first.Position, second.Position, MeleeReachHeight);
         }
 
         public static bool TryMelee(CombatantState attacker, CombatantState target, out int damage)
@@ -144,45 +147,10 @@ namespace ProjectC.Core
         }
 
         /// <summary>
-        /// 높이 인식 시야선(3D 1단계). from→to를 2D 브레젠험으로 걷되, 각 중간 칸에서
-        /// 시선의 elevation을 진행 비율로 보간해 그 복셀의 차폐를 본다. void(빈 칸)=불투명 루트를
-        /// 지키고, from.elevation == to.elevation이면 상수 보간이라 기존 평면 판정과 완전히 같다.
-        /// 같은 컬럼(x==to.x && y==to.y) 수직 투시는 아직 열지 않는다(2단계, VerticalOpeningRules).
+        /// 높이 인식 시야선. 판정의 단일 출처는 <see cref="SightRules.HasLineOfSight"/>이며
+        /// 여기서는 전투 호출부를 위한 얇은 위임만 한다(3D 시야선 2단계 — 수평·경사·수직 통합).
         /// </summary>
-        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to)
-        {
-            if (map == null) return false;
-            // 같은 칸: 수직 시야선은 2단계로 미룬다 — 같은 elevation일 때만 자기 자신이 보인다.
-            if (from.x == to.x && from.y == to.y) return from.elevation == to.elevation;
-
-            int x = from.x;
-            int y = from.y;
-            int dx = Math.Abs(to.x - from.x);
-            int dy = Math.Abs(to.y - from.y);
-            int sx = from.x < to.x ? 1 : -1;
-            int sy = from.y < to.y ? 1 : -1;
-            int error = dx - dy;
-
-            int steps = Math.Max(dx, dy); // 체비셰프 단계 수 = elevation 보간 분모(>=1)
-            int k = 0;
-
-            while (x != to.x || y != to.y)
-            {
-                int twiceError = error * 2;
-                if (twiceError > -dy) { error -= dy; x += sx; }
-                if (twiceError < dx) { error += dx; y += sy; }
-                k++;
-                if (x == to.x && y == to.y) break;
-
-                int e = (int)Math.Round(
-                    from.elevation + (to.elevation - from.elevation) * (double)k / steps,
-                    MidpointRounding.AwayFromZero);
-
-                TileData tile = map.Get(new GridPos(x, y, e));
-                if (tile == null || tile.BlocksSight) return false;
-            }
-
-            return true;
-        }
+        public static bool HasLineOfSight(GridMap map, GridPos from, GridPos to) =>
+            SightRules.HasLineOfSight(map, from, to);
     }
 }

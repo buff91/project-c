@@ -203,7 +203,7 @@ namespace ProjectC.Gameplay
         private IEnumerator DrinkPotion()
         {
             _inventory.TryUse(ItemKind.Potion);
-            _runTelemetry?.RecordItemUsed(ItemKind.Potion);
+            _runTelemetry?.RecordItemUsed(ItemKind.Potion, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             int healed = _playerState.Heal(potionHealAmount);
@@ -221,7 +221,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.OilFlask);
-            _runTelemetry?.RecordItemUsed(ItemKind.OilFlask);
+            _runTelemetry?.RecordItemUsed(ItemKind.OilFlask, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             yield return AnimateProjectile(_playerPos, target);
@@ -237,7 +237,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.ThrowingKnife);
-            _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife);
+            _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             if (CombatRules.TryRanged(
@@ -280,7 +280,7 @@ namespace ProjectC.Gameplay
         private IEnumerator CraftAction(Recipe recipe)
         {
             CraftingRules.TryCraft(_inventory, recipe);
-            _runTelemetry?.RecordItemCrafted(recipe.Output);
+            _runTelemetry?.RecordItemCrafted(recipe.Output, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
             InteractionFeedback?.Invoke(
                 $"조합: {ItemCatalog.DisplayName(recipe.Output)} 완성!");
@@ -309,7 +309,7 @@ namespace ProjectC.Gameplay
         private IEnumerator RecallToEntry()
         {
             _inventory.TryUse(ItemKind.RecallScroll);
-            _runTelemetry?.RecordItemUsed(ItemKind.RecallScroll);
+            _runTelemetry?.RecordItemUsed(ItemKind.RecallScroll, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor);
@@ -341,7 +341,7 @@ namespace ProjectC.Gameplay
         {
             SetBombAiming(false);
             _inventory.TryUse(kind);
-            _runTelemetry?.RecordItemUsed(kind);
+            _runTelemetry?.RecordItemUsed(kind, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
             bool fiery = kind != ItemKind.FrostBomb;
