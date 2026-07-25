@@ -121,11 +121,12 @@
   `IsoPrototypeDemo.Sprites.cs`는 그 변환만 하는 123줄 어댑터다 — 픽셀을 다시 이 파일로
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
-- **최근 검증 기준**(2026-07-25, `6b1230f` + 스프라이트 분리 기준 — 세 경로 모두 실제 실행해 확인):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **758/758 통과**(진행 방향 계약 테스트 포함).
-  - Unity EditMode `ProjectC.Tests.EditMode` **875/875 통과**. 컴파일 에러 없음.
-  - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests`).
-  - 옛 "673/673" 기록은 낡은 값이었다 — 실제 EditMode는 875개다.
+- **최근 검증 기준**(2026-07-25, 방향 전환 후 — 세 경로 모두 실제 실행해 확인):
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **804/804 통과**(방향 계약 테스트 포함).
+  - Unity EditMode `ProjectC.Tests.EditMode` **921/921 통과**. 컴파일 에러 없음.
+  - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
+    폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
+  - 옛 "673/673" 기록은 낡은 값이었다.
   변경 후에는 숫자를 맹신하지 말고, 최소한 shim을 돌리고 에디터 회귀도 다시 실행한다.
 - **작업 트리 주의**: 현재 여러 기능 변경이 아직 커밋되지 않은 상태일 수 있다.
   작업 시작 시 `git status`/`git diff`를 확인하고 기존 변경을 reset/checkout으로 지우지 않는다.
