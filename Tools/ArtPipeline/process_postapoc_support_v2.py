@@ -6,6 +6,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from torchstone_palette import lock_to_palette
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "docs/art-direction/project-c-collapsed-transit-support-source-v2.png"
@@ -15,7 +17,6 @@ CANVAS_SIZE = (48, 64)
 VISIBLE_SIZE = (46, 60)
 GROUND_Y = 62
 ALPHA_CUTOFF = 80
-COLOR_COUNT = 32
 
 
 @dataclass(frozen=True)
@@ -67,11 +68,7 @@ def reduce_colors(image: Image.Image) -> Image.Image:
     )
     rgb = Image.new("RGB", image.size, (5, 7, 12))
     rgb.paste(image, mask=alpha)
-    reduced = rgb.quantize(
-        colors=COLOR_COUNT,
-        method=Image.Quantize.MEDIANCUT,
-        dither=Image.Dither.NONE,
-    ).convert("RGBA")
+    reduced = lock_to_palette(rgb).convert("RGBA")  # 공용 .gpl 팔레트 잠금
     reduced.putalpha(alpha)
     return reduced
 

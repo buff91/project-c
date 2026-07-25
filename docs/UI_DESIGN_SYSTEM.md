@@ -156,11 +156,15 @@
 
 ## 스프라이트 적용 현황과 남은 승격 (USS 한계)
 
-USS에는 box-shadow가 없어 아래는 임시로 단순 보더이며, 아트 파이프라인(GDD §6)에서 도트 스프라이트로 승격한다:
+USS에는 box-shadow가 없어 프레임·글로우·눈금은 도트 9-slice 스프라이트로 승격한다
+(`Tools/ArtPipeline/build_ui_nineslice_v1.py` 생성, `DesignSystem.uss` §9-slice에 배선):
 
-- 창 크롬의 **깎인 모서리** → 9-slice 스프라이트 1장
-- 다이아 현재층/선택의 **골드 글로우** → 스프라이트
-- 게이지 **세그먼트 눈금** → 오버레이 스프라이트
+- 창 크롬의 **깎인 모서리** → ✅ `ui-window-frame.png`(+`-teal`) 9-slice, 패널 채움 baked(진짜 컷코너). `.pc-window`.
+- 다이아 현재층/선택의 **골드 글로우** → ✅ `ui-glow-frame.png` 9-slice. `.pc-dia--current`/`.pc-dbtn--selected`/`.pc-slot--selected`.
+- 게이지 **세그먼트 눈금** → ✅ `ui-gauge-tick.png` 가로 반복 오버레이(`.pc-bar-ticks`).
+
+> 실 렌더·슬라이스 미세조정은 `DesignSystemGallery`를 UIDocument에 붙여 Unity에서 확인.
+> 라이브 HUD는 `.pc-heart` 외 이 컴포넌트를 쓰지 않아 무영향(갤러리/차기 화면용).
 - 하트·물약·폭탄·냉기 폭탄 아이콘은 `Art/Runtime` 도트 스프라이트 적용 완료. 검·장화 등 추가 액션 아이콘은 같은 세트에서 확장한다.
 - 설정·메뉴·회전·백팩·대기·근접·원거리·상호작용은
   `ui-*.png` 24×24 Torchstone 세트로 적용한다. UXML은 의미/레이블을 소유하고
