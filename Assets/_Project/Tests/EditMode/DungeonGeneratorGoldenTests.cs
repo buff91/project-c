@@ -34,13 +34,18 @@ namespace ProjectC.Tests
         /// 생성 스트림이 그대로이고, 타일 배치도 동일하다. 실제로 하강 던전 지문은
         /// 안 바뀌었다(얕은 밴드엔 캐치워크가 없어 이 경로를 안 탄다).
         /// 즉 <b>기존 세이브가 같은 던전을 계속 연다</b> — 사다리의 목적지만 달라진다.</item>
+        /// <item><c>8fbf82c8067b1cb3</c> / <c>02411906bef8b09f</c> — 개구부가 1칸에서
+        /// 최대 3칸으로 자람. <b>RNG 스트림은 안 밀렸다</b>: 성장 루프가 난수를 쓰지 않아
+        /// 뽑는 횟수가 그대로다(앵커 1 + 약한 바닥 1). 상한을 1로 되돌리면 위의 옛 지문이
+        /// 그대로 재현되는 것으로 확인했다 — 즉 방·계단·적·아이템 배치는 <b>동일</b>하고
+        /// 달라진 것은 개구부에 붙은 칸들뿐이다.</item>
         /// </list>
         /// </summary>
         [Test]
         public void Ascending_HospitalShape_MatchesGoldenFingerprint()
         {
             Assert.AreEqual(
-                "f34bd08450973a50",
+                "8fbf82c8067b1cb3",
                 Fingerprint(DungeonProgressDirection.Ascend, floorCount: 10, firstBuildingFloor: -2),
                 "폐병원 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
         }
@@ -49,9 +54,87 @@ namespace ProjectC.Tests
         public void Descending_ShallowShape_MatchesGoldenFingerprint()
         {
             Assert.AreEqual(
-                "68a82618415c00af",
+                "02411906bef8b09f",
                 Fingerprint(DungeonProgressDirection.Descend, floorCount: 3, firstBuildingFloor: -1),
                 "하강 던전 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
+        }
+
+        /// <summary>
+        /// 개구부는 여러 칸이지만 <b>모든 칸</b>이 1칸이던 시절의 불변식을 그대로 지켜야 한다.
+        /// 넓히면서 한 칸이라도 규칙 밖으로 나가면 그게 곧 2층 관통이거나 허공 착지다.
+        /// </summary>
+        [Test]
+        public void EveryHoleTile_KeepsTheOneFloorDropInvariant()
+        {
+            foreach (int seed in Seeds)
+            foreach (DungeonProgressDirection direction in new[]
+                     {
+                         DungeonProgressDirection.Ascend, DungeonProgressDirection.Descend
+                     })
+            {
+                var map = new GridMap();
+                DungeonLayout dungeon = DungeonGenerator.Generate(
+                    map, 13, 13, 10, seed: seed, direction: direction);
+
+                foreach (DungeonFloorInfo floor in dungeon.Floors)
+                {
+                    Assert.LessOrEqual(
+                        floor.HoleTiles.Count, 3,
+                        $"seed {seed} {direction} {floor.FloorIndex}층: 개구부가 상한을 넘었다");
+
+                    foreach (GridPos hole in floor.HoleTiles)
+                    {
+                        Assert.AreEqual(
+                            TileKind.Hole, map.Get(hole).kind,
+                            $"seed {seed}: {hole} 가 개구부로 안 뚫렸다");
+
+                        GridPos? landing = map.FindLandingBelow(hole, -100);
+                        Assert.IsTrue(landing.HasValue, $"seed {seed}: {hole} 아래에 바닥이 없다");
+                        Assert.AreEqual(
+                            dungeon.Height.FloorIndex(hole.elevation) - 1,
+                            dungeon.Height.FloorIndex(landing.Value.elevation),
+                            $"seed {seed}: {hole} 가 두 층을 관통한다");
+                        Assert.IsTrue(
+                            map.Get(landing.Value).IsWalkable,
+                            $"seed {seed}: {hole} 의 착지가 걸을 수 없는 칸이다");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 개구부는 <b>한 덩어리</b>여야 한다 — 흩어지면 "개구부 하나"라는 전제가 깨지고
+        /// 샤프트 연출·대표 칸(<c>Hole</c>)이 엉뚱한 곳을 가리킨다.
+        /// </summary>
+        [Test]
+        public void HoleTiles_FormOneConnectedBlob()
+        {
+            foreach (int seed in Seeds)
+            {
+                var map = new GridMap();
+                DungeonLayout dungeon = DungeonGenerator.Generate(
+                    map, 13, 13, 10, seed: seed, direction: DungeonProgressDirection.Ascend);
+
+                foreach (DungeonFloorInfo floor in dungeon.Floors)
+                {
+                    if (floor.HoleTiles.Count <= 1) continue;
+
+                    var remaining = new HashSet<GridPos>(floor.HoleTiles);
+                    var queue = new Queue<GridPos>();
+                    queue.Enqueue(floor.HoleTiles[0]);
+                    remaining.Remove(floor.HoleTiles[0]);
+                    while (queue.Count > 0)
+                    {
+                        GridPos c = queue.Dequeue();
+                        foreach (GridPos n in new[] { c.North, c.East, c.South, c.West })
+                            if (remaining.Remove(n)) queue.Enqueue(n);
+                    }
+
+                    Assert.IsEmpty(
+                        remaining,
+                        $"seed {seed} {floor.FloorIndex}층: 개구부가 흩어져 있다");
+                }
+            }
         }
 
         /// <summary>

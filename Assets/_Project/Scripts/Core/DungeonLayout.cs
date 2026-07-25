@@ -23,7 +23,19 @@ namespace ProjectC.Core
         public GridPos Entry { get; }
         public GridPos? UpStairs { get; }
         public GridPos? DownStairs { get; }
-        public GridPos? Hole { get; }
+
+        /// <summary>
+        /// 이 층의 개구부를 이루는 칸들. <b>1칸일 수도, 여러 칸일 수도 있다</b> —
+        /// 생성기가 앵커에서 자라며 안전한 만큼만 넓힌다(<see cref="DungeonGenerator"/>).
+        /// 층당 개구부는 하나이므로 이 목록은 <b>서로 이어진 한 덩어리</b>다.
+        /// </summary>
+        public IReadOnlyList<GridPos> HoleTiles { get; }
+
+        /// <summary>
+        /// 개구부의 대표 칸. 샤프트 연출·엘리베이터 충돌처럼 "한 점"이면 충분한 곳이 쓴다.
+        /// 집합 판정이 필요한 곳(2층 관통 금지 등)은 <see cref="HoleTiles"/>를 써야 한다.
+        /// </summary>
+        public GridPos? Hole => HoleTiles.Count > 0 ? HoleTiles[0] : (GridPos?)null;
 
         /// <summary>
         /// 엘리베이터 통로 입구. 상승 던전의 <b>후퇴 동선</b>이며 아래로만 내려간다
@@ -64,7 +76,7 @@ namespace ProjectC.Core
             GridPos entry,
             GridPos? upStairs,
             GridPos? downStairs,
-            GridPos? hole,
+            IReadOnlyList<GridPos> holeTiles,
             GridPos? restSite,
             IReadOnlyList<GridPos> enemySpawns,
             IReadOnlyList<ItemSpawn> items,
@@ -86,7 +98,7 @@ namespace ProjectC.Core
             Entry = entry;
             UpStairs = upStairs;
             DownStairs = downStairs;
-            Hole = hole;
+            HoleTiles = holeTiles ?? Array.Empty<GridPos>();
             RestSite = restSite;
             EnemySpawns = enemySpawns;
             Items = items ?? Array.Empty<ItemSpawn>();
@@ -325,7 +337,11 @@ namespace ProjectC.Core
                 if (DungeonBossArenaRules.IsArenaFloor(stacked[i].ProgressIndex, floorCount))
                     continue;
 
-                GridPos? holeAbove = i + 1 < stacked.Count ? stacked[i + 1].Hole : null;
+                // 윗층 개구부는 여러 칸일 수 있으므로 **집합**으로 넘긴다 —
+                // 한 칸만 비교하면 나머지 칸에서 두 층 관통이 생긴다.
+                IReadOnlyList<GridPos> holeAbove = i + 1 < stacked.Count
+                    ? (IReadOnlyList<GridPos>)stacked[i + 1].HoleTiles
+                    : System.Array.Empty<GridPos>();
                 PlaceHoleAndWeakFloor(map, heightModel, random, stacked[i], holeAbove, bottomElevation);
             }
 
@@ -376,7 +392,7 @@ namespace ProjectC.Core
                     plan.Entry,
                     onwardGoesUp ? plan.Onward : plan.Back,
                     onwardGoesUp ? plan.Back : plan.Onward,
-                    plan.Hole,
+                    plan.HoleTiles,
                     plan.RestSite,
                     plan.EnemySpawns,
                     plan.Items,
@@ -496,7 +512,11 @@ namespace ProjectC.Core
             /// <b>공간 방향이 아니라 진행 방향</b>이므로 상승 던전에서는 이것이 위로 가는 계단이다.
             /// </summary>
             public GridPos? Onward;
-            public GridPos? Hole;
+            /// <summary>개구부를 이루는 칸들(한 덩어리). 비어 있으면 이 층엔 개구부가 없다.</summary>
+            public readonly List<GridPos> HoleTiles = new List<GridPos>();
+
+            /// <summary>대표 칸 — "한 점"이면 충분한 곳(엘리베이터 충돌 검사 등)이 쓴다.</summary>
+            public GridPos? Hole => HoleTiles.Count > 0 ? HoleTiles[0] : (GridPos?)null;
 
             /// <summary>
             /// 이 분기 방에 갇힌 동료의 id. 비어 있으면 평범한 파밍 방이다.
