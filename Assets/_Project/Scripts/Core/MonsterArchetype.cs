@@ -42,6 +42,17 @@ namespace ProjectC.Core
         /// <summary>원거리 교전을 하는 몬스터인가.</summary>
         public bool IsRanged => RangedRange > 0 && RangedPower > 0;
 
+        /// <summary>
+        /// 사다리를 탈 수 있는가. <b>기본값은 false</b> — 새 아키타입을 늘릴 때 조용히
+        /// 전부 오르게 되면 이 축이 죽는다. 오를 수 있는 쪽을 명시적으로 적는다.
+        /// <para>
+        /// 이 값이 사다리를 전술 자원으로 만든다: 높은 곳은 사다리로만 닿고,
+        /// 못 오르는 적은 거기까지 따라오지 못한다. <b>실루엣과 일치</b>시켜야
+        /// 플레이어가 배우지 않고도 읽는다 — 인간형은 오르고, 기계·무정형은 못 오른다.
+        /// </para>
+        /// </summary>
+        public bool CanClimb { get; }
+
         public MonsterArchetype(
             string id,
             int maxHp,
@@ -52,7 +63,8 @@ namespace ProjectC.Core
             string displayName = null,
             int rangedRange = 0,
             int rangedPower = 0,
-            int keepAwayRange = 0)
+            int keepAwayRange = 0,
+            bool canClimb = false)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("몬스터 ID가 필요합니다.", nameof(id));
             if (maxHp <= 0) throw new ArgumentOutOfRangeException(nameof(maxHp));
@@ -74,6 +86,7 @@ namespace ProjectC.Core
             RangedRange = rangedRange;
             RangedPower = rangedPower;
             KeepAwayRange = keepAwayRange;
+            CanClimb = canClimb;
         }
     }
 }

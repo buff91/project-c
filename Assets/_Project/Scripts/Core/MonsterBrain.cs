@@ -282,7 +282,10 @@ namespace ProjectC.Core
                 pos => pos != self &&
                        (IsFallHazard(context.Map, pos) ||
                         (context.IsOccupied != null && context.IsOccupied(pos))),
-                openClosedDoors: true);
+                openClosedDoors: true,
+                // 종마다 다르다 — 못 오르는 적은 사다리 위 플레이어를 따라가지 못한다.
+                // 명시적으로 넘기지 않으면 기본값(true)이라 전부 올라 이 축이 죽는다.
+                canClimb: _archetype.CanClimb);
         }
 
         /// <summary>

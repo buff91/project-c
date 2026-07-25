@@ -64,11 +64,29 @@ namespace ProjectC.Core
             if (bidirectional) AddLink(to, from);
         }
 
+        /// <summary>
+        /// 링크를 끊는다. 없으면 아무것도 하지 않는다(멱등).
+        /// 생성기가 임시로 이었다가 더 나은 연결로 갈아끼울 때 쓴다 —
+        /// 예: 캐치워크가 생기면 사다리를 +1 이 아니라 +2 까지 잇는다.
+        /// </summary>
+        public void Disconnect(GridPos from, GridPos to, bool bidirectional = true)
+        {
+            RemoveLink(from, to);
+            if (bidirectional) RemoveLink(to, from);
+        }
+
         public IReadOnlyList<GridPos> LinksFrom(GridPos from)
         {
             return _links.TryGetValue(from, out List<GridPos> links)
                 ? links
                 : System.Array.Empty<GridPos>();
+        }
+
+        private void RemoveLink(GridPos from, GridPos to)
+        {
+            if (!_links.TryGetValue(from, out List<GridPos> links)) return;
+            links.Remove(to);
+            if (links.Count == 0) _links.Remove(from);
         }
 
         private void AddLink(GridPos from, GridPos to)

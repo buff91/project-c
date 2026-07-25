@@ -25,11 +25,22 @@ namespace ProjectC.Tests
         /// <summary>폐병원(상승·10층)의 실제 운영 형상. seed 는 카탈로그 값을 포함한다.</summary>
         private static readonly int[] Seeds = { 1, 7, 23, 1977 };
 
+        /// <summary>
+        /// <b>지문 이력</b>
+        /// <list type="bullet">
+        /// <item><c>2e5d8434a35bd2f2</c> — 최초.</item>
+        /// <item><c>f34bd08450973a50</c> — 사다리가 캐치워크(+2)까지 한 번에 잇도록 바뀜.
+        /// <b>지형은 그대로고 링크만 달라졌다</b>: <c>PlaceCatwalk</c> 는 RNG 를 쓰지 않으므로
+        /// 생성 스트림이 그대로이고, 타일 배치도 동일하다. 실제로 하강 던전 지문은
+        /// 안 바뀌었다(얕은 밴드엔 캐치워크가 없어 이 경로를 안 탄다).
+        /// 즉 <b>기존 세이브가 같은 던전을 계속 연다</b> — 사다리의 목적지만 달라진다.</item>
+        /// </list>
+        /// </summary>
         [Test]
         public void Ascending_HospitalShape_MatchesGoldenFingerprint()
         {
             Assert.AreEqual(
-                "2e5d8434a35bd2f2",
+                "f34bd08450973a50",
                 Fingerprint(DungeonProgressDirection.Ascend, floorCount: 10, firstBuildingFloor: -2),
                 "폐병원 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
         }

@@ -231,6 +231,7 @@ namespace ProjectC.Core
             int length = DungeonBandProfiles.ForDepth(p.Region, depth).CatwalkLength;
             if (length <= 0) return;
 
+            var ladderBottom = new GridPos(p.LadderX, p.RaisedY - 1, p.BaseElevation);
             var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
             for (int i = 0; i < length; i++)
             {
@@ -241,8 +242,14 @@ namespace ProjectC.Core
 
                 var catwalk = new GridPos(p.LadderX, y, p.BaseElevation + 2);
                 map.Set(catwalk, TileKind.Floor);
-                // 첫 칸만 사다리와 명시적 링크로 잇는다. 나머지는 같은 높이 평면 이웃이라 그냥 걷는다.
-                if (i == 0) map.Connect(ladderTop, catwalk);
+                if (i != 0) continue;
+
+                // **사다리는 한 번에 여러 단을 오른다** — 바닥(+0)에서 캐치워크(+2)로 곧장 잇고
+                // 중간 발판(+1)은 링크에서 뺀다. 계단이 ±1 만 담당하므로 이 대비가
+                // "높은 곳은 사다리로만"을 데이터로 성립시킨다.
+                // 중간 발판은 시각적 레일로 남고, 올라온 단 위를 걸어서 닿을 수는 있다.
+                map.Disconnect(ladderBottom, ladderTop);
+                map.Connect(ladderBottom, catwalk);
             }
         }
 

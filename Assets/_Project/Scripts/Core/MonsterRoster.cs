@@ -9,17 +9,30 @@ namespace ProjectC.Core
     /// </summary>
     public static class MonsterRoster
     {
-        /// <summary>약탈자(코드 ID Goblin): 기준 몬스터. 아프게 공격하지만 겁이 많아 빈사가 되면 도망친다.</summary>
+        // 등반 가능 여부는 **실루엣과 일치**시킨다 — 인간형은 오르고 기계·무정형은 못 오른다.
+        // 그래야 플레이어가 규칙을 배우지 않고도 "저건 못 따라오겠다"를 눈으로 판단한다.
+
+        /// <summary>
+        /// 약탈자(코드 ID Goblin): 기준 몬스터. 아프게 공격하지만 겁이 많아 빈사가 되면 도망친다.
+        /// 인간형이라 <b>사다리를 탄다</b> — 높은 곳으로 도망쳐도 이쪽은 따라온다.
+        /// </summary>
         public static readonly MonsterArchetype Goblin =
             new MonsterArchetype("Goblin", maxHp: 5, attackPower: 2,
-                aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f, displayName: "약탈자");
+                aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f, displayName: "약탈자",
+                canClimb: true);
 
-        /// <summary>낡은 경비 드론(코드 ID Skeleton): 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.</summary>
+        /// <summary>
+        /// 낡은 경비 드론(코드 ID Skeleton): 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.
+        /// 기계라 <b>사다리를 못 탄다</b> — 캐치워크가 이 녀석에 대한 피난처가 된다.
+        /// </summary>
         public static readonly MonsterArchetype Skeleton =
             new MonsterArchetype("Skeleton", maxHp: 8, attackPower: 2,
                 aggroRange: 5, patrolRadius: 1, fleeThreshold: 0f, displayName: "낡은 경비 드론");
 
-        /// <summary>누출 오염 슬러지(코드 ID Slime): 약하고 흔하다. 넓게 배회하며 겁 없이 달려든다.</summary>
+        /// <summary>
+        /// 누출 오염 슬러지(코드 ID Slime): 약하고 흔하다. 넓게 배회하며 겁 없이 달려든다.
+        /// 무정형이라 <b>사다리를 못 탄다</b>.
+        /// </summary>
         public static readonly MonsterArchetype Slime =
             new MonsterArchetype("Slime", maxHp: 3, attackPower: 1,
                 aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f, displayName: "누출 오염 슬러지");
@@ -32,7 +45,10 @@ namespace ProjectC.Core
         public static readonly MonsterArchetype Slinger =
             new MonsterArchetype("Slinger", maxHp: 4, attackPower: 1,
                 aggroRange: 7, patrolRadius: 2, fleeThreshold: 0.25f, displayName: "투석 약탈자",
-                rangedRange: 4, rangedPower: 2, keepAwayRange: 2);
+                rangedRange: 4, rangedPower: 2, keepAwayRange: 2,
+                // 인간형이라 오른다. 게다가 고지대가 사거리 예산에 유리하므로
+                // 사수가 캐치워크를 차지하러 올라오는 그림이 자연스럽다.
+                canClimb: true);
 
         /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
         public static readonly MonsterArchetype GraveWarden =
