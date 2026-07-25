@@ -261,7 +261,16 @@
 > **좌표계는 거의 그대로다** — `DungeonHeightModel.FloorIndex`는 음수 안전 나눗셈이라 양수 방향도
 > 이미 정상 동작하고, `FallRules`/`SightRules`는 중력 절대라 무관하다.
 
-- [ ] **표시 리스킨(먼저, 저비용)** — `DungeonCatalog` 표시명/설명/`RouteLabel`을 폐병원·상승 표기로.
+- [ ] **⭐ 선행: 진행 지수를 고도에서 떼어낸다** — 나머지 전부의 전제다.
+      `DungeonVisualContext.DepthIndex`가 지금은 `Math.Max(0, -floorIndex)` **파생값**이라
+      상승 던전에서 전부 0으로 붕괴하고(예외 없이 조용히), 비단조 경로에서는 원리적으로 성립하지 않는다.
+      `DungeonFloorInfo`에 진행 지수를 1급 필드로 두고 **생성기가 경로를 깔며 부여**한다.
+      규칙 계층(`ShouldPlace`/`HasExtractionPoint`/`AllowsDrop`/`PickForDepth`/`ForDepth`/`IsArenaFloor`)은
+      이미 int 인자를 받으므로 **무변경**이고, 갈아끼울 파생식은 8곳이다.
+      `DungeonDepthBandRules.ForFloor`는 **삭제**한다(결함의 원천).
+      체크포인트도 진행 지수를 저장해야 한다 — `currentFloorIndex`로 역산할 수 없다.
+      상세: `docs/ARCHITECTURE.md` §4.5 경고 박스.
+- [ ] **표시 리스킨** — `DungeonCatalog` 표시명/설명/`RouteLabel`을 폐병원·상승 표기로.
       코드 ID·seed·층 수(10)는 유지. 생성기는 아직 하강이므로 **라벨만 앞서 나가지 않게** 함께 묶어 처리한다.
 - [ ] **구간 라벨 방향 중립화** — `DungeonDepthBandRules`의 `Shallow/Mid/Deep/Boss` 표시명을
       **초반/중반/후반/보스**로. 판정 상수·경계는 그대로 두고 라벨만 바꾼다. 밴드는 파생 값이라

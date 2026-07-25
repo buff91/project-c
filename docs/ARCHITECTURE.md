@@ -124,6 +124,26 @@ Tools/ArtPipeline/       # 플레이스홀더 스프라이트 생성 파이썬 �
 - `DungeonVisualContext`가 `FloorIndex`/`DepthIndex`/`Elevation`/`LocalHeight`를 분리 제공 —
   비주얼 카탈로그가 raw elevation의 부호로 깊이를 추론하지 않게 한다.
 
+> ⚠ **`DepthIndex`의 분리는 아직 이름뿐이다 (알려진 결함, v0.3.2에서 발견).**
+> `DungeonVisualContext.cs:73`이 `DepthIndex = Math.Max(0, -floorIndex)`로 **파생**하고
+> `DungeonDepthBandRules.ForFloor`도 같은 식을 쓴다. 즉 **진행 = 고도 하강**이 하드코딩돼 있다.
+> - **상승 던전에서 조용히 붕괴한다**: floorIndex가 양수면 `Max(0, -양수)`가 전부 **0**이라
+>   모든 층이 B1/Shallow로 취급된다. 예외가 나지 않아 밴드 변주·적 혼합·휴식처·탈출구·
+>   장비 드랍·보스 아레나가 **말없이 오작동**한다.
+> - **비단조 경로에서는 원리적으로 불가능하다**: `1F→3F→2F→5F`에서 2F의 진행 지수는
+>   고도로 역산할 수 없다(GDD §5.1 규약).
+> - **고치는 방향은 파생 수정이 아니라 파생 제거다.** `DungeonFloorInfo`에 진행 지수를
+>   1급 필드로 두고 생성기가 경로를 깔며 부여한다.
+> - **규칙 계층은 이미 준비돼 있다** — `DungeonRestRules.ShouldPlace`/`ExtractionRules.
+>   HasExtractionPoint`/`EquipmentDropRules.AllowsDrop`/`MonsterRoster.PickForDepth`/
+>   `DungeonBandProfiles.ForDepth`/`DungeonBossArenaRules.IsArenaFloor`가 전부
+>   `depthIndex`를 **평범한 int 인자**로 받으므로 한 줄도 바뀌지 않는다.
+>   갈아끼울 곳은 **파생식 8곳**뿐이다: `DungeonVisualContext`(2) · `RunSaveData.
+>   ResolvePreviewDepth` · `IsoPrototypeDemo.Visibility`(3) · `.Lighting` · `.RunLifecycle.GlobalDepth`.
+> - 부수 정리: `DungeonLayout.TopFloorIndex/BottomFloorIndex`는 단조 경로를 전제한 이름이다 —
+>   비단조 경로에서는 "진입/최종 층"이지 "최상/최하"가 아니다.
+> - 추적: `ROADMAP.md` → "첫 던전 전환 — 폐병원 / 상승 구조".
+
 ---
 
 ## 5. 시야 (Field of View)
