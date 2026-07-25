@@ -12,6 +12,13 @@ namespace ProjectC.Core
     /// </summary>
     public static class ShockRules
     {
+        // 4방향 통전 BFS 이웃 오프셋. 매 셀마다 배열을 새로 만들지 않도록 하나만 재사용한다.
+        // 순서(+x, -x, +y, -y)는 energized 반환 순서에 영향을 주므로 바꾸지 않는다.
+        private static readonly (int dx, int dy)[] Cardinals =
+        {
+            (1, 0), (-1, 0), (0, 1), (0, -1)
+        };
+
         /// <summary>
         /// center 3×3 블라스트로 직접 대상을 지지고, 블라스트가 닿은 젖은 웅덩이를 4방향으로
         /// 통전시켜 그 위 대상도 지진다. 각 대상은 최대 한 번만 피해. 통전된(젖은) 칸 목록 반환.
@@ -46,9 +53,9 @@ namespace ProjectC.Core
                 GridPos pos = frontier.Dequeue();
                 energized.Add(pos);
                 DamageAt(combatants, pos, damage, shocked);
-                foreach (GridPos next in new[]
-                         { pos.Offset(1, 0), pos.Offset(-1, 0), pos.Offset(0, 1), pos.Offset(0, -1) })
+                foreach (var (dx2, dy2) in Cardinals)
                 {
+                    GridPos next = pos.Offset(dx2, dy2);
                     if (map.Get(next)?.wet == true && visited.Add(next))
                         frontier.Enqueue(next);
                 }

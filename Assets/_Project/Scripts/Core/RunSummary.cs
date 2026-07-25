@@ -57,9 +57,8 @@ namespace ProjectC.Core
         public static string FormatCause(string source)
         {
             if (string.IsNullOrWhiteSpace(source)) return "알 수 없음";
-            if (source.StartsWith("Goblin", StringComparison.Ordinal)) return "약탈자";
-            if (source.StartsWith("Skeleton", StringComparison.Ordinal)) return "낡은 경비 드론";
-            if (source.StartsWith("Slime", StringComparison.Ordinal)) return "누출 오염 슬러지";
+            MonsterArchetype monster = MonsterRoster.MatchSource(source);
+            if (monster != null) return monster.DisplayName;
 
             switch (source)
             {

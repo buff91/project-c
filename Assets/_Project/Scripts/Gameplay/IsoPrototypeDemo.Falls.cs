@@ -264,14 +264,7 @@ namespace ProjectC.Gameplay
                     _runTelemetry?.RecordOilIgnition(ignited.Count);
                     InteractionFeedback?.Invoke($"OIL IGNITED ×{ignited.Count}!");
                     Debug.Log($"[Oil] 기름 발화 {center}: {ignited.Count}칸");
-                    foreach (CombatantState combatant in AllCombatants())
-                    {
-                        if (!combatant.IsAlive || !ignited.Contains(combatant.Position)) continue;
-                        ApplyStatusWithPresentation(
-                            combatant,
-                            StatusKind.Burn,
-                            StatusTurnsApplied);
-                    }
+                    ApplyStatusToCombatantsInRegion(ignited, StatusKind.Burn);
                 }
 
                 List<GridPos> dried = WaterRules.Evaporate(_grid.Map, center);
@@ -287,14 +280,7 @@ namespace ProjectC.Gameplay
                     _runTelemetry?.RecordWaterFreeze(frozenTiles.Count);
                     InteractionFeedback?.Invoke($"PUDDLE FROZEN ×{frozenTiles.Count}!");
                     Debug.Log($"[Water] 웅덩이 결빙 {center}: {frozenTiles.Count}칸");
-                    foreach (CombatantState combatant in AllCombatants())
-                    {
-                        if (!combatant.IsAlive || !frozenTiles.Contains(combatant.Position)) continue;
-                        ApplyStatusWithPresentation(
-                            combatant,
-                            StatusKind.Freeze,
-                            StatusTurnsApplied);
-                    }
+                    ApplyStatusToCombatantsInRegion(frozenTiles, StatusKind.Freeze);
                 }
             }
 
@@ -317,6 +303,17 @@ namespace ProjectC.Gameplay
             }
 
             RefreshFloorVisibility();
+        }
+
+        /// <summary>지정한 타일 위에 서 있는 살아있는 전투 참가자 전원에게 상태이상을 부여한다.
+        /// (기름 발화 → 화상, 웅덩이 결빙 → 빙결 두 경로가 공유)</summary>
+        private void ApplyStatusToCombatantsInRegion(List<GridPos> tiles, StatusKind kind)
+        {
+            foreach (CombatantState combatant in AllCombatants())
+            {
+                if (!combatant.IsAlive || !tiles.Contains(combatant.Position)) continue;
+                ApplyStatusWithPresentation(combatant, kind, StatusTurnsApplied);
+            }
         }
 
         private IEnumerator KnockbackCombatant(GridPos center, CombatantState target)

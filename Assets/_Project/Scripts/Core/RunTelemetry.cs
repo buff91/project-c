@@ -349,9 +349,8 @@ namespace ProjectC.Core
         private static string NormalizeDamageSource(string source)
         {
             if (string.IsNullOrWhiteSpace(source)) return "Unknown";
-            if (source.StartsWith("Goblin", StringComparison.Ordinal)) return "Goblin";
-            if (source.StartsWith("Skeleton", StringComparison.Ordinal)) return "Skeleton";
-            if (source.StartsWith("Slime", StringComparison.Ordinal)) return "Slime";
+            MonsterArchetype monster = MonsterRoster.MatchSource(source);
+            if (monster != null) return monster.Id;
             return source;
         }
     }

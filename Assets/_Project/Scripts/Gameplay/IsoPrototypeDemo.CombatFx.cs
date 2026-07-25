@@ -10,7 +10,7 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
-        private const int CombatFxSortingOrder = 31002;
+        private const int CombatFxSortingOrder = OverlaySorting.CombatFx;
         private const string BurnFxName = "Status Burn FX";
         private const string FreezeFxName = "Status Freeze FX";
 

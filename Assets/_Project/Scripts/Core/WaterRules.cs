@@ -10,6 +10,13 @@ namespace ProjectC.Core
     /// </summary>
     public static class WaterRules
     {
+        // 4방향 결빙 전파 BFS 이웃 오프셋. 매 셀 배열 할당을 피하기 위해 재사용한다.
+        // 순서(+x, -x, +y, -y)는 frozen 반환 순서에 영향을 주므로 바꾸지 않는다.
+        private static readonly (int dx, int dy)[] Cardinals =
+        {
+            (1, 0), (-1, 0), (0, 1), (0, -1)
+        };
+
         /// <summary>
         /// 냉기 폭발 반경 안에 젖은 타일이 있으면, 그 타일들과 4방향으로 이어진
         /// 웅덩이 전체로 결빙을 전파한다. 결빙된(젖음이 유지되는) 칸 목록을 반환 —
@@ -35,9 +42,9 @@ namespace ProjectC.Core
             {
                 GridPos pos = frontier.Dequeue();
                 frozen.Add(pos);
-                foreach (GridPos next in new[]
-                         { pos.Offset(1, 0), pos.Offset(-1, 0), pos.Offset(0, 1), pos.Offset(0, -1) })
+                foreach (var (dx2, dy2) in Cardinals)
                 {
+                    GridPos next = pos.Offset(dx2, dy2);
                     if (map.Get(next)?.wet == true && visited.Add(next))
                         frontier.Enqueue(next);
                 }

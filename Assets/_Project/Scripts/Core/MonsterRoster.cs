@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ProjectC.Core
 {
@@ -11,22 +12,37 @@ namespace ProjectC.Core
         /// <summary>약탈자(코드 ID Goblin): 기준 몬스터. 아프게 공격하지만 겁이 많아 빈사가 되면 도망친다.</summary>
         public static readonly MonsterArchetype Goblin =
             new MonsterArchetype("Goblin", maxHp: 5, attackPower: 2,
-                aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f);
+                aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.3f, displayName: "약탈자");
 
         /// <summary>낡은 경비 드론(코드 ID Skeleton): 느리게 눈치채지만 단단하고 아프다. 도주하지 않는다.</summary>
         public static readonly MonsterArchetype Skeleton =
             new MonsterArchetype("Skeleton", maxHp: 8, attackPower: 2,
-                aggroRange: 5, patrolRadius: 1, fleeThreshold: 0f);
+                aggroRange: 5, patrolRadius: 1, fleeThreshold: 0f, displayName: "낡은 경비 드론");
 
         /// <summary>누출 오염 슬러지(코드 ID Slime): 약하고 흔하다. 넓게 배회하며 겁 없이 달려든다.</summary>
         public static readonly MonsterArchetype Slime =
             new MonsterArchetype("Slime", maxHp: 3, attackPower: 1,
-                aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f);
+                aggroRange: 4, patrolRadius: 3, fleeThreshold: 0f, displayName: "누출 오염 슬러지");
 
         /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
         public static readonly MonsterArchetype GraveWarden =
             new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
                 aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
+
+        /// <summary>깊이 비례로 스폰되는 일반 몬스터(보스 제외). 피해 소스 접두사 매칭 순서를 겸한다.</summary>
+        public static readonly IReadOnlyList<MonsterArchetype> Regular = new[] { Goblin, Skeleton, Slime };
+
+        /// <summary>
+        /// 피해 소스 문자열("Goblin B2-1")의 접두사에 해당하는 일반 몬스터 아키타입을 찾는다.
+        /// 정산 문구·텔레메트리 그룹화가 공유하는 단일 매칭 규칙. 없으면 null.
+        /// </summary>
+        public static MonsterArchetype MatchSource(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            foreach (MonsterArchetype archetype in Regular)
+                if (source.StartsWith(archetype.Id, StringComparison.Ordinal)) return archetype;
+            return null;
+        }
 
         /// <summary>
         /// 깊이 구간(밴드)별 혼합 (depth 0 = 최상층 B1). 얕은 밴드는 슬러지/약탈자만,

@@ -386,7 +386,7 @@ namespace ProjectC.Gameplay
 
             var renderer = icon.GetComponent<MeshRenderer>();
             renderer.material = text.font.material;
-            renderer.sortingOrder = 30003;
+            renderer.sortingOrder = OverlaySorting.Burst;
             icon.SetActive(false);
             return text;
         }
@@ -409,7 +409,7 @@ namespace ProjectC.Gameplay
 
             var renderer = marker.GetComponent<MeshRenderer>();
             renderer.material = text.font.material;
-            renderer.sortingOrder = 30004;
+            renderer.sortingOrder = OverlaySorting.BossMarker;
             return text;
         }
 

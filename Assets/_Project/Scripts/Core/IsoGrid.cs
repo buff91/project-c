@@ -48,6 +48,16 @@ namespace ProjectC.Core
         private float HalfH => tileHeight * 0.5f;
 
         /// <summary>
+        /// 같은 elevation 안에서 (x+y) 깊이를 sortingOrder 정수로 양자화하는 해상도.
+        /// 스프라이트 겹침 방지 불변식: elevationSortBand &gt; DepthResolution × (maxX + maxY).
+        /// 현재 roomSize ≤ 20 → 16 × (19+19) = 608 &lt; elevationSortBand(1000) 이므로 인접 층이 안 섞인다.
+        /// </summary>
+        public const int DepthResolution = 16;
+
+        /// <summary>한 타일 안에서 microOffset 이 차지하는 하위 대역(바닥 데칼 vs 그 위 캐릭터 등).</summary>
+        public const int MicroResolution = 8;
+
+        /// <summary>
         /// 격자 → 월드 좌표. (타일 중심)
         /// x가 커지면 화면 오른쪽-아래, y가 커지면 화면 왼쪽-아래로. elevation 은 위로 들어올린다.
         /// </summary>
@@ -96,7 +106,7 @@ namespace ProjectC.Core
         public int SortingOrder(GridPos pos)
         {
             Vector2 view = RotateToView(pos.x, pos.y);
-            int viewDepth = Mathf.RoundToInt((view.x + view.y) * 16f);
+            int viewDepth = Mathf.RoundToInt((view.x + view.y) * DepthResolution);
             return pos.elevation * elevationSortBand + viewDepth;
         }
 
@@ -106,7 +116,7 @@ namespace ProjectC.Core
         /// </summary>
         public int SortingOrder(GridPos pos, int microOffset)
         {
-            return SortingOrder(pos) * 8 + microOffset; // microOffset: -3..+3 정도 권장
+            return SortingOrder(pos) * MicroResolution + microOffset; // microOffset: -3..+3 정도 권장
         }
 
         public void RotateView(int direction)
