@@ -10,12 +10,13 @@
 - 입력 추상화·`ResponsiveUiLayout`·이원 UXML 코드는 **삭제하지 않고 유지**한다(재개 시 재작업 방지).
   PC 에디터/빌드는 `HudPresentation.Auto`가 이미 `Desktop`으로 해석되므로 별도 코드 변경은 없다.
 
-## 환경 현황 (2026-07-18)
+## 환경 현황 (2026-07-26)
 
-- Unity **6000.5.0f1** 프로젝트 생성 완료 (`Assets/`, `Library/`, `ProjectSettings/`).
+- Unity **6000.5.4f1** (`ProjectSettings/ProjectVersion.txt`가 버전 SSOT).
 - **Unity MCP 연결됨** — `run_tests`, `manage_scene`, `read_console` 등 사용 가능.
 - **DOTween Pro** 설치됨 (`Assets/Plugins/Demigiant/`), 부트스트랩 `Scripts/Gameplay/DOTweenBootstrap.cs`.
-- asmdef 3개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.Tests.EditMode`.
+- asmdef 5개: `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`,
+  `ProjectC.Tests.EditMode`, `ProjectC.Tests.PlayMode`.
 
 ## M0 — 토대 ✅ (코드 완료)
 
@@ -87,7 +88,7 @@
 - [x] 오브젝트 상호작용(밀기/부수기) — 폭발통 밀기(구멍으로 떨어뜨리기)·유폭. 전용 상호작용 버튼 UI는 M5 UI 이식과 함께
 - [x] 낙하 연출 — 플레이어 홀드롭 연출 재사용, 몬스터는 피격 연출과 함께 층 이동
 
-## M5 — 콘텐츠 & 폴리시 (코드 콘텐츠 완료 — 폴리시는 Unity 에디터 작업)
+## M5 — 콘텐츠 & 폴리시 (역사적 완료 이력 — 일부 콘텐츠는 이후 교체됨)
 
 - [x] 몬스터 다양화 — 고블린(빈사 도주)/해골(단단·강타)/슬라임(약함·넓은 배회) 3종, 깊이 비례 혼합, 진행 중 추가 스폰(12턴 간격·활성 층 4마리 상한·시야 밖 스폰)
 - [x] 아이템 다양화 — 6종: 물약/폭탄/냉기 폭탄 + 기름 병(불+기름 요소 반응 첫 실체화, `OilRules`)/투척 단검/귀환 두루마리. 분배 3:3:1:1:1:1, 표시 정보는 `ItemCatalog` 단일 출처
@@ -100,7 +101,11 @@
 - [ ] 사운드 (마지막으로 연기)
 - [x] 아트 에셋 교체 테스트 (파이프라인 검증) — 액터/아이템 슬롯 3종(플레이어/고블린/물약)에 실제 PNG 연결 확인. 플레이스홀더는 `Tools/ArtPipeline/generate_actor_sprites.py`, AI 소스 확보 시 교체
 
-## M6 — 한 판 루프 & 던전 체인 (코드 완료)
+## M6 — 한 판 루프 & 던전 체인 (역사적 완료 이력 — 현재는 첫 폐병원 단일 던전)
+
+> 이 절은 당시 구현 이력을 보존한다. 영웅 3종·판타지 몬스터·기본 3던전 체인은 이후
+> 단일 원정자·포스트아포 로스터·첫 폐병원 단일 던전으로 교체됐다. 현재 동작은
+> `docs/STATUS.md`, 현재 규칙은 `docs/SYSTEMS.md`를 따른다.
 
 - [x] SPD식 이동 — 적 시야 내 탭당 1스텝, 새 위협 인터럽트("!"), 재탭 취소, 미탐색 탭 = 탐색 경계까지 이동.
   자동 이동 경로를 적이 점유하면 `!`와 중단 사유를 표시해 계단/사다리 오작동으로 오인하지 않게 한다 (`TravelRules`)
@@ -413,7 +418,7 @@
 - [ ] **지역별 의뢰** — `BountyMetric`에 이미 `WaterFrozen`/`OilIgnited`가 있어 "왜 저기 가는가"를
   붙일 수 있다.
 
-## 첫 던전 전환 — 폐병원 / 상승 구조 (v0.3.2, 미착수)
+## 첫 던전 전환 — 폐병원 / 상승 구조 (v0.3.2, 코드 완료 · 아트/Unity 검증 진행 중)
 
 > GDD §10.1 확정. 환승역(지하·하강)이 v0.3의 건물형 수직성 어휘와 어긋나고, 특히 **외벽 창문이
 > 지하에서 성립하지 않아** 이미 구현된 `WindowRules`의 절반이 첫 던전에서 죽는 문제를 푼다.

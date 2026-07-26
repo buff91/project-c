@@ -18,6 +18,8 @@ namespace ProjectC.Tests
             Assert.AreEqual(10, selected.FloorCount);
             Assert.NotNull(selected.Boss);
             Assert.AreSame(MonsterRoster.GraveWarden, selected.Boss.Archetype);
+            StringAssert.DoesNotContain("기사", selected.RouteLabel);
+            StringAssert.Contains("추락 대비 장비", selected.RouteLabel);
         }
 
         [Test]
