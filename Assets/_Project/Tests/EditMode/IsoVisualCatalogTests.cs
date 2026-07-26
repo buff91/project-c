@@ -275,6 +275,24 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TileFor_Ladder_RendersAsFloor_LadderSlotBelongsToLandmark()
+        {
+            // ladder 슬롯의 주인은 세워진 사다리 랜드마크다 — 타일 경로가 ladder를 반환하면
+            // 랜드마크와 이중 표시가 된다. 발밑은 밴드 규칙을 따르는 일반 바닥이어야 한다.
+            Sprite shared = MakeSprite();
+            Sprite ladderArt = MakeSprite();
+            _catalog.floor = shared;
+            _catalog.ladder = ladderArt;
+            var height = new DungeonHeightModel(4);
+
+            Assert.AreSame(
+                shared,
+                _catalog.TileFor(
+                    TileKind.Ladder,
+                    DungeonVisualContext.From(height, elevation: 0, progressIndex: 0)));
+        }
+
+        [Test]
         public void MonsterFor_EachArchetype_UsesOwnSlot()
         {
             Sprite goblin = MakeSprite();

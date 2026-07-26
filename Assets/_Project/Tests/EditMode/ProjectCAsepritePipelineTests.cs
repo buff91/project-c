@@ -87,6 +87,10 @@ namespace ProjectC.Tests
                 new Vector2(0.5f, 8f / 56f),
                 ProjectCAsepritePipeline.ResolvePivotNormalized(
                     "env-wall-rising-right.aseprite"));
+            // 세워진 사다리 랜드마크 — 절차 아트와 같은 발 기준 피벗.
+            Assert.AreEqual(
+                new Vector2(0.5f, 0.08f),
+                ProjectCAsepritePipeline.ResolvePivotNormalized("env-ladder.aseprite"));
         }
 
         [Test]

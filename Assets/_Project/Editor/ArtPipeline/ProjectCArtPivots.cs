@@ -33,6 +33,8 @@ namespace ProjectC.EditorTools
                 // 임포트 규격과 스펙 시트 표기가 어긋나지 않게 중앙으로 명시 등록한다.
                 { "env-hole", Centered },
                 { "env-weak-floor", Centered },
+                // 세워진 사다리 랜드마크 — 절차 아트(GetLadderLandmarkSprite)와 같은 발 기준.
+                { "env-ladder", new Vector2(0.5f, 0.08f) },
                 { "env-stairs-rising-right", new Vector2(0.5f, 32f / 112f) },
                 { "env-stairs-rising-left", new Vector2(0.5f, 32f / 112f) },
                 { "env-stairs-up-rising-right", new Vector2(0.5f, 32f / 112f) },

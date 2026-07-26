@@ -179,7 +179,10 @@ namespace ProjectC.Gameplay
             switch (kind)
             {
                 case TileKind.Stairs: return stairs;
-                case TileKind.Ladder: return ladder;
+                // Ladder의 발밑은 일반 바닥이다 — ladder 슬롯의 주인은 바닥 타일이 아니라
+                // "세워진 사다리" 랜드마크 오브젝트(CreateVerticalLandmarks)다. 여기서 ladder를
+                // 반환하면 랜드마크와 이중 표시가 된다.
+                case TileKind.Ladder: return FloorFor(context);
                 case TileKind.StairsUp: return stairsUp != null ? stairsUp : stairs;
                 case TileKind.StairsDown: return stairsDown != null ? stairsDown : stairs;
                 case TileKind.Hole: return hole;

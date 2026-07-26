@@ -159,7 +159,11 @@ namespace ProjectC.Gameplay
                         if (links.Count == 0 || links[0].elevation < anchor.elevation)
                             continue; // 한 쌍의 낮은 끝에서만 세워진 사다리를 하나 만든다.
                         destination = links[0];
-                        sprite = ActorSprites.GetLadderLandmarkSprite();
+                        // ladder 슬롯의 주인은 이 랜드마크다(발밑 타일은 일반 바닥). 세로는
+                        // LadderScaleY가 실측 월드 높이로 보정하므로 캔버스 높이는 자유롭다.
+                        sprite = visualCatalog != null && visualCatalog.ladder != null
+                            ? visualCatalog.ladder
+                            : ActorSprites.GetLadderLandmarkSprite();
                         labelHeight = 0.58f;
                         break;
                     }
