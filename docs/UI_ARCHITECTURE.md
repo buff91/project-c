@@ -43,9 +43,56 @@ M4의 오브젝트별 문맥 팝업을 구현할 때는 동일한 데이터 계�
 UGUI View로 옮긴다.
 화면 고정 하단 `interact-button`은 키보드/포인터용 현재 행동 단축 도크로 유지한다.
 
+## UI Toolkit 상태 클래스 계약
+
+> **상태는 USS 클래스 토글로 표현한다.** 컨트롤러는 `AddToClassList`/`EnableInClassList`로
+> 클래스만 붙이고, 보이기·색·크기는 USS가 정한다. 예외는 클래스를 새로 만들 가치가 없는 단발
+> 노출 토글(개발 전용 섹션·타이틀 재개 버튼·사망 원인 라벨)의 `style.display`뿐이다.
+> 클래스 이름이 여러 컨트롤러에 문자열 리터럴로 흩어져 있어 이 표가 유일한 계약서다. USS 규칙이 없는
+> 이름을 붙이면 **아무 일도 일어나지 않고 조용히 실패한다** — 새 상태를 만들 땐 여기 먼저 적는다.
+
+| 클래스 | 의미 | 붙는 요소 | USS 계약 |
+|--------|------|-----------|----------|
+| `is-open` | 모달·오버레이·패널 열림 | 모든 모달(허브 7종 / 인벤토리 / 게임메뉴 / 종료 / 결과 / 공용 설정)과 `action-wheel`·`boss-panel`·`vertical-route-discovery`·`debug-panel` | 기본형이 `display: none`, `.X.is-open`이 `display: flex`. **닫힘이 기본값** |
+| `is-available` | 지금 실행 가능 | `hub-continue`(세이브 있음), `interact-button`(문맥 행동 있음) | 없으면 숨김/비활성 표현 |
+| `is-empty` | 채워지지 않은 칸 | `pc-heart`(HP 빈칸), `inventory-detail-icon` | 빈 칸 표현 |
+| `is-warning` | 경고 임계 | `hunger-label` | 경고색 |
+| `is-victory` | 결과가 생존 | `gameover-overlay` | 제목 색/문구 분기 |
+
+모달은 **`settings-modal` 한 껍데기를 공유한다.** 허브·던전·공용 설정의 모달 전부가 UXML에서
+`class="settings-modal"`을 달고, `display` 규칙은 `.settings-modal` / `.settings-modal.is-open`
+한 쌍에만 있다. 그래서 모달을 새로 만들 때 개별 USS 규칙을 쓸 필요가 없고, 반대로 그 한 쌍을
+건드리면 모든 모달이 같이 움직인다. `PrototypeHUD.Mobile/Desktop.uxml`은 공용 `PrototypeHUD.uxml`을
+`<ui:Instance>`로 감싸기만 하므로 이 계약은 두 View에서 자동으로 같다.
+
+레이아웃 프로필(`is-narrow`·`is-short`·`is-landscape`·`is-expanded`·`is-tall`·`is-ultrawide`)과
+입력 프로필(`ui-touch`·`ui-pointer`)은 `ResponsiveUiLayout`이 **HUD 루트에만** 부여한다.
+정의와 임계값은 아래 「크로스플랫폼 제약」의 해상도·입력 프로필 항목에 있다.
+
+접두사 없는 상태 클래스도 남아 있다 — 초기 코드의 잔재이므로 **새로 만들 땐 `is-` 를 쓴다.**
+
+| 클래스 | 의미 | 붙는 요소 |
+|--------|------|-----------|
+| `selected` | 선택된 슬롯/옵션 | 인벤토리·백팩 슬롯, 허브 원정지 옵션, 출정 준비 슬롯, 상점 탭 |
+| `locked` | 잠긴 선택지 | 허브 원정지 옵션 |
+| `drop-valid` / `drop-invalid` | 드래그 목적지 판정 | 출정 준비의 적재/창고 패널 |
+| `aiming` | 조준 중인 투척 아이템 | 폭탄·서리폭탄 버튼 |
+| `ranged` | 현재 전투 행동이 원거리 | `combat-button` |
+| `uncraftable` | 재료 부족 | 조합 행 |
+
+> **알려진 어긋남**: `HubHudController.Vendors.cs`가 의뢰·기록 행에 `is-locked`를 토글하지만
+> USS 어디에도 `is-locked` 규칙이 없다 — 붙어도 화면이 변하지 않는다. 잠금 표현이 `locked`와
+> `is-locked` 두 벌로 갈린 결과다. 고칠 때는 `locked` 쪽으로 통일하는 편이 싸다(그쪽에만 규칙이 있다).
+
 ## Claude 디자인 워크플로
 
-1. **시안 생성** — Claude가 `artifact-design` 스킬로 HTML/CSS 디자인 시안(아티팩트) 생성. 정통 판타지 던전 + 픽셀아트 톤, 라이트/다크 대응, 모바일 세로 기준(+PC 와이드 확장).
+1. **시안 생성** — Claude가 `artifact-design` 스킬로 HTML/CSS 디자인 시안(아티팩트) 생성.
+   톤은 **포스트 아포칼립스/이상 미궁** 픽셀아트 — 차가운 청흑 바탕 + 국소 앰버(호박) 광원 +
+   신호색(틸) 하나. 예전엔 "정통 판타지 던전"이라고 적혀 있었는데 GDD §10이 테마 전환을 확정해서
+   바꿨다. 팔레트 공식 자체는 테마와 무관하게 유지되고 **재료 어휘만** 바뀐다(횃불→비상등,
+   석재→콘크리트·녹·균열). 방향 SSOT는 `docs/art-direction/project-c-postapoc-art-direction-v1.md`,
+   토큰 값은 `docs/UI_DESIGN_SYSTEM.md`. 시안 자체는 라이트/다크 대응하되, **기준 화면은 PC 가로**다 —
+   모바일 세로를 기준으로 잡고 PC 와이드를 확장으로 두던 순서는 문서 상단 우선순위 주의에서 뒤집혔다.
 2. **리뷰** — 사용자가 아티팩트로 화면 비교·피드백.
 3. **이식** — 확정된 화면 중 UI Toolkit 대상만 UXML(구조)/USS(스타일)로 이식.
 
@@ -79,4 +126,4 @@ UGUI View로 옮긴다.
 - **호버 부재**: 탭=선택 / 재탭=실행 2단계, 롱프레스=정보. 모든 시스템 공통.
 - **조준**: 타일 단위 스냅 + 확인 단계 (마우스·터치 모두 커버).
 - **픽셀아트**: 폰트·9-slice·Point filter 프리셋 통일.
-- **성능**: 모바일 하한선 — UI 갱신도 컬링 원칙 준수.
+- **성능**: UI 갱신도 컬링 원칙을 따른다. "모바일이 하한선"이라는 전제 쪽은 문서 상단 우선순위 주의가 임시로 완화한 상태라 여기서 되풀이하지 않는다.
