@@ -83,24 +83,8 @@ namespace ProjectC.Core
         public const int Rows = 4;
         public const int Capacity = Columns * Rows;
 
-        /// <summary>아이템 크기의 단일 출처. 장비가 추가되면 이 매핑만 확장한다.</summary>
-        public static ItemFootprint Footprint(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Relic:
-                case ItemKind.SignShield:      // 큰 방패는 백팩을 크게 먹는다 (안전의 대가)
-                    return new ItemFootprint(2, 2);
-                case ItemKind.OilFlask:
-                case ItemKind.ThrowingKnife:
-                case ItemKind.RecallScroll:
-                case ItemKind.PipeSpear:       // 긴 자루 장비는 세로로 길다
-                case ItemKind.HeavyWrench:
-                    return new ItemFootprint(1, 2);
-                default:
-                    return new ItemFootprint(1, 1);
-            }
-        }
+        /// <summary>아이템 정의에 포함된 백팩 크기. 기존 호출부 호환용 위임 API.</summary>
+        public static ItemFootprint Footprint(ItemKind kind) => ItemCatalog.For(kind).Footprint;
 
         /// <summary>
         /// 현재 수량을 고정 격자에 모두 놓는다. 단 하나라도 못 놓으면 false이며 부분 결과를 노출하지 않는다.
