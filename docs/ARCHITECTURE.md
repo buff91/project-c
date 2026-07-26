@@ -36,7 +36,7 @@
   **의도(intent)·수치·좌표 목록**만 반환하고, 씬/스프라이트/연출 변경은 전부 `Scripts/Gameplay`가 한다.
 - **정렬(Sorting) 규칙은 `IsoGrid` 한 곳에** 집중 — floor(elevation) 우선 + (x+y). 흩뿌리지 않는다.
 - **입력 추상화** — 터치/마우스/키보드를 입력 레이어(`IsoTapInput`)에서 `GridPos`/액션으로 통일. 게임 로직에 플랫폼 분기 금지.
-- **데이터 중심** — 밸런스 수치는 정적 카탈로그(`MonsterRoster`/`ItemCatalog`/`HeroRoster`/`DungeonCatalog`)에.
+- **데이터 중심** — 밸런스 수치는 정적 카탈로그(`MonsterRoster`/`ItemCatalog`/`SurvivorProfile`/`DungeonCatalog`)에.
 - **성능** — "보이는 층 ≠ 활성 층". 시뮬레이션은 플레이어가 있는 한 층만. 몬스터는 활성 반경 밖이면 휴면.
 
 ### 계층/의존 방향
@@ -174,6 +174,13 @@ tileFloor == activeFloor → visible || explored
 그 외 층                 → verticalPreview (Hole 국소 미리보기일 때만)
 ```
 
+> **미리보기 집합도 FOV로 만든다** (`IsoPrototypeDemo.Visibility`): 반대편 층의 elevation 대역에서
+> `GridVisibility.Compute(center, …, verticalPreviewRadius)`를 한 번 더 돌린 결과를 쓴다.
+> 예전에는 착지점 중심 체비셰프 박스를 전부 넣어 **차폐를 아예 보지 않았고**, 벽 뒤와 닫힌 문 뒤
+> 방까지 드러나 바로 위 "void=불투명 / 닫힌 문 뒤 방 = Unknown" 불변식과 충돌했다.
+> 반경(1~6, 기본 4)은 남기되 이제 **박스 크기가 아니라 FOV 사거리**이며, 플레이어 시야(6)보다 짧다.
+> 비용은 층 하나 FOV 1회.
+
 > **3D(높이 인식) 시야선 — 완료(1·2·3단계).** 전투 LoS는 높이 보간(복셀 차폐), 수평·경사·수직·
 > 개구부·근접 도달 기하는 `SightRules`로 통합(`VerticalOpeningRules` 흡수), FOV 셰도우캐스팅의
 > 컬럼 해석은 `SightRules.ViewColumn` 위임 — 컬럼을 span(지면 + 머리 위 구조물)으로 본다.
@@ -187,8 +194,13 @@ tileFloor == activeFloor → visible || explored
 - A* 골격이지만 **휴리스틱 = 0**(명시적 링크가 elevation/xy를 임의로 점프하므로 최단 보장을 위해 Dijkstra 형태).
   비용 = **스텝당 1**(계단·링크 점프 포함). **4방향만**(대각선 없음). open set은 선형 스캔 `List`(작은 격자라 충분).
 - 이웃 생성 `EnumerateNeighbors`: 4방향 × elevation delta{−1,0,+1}. **높이 변화(±1)는 현재/후보 타일이
-  `Stairs` 또는 `Ladder`일 때만** 허용. 이후 `LinksFrom(current)`의 명시적 링크(층 전환)를 비용 1로 추가.
+  `Stairs`일 때만** 허용 — **`Ladder`는 여기 없다.** 이후 `LinksFrom(current)`의 명시적 링크
+  (층 전환·사다리)를 비용 1로 추가한다.
 - `openClosedDoors` 플래그: 몬스터 추격이 닫힌 문을 통과 경로로 계획하게 함.
+- `canClimb` 플래그(**기본 true**): false면 `IsLadderLink`(양 끝 중 하나가 `Ladder`)인 링크를 건너뛴다.
+  기본값이 true인 이유는 호출부 대부분이 플레이어 이동/도달성 검사라 그쪽이 정상값이기 때문이고,
+  덕분에 기존 도달성 불변식이 그대로 통과했다. **몬스터만 자기 `MonsterArchetype.CanClimb`를 넘긴다.**
+  층 전환 계단 링크는 어느 쪽 끝도 사다리가 아니라 걸리지 않는다(걸리면 못 오르는 적이 자기 층에 갇힌다).
 
 ### 6.2 TravelRules — SPD식 자동 이동 게이팅
 - `AllowedSteps` = 적이 시야에 있으면 탭당 **1스텝**, 없으면 경로 전체.
@@ -198,6 +210,10 @@ tileFloor == activeFloor → visible || explored
 - `TryGetAutomaticFloorDestination`: 밟은 타일이 `StairsUp/Down`이고 링크가 있으면 즉시 링크 목적지로
   (진입 = 한 행동으로 층 전환). Stairs/Ladder/Hole은 자동 전환 대상 아님.
 - `LadderWorldHeight` = 실제 elevation 차 × step + 타일 높이 35% 겹침, 하한 0.28 — 사다리 비주얼을 실제 단차에 맞춤.
+- **사다리는 계단과 다르다**: 계단 ±1 단·걸어서(A\*) / 사다리 여러 단·**링크로만**·오를 수 있는 종만.
+  사다리 칸에 **걸어 올라서는 것은 그대로** 되고 막히는 것은 "타고 오르기"다.
+  캐치워크 층에서는 `PlaceCatwalk`이 바닥(+0)↔캐치워크(+2)를 잇고 중간 발판(+1) 링크는 끊는다
+  (`Disconnect` 후 `Connect`) — 계단이 ±1만 담당하므로 이 대비가 "높은 곳은 사다리로만"을 성립시킨다.
 
 ### 6.4 StairTopology — 계단 착지 지점
 - `TryGetHigherLanding`: `Stairs` 타일의 4방향 중 `elevation+1`이며 walkable인 첫 칸(방향 배열 순서 우선).
@@ -229,8 +245,14 @@ tileFloor == activeFloor → visible || explored
 ### 7.2 생성 파이프라인 (순서 중요 — 뒤 패스가 앞 타일 상태를 읽음)
 1. **비밀 층 선택** `PickSecretDepths` — `SecretRoomRules.DesiredCount`(10층=3)만큼 B10 제외 깊이에서.
 2. **층별 계획+카브(위→아래)** — 방/복도/문/올림 바닥/계단/사다리/샤프트. NW 분기 방(옵션, 비밀이면 `SecretDoor`).
-3. **Hole + WeakFloor**(0..N−2층, 모든 층 카브 후) — 후보는 `LandsOneFloorBelow`(정확히 한 층 아래 walkable 착지,
-   윗층 Hole 컬럼 제외, 2층 관통 방지)를 만족. WeakFloor는 Hole 인접 4방 중 같은 조건.
+3. **개구부 + WeakFloor**(0..N−2층, 모든 층 카브 후) — 앵커 후보는 `LandsOneFloorBelow`(정확히 한 층 아래
+   walkable 착지, 윗층 **개구부 전체** 컬럼 제외, 2층 관통 방지)를 만족.
+   **앵커에서 한 칸씩 자란다(상한 3)** — 같은 조건 + `KeepsUpperRoomConnected`(플러드 필로 방이 잘리는지 검사)를
+   통과하는 인접 칸만 붙이고 없으면 멈춘다. 2×2 같은 모양을 강제하지 않는 이유는 최소 크기 던전에서 북쪽 방
+   밴드가 얕고 Y축 층간 겹침이 보장되지 않아(X축만 제약) 후보가 0이 되거나 도달성이 깨지기 때문이다.
+   **성장 루프는 난수를 쓰지 않아 RNG 스트림이 그대로다**(앵커 1 + WeakFloor 1). WeakFloor는 개구부
+   **둘레**의 4방 인접 중 같은 조건 — 밟으면 개구부가 되므로 **같은 판정 함수를 공유**한다.
+   결과는 `DungeonFloorInfo.HoleTiles`(1급 목록)이고 `Hole`은 대표 칸(샤프트 연출·엘리베이터 충돌용).
 4. **프롭·스폰** — 휴식처(`DungeonRestRules.ShouldPlace`: B4/B7) → 물 웅덩이(50%, 랜덤워크 2~4칸) →
    적 스폰(문 뒤 북쪽 방만, `1+rand+depth/2+면적보너스`, **하행 계단 경비병** `1+depth` 추가) →
    아이템(`RollKind` 18분모 분포, 분기 방 보상 보장).
@@ -240,8 +262,10 @@ tileFloor == activeFloor → visible || explored
 - **SecretRoomRules** — `DesiredCount`(≥8층=3), `CanInvestigate`(같은 elevation·맨해튼 1),
   `TryReveal`(`SecretDoor`→`SecretPassage` in-place, 멱등), `RevealInBlast`(3×3).
   비밀 분기 보상은 결정적: **B4+ Relic, 그 외 Gemstone**.
-- **DungeonBossRules** — `TrySelectSpawn`(입구에서 맨해튼 최대 후보), `CanUseExit`(보스 없거나 처치 시). B10 묘지기.
-- **DungeonCatalog** — `잊힌 지하묘지`(seed 1977, 10층, 묘지기)만 available. `ById`는 없으면 `All[0]` 폴백.
+- **DungeonBossRules** — `TrySelectSpawn`(입구에서 맨해튼 최대 후보), `CanUseExit`(보스 없거나 처치 시).
+  진행 최종 층(폐병원 8F)의 `감시자`(코드 ID `grave-warden`).
+- **DungeonCatalog** — `폐병원`(코드 ID `forgotten-catacombs`, seed 1977, 10층, 상승, 감시자)만 available.
+  `침수된 금고`/`잿불 성채`는 `isAvailable: false`. `ById`는 없으면 `All[0]` 폴백.
 - **AreaSpawnBonus** = `max(0,(w·h−121)/60)` — 면적 비례 스폰 스케일.
 
 ### 7.4 발판 → BSP 전환 (확정 목표)
@@ -386,16 +410,20 @@ tileFloor == activeFloor → visible || explored
 
 ### 10.4 출정 로드아웃 (ExpeditionLoadoutRules)
 - 창고(무제한 `Inventory`) ↔ 출정 백팩(6×4)의 1개 단위 이동. **전리품은 창고/로드아웃에 못 들어감**(항상 골드).
-- `CreateInventory` = 영웅 기본 지급품 + 선택 로드아웃(24셀 예산). `Reconcile`(영웅 변경 초과분 창고 복귀),
+- `CreateInventory` = 기본 지급품(`SurvivorProfile.StarterCount` — **hero 인자를 받지 않는다**) +
+  선택 로드아웃(24셀 예산). `Reconcile`(초과분 창고 복귀),
   `ConsumeLoadout`(던전 진입 시 실제 반입, 초과분 창고로).
 
 ### 10.5 세이브·메타
 - **RunSaveData**(`[Serializable]`) — 층 체크포인트. **지형/적/아이템은 저장 안 함**(seed로 재생성).
   이어하기 = "현재 층을 층 입구에서 다시 시작". 체크포인트 계약 `dungeonId/stageCount/bossDefeated` + 12종 인벤(전리품 포함).
   `RunStartRules.ResolvePreviewDepth`: 새 판=0, 이어하기=`max(0,−currentFloorIndex)`.
-- **MetaSaveData**(`[Serializable]`) — 판 종료(사망 포함)에도 유지되는 은행. `gold`, `unlockedHeroes`,
-  창고 9종 + 로드아웃 9종(전리품 필드 없음). `TrySpend`(상점/해금), `IsHeroUnlocked/UnlockHero`.
-- **HeroRoster** — 기사(HP10·공3, 무료)/사냥꾼(HP8·원2, 80G)/연금술사(HP8·공3, 120G). `ById`는 없으면 기사 폴백.
+- **MetaSaveData**(`[Serializable]`) — 판 종료(사망 포함)에도 유지되는 은행. `gold`, `records`,
+  `unlockProgress`(조건별 역대 최고, 단조 증가) + 투입 기록,
+  창고 9종 + 로드아웃 9종(전리품 필드 없음). `TrySpend`(상점), `AwardRecords`/`InvestRecords`.
+  옛 `unlockedHeroes`/`heroId`는 **제거**했다 — 옛 세이브는 그 필드를 무시하고 로드되므로 마이그레이션 없음.
+- **SurvivorProfile** — 원정자 기본값 상수 하나(HP10·근접3·원거리1·물약1, 옛 기사 값 그대로).
+  **직업도 프리셋도 없다** — 정체성은 캐릭터가 아니라 장비가 진다. 옛 `HeroRoster`/`HeroSelection`을 대체.
 - **Equipment / ForgeRules** — 무기 1 + 보조 1 슬롯. 장비는 **공격력을 올리지 않고** 규칙만 바꾼다
   (사거리 2·명중 넉백·피해 -1·안전 낙하 +2). 대장간이 골드로 제작하고 슬롯에 끼우며,
   옛 영구 스탯 강화(`SmithyRules`)는 제거했다. 전투 보정은 `CombatLoadout` 한 구조체로 모아
@@ -448,6 +476,11 @@ tileFloor == activeFloor → visible || explored
   `is-narrow(<520)`/`is-short(<700)`/`is-landscape`/`is-expanded(짧은 축≥590)`/`is-tall`/`is-ultrawide`.
   `Screen.safeArea`를 패널 좌표로 환산해 노치 대응. 모든 루트에 `ui-touch`/`ui-pointer` 부여.
 - **OrthographicCameraFraming** — 월드 경계를 화면비에 맞춰 직교 카메라 중심/크기 계산(허브 고정 구도).
+  `Fit = max(minimumSize, halfHeight, halfWidth/aspect)`이고 **minimumSize는 던전 카메라 크기
+  (`playCameraSize`)를 그대로 넘긴다** — 전용 필드(`hubCameraMinimumSize`)를 두면 값이 두 벌이 되어
+  한쪽이 흘러내려도 아무도 모른다(실제로 허브가 1.4배 확대돼 보이는 버그가 그렇게 생겼다).
+  `max` 덕분에 PC 가로에서는 최소값이 지배해 던전과 정확히 같고, 세로로 긴 창에서만 필요한 만큼
+  물러난다. 패리티는 `OrthographicCameraFramingTests`가 고정한다.
 - 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI (상세 `UI_ARCHITECTURE.md`).
 
 ---

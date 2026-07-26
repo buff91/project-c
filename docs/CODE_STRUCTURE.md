@@ -25,21 +25,21 @@
 
 | 파일 | 줄수 | 담당 |
 |------|-----:|------|
-| `IsoPrototypeDemo.cs` | ~1150 | 상태·필드·이벤트·수명주기(Awake/Start/Update/LateUpdate)·방 빌드(BuildPrototype/CreateActorsAndProps)·카메라·공용 헬퍼·`OverlaySorting` 상수 |
+| `IsoPrototypeDemo.cs` | ~1275 | 상태·필드·이벤트·수명주기(Awake/Start/Update/LateUpdate)·방 빌드(BuildPrototype/CreateActorsAndProps)·카메라·공용 헬퍼·`OverlaySorting` 상수 |
 | `IsoPrototypeDemo.Debug.cs` | 231 | 디버그 창 전용 치트 API (`DebugGodMode`·`DebugJumpFloor` 등) |
-| `IsoPrototypeDemo.View.cs` | 178 | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도 |
+| `IsoPrototypeDemo.View.cs` | 190 | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브 auto-fit 최소값 = `playCameraSize`) |
 | `IsoPrototypeDemo.Interaction.cs` | 437 | 탭/스텝/인접 상호작용·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 412 | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
 | `IsoPrototypeDemo.Movement.cs` | 415 | 경로 이동·문/비밀문/낙하 접근·auto-travel·플로어 전환 |
 | `IsoPrototypeDemo.RunLifecycle.cs` | 250 | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
-| `IsoPrototypeDemo.Hub.cs` | 155 | 허브 프롭/포탈/영웅 잠금 |
+| `IsoPrototypeDemo.Hub.cs` | 132 | 허브 프롭/포탈 (영웅 프롭·잠금은 제거됨) |
 | `IsoPrototypeDemo.Enemies.cs` | 572 | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 406 | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
 | `IsoPrototypeDemo.RestSites.cs` | 155 | 휴식 지점(모닥불) |
 | `IsoPrototypeDemo.Extraction.cs` | 132 | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.BossArena.cs` | 106 | 최심층 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 453 | 전투/상태이상 연출 |
-| `IsoPrototypeDemo.Visibility.cs` | ~1137 | FOV·수직 포털·후면 벽·플레이어 가림 |
+| `IsoPrototypeDemo.Visibility.cs` | ~1233 | FOV·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림 |
 | `IsoPrototypeDemo.Lighting.cs` | 159 | 지하 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
 | `IsoPrototypeDemo.Sprites.cs` | 123 | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
@@ -69,9 +69,9 @@
 
 | 파일 | 줄수 | 담당 |
 |------|-----:|------|
-| `HubHudController.cs` | 371 | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 |
-| `HubHudController.Vendors.cs` | 296 | 상점·대장간·현상금·영웅 모달 |
-| `HubHudController.Preparation.cs` | 446 | 창고·출정 백팩·드래그드롭 엔진 |
+| `HubHudController.cs` | 353 | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 (`hero:` 라우팅 없음) |
+| `HubHudController.Vendors.cs` | 386 | 상점·대장간·현상금·기록실 모달(기록 투입 포함) |
+| `HubHudController.Preparation.cs` | 444 | 창고·출정 백팩·드래그드롭 엔진 |
 | `PrototypeHudController.cs` | 509 | 수명주기·문서 바인딩·컨트롤 콜백·Update·입력·메뉴 |
 | `PrototypeHudController.Handlers.cs` | 146 | 데모 이벤트 핸들러(`Handle*`)·미니맵·HP 표시 |
 | `PrototypeHudController.ActionWheel.cs` | 199 | 액션 휠 빌드/배치 |
@@ -124,6 +124,12 @@
 | 아이템 백팩 면적 | `BackpackRules.Footprint` |
 | 아이템 분류(소모품/전리품/재료/장비) | `ItemCatalog.CategoryOf` |
 | 아이템 수량 저장·복원 | `ItemStorage` (`MetaSaveData.stash/loadout`·`RunSaveData.items` 공유) |
+| 플레이어 기본 수치·기본 지급품 | `SurvivorProfile` (영웅 3종/`HeroRoster`를 대체 — 직업 없음) |
+| 사다리 등반 가능 여부 | `MonsterArchetype.CanClimb`(기본 false) → `GridPathfinder(canClimb:)`(기본 true) |
+| 개구부 칸 집합 | `DungeonFloorInfo.HoleTiles` (대표 칸은 `Hole`; 성장·약한 바닥은 `DungeonGenerator.Carving`의 같은 판정 함수) |
+| 기록 적립 공식 | `RunRecordRules.Award` (도달 1 · 개척 3 · 숨은 방 2) |
+| 해금 조건 판정·기록 투입 | `ItemUnlockRules.InvestRecords`/`RemainingFor` (UI는 자체 판정을 들지 않는다) |
+| 허브/던전 카메라 배율 | `playCameraSize` 하나 (허브 `OrthographicCameraFraming.Fit`의 minimumSize로 전달) |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 검증 필요)
 
