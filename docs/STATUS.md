@@ -250,13 +250,12 @@
     상인·창고·기록실은 잠그지 않는다.
   - **남은 것**: 실플레이로 조건 수치(화상 12·처치 20 등)와 구출 층(2·5) 조정.
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
-- **최근 검증 기준**(2026-07-26, 개구부 확장 `3744f04` 시점):
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **881/881 통과** — 이 문서를 갱신하며 재실행해 확인.
-  - Unity EditMode `ProjectC.Tests.EditMode` **1005/1005 통과**(커밋 기록 기준. 이 문서 갱신 시점에는
-    에디터 회귀를 다시 돌리지 않았다).
+- **최근 검증 기준**(2026-07-26, 아이템 정의·합선 드론·액터 애니메이션 통합 작업 트리):
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **895/895 통과**.
+  - Unity EditMode `ProjectC.Tests.EditMode` **1043/1043 통과**.
   - Unity PlayMode `ProjectC.Tests.PlayMode` **1/1 통과**(`FirstDungeonSmokeTests` —
-    폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽. 같은 커밋 기록 기준).
-  - 직전 기준선은 2026-07-25 지역 축 도입 후 Core 851 / EditMode 968이었다.
+    폐병원 B2 → 8F 보스 → 출구까지, 치트 훅과 SPACE 경로 양쪽).
+  - 직전 기준선은 개구부 확장 `3744f04` 시점의 Core 881 / EditMode 1005였다.
   변경 후에는 숫자를 맹신하지 말고, 최소한 shim을 돌리고 에디터 회귀도 다시 실행한다.
 - **화면 확인이 남은 것**: ① 개구부 너머 미리보기에서 **닫힌 문 뒤가 실제로 안 보이는지**
   (실측은 리플렉션으로 상태를 밀어 넣은 개발 확인이라 캡처가 대표성이 없다), ② 사다리를
