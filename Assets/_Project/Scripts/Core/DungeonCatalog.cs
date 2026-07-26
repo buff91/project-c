@@ -131,17 +131,21 @@ namespace ProjectC.Core
             new DungeonDefinition(
                 "flooded-vault",
                 "침수된 금고",
-                "고도가 아니라 안으로 파고드는 구조. 물과 빙결 반응이 중심인 다음 원정지.",
-                "준비 중",
+                "무너진 방수문 너머로 안쪽 구역을 파고든다. 침수된 바닥을 얼려 길을 만들고, " +
+                "물 위의 합선 드론이 일으키는 감전 연쇄를 역이용해야 한다.",
+                "구역 1 → 10 · 물·빙결·감전 반응 · 냉기 장비 권장",
                 seed: 2718,
                 floorCount: 10,
                 boss: null,
-                isAvailable: false,
+                isAvailable: true,
                 // 고도가 진행 축이 아니다 — 구역 번호로 표기하고 오르내림은 국소 지형이다.
                 direction: DungeonProgressDirection.Inward,
                 firstBuildingFloor: -1,
                 // 물 웅덩이가 도처에 있어야 "왜 여기가 다른가"가 첫 층에서 읽힌다.
-                region: DungeonRegionProfile.Flooded),
+                region: DungeonRegionProfile.Flooded,
+                entryTitle: "구역 1 · 외곽 방수문",
+                entryDetail: "배수 장치가 멎어 금고 안쪽이 잠겼다. 물을 얼려 발판을 만들고, " +
+                    "합선 드론의 전류가 번지기 전에 깊은 구역으로 진입하라."),
             new DungeonDefinition(
                 "ember-keep",
                 "잿불 성채",

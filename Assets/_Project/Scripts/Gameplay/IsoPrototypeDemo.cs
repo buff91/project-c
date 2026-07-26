@@ -288,6 +288,7 @@ namespace ProjectC.Gameplay
         public bool BossExitUnlocked =>
             !hubMode &&
             DungeonBossRules.CanUseExit(DungeonSelection.Selected, _bossDefeated);
+        public bool HasBoss => DungeonSelection.Selected.Boss != null;
         public string BossName => DungeonSelection.Selected.Boss?.DisplayName ?? "--";
         public int BossHp => _boss != null && _boss.State != null ? _boss.State.Hp : 0;
         public int BossMaxHp =>

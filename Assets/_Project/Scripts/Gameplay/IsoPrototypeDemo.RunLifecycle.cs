@@ -161,16 +161,18 @@ namespace ProjectC.Gameplay
         /// <summary>스테이지 누적 층 인덱스(기록/표시용, 아래로 갈수록 음수).</summary>
         private int GlobalFloorIndex(int floorIndex) => floorIndex - (_stageIndex - 1) * floorCount;
 
-        /// <summary>최심층 도착은 보스와 봉인 출구를 안내할 뿐, 즉시 승리시키지 않는다.</summary>
+        /// <summary>최심부 도착은 최종 출구를 안내할 뿐, 즉시 승리시키지 않는다.</summary>
         private void TryDeclareVictory()
         {
             if (hubMode || _runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
             if (_activeFloorIndex != _dungeon.FinalFloorIndex) return;
 
             InteractionFeedback?.Invoke(
-                BossExitUnlocked
-                    ? "최심층 출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
-                    : $"최심층 도달 — {BossName}를 쓰러뜨려 출구를 열어라");
+                !HasBoss
+                    ? "최심부 도달 — 출구(▼)로 향하라"
+                    : BossExitUnlocked
+                        ? "최심층 출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
+                        : $"최심층 도달 — {BossName}를 쓰러뜨려 출구를 열어라");
             BossStateChanged?.Invoke();
         }
 

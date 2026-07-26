@@ -34,14 +34,19 @@ namespace ProjectC.Gameplay
 
             bool finalExit = !demo.HasNextStage;
             if (_exitTitle != null)
-                _exitTitle.text = finalExit ? "봉인 해제된 출구" : "던전 출구";
+                _exitTitle.text = finalExit
+                    ? demo.HasBoss ? "봉인 해제된 출구" : "최심부 출구"
+                    : "던전 출구";
             if (_exitDesc != null)
             {
                 int gold = demo.CarriedTreasureGold();
                 _exitDesc.text =
                     finalExit
-                        ? $"{demo.BossName} 처치 완료 · 전리품 가치 " +
-                          $"{ItemCatalog.FormatGold(gold)} · 정복을 확정할 수 있다"
+                        ? demo.HasBoss
+                            ? $"{demo.BossName} 처치 완료 · 전리품 가치 " +
+                              $"{ItemCatalog.FormatGold(gold)} · 정복을 확정할 수 있다"
+                            : $"최심부 도달 · 전리품 가치 {ItemCatalog.FormatGold(gold)} · " +
+                              "정복을 확정할 수 있다"
                         : $"들고 있는 전리품 가치: {ItemCatalog.FormatGold(gold)} · " +
                           $"다음은 던전 {demo.StageIndex + 1}";
             }
