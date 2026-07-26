@@ -67,3 +67,8 @@ __pycache__/
 # dotnet 테스트 shim 산출물 (Tools/CoreTests — Unity 없이 Core 테스트)
 /Tools/CoreTests/bin/
 /Tools/CoreTests/obj/
+
+# MCP 검증 캡처 (manage_ui render_ui 의 기본 출력 경로).
+# 화면 확인용 산출물이라 리포에 남기지 않는다 — 필요하면 그때 다시 찍는다.
+/Assets/Screenshots/
+/Assets/Screenshots.meta
