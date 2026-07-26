@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace ProjectC.Gameplay
 {
-    /// <summary>메타 창고 파일 입출력. 판 종료(사망 포함)에도 유지된다.</summary>
+    /// <summary>메타 창고 파일 입출력. 원자적 JSON + 직전 정상 백업, 판 종료에도 유지된다.</summary>
     public static class MetaStore
     {
         private static string SavePath => Path.Combine(
@@ -13,22 +13,21 @@ namespace ProjectC.Gameplay
 
         public static MetaSaveData LoadOrNew()
         {
-            if (!File.Exists(SavePath)) return new MetaSaveData();
-            try
+            if (!JsonFileStore.Exists(SavePath)) return new MetaSaveData();
+            if (JsonFileStore.TryLoad(SavePath, out MetaSaveData data, out bool recoveredFromBackup))
             {
-                return JsonUtility.FromJson<MetaSaveData>(File.ReadAllText(SavePath)) ?? new MetaSaveData();
+                if (recoveredFromBackup)
+                    Debug.LogWarning("[Meta] 저장 파일 손상 — 직전 정상 백업을 복구했다.");
+                return data;
             }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[Meta] 창고 파일 파싱 실패 — 새로 시작: {e.Message}");
-                return new MetaSaveData();
-            }
+
+            Debug.LogWarning("[Meta] 저장 파일과 백업을 읽지 못해 새로 시작한다.");
+            return new MetaSaveData();
         }
 
         public static void Save(MetaSaveData data)
         {
-            Directory.CreateDirectory(DevelopmentSaveProfile.ActiveRootPath);
-            File.WriteAllText(SavePath, JsonUtility.ToJson(data));
+            JsonFileStore.Save(SavePath, data);
         }
     }
 }
