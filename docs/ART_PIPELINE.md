@@ -178,8 +178,23 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
   `python3 Tools/ArtPipeline/comfy_batch.py`
 - 정적 마감: `Tools/ArtPipeline/aseprite_conform.sh INPUT OUTPUT WIDTH HEIGHT strict`
 - 상세 실행법: `docs/art-direction/comfyui/README.md`
+- 레시피·Slack 리뷰·Codex Scheduled:
+  `docs/art-direction/ART_REVIEW_AUTOMATION.md`
 
 ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자동 실행한다. Civitai 모델은
 체크포인트·LoRA·ControlNet·IPAdapter의 base model 세대를 맞추고, 채택 시 모델 버전·URL·
 라이선스를 prompt 문서에 기록한다. Aseprite conform은 캔버스·알파·공용 팔레트를 강제한 뒤
-정식 파일명의 `.aseprite`로 저장한다. 애니메이션 프레임 생성은 자동화 범위가 아니다.
+정식 파일명의 `.aseprite`로 저장한다. 멀티샷 레시피는 ComfyUI 키포즈/이펙트 슬롯 생성과
+샷별 Aseprite 소스 인계, 검수용 FrameTag·duration·GIF 초안까지 자동화한다.
+보간 프레임·발 기준선·실루엣·최종 타이밍은 사람이 Aseprite에서 마감한다.
+
+### 애니메이션/이펙트 운영 규칙
+
+- ComfyUI는 키프레임 후보 생성에 집중하고, 프레임 연출/루프는 Aseprite에서 마감한다.
+- 캐릭터는 `idle` 중심 + `walk/attack/hit/fall/death` 보조 프레임을 모은 뒤 FrameTag를 붙인다.
+- 이펙트는 `burst`/`idle-loop` 중심으로 먼저 4~8프레임 후보를 만들고, 반복/톤은 Aseprite에서 정제한다.
+- 기본 슬롯(`allow_replace: false`)은 승인 전 교체 금지.
+- 참조:
+  - `docs/art-direction/animation-effect-workflow.md`
+  - `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
+  - `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`

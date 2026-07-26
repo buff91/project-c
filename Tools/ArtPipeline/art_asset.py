@@ -4,14 +4,17 @@
 `publish` takes an existing generated PNG.
 `generate` runs a ComfyUI API workflow first, then publishes one output.
 
-Animated actors stop at an idle/base source. Walk/attack/hit/fall/death frames
-remain deliberate Aseprite work; this tool does not synthesize animation.
+This low-level command publishes one static source. Multi-shot animation and
+effect key poses are expanded by art_runner.py, then handed to Aseprite as an
+editable source set; interpolation and timing remain deliberate Aseprite work.
 """
 
 from __future__ import annotations
 
 import argparse
+from collections import deque
 import re
+import statistics
 import subprocess
 import sys
 import uuid
@@ -29,7 +32,9 @@ ASEPRITE_SOURCE_DIR = (
 )
 ASEPRITE_CONFORM = Path(__file__).with_name("aseprite_conform.sh")
 DEFAULT_RAW_DIR = PROJECT_ROOT / "docs/art-direction/comfyui/output"
-SLOT_PATTERN = re.compile(r"^(actor|env|item|marker|prop)-[a-z0-9][a-z0-9-]*$")
+SLOT_PATTERN = re.compile(
+    r"^(actor|env|item|marker|prop|fx)-[a-z0-9][a-z0-9-]*$"
+)
 
 
 class AssetError(RuntimeError):
@@ -43,10 +48,16 @@ def parse_hex_color(text: str) -> tuple[int, int, int]:
     return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))
 
 
+def parse_key_color(text: str) -> tuple[int, int, int] | str:
+    if text.strip().lower() == "auto":
+        return "auto"
+    return parse_hex_color(text)
+
+
 def validate_slot(slot: str) -> None:
     if not SLOT_PATTERN.fullmatch(slot):
         raise AssetError(
-            f"Invalid slot {slot!r}; expected actor-/env-/item-/marker-/prop- "
+            f"Invalid slot {slot!r}; expected actor-/env-/item-/marker-/prop-/fx- "
             "followed by lowercase kebab-case"
         )
 
@@ -79,6 +90,85 @@ def remove_chroma_key(
     return rgba
 
 
+def detect_border_color(image: Image.Image) -> tuple[int, int, int]:
+    rgb = image.convert("RGB")
+    pixels = []
+    for x in range(rgb.width):
+        pixels.append(rgb.getpixel((x, 0)))
+        pixels.append(rgb.getpixel((x, rgb.height - 1)))
+    for y in range(1, rgb.height - 1):
+        pixels.append(rgb.getpixel((0, y)))
+        pixels.append(rgb.getpixel((rgb.width - 1, y)))
+    if not pixels:
+        raise AssetError("Cannot detect a chroma key from an empty border")
+    return tuple(
+        round(statistics.median(pixel[channel] for pixel in pixels))
+        for channel in range(3)
+    )
+
+
+def keep_largest_alpha_component(
+    image: Image.Image,
+    cutoff: int,
+) -> Image.Image:
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    alpha = rgba.getchannel("A")
+    visible = [
+        alpha.getpixel((x, y)) >= cutoff
+        for y in range(height)
+        for x in range(width)
+    ]
+    visited = bytearray(width * height)
+    largest: list[int] = []
+    neighbors = (
+        (-1, -1), (0, -1), (1, -1),
+        (-1, 0),            (1, 0),
+        (-1, 1),  (0, 1),   (1, 1),
+    )
+    for start in range(width * height):
+        if visited[start] or not visible[start]:
+            continue
+        visited[start] = 1
+        queue = deque([start])
+        component: list[int] = []
+        while queue:
+            index = queue.popleft()
+            component.append(index)
+            x = index % width
+            y = index // width
+            for dx, dy in neighbors:
+                nx = x + dx
+                ny = y + dy
+                if not 0 <= nx < width or not 0 <= ny < height:
+                    continue
+                neighbor = ny * width + nx
+                if visited[neighbor] or not visible[neighbor]:
+                    continue
+                visited[neighbor] = 1
+                queue.append(neighbor)
+        if len(component) > len(largest):
+            largest = component
+
+    if not largest:
+        return rgba
+    keep = bytearray(width * height)
+    for index in largest:
+        keep[index] = 1
+    pixel_data = (
+        rgba.get_flattened_data()
+        if hasattr(rgba, "get_flattened_data")
+        else rgba.getdata()
+    )
+    pixels = list(pixel_data)
+    output = [
+        pixel if keep[index] else (pixel[0], pixel[1], pixel[2], 0)
+        for index, pixel in enumerate(pixels)
+    ]
+    rgba.putdata(output)
+    return rgba
+
+
 def alpha_bounds(image: Image.Image, cutoff: int) -> tuple[int, int, int, int] | None:
     alpha = image.getchannel("A")
     mask = alpha.point(lambda value: 255 if value >= cutoff else 0)
@@ -97,12 +187,15 @@ def prepare_image(
     alpha_cutoff: int,
     key_color: tuple[int, int, int] | None,
     key_tolerance: int,
+    trim_detached: bool = False,
 ) -> None:
     if not source.is_file():
         raise AssetError(f"Generated source does not exist: {source}")
     image = Image.open(source).convert("RGBA")
     if key_color is not None:
         image = remove_chroma_key(image, key_color, key_tolerance)
+    if trim_detached:
+        image = keep_largest_alpha_component(image, alpha_cutoff)
 
     if fit == "strict":
         if image.size != (width, height):
@@ -184,6 +277,10 @@ def publish(
     validate_slot(args.slot)
     output = args.output or official_output(args.slot)
     prepared = args.prepared_output or raw_dir / f"{args.slot}-prepared.png"
+    key_color = args.key_color
+    if key_color == "auto":
+        with Image.open(source) as source_image:
+            key_color = detect_border_color(source_image)
     prepare_image(
         source,
         prepared,
@@ -193,8 +290,9 @@ def publish(
         anchor=args.anchor,
         padding=args.padding,
         alpha_cutoff=args.alpha_cutoff,
-        key_color=args.key_color,
+        key_color=key_color,
         key_tolerance=args.key_tolerance,
+        trim_detached=args.trim_detached,
     )
     conform_to_aseprite(
         prepared,
@@ -254,8 +352,17 @@ def add_publish_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--padding", type=int, default=2)
     parser.add_argument("--alpha-cutoff", type=int, default=80)
-    parser.add_argument("--key-color", type=parse_hex_color)
+    parser.add_argument(
+        "--key-color",
+        type=parse_key_color,
+        help="RRGGBB, #RRGGBB, or auto (median border color)",
+    )
     parser.add_argument("--key-tolerance", type=int, default=8)
+    parser.add_argument(
+        "--trim-detached",
+        action="store_true",
+        help="Remove alpha components disconnected from the largest subject",
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--prepared-output", type=Path)
     parser.add_argument("--force", action="store_true")

@@ -1,0 +1,85 @@
+schema_version: 1
+id: actor-concept-sdxl-v1
+name: 포스트아포 액터 콘셉트 SDXL v1
+
+purpose:
+  category: actor
+  slot: actor-concept
+  use: concept
+  readability_goal: Project-C 진영 색과 복장 어휘를 탐색하되 정식 슬롯에는 자동 승격하지 않는다.
+  animation_scope: reference-only
+
+output:
+  canvas: [96, 128]
+  pivot: [0.5, 0.04]
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: aseprite
+  allow_replace: false
+
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+
+loras:
+  - name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+    node: 2
+    base_model: SDXL
+    model_strength: 0.45
+    clip_strength: 0.45
+    purpose: 도트 클러스터와 하드 에지
+    attribution: Civitai model 144684 / version 160844
+
+generation:
+  width: 1024
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+
+prompt:
+  positive: >-
+    Pixel Art, polished chunky isometric pixel art game actor, full body single
+    post-apocalyptic scavenger, three-quarter isometric view, crouched
+    shoulders and compact backpack, practical patched concrete-gray and
+    rust-brown clothing, one tiny warning-neon red equipment point, strong
+    readable silhouette, feet visible and level, isolated centered character,
+    flat solid magenta background, crisp hard edges, deliberate pixel clusters,
+    restrained colors
+  negative: >-
+    multiple characters, cropped feet, ground shadow, scenery, floor, text,
+    label, watermark, photorealism, smooth 3d, vector art, anti-aliasing haze,
+    fantasy armor, medieval clothing, sword, shield, bow, neon overload,
+    symmetrical front portrait, close-up
+
+quality_gates:
+  require_transparency_after_prepare: true
+  silhouette_tags: [full-body, grounded-feet, compact-backpack]
+  reject_if: [cropped-feet, extra-limbs, fantasy-armor]
+
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
