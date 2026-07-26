@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 
@@ -114,21 +115,74 @@ namespace ProjectC.Gameplay
         public Sprite SurvivorSprite => knight != null ? knight : player;
 
         /// <summary>
+        /// 아키타입 ID → 카탈로그 슬롯 필드명. <see cref="MonsterFor"/>와
+        /// <see cref="MonsterAnimationsFor"/>가 같은 매핑을 공유하는 단일 출처다.
+        /// 미등록은 null — goblin 폴백 금지 규칙의 뿌리.
+        /// </summary>
+        private static string MonsterSlotKey(string archetypeId)
+        {
+            switch (archetypeId)
+            {
+                case "Goblin": return "goblin";
+                case "Skeleton": return "skeleton";
+                case "Slime": return "slime";
+                case "Slinger": return "slinger";
+                case "GraveWarden": return "graveWarden";
+                default: return null;
+            }
+        }
+
+        /// <summary>
         /// 미등록 아키타입은 goblin이 아니라 null을 돌려준다 — null이어야 호출부가
         /// 아키타입 전용 절차 생성 폴백으로 내려가고, 몬스터끼리 같은 그림으로 뭉개지지 않는다.
         /// (Slinger·GraveWarden이 goblin 폴백에 가려 전용 실루엣을 잃었던 회귀의 방지선.)
         /// </summary>
         public Sprite MonsterFor(string archetypeId)
         {
-            switch (archetypeId)
+            switch (MonsterSlotKey(archetypeId))
             {
-                case "Goblin": return goblin;
-                case "Skeleton": return skeleton;
-                case "Slime": return slime;
-                case "Slinger": return slinger;
-                case "GraveWarden": return graveWarden;
+                case "goblin": return goblin;
+                case "skeleton": return skeleton;
+                case "slime": return slime;
+                case "slinger": return slinger;
+                case "graveWarden": return graveWarden;
                 default: return null;
             }
+        }
+
+        [Header("액터 애니메이션 (Aseprite 베이크 산출물 — 손으로 편집하지 않는다)")]
+        public List<ActorAnimationSet> actorAnimations = new List<ActorAnimationSet>();
+
+        /// <summary>actorKey = Sprite 슬롯 필드명 계약. 없으면 null(정지 1프레임 유지).</summary>
+        public ActorAnimationSet AnimationsFor(string actorKey)
+        {
+            if (actorAnimations == null || string.IsNullOrEmpty(actorKey)) return null;
+            for (int i = 0; i < actorAnimations.Count; i++)
+            {
+                ActorAnimationSet set = actorAnimations[i];
+                if (set != null && set.HasClips &&
+                    string.Equals(set.actorKey, actorKey, System.StringComparison.Ordinal))
+                    return set;
+            }
+
+            return null;
+        }
+
+        /// <summary>원정자 애니 — <see cref="SurvivorSprite"/>와 같은 knight→player 규칙.</summary>
+        public ActorAnimationSet SurvivorAnimations
+        {
+            get
+            {
+                ActorAnimationSet knightSet = AnimationsFor("knight");
+                return knightSet != null ? knightSet : AnimationsFor("player");
+            }
+        }
+
+        /// <summary>미등록 아키타입은 null — <see cref="MonsterFor"/>와 같은 방지선.</summary>
+        public ActorAnimationSet MonsterAnimationsFor(string archetypeId)
+        {
+            string slotKey = MonsterSlotKey(archetypeId);
+            return slotKey != null ? AnimationsFor(slotKey) : null;
         }
 
         [Header("아이템")]

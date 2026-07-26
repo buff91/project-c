@@ -325,6 +325,69 @@ namespace ProjectC.Tests
             Assert.IsNull(_catalog.MonsterFor("unknown-archetype"));
         }
 
+        private ActorAnimationSet MakeAnimationSet(string actorKey, params string[] tags)
+        {
+            var set = new ActorAnimationSet { actorKey = actorKey };
+            foreach (string tag in tags)
+            {
+                set.clips.Add(new SpriteClip
+                {
+                    tag = tag,
+                    loop = tag == "idle" || tag == "walk",
+                    frames = new[] { MakeSprite(), MakeSprite() },
+                    frameStartTimes = new[] { 0f, 0.1f },
+                    length = 0.2f
+                });
+            }
+
+            return set;
+        }
+
+        [Test]
+        public void AnimationsFor_LooksUpByActorKey_IgnoresEmptySets()
+        {
+            ActorAnimationSet goblinSet = MakeAnimationSet("goblin", "idle", "walk");
+            _catalog.actorAnimations.Add(new ActorAnimationSet { actorKey = "skeleton" }); // 빈 세트
+            _catalog.actorAnimations.Add(goblinSet);
+
+            Assert.AreSame(goblinSet, _catalog.AnimationsFor("goblin"));
+            Assert.IsNull(_catalog.AnimationsFor("skeleton"), "클립 없는 세트는 없는 것으로 친다");
+            Assert.IsNull(_catalog.AnimationsFor("unknown"));
+        }
+
+        [Test]
+        public void SurvivorAnimations_PrefersKnight_FallsBackToPlayer()
+        {
+            ActorAnimationSet playerSet = MakeAnimationSet("player", "idle");
+            _catalog.actorAnimations.Add(playerSet);
+            Assert.AreSame(playerSet, _catalog.SurvivorAnimations);
+
+            ActorAnimationSet knightSet = MakeAnimationSet("knight", "idle");
+            _catalog.actorAnimations.Add(knightSet);
+            Assert.AreSame(knightSet, _catalog.SurvivorAnimations);
+        }
+
+        [Test]
+        public void MonsterAnimationsFor_UnknownArchetype_ReturnsNull_NeverGoblin()
+        {
+            _catalog.actorAnimations.Add(MakeAnimationSet("goblin", "idle"));
+
+            Assert.IsNotNull(_catalog.MonsterAnimationsFor("Goblin"));
+            Assert.IsNull(_catalog.MonsterAnimationsFor("unknown-archetype"));
+            Assert.IsNull(_catalog.MonsterAnimationsFor("Slinger"), "미등록 슬롯은 null — 뭉개짐 방지선");
+        }
+
+        [Test]
+        public void SpriteClip_Find_IsCaseInsensitive()
+        {
+            ActorAnimationSet set = MakeAnimationSet("goblin", "idle", "attack");
+
+            Assert.IsNotNull(set.Find("IDLE"));
+            Assert.IsNotNull(set.Find("Attack"));
+            Assert.IsNull(set.Find("fall"));
+            Assert.IsNull(set.Find(null));
+        }
+
         private Sprite MakeSprite()
         {
             Sprite sprite = Sprite.Create(
