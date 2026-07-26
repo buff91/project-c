@@ -43,6 +43,9 @@ namespace ProjectC.Gameplay
         private Label _dungeonDesc;
         private Label _dungeonRoute;
         private Button _dungeonEnter;
+        private Button _catacombsDungeonOption;
+        private Button _floodedDungeonOption;
+        private Button _emberDungeonOption;
         private string _selectedDungeonId = DungeonCatalog.DefaultId;
         private VisualElement _menuModal;
         private VisualElement _shopModal;
@@ -117,6 +120,9 @@ namespace ProjectC.Gameplay
             _dungeonDesc = root.Q<Label>("hub-dungeon-desc");
             _dungeonRoute = root.Q<Label>("hub-dungeon-route");
             _dungeonEnter = root.Q<Button>("hub-dungeon-enter");
+            _catacombsDungeonOption = root.Q<Button>("hub-dungeon-catacombs");
+            _floodedDungeonOption = root.Q<Button>("hub-dungeon-flooded");
+            _emberDungeonOption = root.Q<Button>("hub-dungeon-ember");
             _menuModal = root.Q<VisualElement>("hub-menu-modal");
             _shopModal = root.Q<VisualElement>("hub-shop-modal");
             _shopGrid = root.Q<VisualElement>("hub-shop-grid");
@@ -158,7 +164,8 @@ namespace ProjectC.Gameplay
             Bind(root.Q<Button>("hub-stash-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-close"), CloseModals);
             Bind(root.Q<Button>("hub-dungeon-loadout"), OpenStash);
-            Bind(root.Q<Button>("hub-dungeon-catacombs"), () => SelectDungeon(DungeonCatalog.DefaultId));
+            Bind(_catacombsDungeonOption, () => SelectDungeon(DungeonCatalog.DefaultId));
+            Bind(_floodedDungeonOption, () => SelectDungeon("flooded-vault"));
             Bind(_dungeonEnter, EnterSelectedDungeon);
             Bind(_shopBuy, BuySelected);
             Bind(_toLoadout, MoveSelectedToLoadout);
@@ -172,8 +179,9 @@ namespace ProjectC.Gameplay
 
             if (_continueButton != null)
                 _continueButton.EnableInClassList("is-available", RunSaveStore.HasSave);
-            root.Q<Button>("hub-dungeon-flooded")?.SetEnabled(false);
-            root.Q<Button>("hub-dungeon-ember")?.SetEnabled(false);
+            ConfigureDungeonOption(_catacombsDungeonOption, DungeonCatalog.DefaultId);
+            ConfigureDungeonOption(_floodedDungeonOption, "flooded-vault");
+            ConfigureDungeonOption(_emberDungeonOption, "ember-keep");
             _stashGrid?.RegisterCallback<PointerUpEvent>(HandleStashGridPointerUp);
             _loadoutGrid?.RegisterCallback<PointerUpEvent>(HandleLoadoutGridPointerUp);
 
@@ -309,6 +317,7 @@ namespace ProjectC.Gameplay
             if (!dungeon.IsAvailable) return;
 
             _selectedDungeonId = dungeon.Id;
+            UpdateDungeonOptionSelection();
             if (_dungeonName != null) _dungeonName.text = dungeon.DisplayName;
             if (_dungeonDesc != null) _dungeonDesc.text = dungeon.Description;
             if (_dungeonRoute != null)
@@ -323,6 +332,25 @@ namespace ProjectC.Gameplay
                 _dungeonEnter.text = $"{dungeon.DisplayName} 진입";
                 _dungeonEnter.SetEnabled(true);
             }
+        }
+
+        private static void ConfigureDungeonOption(Button button, string dungeonId)
+        {
+            if (button == null) return;
+
+            bool available = DungeonCatalog.ById(dungeonId).IsAvailable;
+            button.SetEnabled(available);
+            button.EnableInClassList("locked", !available);
+        }
+
+        private void UpdateDungeonOptionSelection()
+        {
+            _catacombsDungeonOption?.EnableInClassList(
+                "selected", _selectedDungeonId == DungeonCatalog.DefaultId);
+            _floodedDungeonOption?.EnableInClassList(
+                "selected", _selectedDungeonId == "flooded-vault");
+            _emberDungeonOption?.EnableInClassList(
+                "selected", _selectedDungeonId == "ember-keep");
         }
 
         private void EnterSelectedDungeon()

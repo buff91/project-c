@@ -40,6 +40,22 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void FloodedVault_IsPlayableAndUsesBosslessInwardRules()
+        {
+            DungeonDefinition dungeon = DungeonCatalog.ById("flooded-vault");
+
+            Assert.IsTrue(dungeon.IsAvailable);
+            Assert.AreEqual(DungeonRegionProfile.Flooded, dungeon.Region);
+            Assert.AreEqual(DungeonProgressDirection.Inward, dungeon.Direction);
+            Assert.IsNull(dungeon.Boss);
+            Assert.IsTrue(dungeon.HasEntryCue);
+            StringAssert.Contains("냉기 장비", dungeon.RouteLabel);
+            Assert.IsTrue(DungeonBossRules.CanUseExit(dungeon, bossDefeated: false));
+
+            Assert.IsFalse(DungeonCatalog.ById("ember-keep").IsAvailable);
+        }
+
+        [Test]
         public void BossSpawn_UsesCandidateFarthestFromEntry()
         {
             var entry = new GridPos(1, 1, 0);

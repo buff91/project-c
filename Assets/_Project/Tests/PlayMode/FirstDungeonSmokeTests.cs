@@ -127,6 +127,53 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsFalse(RunSaveStore.HasSave);
         }
 
+        [UnityTest]
+        public IEnumerator HubToFloodedVaultBosslessExit_CompletesRun()
+        {
+            InvokeMainMenuStart();
+            yield return WaitForScene(FrontEndFlow.HubScene);
+
+            HubHudController hubHud = Object.FindAnyObjectByType<HubHudController>();
+            Assert.NotNull(hubHud);
+            InvokeHubDungeonEntry(hubHud, "flooded-vault");
+            yield return WaitForScene(FrontEndFlow.DungeonScene);
+            yield return null;
+
+            IsoPrototypeDemo dungeon = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            Assert.NotNull(dungeon);
+            Assert.AreEqual("flooded-vault", dungeon.DungeonId);
+            Assert.AreEqual("1구역", dungeon.ActiveFloorLabel);
+            Assert.IsFalse(dungeon.HasBoss);
+            Assert.IsTrue(dungeon.BossExitUnlocked);
+
+            dungeon.DebugJumpFloor(-9);
+            yield return null;
+
+            Assert.AreEqual("10구역", dungeon.ActiveFloorLabel);
+            Assert.IsFalse(dungeon.IsBossFloor);
+            Assert.IsTrue(dungeon.BossExitUnlocked);
+
+            PrototypeHudController hud = Object.FindAnyObjectByType<PrototypeHudController>();
+            Assert.NotNull(hud);
+            VisualElement root = hud.GetComponent<UIDocument>().rootVisualElement;
+            Assert.IsFalse(root.Q<VisualElement>("boss-panel").ClassListContains("is-open"));
+
+            int exitRequests = 0;
+            dungeon.ExitChoiceRequested += () => exitRequests++;
+            Assert.IsTrue(dungeon.DebugRequestBossExit());
+            Assert.AreEqual(1, exitRequests);
+            Assert.AreEqual("최심부 출구", root.Q<Label>("exit-title").text);
+            StringAssert.Contains("최심부 도달", root.Q<Label>("exit-desc").text);
+
+            dungeon.ConfirmAdvanceStage();
+            yield return null;
+
+            Assert.IsTrue(dungeon.RunSummary.Victory);
+            Assert.AreEqual(RunTelemetryOutcome.Victory, dungeon.Telemetry.outcome);
+            Assert.AreEqual(0, dungeon.Telemetry.bossKills);
+            Assert.IsFalse(RunSaveStore.HasSave);
+        }
+
         private static void InvokeMainMenuStart()
         {
             // 첫 실행이든 재접속이든 타이틀의 기본 버튼은 캠프로 간다(TitleEntryRouting).
@@ -135,6 +182,21 @@ namespace ProjectC.Tests.PlayMode
                 BindingFlags.Static | BindingFlags.NonPublic);
             Assert.NotNull(enterCamp);
             enterCamp.Invoke(null, null);
+        }
+
+        private static void InvokeHubDungeonEntry(HubHudController hubHud, string dungeonId)
+        {
+            MethodInfo selectDungeon = typeof(HubHudController).GetMethod(
+                "SelectDungeon",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo enterDungeon = typeof(HubHudController).GetMethod(
+                "EnterSelectedDungeon",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(selectDungeon);
+            Assert.NotNull(enterDungeon);
+
+            selectDungeon.Invoke(hubHud, new object[] { dungeonId });
+            enterDungeon.Invoke(hubHud, null);
         }
 
         private static IEnumerator LoadScene(string sceneName)

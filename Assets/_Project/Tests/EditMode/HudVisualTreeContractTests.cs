@@ -80,6 +80,7 @@ namespace ProjectC.Tests
             "hub-menu-button",
             "hub-dungeon-modal",
             "hub-dungeon-catacombs",
+            "hub-dungeon-flooded",
             "hub-dungeon-loadout",
             "hub-dungeon-enter",
             "hub-menu-modal",
@@ -154,6 +155,11 @@ namespace ProjectC.Tests
             Assert.IsTrue(string.IsNullOrEmpty(tree.Q<Button>("hub-menu-button").text));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-settings-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-menu-icon"));
+            StringAssert.Contains(
+                "플레이 가능",
+                tree.Q<Button>("hub-dungeon-flooded").text);
+            Assert.IsFalse(
+                tree.Q<Button>("hub-dungeon-flooded").ClassListContains("locked"));
         }
 
         [Test]

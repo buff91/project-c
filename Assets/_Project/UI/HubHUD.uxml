@@ -39,20 +39,20 @@
                 </ui:VisualElement>
                 <ui:VisualElement class="hub-dungeon-layout">
                     <ui:VisualElement class="hub-dungeon-list">
-                        <ui:Button name="hub-dungeon-catacombs" text="01  무너진 환승역&#10;플레이 가능" class="hub-dungeon-option selected" />
-                        <ui:Button name="hub-dungeon-flooded" text="02  침수된 금고&#10;준비 중" class="hub-dungeon-option locked" />
+                        <ui:Button name="hub-dungeon-catacombs" text="01  폐병원&#10;플레이 가능" class="hub-dungeon-option selected" />
+                        <ui:Button name="hub-dungeon-flooded" text="02  침수된 금고&#10;플레이 가능" class="hub-dungeon-option" />
                         <ui:Button name="hub-dungeon-ember" text="03  잿불 성채&#10;준비 중" class="hub-dungeon-option locked" />
                     </ui:VisualElement>
                     <ui:VisualElement class="hub-dungeon-detail">
-                        <ui:Label name="hub-dungeon-name" text="무너진 환승역" class="hub-dungeon-name" />
-                        <ui:Label name="hub-dungeon-route" text="3개 구역" class="hub-dungeon-route" />
-                        <ui:Label name="hub-dungeon-desc" text="제한된 시야 속에서 세 구역을 내려가 최심층에 도달한다." class="hub-dungeon-desc" />
+                        <ui:Label name="hub-dungeon-name" text="폐병원" class="hub-dungeon-name" />
+                        <ui:Label name="hub-dungeon-route" text="B2 → 8F + 옥상" class="hub-dungeon-route" />
+                        <ui:Label name="hub-dungeon-desc" text="무너진 병동을 타고 올라가 최상층의 감시자를 쓰러뜨린다." class="hub-dungeon-desc" />
                         <ui:Label text="주황: 층 이동  ·  금색: 사다리  ·  하늘색: 개구부" class="hub-dungeon-legend" />
                     </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:VisualElement class="settings-actions">
                     <ui:Button name="hub-dungeon-loadout" text="출정 백팩 준비" class="settings-reset" />
-                    <ui:Button name="hub-dungeon-enter" text="무너진 환승역 진입" class="settings-done hub-dungeon-enter" />
+                    <ui:Button name="hub-dungeon-enter" text="폐병원 진입" class="settings-done hub-dungeon-enter" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
