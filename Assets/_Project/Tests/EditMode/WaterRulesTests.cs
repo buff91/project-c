@@ -20,6 +20,42 @@ namespace ProjectC.Tests
                 map.Get(new GridPos(x, y, 0)).wet = true;
         }
 
+        /// <summary>
+        /// 결빙과 감전은 <b>같은 웅덩이를 같은 순서로</b> 봐야 한다. 예전에는 두 규칙이
+        /// 각자 BFS 를 손으로 들고 있어서, 한쪽 씨앗 조건이나 이웃 순서만 바뀌어도 같은 웅덩이가
+        /// 얼 때와 통전될 때 다른 모양이 됐다. 반환 순서가 곧 연출 순서라 목록째로 고정한다.
+        /// </summary>
+        [Test]
+        public void ChainFreeze_AndDischarge_WalkTheSamePuddleInTheSameOrder()
+        {
+            GridMap map = MakeFloor();
+            Wet(map, (5, 4), (6, 4), (7, 4), (7, 5), (3, 4));
+
+            var center = new GridPos(4, 4, 0);
+            var frozen = WaterRules.ChainFreeze(map, center);
+            var energized = ShockRules.Discharge(map, center, null, damage: 1);
+
+            CollectionAssert.AreEqual(frozen, energized,
+                "두 반응이 같은 확산을 공유하지 않으면 규칙이 갈라진다.");
+        }
+
+        /// <summary>
+        /// 블라스트 3×3 순회 순서(dx 외곽 → dy 내곽)는 여러 규칙이 공유하는 계약이다.
+        /// 반환 <c>List</c> 순서에 기대는 연출이 있어 바뀌면 조용히 다른 그림이 나온다.
+        /// </summary>
+        [Test]
+        public void ForEachBlastCell_VisitsNineCells_ColumnMajor()
+        {
+            var visited = new System.Collections.Generic.List<GridPos>();
+            BombRules.ForEachBlastCell(new GridPos(4, 4, 0), visited.Add);
+
+            Assert.AreEqual(9, visited.Count);
+            Assert.AreEqual(new GridPos(3, 3, 0), visited[0]);
+            Assert.AreEqual(new GridPos(3, 4, 0), visited[1], "dy 가 안쪽 루프다.");
+            Assert.AreEqual(new GridPos(4, 3, 0), visited[3], "dx 가 바깥 루프다.");
+            Assert.AreEqual(new GridPos(5, 5, 0), visited[8]);
+        }
+
         [Test]
         public void ChainFreeze_SpreadsAcrossConnectedPuddle_BeyondBlast()
         {

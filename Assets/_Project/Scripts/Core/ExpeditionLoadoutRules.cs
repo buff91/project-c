@@ -76,7 +76,7 @@ namespace ProjectC.Core
         }
 
         /// <summary>
-        /// 영웅 교체나 구버전 저장으로 현재 구성이 넘치면 들어가는 만큼만 유지하고
+        /// 구버전 저장이나 백팩 규격 변경으로 현재 구성이 넘치면 들어가는 만큼만 유지하고
         /// 나머지는 창고로 돌려보낸다. 반환값은 되돌린 아이템 개수다.
         /// </summary>
         public static int Reconcile(MetaSaveData meta)
@@ -111,7 +111,7 @@ namespace ProjectC.Core
 
         /// <summary>
         /// 출발 시 선택 물품을 런 인벤토리로 옮긴다. 예외적인 초과분은 창고에 보존한다.
-        /// destination에는 호출 전에 영웅 기본 지급품이 들어 있어야 한다.
+        /// destination에는 호출 전에 원정자 기본 지급품(<c>SurvivorProfile</c>)이 들어 있어야 한다.
         /// </summary>
         public static int ConsumeLoadout(MetaSaveData meta, Inventory destination)
         {

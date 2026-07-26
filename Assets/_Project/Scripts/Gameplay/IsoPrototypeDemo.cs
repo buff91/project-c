@@ -21,21 +21,10 @@ namespace ProjectC.Gameplay
     /// 64×32 픽셀 규격을 검증하는 교체 가능한 아이소메트릭 프로토타입.
     /// 외부 아트가 없어도 런타임 픽셀 스프라이트로 지형과 탭 이동을 확인할 수 있다.
     ///
-    /// partial 구성(관심사별 분할):
-    ///  - IsoPrototypeDemo.cs           : 상태·필드·이벤트·수명주기(Awake/Start/Update)·방 빌드·카메라 헬퍼
-    ///  - IsoPrototypeDemo.Debug.cs      : 디버그 창 전용 API(치트)
-    ///  - IsoPrototypeDemo.View.cs       : 시점 회전/모드 토글·비주얼 적용·카메라 구도
-    ///  - IsoPrototypeDemo.Interaction.cs: 탭/스텝/인접 상호작용·커넥터 판정
-    ///  - IsoPrototypeDemo.Actions.cs    : 아이템/전투/조합/투척 행동 코루틴
-    ///  - IsoPrototypeDemo.Movement.cs   : 경로 이동·문/비밀문/낙하 접근·여행(auto-travel)
-    ///  - IsoPrototypeDemo.RunLifecycle.cs: 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리
-    ///  - IsoPrototypeDemo.Hub.cs        : 허브 프롭/포탈/영웅 잠금
-    ///  - IsoPrototypeDemo.Enemies.cs    : 적 스폰·AI 턴·활성화
-    ///  - IsoPrototypeDemo.Falls.cs      : 낙하/넉백 처리
-    ///  - IsoPrototypeDemo.RestSites.cs  : 휴식 지점
-    ///  - IsoPrototypeDemo.CombatFx.cs   : 전투/상태이상 연출
-    ///  - IsoPrototypeDemo.Visibility.cs : FOV·수직 포털·후면 벽·가림
-    ///  - IsoPrototypeDemo.Sprites.cs    : 환경 스프라이트 호출부 + 격자 기하 질의(팩토리에 넘길 값 계산)
+    /// partial 구성(관심사별 분할): 본체가 상태·수명주기·방 빌드·카메라를 들고,
+    /// 나머지는 관심사별 파셜이 나눠 갖는다.
+    /// <b>파일별 담당 목록은 <c>docs/CODE_STRUCTURE.md</c> 가 SSOT다</b> —
+    /// 여기 목록을 두 벌로 유지하려다 파셜이 늘 때마다 낡았다(한때 14개만 적혀 있었다).
     ///
     /// 절차 생성 임시 아트는 이 클래스 밖에 있다 — PrototypeSpriteCanvas(프리미티브),
     /// PrototypeSpriteCache(캐시), PrototypePalette(역할색), PrototypeActorSprites(액터·프롭).

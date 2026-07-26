@@ -38,9 +38,8 @@ namespace ProjectC.Core
                 SetBase(p.BranchDoorX, p.LowerMaxY + 1);
                 if (p.BranchIsSecret)
                 {
-                    for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
-                    for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
-                        p.SecretRoomTiles.Add(new GridPos(x, y, p.BaseElevation));
+                    foreach (GridPos pos in p.BranchCells())
+                        p.SecretRoomTiles.Add(pos);
                 }
             }
 
@@ -104,10 +103,8 @@ namespace ProjectC.Core
             int bottomElevation)
         {
             var candidates = new List<GridPos>();
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            foreach (GridPos pos in p.UpperRoomCells())
             {
-                var pos = new GridPos(x, y, p.BaseElevation);
                 if (IsHoleCandidate(map, heightModel, p, holeAbove, bottomElevation, pos))
                     candidates.Add(pos);
             }
@@ -158,7 +155,7 @@ namespace ProjectC.Core
             foreach (GridPos above in holeAbove)
                 if (above.x == pos.x && above.y == pos.y) return false;
             // 복도에서 방으로 들어오는 입구 칸은 막지 않는다.
-            if (pos.x == p.VerticalX && pos.y == p.UpperMinY) return false;
+            if (p.IsUpperRoomEntrance(pos)) return false;
             if (map.Get(pos)?.kind != TileKind.Floor) return false;
             return LandsOneFloorBelow(map, heightModel, pos, bottomElevation, p.FloorIndex);
         }
@@ -192,16 +189,14 @@ namespace ProjectC.Core
         private static bool KeepsUpperRoomConnected(GridMap map, FloorPlan p, GridPos removed)
         {
             var walkable = new HashSet<GridPos>();
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            foreach (GridPos pos in p.UpperRoomCells())
             {
-                var pos = new GridPos(x, y, p.BaseElevation);
                 if (pos == removed) continue;
                 if (map.Get(pos)?.IsWalkable == true) walkable.Add(pos);
             }
             if (walkable.Count == 0) return true;
 
-            var start = new GridPos(p.VerticalX, p.UpperMinY, p.BaseElevation);
+            GridPos start = p.UpperRoomEntrance;
             if (!walkable.Contains(start)) return false;
 
             var seen = new HashSet<GridPos> { start };
@@ -230,44 +225,5 @@ namespace ProjectC.Core
                    map.Get(landing.Value).IsWalkable;
         }
 
-        /// <summary>
-        /// B4·B7 같은 중간 쉼표 층에 휴식처를 하나 둔다. 막다른 분기 방을 우선하고,
-        /// 없으면 북쪽 방을 사용한다. 타일 종류는 Floor를 유지해 프롭/규칙을 지형과 분리한다.
-        /// </summary>
-        private static void PlaceRestSite(
-            GridMap map,
-            Random random,
-            FloorPlan p,
-            int floorCount)
-        {
-            int depth = p.ProgressIndex;
-            if (!DungeonRestRules.ShouldPlace(depth, floorCount)) return;
-
-            var candidates = new List<GridPos>();
-            if (p.HasBranch && !p.BranchIsSecret)
-            {
-                for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
-                for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
-                {
-                    var pos = new GridPos(x, y, p.BaseElevation);
-                    if (map.Get(pos)?.kind == TileKind.Floor)
-                        candidates.Add(pos);
-                }
-            }
-
-            if (candidates.Count == 0)
-            {
-                for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-                for (int y = p.UpperMinY; y < p.RaisedY; y++)
-                {
-                    var pos = new GridPos(x, y, p.BaseElevation);
-                    if (map.Get(pos)?.kind == TileKind.Floor)
-                        candidates.Add(pos);
-                }
-            }
-
-            if (candidates.Count > 0)
-                p.RestSite = candidates[random.Next(candidates.Count)];
-        }
     }
 }

@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 namespace ProjectC.Gameplay
 {
     /// <summary>
-    /// 허브 캠프 HUD: 골드/이어하기 + 상점·영웅·창고 모달.
+    /// 허브 캠프 HUD: 골드/이어하기 + 상점·창고·대장간·의뢰·기록실 모달(영웅 라우팅 없음).
     /// 열리는 계기는 데모의 HubInteractionRequested(NPC 옆까지 걸어간 뒤)다.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]

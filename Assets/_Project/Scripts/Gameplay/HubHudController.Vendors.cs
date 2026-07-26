@@ -379,8 +379,5 @@ namespace ProjectC.Gameplay
 
         private static string FacilityLabel(ShelterFacility facility) =>
             facility == ShelterFacility.Forge ? "대장간" : "의뢰 게시판";
-
-        // ── 영웅 ─────────────────────────────────────────────
-
     }
 }

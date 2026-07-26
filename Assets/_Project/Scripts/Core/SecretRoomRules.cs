@@ -44,13 +44,11 @@ namespace ProjectC.Core
             if (map == null) throw new ArgumentNullException(nameof(map));
 
             var revealed = new List<GridPos>();
-            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
-            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
+            BombRules.ForEachBlastCell(center, pos =>
             {
-                GridPos pos = center.Offset(dx, dy);
                 if (TryReveal(map, pos))
                     revealed.Add(pos);
-            }
+            });
             return revealed;
         }
     }

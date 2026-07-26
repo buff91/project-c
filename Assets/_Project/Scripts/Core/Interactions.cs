@@ -15,19 +15,17 @@ namespace ProjectC.Core
             if (map == null) throw new ArgumentNullException(nameof(map));
 
             var splashed = new List<GridPos>();
-            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
-            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
+            BombRules.ForEachBlastCell(center, pos =>
             {
-                GridPos pos = center.Offset(dx, dy);
                 TileData tile = map.Get(pos);
-                if (tile == null || !tile.IsWalkable || tile.kind == TileKind.Hole) continue;
-                if (tile.wet) continue; // 젖은 바닥에는 기름이 붙지 않는다 (GDD §5.5)
+                if (tile == null || !tile.IsWalkable || tile.kind == TileKind.Hole) return;
+                if (tile.wet) return; // 젖은 바닥에는 기름이 붙지 않는다 (GDD §5.5)
                 if (!tile.oiled)
                 {
                     tile.oiled = true;
                     splashed.Add(pos);
                 }
-            }
+            });
             return splashed;
         }
 
@@ -40,15 +38,13 @@ namespace ProjectC.Core
             if (map == null) throw new ArgumentNullException(nameof(map));
 
             var ignited = new List<GridPos>();
-            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
-            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
+            BombRules.ForEachBlastCell(center, pos =>
             {
-                GridPos pos = center.Offset(dx, dy);
                 TileData tile = map.Get(pos);
-                if (tile == null || !tile.oiled) continue;
+                if (tile == null || !tile.oiled) return;
                 tile.oiled = false;
                 ignited.Add(pos);
-            }
+            });
             return ignited;
         }
     }
@@ -68,6 +64,25 @@ namespace ProjectC.Core
     {
         /// <summary>폭발 반경(체비셰프 거리). 1 = 3×3.</summary>
         public const int BlastRadius = 1;
+
+        /// <summary>
+        /// 블라스트 정사각형의 칸을 <b>고정된 순서</b>로 훑는다(dx 외곽 → dy 내곽).
+        /// 기름 살포·발화, 증발, 감전, 결빙 씨앗, 숨은 방 판정이 전부 이 순서를 공유한다 —
+        /// 여러 곳이 같은 이중 루프를 손으로 다시 쓰면 반경을 바꿀 때 하나가 남고,
+        /// 순서가 갈리면 <c>List</c> 반환 순서에 기대는 연출이 조용히 어긋난다.
+        /// <para>
+        /// 반환 목록을 만들지 않는 콜백형인 이유는 호출부마다 모으는 것이 다르기 때문이다
+        /// (칸 · 타일 · 전투 대상). 할당도 늘지 않는다.
+        /// </para>
+        /// </summary>
+        public static void ForEachBlastCell(GridPos center, Action<GridPos> visit)
+        {
+            if (visit == null) throw new ArgumentNullException(nameof(visit));
+
+            for (int dx = -BlastRadius; dx <= BlastRadius; dx++)
+            for (int dy = -BlastRadius; dy <= BlastRadius; dy++)
+                visit(center.Offset(dx, dy));
+        }
 
         public static bool CanThrow(GridMap map, GridPos from, GridPos target, int maxRange)
         {
@@ -107,27 +122,25 @@ namespace ProjectC.Core
                 }
             }
 
-            for (int dx = -BlastRadius; dx <= BlastRadius; dx++)
-            for (int dy = -BlastRadius; dy <= BlastRadius; dy++)
+            ForEachBlastCell(center, pos =>
             {
-                GridPos pos = center.Offset(dx, dy);
                 TileData tile = map.Get(pos);
-                if (tile == null) continue;
+                if (tile == null) return;
 
                 // 폭발은 유리를 깬다(포스트아포: 폭풍·파편) — 창문은 통로가 된다. (GDD §5.2)
                 if (tile.CanBreak)
                 {
                     if (WindowRules.TryBreak(map, pos))
                         result.ShatteredWindows.Add(pos);
-                    continue;
+                    return;
                 }
 
                 // (죽었거나 비어서) 아무도 없는 약한 바닥은 구멍으로 붕괴한다.
-                if (tile.kind != TileKind.WeakFloor) continue;
-                if (IsOccupiedByLiving(combatants, pos)) continue;
+                if (tile.kind != TileKind.WeakFloor) return;
+                if (IsOccupiedByLiving(combatants, pos)) return;
                 map.Set(pos, TileKind.Hole);
                 result.CollapsedWeakFloors.Add(pos);
-            }
+            });
 
             return result;
         }

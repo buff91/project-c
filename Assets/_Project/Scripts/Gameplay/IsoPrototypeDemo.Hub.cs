@@ -10,7 +10,10 @@ namespace ProjectC.Gameplay
 
         // ── 허브 캠프 ─────────────────────────────────────────
 
-        /// <summary>캠프 프롭 생성: 상인/영웅 3명/창고/포탈/모닥불. 탭 상호작용 좌표도 등록한다.</summary>
+        /// <summary>
+        /// 캠프 프롭 생성: 모닥불·포탈·상인·창고·기록실 + 구출로 열리는 시설(대장간·의뢰 게시판).
+        /// 탭 상호작용 좌표도 등록한다. 영웅 프롭·선택 모달은 단일 원정자로 가면서 없앴다.
+        /// </summary>
         private void CreateHubProps()
         {
             _hubInteractables.Clear();

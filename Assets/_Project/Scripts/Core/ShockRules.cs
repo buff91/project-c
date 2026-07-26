@@ -24,13 +24,6 @@ namespace ProjectC.Core
     /// </summary>
     public static class ShockRules
     {
-        // 4방향 통전 BFS 이웃 오프셋. 매 셀마다 배열을 새로 만들지 않도록 하나만 재사용한다.
-        // 순서(+x, -x, +y, -y)는 energized 반환 순서에 영향을 주므로 바꾸지 않는다.
-        private static readonly (int dx, int dy)[] Cardinals =
-        {
-            (1, 0), (-1, 0), (0, 1), (0, -1)
-        };
-
         /// <summary>
         /// center 3×3 블라스트로 직접 대상을 지지고, 블라스트가 닿은 젖은 웅덩이를 4방향으로
         /// 통전시켜 그 위 대상도 지진다. 각 대상은 최대 한 번만 피해. 통전된(젖은) 칸 목록 반환.
@@ -56,34 +49,13 @@ namespace ProjectC.Core
             var damaged = new List<CombatantState>();
 
             // 1) 직접 블라스트(3×3, 마른 바닥 포함).
-            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
-            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
-                DamageAt(combatants, center.Offset(dx, dy), damage, shocked, damaged);
+            BombRules.ForEachBlastCell(
+                center, pos => DamageAt(combatants, pos, damage, shocked, damaged));
 
-            // 2) 젖은 웅덩이 통전 — 블라스트 안 젖은 칸에서 4방향 BFS.
-            var energized = new List<GridPos>();
-            var visited = new HashSet<GridPos>();
-            var frontier = new Queue<GridPos>();
-            for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
-            for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
-            {
-                GridPos pos = center.Offset(dx, dy);
-                if (map.Get(pos)?.wet == true && visited.Add(pos))
-                    frontier.Enqueue(pos);
-            }
-
-            while (frontier.Count > 0)
-            {
-                GridPos pos = frontier.Dequeue();
-                energized.Add(pos);
-                DamageAt(combatants, pos, damage, shocked, damaged);
-                foreach (var (dx2, dy2) in Cardinals)
-                {
-                    GridPos next = pos.Offset(dx2, dy2);
-                    if (map.Get(next)?.wet == true && visited.Add(next))
-                        frontier.Enqueue(next);
-                }
-            }
+            // 2) 젖은 웅덩이 통전 — 결빙과 같은 확산을 쓰고, 지지는 것만 얹는다.
+            //    각 대상은 shocked 집합이 막아 최대 한 번만 맞는다.
+            List<GridPos> energized = WetPoolFlood.Collect(
+                map, center, pos => DamageAt(combatants, pos, damage, shocked, damaged));
 
             return new ShockResult(energized, damaged);
         }

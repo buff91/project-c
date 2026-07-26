@@ -20,7 +20,8 @@ namespace ProjectC.Gameplay
         /// </para>
         /// <para>
         /// 여기에 넣는 값은 <b>새 도메인에서의 기본값과 같아야</b> 한다 —
-        /// 영웅 미선택은 <c>null</c>(호출부가 전부 기본 영웅으로 읽는다), 이어하기 요청은 <c>false</c>.
+        /// 원정지는 <c>DungeonCatalog.DefaultId</c>(고르지 않고 들어와도 첫 던전이 열린다),
+        /// 이어하기 요청은 <c>false</c>.
         /// 씬 사이에 유지돼야 하는 새 static 을 추가하면 이 목록도 함께 늘린다.
         /// </para>
         /// </summary>

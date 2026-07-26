@@ -512,6 +512,37 @@ namespace ProjectC.Core
             /// <b>공간 방향이 아니라 진행 방향</b>이므로 상승 던전에서는 이것이 위로 가는 계단이다.
             /// </summary>
             public GridPos? Onward;
+            /// <summary>
+            /// 북쪽 방으로 들어오는 복도 입구 칸. 배치·조각 단계가 <b>전부</b> 이 칸을 비워 둬야 한다 —
+            /// 스폰이 여기 앉으면 입구가 막히고, 개구부가 여기 뚫리면 방이 끊긴다.
+            /// 예전에는 <c>(VerticalX, UpperMinY)</c> 비교가 다섯 곳에 손으로 적혀 있어서
+            /// 방 형상을 바꿀 때 하나만 빠뜨려도 조용히 그런 층이 나왔다.
+            /// </summary>
+            public GridPos UpperRoomEntrance => new GridPos(VerticalX, UpperMinY, BaseElevation);
+
+            /// <summary>이 칸이 북쪽 방 입구인가. 고도는 보지 않는다(같은 층 안의 판정).</summary>
+            public bool IsUpperRoomEntrance(GridPos pos) =>
+                pos.x == VerticalX && pos.y == UpperMinY;
+
+            /// <summary>
+            /// 북쪽 방의 평면 칸 전체. 순서는 <c>x</c> 외곽 → <c>y</c> 내곽이며
+            /// <b>생성 순서가 곧 RNG 소비 순서</b>라 바꾸면 지문(<c>DungeonGeneratorGoldenTests</c>)이 깨진다.
+            /// </summary>
+            public IEnumerable<GridPos> UpperRoomCells()
+            {
+                for (int x = UpperMinX; x <= UpperMaxX; x++)
+                for (int y = UpperMinY; y < RaisedY; y++)
+                    yield return new GridPos(x, y, BaseElevation);
+            }
+
+            /// <summary>분기(파밍/숨은) 방의 평면 칸 전체. 순서 규약은 <see cref="UpperRoomCells"/>와 같다.</summary>
+            public IEnumerable<GridPos> BranchCells()
+            {
+                for (int x = BranchMinX; x <= BranchMaxX; x++)
+                for (int y = BranchMinY; y <= BranchMaxY; y++)
+                    yield return new GridPos(x, y, BaseElevation);
+            }
+
             /// <summary>개구부를 이루는 칸들(한 덩어리). 비어 있으면 이 층엔 개구부가 없다.</summary>
             public readonly List<GridPos> HoleTiles = new List<GridPos>();
 

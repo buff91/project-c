@@ -5,19 +5,57 @@ namespace ProjectC.Core
 {
     public static partial class DungeonGenerator
     {
+        /// <summary>
+        /// 중간 쉼표 층에 휴식처를 하나 둔다. 막다른 분기 방을 우선하고,
+        /// 없으면 북쪽 방을 사용한다. 타일 종류는 Floor를 유지해 프롭/규칙을 지형과 분리한다.
+        /// <para>
+        /// <b>Carving 이 아니라 여기 사는 이유</b>: 이 함수는 <c>map.Set</c>을 한 번도 하지 않고
+        /// 좌표만 고른다. 파셜 경계는 그것으로 가른다 — <b>타일을 바꾸면 Carving, 좌표만 고르면 Placement</b>.
+        /// </para>
+        /// </summary>
+        private static void PlaceRestSite(
+            GridMap map,
+            Random random,
+            FloorPlan p,
+            int floorCount)
+        {
+            int depth = p.ProgressIndex;
+            if (!DungeonRestRules.ShouldPlace(depth, floorCount)) return;
+
+            var candidates = new List<GridPos>();
+            if (p.HasBranch && !p.BranchIsSecret)
+            {
+                foreach (GridPos pos in p.BranchCells())
+                {
+                    if (map.Get(pos)?.kind == TileKind.Floor)
+                        candidates.Add(pos);
+                }
+            }
+
+            if (candidates.Count == 0)
+            {
+                foreach (GridPos pos in p.UpperRoomCells())
+                {
+                    if (map.Get(pos)?.kind == TileKind.Floor)
+                        candidates.Add(pos);
+                }
+            }
+
+            if (candidates.Count > 0)
+                p.RestSite = candidates[random.Next(candidates.Count)];
+        }
 
         /// <summary>
         /// 적 스폰은 문 뒤(북쪽 방)에만 둔다 — 입구·동쪽 방에 두면 층 진입 즉시 인접 전투가
-        /// 강제되고, "문을 열기 전에는 차단" 불변식도 깨진다. 수는 깊이에 따라 1~4.
+        /// 강제되고, "문을 열기 전에는 차단" 불변식도 깨진다.
+        /// 수는 진행 지수 · 지역 밴드(<c>ExtraEnemies</c>) · 방 넓이가 함께 정한다 — 공식은 아래 한 줄이 SSOT다.
         /// </summary>
         private static void PickEnemySpawns(GridMap map, Random random, FloorPlan p, int floorCount)
         {
             var candidates = new List<GridPos>();
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            foreach (GridPos pos in p.UpperRoomCells())
             {
-                if (x == p.VerticalX && y == p.UpperMinY) continue;
-                var pos = new GridPos(x, y, p.BaseElevation);
+                if (p.IsUpperRoomEntrance(pos)) continue;
                 if (pos == p.RestSite) continue;
                 if (map.Get(pos)?.kind == TileKind.Floor)
                     candidates.Add(pos);
@@ -128,11 +166,9 @@ namespace ProjectC.Core
             if (equipment == null) return;
 
             var candidates = new List<GridPos>();
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            foreach (GridPos pos in p.UpperRoomCells())
             {
-                if (x == p.VerticalX && y == p.UpperMinY) continue;
-                var pos = new GridPos(x, y, p.BaseElevation);
+                if (p.IsUpperRoomEntrance(pos)) continue;
                 if (IsFreeForSpawn(map, p, pos)) candidates.Add(pos);
             }
 
@@ -158,14 +194,12 @@ namespace ProjectC.Core
             FloorPlan landingFloor)
         {
             var candidates = new List<GridPos>();
-            for (int x = entranceFloor.UpperMinX; x <= entranceFloor.UpperMaxX; x++)
-            for (int y = entranceFloor.UpperMinY; y < entranceFloor.RaisedY; y++)
+            foreach (GridPos entrance in entranceFloor.UpperRoomCells())
             {
                 // 사다리 컬럼은 캐치워크가 +2단에 얹히는 자리라 비켜 둔다.
-                if (x == entranceFloor.LadderX) continue;
+                if (entrance.x == entranceFloor.LadderX) continue;
 
-                var entrance = new GridPos(x, y, entranceFloor.BaseElevation);
-                var landing = new GridPos(x, y, landingFloor.BaseElevation);
+                var landing = new GridPos(entrance.x, entrance.y, landingFloor.BaseElevation);
                 if (!IsShaftEnd(map, entranceFloor, entrance)) continue;
                 if (!IsShaftEnd(map, landingFloor, landing)) continue;
                 candidates.Add(entrance);
@@ -358,10 +392,8 @@ namespace ProjectC.Core
             if (p.HasBranch)
             {
                 var branchTiles = new List<GridPos>();
-                for (int x = p.BranchMinX; x <= p.BranchMaxX; x++)
-                for (int y = p.BranchMinY; y <= p.BranchMaxY; y++)
+                foreach (GridPos pos in p.BranchCells())
                 {
-                    var pos = new GridPos(x, y, p.BaseElevation);
                     if (IsFree(pos)) branchTiles.Add(pos);
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
@@ -388,11 +420,9 @@ namespace ProjectC.Core
             }
 
             var scatter = new List<GridPos>();
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.UpperMinY; y < p.RaisedY; y++)
+            foreach (GridPos pos in p.UpperRoomCells())
             {
-                if (x == p.VerticalX && y == p.UpperMinY) continue;
-                var pos = new GridPos(x, y, p.BaseElevation);
+                if (p.IsUpperRoomEntrance(pos)) continue;
                 if (IsFree(pos)) scatter.Add(pos);
             }
             for (int x = p.RightMinX; x < p.Width; x++)
