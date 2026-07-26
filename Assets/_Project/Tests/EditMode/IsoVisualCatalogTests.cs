@@ -299,17 +299,20 @@ namespace ProjectC.Tests
             Sprite skeleton = MakeSprite();
             Sprite slime = MakeSprite();
             Sprite slinger = MakeSprite();
+            Sprite arcDrone = MakeSprite();
             Sprite graveWarden = MakeSprite();
             _catalog.goblin = goblin;
             _catalog.skeleton = skeleton;
             _catalog.slime = slime;
             _catalog.slinger = slinger;
+            _catalog.arcDrone = arcDrone;
             _catalog.graveWarden = graveWarden;
 
             Assert.AreSame(goblin, _catalog.MonsterFor("Goblin"));
             Assert.AreSame(skeleton, _catalog.MonsterFor("Skeleton"));
             Assert.AreSame(slime, _catalog.MonsterFor("Slime"));
             Assert.AreSame(slinger, _catalog.MonsterFor("Slinger"));
+            Assert.AreSame(arcDrone, _catalog.MonsterFor("ArcDrone"));
             Assert.AreSame(graveWarden, _catalog.MonsterFor("GraveWarden"));
         }
 
@@ -375,6 +378,15 @@ namespace ProjectC.Tests
             Assert.IsNotNull(_catalog.MonsterAnimationsFor("Goblin"));
             Assert.IsNull(_catalog.MonsterAnimationsFor("unknown-archetype"));
             Assert.IsNull(_catalog.MonsterAnimationsFor("Slinger"), "미등록 슬롯은 null — 뭉개짐 방지선");
+        }
+
+        [Test]
+        public void MonsterAnimationsFor_ArcDrone_UsesDedicatedAnimationSlot()
+        {
+            ActorAnimationSet arcDroneSet = MakeAnimationSet("arcDrone", "idle", "attack");
+            _catalog.actorAnimations.Add(arcDroneSet);
+
+            Assert.AreSame(arcDroneSet, _catalog.MonsterAnimationsFor("ArcDrone"));
         }
 
         [Test]

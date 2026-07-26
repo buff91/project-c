@@ -50,6 +50,16 @@ namespace ProjectC.Core
                 // 사수가 캐치워크를 차지하러 올라오는 그림이 자연스럽다.
                 canClimb: true);
 
+        /// <summary>
+        /// 침수된 금고 전용 합선 드론. 직접 화력은 낮지만 명중점 주변과 이어진 웅덩이를 함께
+        /// 통전시켜, 물 위의 안전한 장거리 교환을 깨뜨린다. 기계라 사다리는 못 탄다.
+        /// </summary>
+        public static readonly MonsterArchetype ArcDrone =
+            new MonsterArchetype("ArcDrone", maxHp: 5, attackPower: 1,
+                aggroRange: 7, patrolRadius: 2, fleeThreshold: 0f, displayName: "합선 드론",
+                rangedRange: 4, rangedPower: 2, keepAwayRange: 2,
+                rangedEffect: MonsterRangedEffect.ConductiveShock);
+
         /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
         public static readonly MonsterArchetype GraveWarden =
             new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
@@ -57,7 +67,7 @@ namespace ProjectC.Core
 
         /// <summary>깊이 비례로 스폰되는 일반 몬스터(보스 제외). 피해 소스 접두사 매칭 순서를 겸한다.</summary>
         public static readonly IReadOnlyList<MonsterArchetype> Regular =
-            new[] { Goblin, Skeleton, Slime, Slinger };
+            new[] { Goblin, Skeleton, Slime, Slinger, ArcDrone };
 
         /// <summary>
         /// 피해 소스 문자열("Goblin B2-1")의 접두사에 해당하는 일반 몬스터 아키타입을 찾는다.
@@ -93,7 +103,9 @@ namespace ProjectC.Core
             if (roll < profile.GoblinWeight) return Goblin;
             roll -= profile.GoblinWeight;
             if (roll < profile.SkeletonWeight) return Skeleton;
-            return Slinger;
+            roll -= profile.SkeletonWeight;
+            if (roll < profile.SlingerWeight) return Slinger;
+            return ArcDrone;
         }
     }
 }

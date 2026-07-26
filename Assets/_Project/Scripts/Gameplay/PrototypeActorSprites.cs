@@ -1034,6 +1034,7 @@ namespace ProjectC.Gameplay
                 case "Skeleton": return GetSkeletonSprite();
                 case "Slime": return GetSlimeSprite();
                 case "Slinger": return GetSlingerSprite();
+                case "ArcDrone": return GetArcDroneSprite();
                 case "GraveWarden": return GetGraveWardenSprite();
                 default: return GetCharacterSprite(true);
             }
@@ -1130,6 +1131,43 @@ namespace ProjectC.Gameplay
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 합선 드론. 물 위에서 위험한 적임을 읽히게 절연 부표형 하부와 청백색 방전 코일을 쓴다.
+        /// 경비 드론의 직립 실루엣, 슬러지의 낮은 덩어리와 겹치지 않는 가로형 기계다.
+        /// </summary>
+        private Sprite GetArcDroneSprite()
+        {
+            const string key = "arc-drone";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(38, 42);
+            Color32 dark = new Color32(16, 24, 30, 255);
+            Color32 hull = new Color32(64, 82, 90, 255);
+            Color32 hullLight = new Color32(106, 132, 140, 255);
+            Color32 floatOrange = new Color32(194, 104, 48, 255);
+            Color32 arc = new Color32(151, 235, 255, 255);
+
+            FillRect(texture, 6, 8, 26, 12, dark);       // 가로형 본체 외곽
+            FillRect(texture, 8, 10, 22, 8, hull);
+            FillRect(texture, 9, 16, 20, 2, hullLight);  // 좌상단 광택
+            FillRect(texture, 3, 6, 8, 7, dark);         // 절연 부표
+            FillRect(texture, 27, 6, 8, 7, dark);
+            FillRect(texture, 4, 7, 6, 4, floatOrange);
+            FillRect(texture, 28, 7, 6, 4, floatOrange);
+            FillRect(texture, 16, 20, 6, 10, dark);      // 방전 코일
+            FillRect(texture, 17, 21, 4, 8, hullLight);
+            DrawThickLine(texture, 19, 29, 12, 36, 2, arc);
+            DrawThickLine(texture, 19, 29, 25, 36, 2, arc);
+            DrawThickLine(texture, 12, 36, 17, 34, 1, arc);
+            DrawThickLine(texture, 25, 36, 21, 34, 1, arc);
+            FillRect(texture, 17, 12, 4, 3, arc);        // 전면 센서
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
             _spriteCache[key] = cached;
             return cached;
         }

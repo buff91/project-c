@@ -299,6 +299,47 @@ namespace ProjectC.Gameplay
                 yield return AnimateProjectile(enemy.State.Position, _playerState.Position);
             }
 
+            if (enemy.Archetype.RangedEffect == MonsterRangedEffect.ConductiveShock)
+            {
+                if (!enemy.State.IsAlive ||
+                    !CombatRules.CanFireFrom(
+                        _grid.Map,
+                        enemy.State.Position,
+                        _playerState.Position,
+                        enemy.Archetype.RangedRange))
+                {
+                    if (seen)
+                        InteractionFeedback?.Invoke($"{enemy.DisplayName} 의 방전이 빗나갔다");
+                    yield break;
+                }
+
+                ShockResult shock = ShockRules.DischargeDetailed(
+                    _grid.Map,
+                    _playerState.Position,
+                    AllCombatants(),
+                    enemy.Archetype.RangedPower);
+                foreach (CombatantState damaged in shock.Damaged)
+                {
+                    if (damaged == _playerState)
+                    {
+                        yield return ShowPlayerHit(enemy.Archetype.RangedPower, "ArcShock");
+                        continue;
+                    }
+
+                    EnemyAgent damagedEnemy = FindAgentByState(damaged);
+                    if (damagedEnemy != null)
+                        yield return ShowEnemyHit(
+                            damagedEnemy,
+                            enemy.Archetype.RangedPower,
+                            "ArcShock");
+                }
+                if (shock.Energized.Count > 0)
+                    InteractionFeedback?.Invoke($"WATER CONDUCTED ×{shock.Energized.Count}!");
+                Debug.Log($"[Shock] {enemy.State.Id} 방전: {shock.Damaged.Count}명, " +
+                          $"통전 {shock.Energized.Count}칸");
+                yield break;
+            }
+
             if (CombatRules.TryRanged(
                     enemy.State,
                     _playerState,

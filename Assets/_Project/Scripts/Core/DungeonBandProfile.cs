@@ -40,6 +40,9 @@ namespace ProjectC.Core
         /// <summary>원거리 사수 비중. 얕은 밴드는 0 — 원거리 압박은 도입 구간을 지난 뒤 등장한다.</summary>
         public int SlingerWeight { get; }
 
+        /// <summary>침수 지역 전용 감전 드론 비중. 다른 지역에서는 반드시 0.</summary>
+        public int ArcDroneWeight { get; }
+
         /// <summary>북쪽 방 기본 적 수에 더하는 보정.</summary>
         public int ExtraEnemies { get; }
 
@@ -70,12 +73,14 @@ namespace ProjectC.Core
             int puddleChancePercent,
             int catwalkLength,
             int wallSconceRarity,
-            int slingerWeight = 0)
+            int slingerWeight = 0,
+            int arcDroneWeight = 0)
         {
             SlimeWeight = slimeWeight;
             GoblinWeight = goblinWeight;
             SkeletonWeight = skeletonWeight;
             SlingerWeight = slingerWeight;
+            ArcDroneWeight = arcDroneWeight;
             ExtraEnemies = extraEnemies;
             BranchChancePercent = branchChancePercent;
             PuddleChancePercent = puddleChancePercent;
@@ -84,7 +89,8 @@ namespace ProjectC.Core
         }
 
         /// <summary>적 조합 롤 범위. 항상 &gt; 0 이도록 프로파일을 정의한다.</summary>
-        public int TotalWeight => SlimeWeight + GoblinWeight + SkeletonWeight + SlingerWeight;
+        public int TotalWeight =>
+            SlimeWeight + GoblinWeight + SkeletonWeight + SlingerWeight + ArcDroneWeight;
     }
 
     /// <summary>
@@ -127,23 +133,23 @@ namespace ProjectC.Core
 
         // ── Flooded (침수된 금고 · 침수·냉각) ────────────────────────────────
         // 정체성 다이얼 셋: 웅덩이 확률(대폭 ↑ — 빙결·감전 무대가 이 지역의 이유다),
-        // 등잔 희소도(↑ — 물에 죽은 비상등), 사수 비중(↓ — 물에서 투척이 어렵다는 결).
+        // 등잔 희소도(↑ — 물에 죽은 비상등), 감전 드론(이 지역에만 등장).
         // 나머지는 Facility 기준선을 따른다.
         private static readonly DungeonBandProfile FloodedShallow =
             new DungeonBandProfile(60, 40, 0, extraEnemies: 0, branchChancePercent: 50, puddleChancePercent: 80,
                 catwalkLength: 0, wallSconceRarity: 6);
 
         private static readonly DungeonBandProfile FloodedMid =
-            new DungeonBandProfile(25, 40, 25, extraEnemies: 1, branchChancePercent: 60, puddleChancePercent: 85,
-                catwalkLength: 1, wallSconceRarity: 8, slingerWeight: 10);
+            new DungeonBandProfile(20, 30, 20, extraEnemies: 1, branchChancePercent: 60, puddleChancePercent: 85,
+                catwalkLength: 1, wallSconceRarity: 8, slingerWeight: 10, arcDroneWeight: 20);
 
         private static readonly DungeonBandProfile FloodedDeep =
-            new DungeonBandProfile(15, 35, 35, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 90,
-                catwalkLength: 2, wallSconceRarity: 10, slingerWeight: 15);
+            new DungeonBandProfile(10, 25, 25, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 90,
+                catwalkLength: 2, wallSconceRarity: 10, slingerWeight: 15, arcDroneWeight: 25);
 
         private static readonly DungeonBandProfile FloodedBoss =
-            new DungeonBandProfile(15, 35, 35, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 90,
-                catwalkLength: 2, wallSconceRarity: 11, slingerWeight: 15);
+            new DungeonBandProfile(10, 25, 25, extraEnemies: 1, branchChancePercent: 70, puddleChancePercent: 90,
+                catwalkLength: 2, wallSconceRarity: 11, slingerWeight: 15, arcDroneWeight: 25);
 
         // ── Ember (잿불 성채 · 불·기름) ──────────────────────────────────────
         // 정체성 다이얼 셋: 웅덩이 확률(↓ — 물이 흔하면 불 연쇄가 서지 않는다),

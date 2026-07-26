@@ -2,6 +2,14 @@ using System;
 
 namespace ProjectC.Core
 {
+    public enum MonsterRangedEffect
+    {
+        Physical = 0,
+
+        /// <summary>명중점 주변을 지지고, 닿은 웅덩이 전체로 전도되는 감전 공격.</summary>
+        ConductiveShock = 1
+    }
+
     /// <summary>
     /// 몬스터 종류 하나의 스탯·행동 파라미터. (GDD §5.7, M5 다양화 대비)
     /// M5에서 새 몬스터 = 이 데이터 인스턴스 + 스프라이트 슬롯 추가로 끝나야 한다.
@@ -39,6 +47,9 @@ namespace ProjectC.Core
         /// </summary>
         public int KeepAwayRange { get; }
 
+        /// <summary>원거리 명중 뒤 적용할 공격 규칙. 기본값은 기존과 같은 단일 물리 피해.</summary>
+        public MonsterRangedEffect RangedEffect { get; }
+
         /// <summary>원거리 교전을 하는 몬스터인가.</summary>
         public bool IsRanged => RangedRange > 0 && RangedPower > 0;
 
@@ -64,7 +75,8 @@ namespace ProjectC.Core
             int rangedRange = 0,
             int rangedPower = 0,
             int keepAwayRange = 0,
-            bool canClimb = false)
+            bool canClimb = false,
+            MonsterRangedEffect rangedEffect = MonsterRangedEffect.Physical)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("몬스터 ID가 필요합니다.", nameof(id));
             if (maxHp <= 0) throw new ArgumentOutOfRangeException(nameof(maxHp));
@@ -87,6 +99,7 @@ namespace ProjectC.Core
             RangedPower = rangedPower;
             KeepAwayRange = keepAwayRange;
             CanClimb = canClimb;
+            RangedEffect = rangedEffect;
         }
     }
 }

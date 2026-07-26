@@ -97,6 +97,7 @@ namespace ProjectC.Gameplay
         public Sprite skeleton;
         public Sprite slime;
         public Sprite slinger;
+        public Sprite arcDrone;
         public Sprite graveWarden;
         public Sprite merchant;
         public Sprite explosiveBarrel;
@@ -127,6 +128,7 @@ namespace ProjectC.Gameplay
                 case "Skeleton": return "skeleton";
                 case "Slime": return "slime";
                 case "Slinger": return "slinger";
+                case "ArcDrone": return "arcDrone";
                 case "GraveWarden": return "graveWarden";
                 default: return null;
             }
@@ -145,6 +147,7 @@ namespace ProjectC.Gameplay
                 case "skeleton": return skeleton;
                 case "slime": return slime;
                 case "slinger": return slinger;
+                case "arcDrone": return arcDrone;
                 case "graveWarden": return graveWarden;
                 default: return null;
             }

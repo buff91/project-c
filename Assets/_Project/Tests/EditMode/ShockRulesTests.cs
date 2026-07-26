@@ -66,5 +66,22 @@ namespace ProjectC.Tests
             Assert.AreEqual(10, outside.Hp, "물이 없으면 전파 없음");
             Assert.IsEmpty(energized);
         }
+
+        [Test]
+        public void DischargeDetailed_ReturnsEachDamagedTargetOnce_ForPresentation()
+        {
+            GridMap map = WetRow(5);
+            var near = new CombatantState("near", new GridPos(1, 0, 0), 10, 1);
+            var far = new CombatantState("far", new GridPos(4, 0, 0), 10, 1);
+
+            ShockResult result = ShockRules.DischargeDetailed(
+                map, new GridPos(1, 0, 0), new[] { near, far }, damage: 2);
+
+            CollectionAssert.AreEquivalent(new[] { near, far }, result.Damaged);
+            Assert.AreEqual(2, result.Damaged.Count, "직접 블라스트와 물 전도가 겹쳐도 한 번만 반환");
+            Assert.AreEqual(8, near.Hp);
+            Assert.AreEqual(8, far.Hp);
+            CollectionAssert.Contains(result.Energized, new GridPos(4, 0, 0));
+        }
     }
 }
