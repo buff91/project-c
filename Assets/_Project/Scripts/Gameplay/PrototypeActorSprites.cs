@@ -390,7 +390,8 @@ namespace ProjectC.Gameplay
             Color32 deep = new Color32(1, 4, 7, 250);
             Color32 stone = new Color32(52, 66, 70, 255);
             Color32 broken = new Color32(103, 129, 128, 255);
-            Color32 depth = new Color32(75, 218, 221, 220);
+            // 구멍 속은 발광하지 않는다 — 깊이 암시는 어둠 속에서 겨우 읽히는 잔선으로만.
+            Color32 depth = new Color32(28, 40, 44, 200);
 
             for (int y = 7; y <= 31; y++)
             {
@@ -531,6 +532,33 @@ namespace ProjectC.Gameplay
                     texture.SetPixel(13, y + 1, edge);
                 }
             }
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// PLAY용 개구부 낙하 기둥. 빛이 없는 허공이라 발광 없이, 입구(위)가 가장 짙고
+        /// 조명이 있는 착지(아래)로 갈수록 옅어지는 어둠으로만 그린다.
+        /// </summary>
+        internal Sprite GetVoidShaftSprite()
+        {
+            const string key = "shaft-void";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(20, 64);
+            for (int y = 0; y < 64; y++)
+            {
+                float toward = y / 63f; // 0 = 착지(아래), 1 = 입구(위)
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Lerp(28f, 224f, toward * toward));
+                for (int x = 0; x < 20; x++)
+                {
+                    bool edge = x < 3 || x > 16;
+                    texture.SetPixel(x, y, new Color32(3, 6, 9, edge ? (byte)(alpha / 2) : alpha));
+                }
+            }
+
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
             _spriteCache[key] = cached;

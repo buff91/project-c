@@ -202,8 +202,12 @@ namespace ProjectC.Gameplay
                         ? _palette.Outline
                         : threshold ? _palette.WoodLight : color;
                 }
+                // 개구부는 빛이 없는 허공이다 — 발광 테두리 대신 어두운 윤곽, 중심으로
+                // 갈수록 짙어져 "떨어지는 곳"으로 읽힌다 (SYSTEMS 「수직 이동」).
                 else if (kind == TileKind.Hole)
-                    color = border ? _palette.Magic : WithAlpha(_palette.Void, 190);
+                    color = border
+                        ? _palette.Outline
+                        : WithAlpha(_palette.Void, diamond < 0.5f ? (byte)244 : (byte)214);
                 else if (kind == TileKind.WeakFloor && IsCrackPixel(px, py))
                     color = _palette.Outline;
                 else if (kind == TileKind.Stairs && ((px + py * 2) % 12 < 3))
