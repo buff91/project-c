@@ -327,6 +327,7 @@ namespace ProjectC.Gameplay
         private Transform _visualRoot;
         private GameObject _player;
         private SpriteRenderer _playerRenderer;
+        private SpriteClipAnimator _playerAnimator;
         private GridSortingObject _playerSorting;
         private Transform _playerLocator;
         private Transform _playerFootprint;
@@ -742,6 +743,9 @@ namespace ProjectC.Gameplay
             if (playerSprite == null)
                 playerSprite = ActorSprites.GetCharacterSprite(false);
             _player = CreateStandingSprite("Player", playerSprite, _playerPos, out _playerRenderer);
+            _playerAnimator = AttachActorAnimator(
+                _player, _playerRenderer,
+                visualCatalog != null ? visualCatalog.SurvivorAnimations : null);
             _playerShadow = CreateContactShadow(_player.transform);
             _playerSorting = _player.AddComponent<GridSortingObject>();
             _playerSorting.grid = _grid;
@@ -907,6 +911,23 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
+        /// 베이크된 클립이 있는 액터에만 재생기를 붙인다 — 없으면(PNG 폴백) 컴포넌트 자체를
+        /// 만들지 않아 현행과 완전히 같다(Update 비용 0). 소품/아이템에는 붙이지 않는다.
+        /// </summary>
+        private static SpriteClipAnimator AttachActorAnimator(
+            GameObject actor,
+            SpriteRenderer renderer,
+            ActorAnimationSet set)
+        {
+            if (actor == null || renderer == null || set == null || !set.HasClips)
+                return null;
+
+            var animator = actor.AddComponent<SpriteClipAnimator>();
+            animator.Configure(renderer, set);
+            return animator;
+        }
+
+        /// <summary>
         /// 탭 지점이 적(남아 있는 시체 포함) 스프라이트 안이면 그 발밑 타일을 반환한다.
         /// 아이소 몸통은 타일보다 화면상 위에 그려져, 평면 역변환만 쓰면
         /// 몸통 탭이 뒤 타일 이동으로 새는 문제의 보정이다. 겹치면 앞(정렬 위) 우선.
@@ -1009,10 +1030,13 @@ namespace ProjectC.Gameplay
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
 
             if (visibleToPlayer && enemy.Renderer != null)
+            {
+                enemy.Animator?.PlayOnce(SpriteClipTags.Hit);
                 yield return PlayCombatImpact(
                     enemy.Root != null ? enemy.Root.transform : enemy.Renderer.transform,
                     enemy.Renderer,
                     impact);
+            }
 
             RecordEnemyDeath(enemy, visibleToPlayer);
 
@@ -1050,10 +1074,12 @@ namespace ProjectC.Gameplay
                     : FloatingKindForImpact(impact));
             Debug.Log($"[{source}] 플레이어가 {damage} 피해. " +
                       $"HP {_playerState.Hp}/{_playerState.MaxHp}");
+            _playerAnimator?.PlayOnce(SpriteClipTags.Hit);
             yield return PlayCombatImpact(_player.transform, _playerRenderer, impact);
 
             if (!_playerState.IsAlive)
             {
+                _playerAnimator?.PlayDeath();
                 _playerRenderer.color = new Color32(120, 42, 42, 220);
                 _runSummary.EndInDefeat(source);
                 FinishRunTelemetry(RunTelemetryOutcome.Defeat, source);
@@ -1259,6 +1285,7 @@ namespace ProjectC.Gameplay
             public MonsterMood LastMood;
             public TextMesh MoodIcon;
             public TextMesh BossMarker;
+            public SpriteClipAnimator Animator; // 클립 없는 액터(PNG 폴백)는 null
             public int DeathTurn = -1;
         }
 

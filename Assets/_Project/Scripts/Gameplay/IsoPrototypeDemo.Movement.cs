@@ -172,6 +172,21 @@ namespace ProjectC.Gameplay
 
         private IEnumerator MovePlayerPath(IReadOnlyList<GridPos> path)
         {
+            // walk 루프는 이동 코루틴의 수명과 정확히 같아야 한다 — try/finally 이므로
+            // yield break·인터럽트·StopCoroutine(Dispose) 어느 경로로 끝나도 idle로 복귀한다.
+            _playerAnimator?.PlayLoop(SpriteClipTags.Walk);
+            try
+            {
+                yield return MovePlayerPathSteps(path);
+            }
+            finally
+            {
+                _playerAnimator?.StopToIdle();
+            }
+        }
+
+        private IEnumerator MovePlayerPathSteps(IReadOnlyList<GridPos> path)
+        {
             for (int i = 1; i < path.Count; i++)
             {
                 GridPos next = path[i];

@@ -126,6 +126,7 @@ namespace ProjectC.Gameplay
             if (_playerState.IsAlive && enemy.State.IsAlive &&
                 CombatRules.CanMelee(_grid.Map, _playerState, enemy.State, _playerLoadout.MeleeReach))
             {
+                _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
                 yield return AnimateMeleeLunge(
                     _player.transform,
                     enemy.Root != null
@@ -199,6 +200,7 @@ namespace ProjectC.Gameplay
         private IEnumerator FireRanged(EnemyAgent enemy, int damage)
         {
             if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
+            _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
             yield return AnimateProjectile(_playerPos, enemy.State.Position);
             InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
             yield return ShowEnemyHit(enemy, damage, "Ranged");

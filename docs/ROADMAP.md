@@ -492,10 +492,19 @@
       GraveWarden 절차 아트, 피벗 SSOT `ProjectCArtPivots` 단일화, 카탈로그 누락 슬롯 16개
       복구, 팔레트 잠금 검정 패딩 아티팩트 수정. 플랜:
       `docs/art-direction/project-c-art-improvement-plan-v2.md`.
-- [ ] **아트풍 개선 2차 — ComfyUI 생성 배치 1~4** (플랜 v2 §3): ① 깊이 밴드 바닥 6종
-      (+파일명 계약 선등록)과 hole/weak-floor/ladder ② 액터 96×128 재생성 +
-      `actor-slinger`/`actor-grave-warden` 전용 아트 ③ 병원 소품(위 항목과 합류) + 낙하 연출
-      ④ 아이템 12종 리스킨. 소스시트가 리포에 들어오면 `process_postapoc_*` 재실행으로 마감.
+- [ ] **아트풍 개선 2차 — ComfyUI 생성 배치 1~4** (플랜 v2 §3): ① 깊이 밴드 바닥 6종과
+      hole/weak-floor/ladder ② 액터 96×128 재생성 + `actor-slinger`/`actor-grave-warden`
+      전용 아트 ③ 병원 소품(위 항목과 합류) + 낙하 연출 ④ 아이템 12종 리스킨.
+      소스시트가 리포에 들어오면 `process_postapoc_*` 재실행으로 마감.
+  - [x] **코드 선행분** (2026-07): 밴드 바닥 파일명 계약 6종+피벗 등록(저장만 하면 자동
+        연결), `env-hole`/`env-weak-floor` 128×64 확정, `ladder` 슬롯 의미 확정(주인은
+        세워진 랜드마크 — TileFor는 바닥 폴백, 이중 표시 차단), **절차 밴드 오버레이**
+        (밴드 아트 도착 전 층 구분 임시 대행 — 역할색 내 패턴 밀도만, 전용 슬롯이 차면
+        자동 비활성), **액터 애니 수용 파이프라인**(클립 베이크 ActorAnimationBake →
+        카탈로그 actorAnimations → 경량 재생기 SpriteClipAnimator, Animator 미사용 —
+        sprite만 소유해 CombatFx/틴트와 무충돌, 시야 밖 자동 스킵). 트리거는
+        idle/walk/attack/hit/death 배선 완료, fall 태그는 베이크만(배선은 아트 도착 후).
+        facing flipX는 첫 액터 아트의 방향 규약 확정 후.
 
 ## 향후 기술 과제 — 던전 생성기 BSP/룸-앤-코리더 전환
 

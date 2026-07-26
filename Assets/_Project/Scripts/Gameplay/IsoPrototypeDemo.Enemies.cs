@@ -148,6 +148,9 @@ namespace ProjectC.Gameplay
             enemy.Root = CreateStandingSprite(
                 enemy.State.Id, MonsterSpriteFor(archetype), spawn, out SpriteRenderer renderer);
             enemy.Renderer = renderer;
+            enemy.Animator = AttachActorAnimator(
+                enemy.Root, renderer,
+                visualCatalog != null ? visualCatalog.MonsterAnimationsFor(archetype.Id) : null);
             enemy.Shadow = CreateContactShadow(enemy.Root.transform);
             enemy.HpFill = CreateHealthBar(enemy.Root, $"{enemy.State.Id} HP");
             enemy.HpBackground = enemy.Root.transform.Find($"{enemy.State.Id} HP Background");
@@ -239,6 +242,7 @@ namespace ProjectC.Gameplay
                 case MonsterActionKind.Attack:
                     if (CombatRules.AreAdjacent(enemy.State, _playerState))
                     {
+                        enemy.Animator?.PlayOnce(SpriteClipTags.Attack);
                         yield return AnimateMeleeLunge(
                             enemy.Root != null ? enemy.Root.transform : null,
                             _player.transform.position);
@@ -290,7 +294,10 @@ namespace ProjectC.Gameplay
 
             bool seen = _visibleTiles.Contains(enemy.State.Position);
             if (seen)
+            {
+                enemy.Animator?.PlayOnce(SpriteClipTags.Attack);
                 yield return AnimateProjectile(enemy.State.Position, _playerState.Position);
+            }
 
             if (CombatRules.TryRanged(
                     enemy.State,
@@ -325,6 +332,7 @@ namespace ProjectC.Gameplay
             // 활성 몬스터 수만큼 느려지지 않게 한다.
             if (animate && enemy.Root != null)
             {
+                enemy.Animator?.PlayLoop(SpriteClipTags.Walk);
                 Vector3 end = enemy.Root.transform.position;
                 float duration = secondsPerStep * 0.75f;
                 float elapsed = 0f;
@@ -336,6 +344,7 @@ namespace ProjectC.Gameplay
                     yield return null;
                 }
                 enemy.Root.transform.position = end;
+                enemy.Animator?.StopToIdle();
             }
 
             // 약한 바닥은 몬스터가 밟아도 무너진다 — 플레이어와 동일 규칙. (GDD §5.3)
@@ -515,6 +524,8 @@ namespace ProjectC.Gameplay
             if (enemy == null || enemy.State.IsAlive || enemy.DeathTurn >= 0) return false;
 
             enemy.DeathTurn = _turns.TurnNumber;
+            // 유일한 사망 관문(1회 가드) — 낙사·붕괴·디버그킬까지 전 경로가 여기를 지난다.
+            enemy.Animator?.PlayDeath();
             _runSummary.RecordKill();
             _runTelemetry?.RecordKill(
                 GlobalFloorIndex(_activeFloorIndex),
