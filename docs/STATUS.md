@@ -108,7 +108,10 @@
   방향·레퍼런스 SSOT는 `docs/art-direction/project-c-postapoc-art-direction-v1.md`, 리스킨 표는
   `...postapoc-reskin-table-v1.md`. 팔레트 *원리*(청흑 바탕+국소 호박 광원+신호색 1개)는 유지하고
   재료 어휘(석재→콘크리트/벽돌/녹, 횃불→비상등/네온, 마법 포탈→이상 균열)만 바꾼다.
-  **현재 구현은 아직 판타지 웜 다크 디오라마**다 — 허브는
+  구현은 포스트아포 마감 자산(스타일 트랜스퍼 → 팔레트 잠금 PNG)으로 수렴했고, 2026-07에
+  **128×64 타일 / PPU 128 레짐으로 상향**했다(`ui-*`만 64 유지, 절차 생성 폴백은 64-레짐인 채
+  스프라이트별 PPU로 공존). 가독성 규칙·발주 순서는
+  `docs/art-direction/project-c-art-improvement-plan-v2.md` 참조. 허브 웜 디오라마 패스는 유지 — 허브는
   `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
   기준으로 횃불에 데워진 석재 + 토치 골드 모닥불/횃불 + 틸 포탈을 사용한다.
   `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
@@ -143,7 +146,8 @@
   이동·영웅 기본 지급품·초과분 복귀를 담당한다. 허브에서 선택한 물품만 던전 진입 시 반입하고
   나머지는 창고에 보존한다. 모바일은 선택 후 반대편 탭, PC는 버튼/드래그를 사용한다.
 - **절차 생성 임시 아트는 `IsoPrototypeDemo` 밖에 있다**: `PrototypeSpriteCanvas`(프리미티브 +
-  64×32·PPU 상수 SSOT), `PrototypeSpriteCache`, `PrototypePalette`(역할색),
+  절차 생성 64-레짐 상수 SSOT — 카탈로그 자산은 128-레짐이며 스프라이트별 PPU로 공존),
+  `PrototypeSpriteCache`, `PrototypePalette`(역할색),
   `PrototypeActorSprites`, `PrototypeEnvironmentSprites`. 이 클래스들은 **격자·던전·플레이어를
   참조하지 않으며**, 필요한 격자 사실은 호스트가 `TileVisualFacts`로 풀어 넘긴다.
   `IsoPrototypeDemo.Sprites.cs`는 그 변환만 하는 123줄 어댑터다 — 픽셀을 다시 이 파일로

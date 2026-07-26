@@ -12,7 +12,7 @@ PNG export를 카탈로그에 다시 꽂지 않는다.
 ## 사용 순서
 
 1. 아래 정식 파일명으로 Aseprite 원본을 저장한다.
-2. Unity로 돌아오면 Point, PPU 64, Mip Map Off, 무압축, Canvas Pivot이 자동 적용된다.
+2. Unity로 돌아오면 Point, PPU 128, Mip Map Off, 무압축, Canvas Pivot이 자동 적용된다.
 3. 첫 프레임 Sprite가 공용 `ProjectCEnvironmentCatalog`의 대응 슬롯에 자동 연결된다.
 4. 여러 프레임과 Tag가 있으면 AnimationClip도 같은 `.aseprite` 에셋의 sub-asset으로 생성된다.
 5. 문제가 있으면 `Project-C > Art > Aseprite > Validate Sources`를 실행한다.

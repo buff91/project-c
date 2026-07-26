@@ -6,10 +6,10 @@
 
 | 항목 | 프로토타입 기준 |
 |---|---:|
-| 아이소 바닥 타일 | 64×32 px (2:1) |
-| Pixels Per Unit | 64 |
-| elevation 1단 | 화면상 16 px |
-| 캐릭터 작업 캔버스 | 32×48 또는 48×64 px |
+| 아이소 바닥 타일 | 128×64 px (2:1) — 2026-07 상향, 구 64×32의 정확히 ×2 |
+| Pixels Per Unit | 128 (`ui-*`만 64) |
+| elevation 1단 | 화면상 32 px |
+| 캐릭터 작업 캔버스 | 96×128 px |
 | 캐릭터 Pivot | 발 중앙 |
 | 기본 방향 수 | 4방향 |
 | 애니메이션 | 8~12 FPS |
@@ -30,7 +30,7 @@ AI 이미지 생성에 맡긴다:
 
 Aseprite에서 직접 만든다:
 
-- 반복 가능한 64×32 바닥 타일
+- 반복 가능한 128×64 바닥 타일
 - 좌·우 벽면과 안/밖 모서리
 - 방향별 계단과 문
 - 캐릭터 방향 및 애니메이션 프레임
@@ -53,7 +53,7 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
 
 ## 4. Aseprite 작업 순서
 
-1. 64×32 다이아몬드를 템플릿 레이어로 만든다.
+1. 128×64 다이아몬드를 템플릿 레이어로 만든다.
 2. 모든 에셋에 같은 좌상단 광원을 사용한다.
 3. `Art/Source/Aseprite/project-c-torchstone.gpl`의 18색 인덱스에서만 색을 고른다.
 4. 타일 경계 픽셀을 복사해 이웃 타일과 맞춘다.
@@ -83,7 +83,7 @@ Assets/_Project/Art/
   Sprites/Characters/   # 외부 전달/검수용 export만
   Sprites/Props/        # 외부 전달/검수용 export만
   Palettes/
-  Runtime/              # 게임에 연결된 64 PPU 검증 세트(재생성 가능)
+  Runtime/              # 게임에 연결된 128 PPU 검증 세트(재생성 가능, ui-*만 64)
 ```
 
 ## 5. AI 시안용 프롬프트 템플릿
@@ -95,7 +95,7 @@ Show isolated floor, left/right wall faces, corner, stairs, hole, weak floor, do
 barrel, player and goblin on a flat dark background with generous spacing.
 Use chunky deliberate pixel clusters and a limited 16-24 color palette.
 No text, labels, UI, watermark, smooth painting, 3D rendering or overlapping assets.
-This is an art-direction reference for rebuilding precise 64×32 assets in Aseprite,
+This is an art-direction reference for rebuilding precise 128×64 assets in Aseprite,
 not a ready-to-slice sprite sheet.
 ```
 
@@ -124,7 +124,7 @@ Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선�
 `ProjectCAsepritePipeline`이 다음을 자동 처리한다.
 
 - Animated Sprite + Merge Frame
-- Point filter, PPU 64, Full Rect, Mip Map Off, Clamp
+- Point filter, PPU 128, Full Rect, Mip Map Off, Clamp
 - Standalone/iOS/Android 무압축
 - 프레임 사이에서 흔들리지 않는 Canvas 기준 Pivot
 - Aseprite Tag 기반 AnimationClip 생성
@@ -158,12 +158,14 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
 
 현재 `Assets/_Project/Art/Runtime` 세트는 실제 Aseprite 원본이 없는 슬롯의 폴백이다.
 `Tools/ArtPipeline/generate_runtime_art_v2.py`로 결정론적으로 재생성하며,
-`ProjectCArtImporter`가 Point filter, PPU 64, 무압축, Mip Map Off, 발 중앙 Pivot을 강제한다.
+`ProjectCArtImporter`가 Point filter, PPU 128(`ui-*`는 64), 무압축, Mip Map Off를 강제하고,
+피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
+`Art/Environment/` PNG도 같은 임포터가 강제한다.
 최종 아트의 SSOT는 `Art/Source/Aseprite`이고, PNG를 수정해 최종본처럼 유지하지 않는다.
 허브와 전투 씬은 반드시 같은 `ProjectCEnvironmentCatalog`를 참조하며,
 씬별 독자 카탈로그나 캐릭터 색조 복제는 만들지 않는다.
 
-허브 웜 디오라마 패스는 `IsoPrototypeDemo`의 허브 모드에서만 적용한다. 64×32 투영과
+허브 웜 디오라마 패스는 `IsoPrototypeDemo`의 허브 모드에서만 적용한다. 2:1 다이아 투영과
 공용 액터/소품 카탈로그는 유지하고, 바닥·후면 벽의 Torchstone 석재 팔레트와 모닥불/포탈 타일
 광원 오버레이를 분기한다. 전면 경계 타일은 16px 석재 측면을 그려 디오라마 두께를 만들고,
 후면 벽은 횃불/배너/연금술 선반/무기 장식 모듈을 조합한다. 광원 오버레이는 정렬 오프셋 `-1`,

@@ -50,7 +50,7 @@ python3 Tools/ArtPipeline/process_postapoc_environment_v2.py
 `.aseprite`/`.ase`는 `com.unity.2d.aseprite 5.0.3`이 직접 임포트하고,
 `ProjectCAsepritePipeline`이 규격을 강제한다:
 
-- Filter **Point** · PPU **64** · Compression **None** · Mip Maps **Off**
+- Filter **Point** · PPU **128** (`ui-*`만 64) · Compression **None** · Mip Maps **Off**
 - Pivot: Canvas Pivot (캐릭터는 발 중앙)
 - 정식 파일명의 첫 프레임은 `ProjectCEnvironmentCatalog`에 **자동 연결**된다
 
