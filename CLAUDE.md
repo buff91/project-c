@@ -61,7 +61,7 @@ Assets/_Project/
   Art/Source/Aseprite/               # 원본이 도착할 자리 + 기준 팔레트 .gpl — 아직 .aseprite 원본은 없다
   Art/Runtime/ · Art/Environment/    # 실제로 게임에 연결된 PNG + 환경 카탈로그 (현재 동작 경로)
 Tools/  ArtPipeline(후처리 파이썬) · CoreTests(에디터 없이 도는 dotnet shim) · Hooks(로컬 검증 훅)
-docs/ · GDD.md                       # 위 「문서 지도」 (+ architecture/ · art-direction/)
+docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction/)
 ```
 
 ## 검증 (테스트 · 훅 · CI · MCP)
