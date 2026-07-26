@@ -127,6 +127,42 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TileFor_DeepAndBossRaisedSlots_TakePriorityOverSharedRaised()
+        {
+            // FloorFor의 deepRaisedFloor/bossRaisedFloor 분기는 그동안 어서션이 없었다 —
+            // 밴드 바닥 발주(배치 1) 전에 선택 규칙을 고정한다.
+            Sprite shared = MakeSprite();
+            Sprite sharedRaised = MakeSprite();
+            Sprite deepRaised = MakeSprite();
+            Sprite bossRaised = MakeSprite();
+            _catalog.floor = shared;
+            _catalog.raisedFloor = sharedRaised;
+            _catalog.deepRaisedFloor = deepRaised;
+            _catalog.bossRaisedFloor = bossRaised;
+            var height = new DungeonHeightModel(4);
+
+            Assert.AreSame(
+                deepRaised,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -23, progressIndex: 6)));
+            Assert.AreSame(
+                bossRaised,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -35, progressIndex: 9)));
+
+            // 밴드 raised 슬롯이 비면 평면 밴드 → 공용 바닥 순으로 내려간다.
+            _catalog.deepRaisedFloor = null;
+            _catalog.bossRaisedFloor = null;
+            Assert.AreSame(
+                shared,
+                _catalog.TileFor(
+                    TileKind.Floor,
+                    DungeonVisualContext.From(height, elevation: -23, progressIndex: 6)));
+        }
+
+        [Test]
         public void DungeonSurfaceFor_UsesOneCommonToneAcrossDepths_AndHeightOnlyChangesValue()
         {
             var height = new DungeonHeightModel(4);

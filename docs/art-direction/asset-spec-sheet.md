@@ -43,26 +43,32 @@
 | `env-floor-raised` | raisedFloor | 128×80 *(권장)* | (0.5, 0.5) | ⚠️ 원본 없음 |
 | `env-floor-lower` | lowerFloor | 128×64 *(권장)* | (0.5, 0.5) | ⚠️ 원본 없음 |
 | `env-stairs` | stairs | 128×112 *(권장)* | (0.5, 0) | ⚠️ 폴백용 |
-| `env-ladder` | ladder | 64×112 *(권장, 결정 필요)* | (0.5, 0) | ⚠️ 원본 없음 |
+| `env-ladder` | ladder | 64×112 — **랜드마크 용도** (§1-a) | (0.5, 0.08) 발 기준 | ⚠️ 원본 없음 |
 | `env-stairs-up` | stairsUp | 128×112 *(권장)* | (0.5, 0) | ⚠️ 폴백용 |
 | `env-stairs-down` | stairsDown | 128×80 *(권장)* | (0.5, 0) | ⚠️ 폴백용 |
-| `env-hole` | hole | 128×64 *(+깊이 결정 필요)* | (0.5, 0) | ⚠️ 원본 없음 |
-| `env-weak-floor` | weakFloor | 128×64 *(권장)* | (0.5, 0) | ⚠️ 원본 없음 |
+| `env-hole` | hole | **128×64 고정** — 깊이 표현은 타일이 아니라 랜드마크 오브젝트 소관(배치 3). 2:1을 벗어나면 톤매핑 경로가 조용히 원본 폴백한다 | (0.5, 0.5) | ⚠️ 원본 없음 |
+| `env-weak-floor` | weakFloor | **128×64 확정** | (0.5, 0.5) | ⚠️ 원본 없음 |
+
+### 1-a. `env-ladder`의 의미 (확정)
+
+`ladder` 슬롯의 주인은 **바닥 타일이 아니라 "세워진 사다리" 랜드마크 오브젝트**다.
+사다리는 "두 발판 사이에 세워진 별도 월드 오브젝트" 관례를 따르며, 사다리 발밑 타일은
+일반 바닥으로 그린다. 랜드마크 렌더가 카탈로그 `ladder` 슬롯을 먼저 보고 없으면 절차
+아트로 폴백한다. 세로는 `LadderScaleY`가 실측 월드 높이 기준으로 자동 보정하므로 캔버스
+높이가 정확히 112일 필요는 없다(64×112 권장).
 | `env-door-closed` | doorClosed | 128×160 *(권장)* | (0.5, 0) | ⚠️ 폴백용 |
 | `env-door-open` | doorOpen | 128×160 *(권장)* | (0.5, 0) | ⚠️ 폴백용 |
 
-**깊이 밴드 바닥 (신규 발주 대상)** — 슬롯은 코드·카탈로그에 준비돼 있고 아트만 없다.
-비어 있으면 `floor`로 폴백되어 10개 층이 같은 바닥으로 보인다(현 상태). 석재 기본색은
-유지하고 **오염/마모/장비 밀도**로 층대(帶)를 구분한다 (`FloorFor`가 밴드×raised로 선택).
+**깊이 밴드 바닥 (신규 발주 대상)** — 슬롯·파일명 계약·피벗이 코드에 전부 등록돼 있어
+정식 파일명으로 저장만 하면 자동 연결된다. 비어 있으면 `floor`로 폴백된다(그동안은 절차
+밴드 오버레이가 임시 대행). 석재 기본색은 유지하고 **오염/마모/장비 밀도**로 층대(帶)를
+구분한다 (`FloorFor`가 밴드×raised로 선택).
 
 | 파일명 | 슬롯 | 캔버스 | 피벗 |
 |--------|------|--------|------|
-| `env-floor-mid` → *(파일명 계약 추가 필요)* | midFloor / midRaisedFloor | 128×64 | (0.5, 0.5) |
-| `env-floor-deep` → *(파일명 계약 추가 필요)* | deepFloor / deepRaisedFloor | 128×64 | (0.5, 0.5) |
-| `env-floor-boss` → *(파일명 계약 추가 필요)* | bossFloor / bossRaisedFloor | 128×64 | (0.5, 0.5) |
-
-> 밴드 바닥의 파일명→슬롯 계약은 아직 `CatalogSlots`에 없다. 아트 발주 확정 시
-> `env-floor-mid`/`-mid-raised`/`-deep`/`-deep-raised`/`-boss`/`-boss-raised` 6개를 코드에 먼저 등록한다.
+| `env-floor-mid` / `env-floor-mid-raised` | midFloor / midRaisedFloor | 128×64 | (0.5, 0.5) |
+| `env-floor-deep` / `env-floor-deep-raised` | deepFloor / deepRaisedFloor | 128×64 | (0.5, 0.5) |
+| `env-floor-boss` / `env-floor-boss-raised` | bossFloor / bossRaisedFloor | 128×64 | (0.5, 0.5) |
 
 ## 2. 방향형 타일 (정적 · 1프레임) — 화면 기준 좌/우 상승
 

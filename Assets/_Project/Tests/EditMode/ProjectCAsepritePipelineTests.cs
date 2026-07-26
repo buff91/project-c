@@ -48,6 +48,33 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void CatalogSlot_MapsDepthBandFloors_WithCenteredPivot()
+        {
+            // 배치 1 발주 계약 — 밴드 바닥 6종은 정식 파일명으로 저장만 하면 자동 연결돼야 한다.
+            var expected = new (string fileName, string slot)[]
+            {
+                ("env-floor-mid", "midFloor"),
+                ("env-floor-mid-raised", "midRaisedFloor"),
+                ("env-floor-deep", "deepFloor"),
+                ("env-floor-deep-raised", "deepRaisedFloor"),
+                ("env-floor-boss", "bossFloor"),
+                ("env-floor-boss-raised", "bossRaisedFloor"),
+            };
+            foreach ((string fileName, string slot) in expected)
+            {
+                string path = $"Assets/_Project/Art/Source/Aseprite/{fileName}.aseprite";
+                Assert.IsTrue(
+                    ProjectCAsepritePipeline.TryGetCatalogSlot(path, out string actual),
+                    $"CatalogSlots에 {fileName} 계약이 없다");
+                Assert.AreEqual(slot, actual);
+                Assert.AreEqual(
+                    new Vector2(0.5f, 0.5f),
+                    ProjectCAsepritePipeline.ResolvePivotNormalized(path),
+                    $"{fileName} 피벗은 바닥 다이아 중앙이어야 한다");
+            }
+        }
+
+        [Test]
         public void ResolvePivot_UsesStableCanvasAnchors()
         {
             Assert.AreEqual(
