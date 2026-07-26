@@ -7,7 +7,6 @@ namespace ProjectC.Core
     {
         /// <summary>낙하자가 최종적으로 선 칸. 착지점이 점유돼 있으면 인접 칸으로 밀려난다.</summary>
         public GridPos FinalPosition;
-        public GridPos Landing;
         public int FloorsFallen;
         public int Damage;
 
@@ -23,7 +22,15 @@ namespace ProjectC.Core
     /// </summary>
     public static class FallRules
     {
-        /// <summary>낙하 층수별 낙뎀 누적 곡선: floors × (floors + 1). 1층=2, 2층=6, 3층=12.</summary>
+        /// <summary>
+        /// 낙하 층수별 낙뎀 누적 곡선: floors × (floors + 1). 1층=2, 2층=6, 3층=12.
+        /// <para>
+        /// <b>프로덕션 경로는 이 함수를 부르지 않는다</b> — 실제 낙뎀은 칸 기준
+        /// <see cref="DamageForDrop"/>이 낸다. 이건 <b>기준 곡선(오라클)</b>이라
+        /// 남긴다: 칸 기준 곡선이 층 낙하에서 여전히 2/6/12를 재현하는지
+        /// <c>FallRulesTests</c>가 이 값과 대조한다. 호출부가 없다고 지우면 그 대조가 사라진다.
+        /// </para>
+        /// </summary>
         public static int DamageForFloors(int floorsFallen) =>
             floorsFallen <= 0 ? 0 : floorsFallen * (floorsFallen + 1);
 
@@ -75,7 +82,6 @@ namespace ProjectC.Core
 
             var result = new FallResult
             {
-                Landing = landing,
                 FloorsFallen = floorsFallen,
                 Damage = damage
             };

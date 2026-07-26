@@ -64,14 +64,6 @@ namespace ProjectC.Core
             return entrance > LandingProgressIndex && entrance < floorCount;
         }
 
-        /// <summary>이 층이 탑승구를 갖는 층인가.</summary>
-        public static bool IsEntranceFloor(
-            DungeonProgressDirection direction,
-            int progressIndex,
-            int floorCount) =>
-            AppliesToDungeon(direction, floorCount) &&
-            progressIndex == EntranceProgressIndex(floorCount);
-
         /// <summary>
         /// 엘리베이터가 지금 움직이는가. <b>전원은 보스 처치로 들어온다</b> —
         /// 보스가 없는 던전(예고 원정지)은 처음부터 움직인다고 본다.

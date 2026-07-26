@@ -118,7 +118,7 @@ namespace ProjectC.Core
                 floorCount: 10,
                 boss: new DungeonBossDefinition(
                     "grave-warden",
-                    "감시자",
+                    MonsterRoster.GraveWarden.DisplayName,
                     MonsterRoster.GraveWarden),
                 isAvailable: true,
                 direction: DungeonProgressDirection.Ascend,

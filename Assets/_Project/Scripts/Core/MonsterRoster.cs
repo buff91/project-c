@@ -60,10 +60,14 @@ namespace ProjectC.Core
                 rangedRange: 4, rangedPower: 2, keepAwayRange: 2,
                 rangedEffect: MonsterRangedEffect.ConductiveShock);
 
-        /// <summary>첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).</summary>
+        /// <summary>
+        /// 첫 던전 보스: 추격 범위가 넓고 도주하지 않는 감시자(코드 ID GraveWarden).
+        /// 표시명을 여기서 주는 이유는 일반 5종과 같다 — 주지 않으면 <see cref="MonsterArchetype.DisplayName"/>이
+        /// 코드 ID 로 떨어져 화면에 "GraveWarden" 이 뜬다.
+        /// </summary>
         public static readonly MonsterArchetype GraveWarden =
             new MonsterArchetype("GraveWarden", maxHp: 20, attackPower: 3,
-                aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f);
+                aggroRange: 8, patrolRadius: 1, fleeThreshold: 0f, displayName: "감시자");
 
         /// <summary>깊이 비례로 스폰되는 일반 몬스터(보스 제외). 피해 소스 접두사 매칭 순서를 겸한다.</summary>
         public static readonly IReadOnlyList<MonsterArchetype> Regular =

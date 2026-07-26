@@ -55,6 +55,21 @@ namespace ProjectC.Tests
             Assert.IsFalse(DungeonCatalog.ById("ember-keep").IsAvailable);
         }
 
+        /// <summary>
+        /// 보스 표시명은 아키타입 하나에서만 나온다. 예전에는 아키타입이 <c>displayName</c>을
+        /// 안 받아 <c>GraveWarden.DisplayName</c>이 코드 ID 로 떨어졌고, 화면 문자열 "감시자"는
+        /// 카탈로그에 따로 박혀 있었다 — 한쪽만 고치면 조용히 갈라진다.
+        /// </summary>
+        [Test]
+        public void BossDisplayName_ComesFromTheArchetype()
+        {
+            Assert.AreEqual("감시자", MonsterRoster.GraveWarden.DisplayName,
+                "아키타입이 표시명을 들지 않으면 코드 ID 가 화면에 뜬다.");
+
+            DungeonBossDefinition boss = DungeonCatalog.ById(DungeonCatalog.DefaultId).Boss;
+            Assert.AreEqual(MonsterRoster.GraveWarden.DisplayName, boss.DisplayName);
+        }
+
         [Test]
         public void BossSpawn_UsesCandidateFarthestFromEntry()
         {
