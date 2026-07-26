@@ -3,6 +3,18 @@ using System.Collections.Generic;
 
 namespace ProjectC.Core
 {
+    public sealed class ShockResult
+    {
+        public List<GridPos> Energized { get; }
+        public List<CombatantState> Damaged { get; }
+
+        internal ShockResult(List<GridPos> energized, List<CombatantState> damaged)
+        {
+            Energized = energized;
+            Damaged = damaged;
+        }
+    }
+
     /// <summary>
     /// 감전 반응 (GDD §5.5 젖음+감전 → 광역 데미지, 포스트아포 신규 축: 노출 전선 + 침수 바닥).
     /// 물은 도체다 — 감전이 젖은 타일에 닿으면 4방향으로 이어진 웅덩이 전체가 통전해 그 위
@@ -24,17 +36,29 @@ namespace ProjectC.Core
         /// 통전시켜 그 위 대상도 지진다. 각 대상은 최대 한 번만 피해. 통전된(젖은) 칸 목록 반환.
         /// </summary>
         public static List<GridPos> Discharge(
-            GridMap map, GridPos center, IReadOnlyList<CombatantState> combatants, int damage)
+            GridMap map, GridPos center, IReadOnlyList<CombatantState> combatants, int damage) =>
+            DischargeDetailed(map, center, combatants, damage).Energized;
+
+        /// <summary>
+        /// <see cref="Discharge"/>와 같은 판정을 수행하되 피격 대상도 함께 반환한다.
+        /// Gameplay가 전도 피해의 FOV·사망 연출을 기존 피격 경로로 보낼 때 사용한다.
+        /// </summary>
+        public static ShockResult DischargeDetailed(
+            GridMap map,
+            GridPos center,
+            IReadOnlyList<CombatantState> combatants,
+            int damage)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (damage < 0) throw new ArgumentOutOfRangeException(nameof(damage));
 
             var shocked = new HashSet<CombatantState>();
+            var damaged = new List<CombatantState>();
 
             // 1) 직접 블라스트(3×3, 마른 바닥 포함).
             for (int dx = -BombRules.BlastRadius; dx <= BombRules.BlastRadius; dx++)
             for (int dy = -BombRules.BlastRadius; dy <= BombRules.BlastRadius; dy++)
-                DamageAt(combatants, center.Offset(dx, dy), damage, shocked);
+                DamageAt(combatants, center.Offset(dx, dy), damage, shocked, damaged);
 
             // 2) 젖은 웅덩이 통전 — 블라스트 안 젖은 칸에서 4방향 BFS.
             var energized = new List<GridPos>();
@@ -52,7 +76,7 @@ namespace ProjectC.Core
             {
                 GridPos pos = frontier.Dequeue();
                 energized.Add(pos);
-                DamageAt(combatants, pos, damage, shocked);
+                DamageAt(combatants, pos, damage, shocked, damaged);
                 foreach (var (dx2, dy2) in Cardinals)
                 {
                     GridPos next = pos.Offset(dx2, dy2);
@@ -61,11 +85,15 @@ namespace ProjectC.Core
                 }
             }
 
-            return energized;
+            return new ShockResult(energized, damaged);
         }
 
         private static void DamageAt(
-            IReadOnlyList<CombatantState> combatants, GridPos pos, int damage, HashSet<CombatantState> shocked)
+            IReadOnlyList<CombatantState> combatants,
+            GridPos pos,
+            int damage,
+            HashSet<CombatantState> shocked,
+            List<CombatantState> damaged)
         {
             if (combatants == null) return;
             foreach (CombatantState c in combatants)
@@ -74,6 +102,7 @@ namespace ProjectC.Core
                 if (c.Position != pos) continue;
                 if (!shocked.Add(c)) continue; // 한 대상은 한 번만
                 c.TakeDamage(damage);
+                damaged.Add(c);
             }
         }
     }

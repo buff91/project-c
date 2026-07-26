@@ -226,6 +226,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(goblin, profile.GoblinWeight, "GoblinWeight");
             Assert.AreEqual(skeleton, profile.SkeletonWeight, "SkeletonWeight");
             Assert.AreEqual(slinger, profile.SlingerWeight, "SlingerWeight");
+            Assert.AreEqual(0, profile.ArcDroneWeight, "폐병원 RNG에 지역 전용 적을 섞지 않는다");
             Assert.AreEqual(extraEnemies, profile.ExtraEnemies, "ExtraEnemies");
             Assert.AreEqual(branch, profile.BranchChancePercent, "BranchChancePercent");
             Assert.AreEqual(puddle, profile.PuddleChancePercent, "PuddleChancePercent");
@@ -238,7 +239,7 @@ namespace ProjectC.Tests
         [Test]
         public void PickForDepth_CoversEveryWeightedArchetype_InEveryRegion()
         {
-            // 롤 분기(4-way)가 가중치와 어긋나면 특정 종이 영영 안 나온다 — 실제로 뽑아 확인한다.
+            // 롤 분기가 가중치와 어긋나면 특정 종이 영영 안 나온다 — 실제로 뽑아 확인한다.
             foreach (DungeonRegionProfile region in Regions)
             {
                 var random = new Random(4242);
@@ -246,10 +247,37 @@ namespace ProjectC.Tests
                 for (int i = 0; i < 3000; i++)
                     seen.Add(MonsterRoster.PickForDepth(region, 6, random).Id);
 
-                CollectionAssert.AreEquivalent(
-                    new[] { "Slime", "Goblin", "Skeleton", "Slinger" }, seen,
-                    $"{region} — 후반 밴드는 네 종을 모두 낸다");
+                var expected = new List<string> { "Slime", "Goblin", "Skeleton", "Slinger" };
+                if (region == DungeonRegionProfile.Flooded)
+                    expected.Add("ArcDrone");
+                CollectionAssert.AreEquivalent(expected, seen, region.ToString());
             }
+        }
+
+        [Test]
+        public void ArcDrone_IsExclusiveToFloodedRegion_AndStartsAfterOpeningBand()
+        {
+            foreach (DungeonDepthBand band in Bands)
+            {
+                int flooded =
+                    DungeonBandProfiles.ForBand(DungeonRegionProfile.Flooded, band).ArcDroneWeight;
+                if (band == DungeonDepthBand.Shallow)
+                    Assert.AreEqual(0, flooded, "도입 구간에는 원거리 지역 적을 섞지 않는다");
+                else
+                    Assert.Greater(flooded, 0, $"Flooded/{band}");
+
+                Assert.AreEqual(
+                    0,
+                    DungeonBandProfiles.ForBand(DungeonRegionProfile.Facility, band).ArcDroneWeight,
+                    $"Facility/{band}");
+                Assert.AreEqual(
+                    0,
+                    DungeonBandProfiles.ForBand(DungeonRegionProfile.Ember, band).ArcDroneWeight,
+                    $"Ember/{band}");
+            }
+
+            Assert.AreEqual(MonsterRangedEffect.ConductiveShock, MonsterRoster.ArcDrone.RangedEffect);
+            Assert.IsFalse(MonsterRoster.ArcDrone.CanClimb, "기계 실루엣과 등반 규칙이 일치해야 한다");
         }
 
         [Test]
