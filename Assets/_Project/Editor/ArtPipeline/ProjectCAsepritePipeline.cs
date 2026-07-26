@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ProjectC.Core;
 using ProjectC.Gameplay;
 using UnityEditor;
 using UnityEditor.U2D.Aseprite;
@@ -291,8 +292,33 @@ namespace ProjectC.EditorTools
             }
 
             if (changed > 0)
-            {
                 serializedCatalog.ApplyModifiedPropertiesWithoutUndo();
+
+            // 액터 애니메이션 베이크 — 태그별 AnimationClip 서브에셋을 프레임 배열로 굽는다.
+            // actorKey는 Sprite 슬롯 필드명 계약(CatalogSlots)을 그대로 재사용한다.
+            var bakedAnimations = new List<ActorAnimationSet>();
+            foreach (string path in sources)
+            {
+                string assetName = Path.GetFileNameWithoutExtension(path);
+                if (duplicateNames.Contains(assetName) ||
+                    !assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase) ||
+                    !TryGetCatalogSlot(path, out string actorKey))
+                    continue;
+
+                ActorAnimationSet set = ActorAnimationBake.ExtractSet(path, actorKey);
+                if (set != null && set.HasClips)
+                    bakedAnimations.Add(set);
+            }
+
+            bakedAnimations.Sort((a, b) => string.CompareOrdinal(a.actorKey, b.actorKey));
+            if (!ActorAnimationBake.SetsEqual(catalog.actorAnimations, bakedAnimations))
+            {
+                catalog.actorAnimations = bakedAnimations;
+                changed++;
+            }
+
+            if (changed > 0)
+            {
                 EditorUtility.SetDirty(catalog);
                 AssetDatabase.SaveAssets();
             }
@@ -301,7 +327,8 @@ namespace ProjectC.EditorTools
             {
                 Debug.Log(
                     $"[Project-C Aseprite] {sources.Length}개 원본 검사, " +
-                    $"{bound}개 슬롯 연결, {changed}개 갱신");
+                    $"{bound}개 슬롯 연결, {changed}개 갱신, " +
+                    $"애니 세트 {bakedAnimations.Count}개");
             }
         }
 
@@ -341,9 +368,48 @@ namespace ProjectC.EditorTools
                 if (SelectFirstFrame(
                         AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>()) == null)
                     problems.Add($"Sprite 프레임이 없음: {path}");
+
+                CollectActorClipProblems(path, problems);
             }
 
             return problems;
+        }
+
+        /// <summary>
+        /// 액터 소스의 태그 클립 규약 검사 — 베이크에서 조용히 버려지거나 어긋나는 것을
+        /// 에디터에서 미리 잡는다 (파일명 계약처럼 "조용한 실패"를 만들지 않는다).
+        /// </summary>
+        private static void CollectActorClipProblems(string path, List<string> problems)
+        {
+            string assetName = Path.GetFileNameWithoutExtension(path);
+            if (!assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            AnimationClip[] clips =
+                AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().ToArray();
+            bool hasTaggedClip = false;
+            bool hasIdle = false;
+            foreach (AnimationClip clip in clips)
+            {
+                string tag = ActorAnimationBake.TagFromClipName(clip.name);
+                if (tag == null)
+                {
+                    problems.Add($"태그 규약(idle/walk/attack/hit/fall/death) 밖 클립 '{clip.name}': {path}");
+                    continue;
+                }
+
+                hasTaggedClip = true;
+                hasIdle |= tag == SpriteClipTags.Idle;
+                if (ActorAnimationBake.HasNonSpriteCurves(clip))
+                    problems.Add(
+                        $"클립 '{clip.name}'에 sprite 외 커브가 있음 — 베이크에서 버려진다" +
+                        $"(transform/color는 게임 코드 소유): {path}");
+                if (ActorAnimationBake.IsOneShotTag(tag) && clip.isLooping)
+                    problems.Add($"원샷 태그 '{clip.name}'가 루프로 임포트됨 — Aseprite Tag Repeat=1 확인: {path}");
+            }
+
+            if (hasTaggedClip && !hasIdle)
+                problems.Add($"태그 클립이 있는데 idle이 없음 — 재생기의 기본 상태가 비게 된다: {path}");
         }
 
         private static bool ContainsAsepriteSource(IEnumerable<string> paths)

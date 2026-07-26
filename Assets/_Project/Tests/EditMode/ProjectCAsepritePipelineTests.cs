@@ -106,6 +106,91 @@ namespace ProjectC.Tests
                     new[] { frameTen, frameTwo, frameZero }));
         }
 
+        [Test]
+        public void TagFromClipName_AcceptsExactAndSuffixForms_RejectsUnknown()
+        {
+            Assert.AreEqual("idle", ActorAnimationBake.TagFromClipName("idle"));
+            Assert.AreEqual("idle", ActorAnimationBake.TagFromClipName("Idle"));
+            Assert.AreEqual("idle", ActorAnimationBake.TagFromClipName("actor-knight_idle"));
+            Assert.AreEqual("death", ActorAnimationBake.TagFromClipName("actor-slime_Death"));
+            Assert.IsNull(ActorAnimationBake.TagFromClipName("sprint"));
+            Assert.IsNull(ActorAnimationBake.TagFromClipName("idle_extra"));
+            Assert.IsNull(ActorAnimationBake.TagFromClipName(null));
+        }
+
+        [Test]
+        public void ExtractClip_BakesSpriteCurve_FramesTimesLoopLength()
+        {
+            Sprite first = MakeSprite("actor-test_0");
+            Sprite second = MakeSprite("actor-test_1");
+            var clip = new AnimationClip { name = "actor-test_idle" };
+            var binding = UnityEditor.EditorCurveBinding.PPtrCurve(
+                string.Empty, typeof(SpriteRenderer), "m_Sprite");
+            UnityEditor.AnimationUtility.SetObjectReferenceCurve(clip, binding, new[]
+            {
+                new UnityEditor.ObjectReferenceKeyframe { time = 0f, value = first },
+                new UnityEditor.ObjectReferenceKeyframe { time = 0.1f, value = second }
+            });
+            var settings = UnityEditor.AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = true;
+            UnityEditor.AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+            SpriteClip baked = ActorAnimationBake.ExtractClip(clip);
+
+            Assert.IsNotNull(baked);
+            Assert.AreEqual("idle", baked.tag);
+            Assert.IsTrue(baked.loop);
+            CollectionAssert.AreEqual(new[] { first, second }, baked.frames);
+            CollectionAssert.AreEqual(new[] { 0f, 0.1f }, baked.frameStartTimes);
+            Assert.AreEqual(clip.length, baked.length);
+            Assert.IsTrue(baked.IsPlayable);
+
+            Object.DestroyImmediate(clip);
+        }
+
+        [Test]
+        public void ExtractClip_NoSpriteCurveOrUnknownTag_ReturnsNull()
+        {
+            var untagged = new AnimationClip { name = "sprint" };
+            Assert.IsNull(ActorAnimationBake.ExtractClip(untagged));
+
+            var noCurve = new AnimationClip { name = "idle" };
+            Assert.IsNull(ActorAnimationBake.ExtractClip(noCurve), "sprite 커브가 없으면 굽지 않는다");
+
+            Object.DestroyImmediate(untagged);
+            Object.DestroyImmediate(noCurve);
+        }
+
+        [Test]
+        public void SetsEqual_DetectsFrameAndTagChanges()
+        {
+            Sprite frame = MakeSprite("actor-eq_0");
+            System.Collections.Generic.List<ActorAnimationSet> Make(string tag) =>
+                new System.Collections.Generic.List<ActorAnimationSet>
+                {
+                    new ActorAnimationSet
+                    {
+                        actorKey = "goblin",
+                        clips = new System.Collections.Generic.List<SpriteClip>
+                        {
+                            new SpriteClip
+                            {
+                                tag = tag,
+                                loop = true,
+                                frames = new[] { frame },
+                                frameStartTimes = new[] { 0f },
+                                length = 0.1f
+                            }
+                        }
+                    }
+                };
+
+            Assert.IsTrue(ActorAnimationBake.SetsEqual(Make("idle"), Make("idle")));
+            Assert.IsFalse(ActorAnimationBake.SetsEqual(Make("idle"), Make("walk")));
+            Assert.IsFalse(ActorAnimationBake.SetsEqual(
+                Make("idle"), new System.Collections.Generic.List<ActorAnimationSet>()));
+        }
+
         private Sprite MakeSprite(string name)
         {
             Sprite sprite = Sprite.Create(

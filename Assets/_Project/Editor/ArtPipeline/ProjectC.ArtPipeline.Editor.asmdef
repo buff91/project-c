@@ -2,6 +2,7 @@
     "name": "ProjectC.ArtPipeline.Editor",
     "rootNamespace": "ProjectC.EditorTools",
     "references": [
+        "ProjectC.Core",
         "ProjectC.Gameplay",
         "Unity.2D.Aseprite.Editor"
     ],

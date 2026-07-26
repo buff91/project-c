@@ -23,7 +23,8 @@ PNG export를 카탈로그에 다시 꽂지 않는다.
 - 수직 이동: `env-stairs`, `env-ladder`, `env-stairs-up`, `env-stairs-down`
 - 방향형: 기존 `env-*-rising-right/left`
 - 액터: `actor-player`, `actor-knight`, `actor-ranger`, `actor-alchemist`,
-  `actor-goblin`, `actor-skeleton`, `actor-slime`, `actor-merchant`
+  `actor-goblin`, `actor-skeleton`, `actor-slime`, `actor-slinger`,
+  `actor-grave-warden`, `actor-merchant`
 - 허브/소품: `prop-campfire`, `prop-stash`, `prop-portal`, `prop-explosive-barrel`
 - 아이템/마커: 기존 `item-*`, `marker-player`, `marker-target`
 
