@@ -45,49 +45,114 @@ namespace ProjectC.Core
         Equipment = 3
     }
 
-    /// <summary>아이템 표시 정보의 단일 출처 — 인벤토리/HUD 가 여기서 이름·설명을 읽는다.</summary>
+    /// <summary>한 아이템의 분류·경제·표시·백팩 크기를 묶은 불변 정의.</summary>
+    public sealed class ItemDefinition
+    {
+        public ItemKind Kind { get; }
+        public ItemCategory Category { get; }
+        public string DisplayName { get; }
+        public string ShortLabel { get; }
+        public string Description { get; }
+        public int GoldValue { get; }
+        public int ShopPrice { get; }
+        public ItemFootprint Footprint { get; }
+
+        public ItemDefinition(
+            ItemKind kind,
+            ItemCategory category,
+            string displayName,
+            string shortLabel,
+            string description,
+            int goldValue,
+            int shopPrice,
+            ItemFootprint footprint)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                throw new ArgumentException("아이템 표시 이름이 비어 있다.", nameof(displayName));
+            if (string.IsNullOrWhiteSpace(shortLabel))
+                throw new ArgumentException("아이템 짧은 라벨이 비어 있다.", nameof(shortLabel));
+            if (string.IsNullOrWhiteSpace(description))
+                throw new ArgumentException("아이템 설명이 비어 있다.", nameof(description));
+            if (goldValue < 0) throw new ArgumentOutOfRangeException(nameof(goldValue));
+            if (shopPrice < 0) throw new ArgumentOutOfRangeException(nameof(shopPrice));
+            if (category == ItemCategory.Treasure && goldValue <= 0)
+                throw new ArgumentException("전리품은 생환 가치가 있어야 한다.", nameof(goldValue));
+            if (category != ItemCategory.Treasure && goldValue != 0)
+                throw new ArgumentException("전리품이 아닌 아이템은 생환 가치를 가질 수 없다.", nameof(goldValue));
+            if (footprint.Width <= 0 || footprint.Height <= 0)
+                throw new ArgumentException("아이템 백팩 크기는 양수여야 한다.", nameof(footprint));
+
+            Kind = kind;
+            Category = category;
+            DisplayName = displayName;
+            ShortLabel = shortLabel;
+            Description = description;
+            GoldValue = goldValue;
+            ShopPrice = shopPrice;
+            Footprint = footprint;
+        }
+    }
+
+    /// <summary>
+    /// 아이템 정의의 단일 출처. 새 종류는 이 표에 완전한 정의 하나를 추가해야 하며,
+    /// 미등록 enum 값은 소모품 기본값으로 조용히 흘려보내지 않고 즉시 실패한다.
+    /// </summary>
     public static class ItemCatalog
     {
-        public static readonly ItemKind[] AllKinds =
+        private static readonly ItemFootprint OneCell = new ItemFootprint(1, 1);
+        private static readonly ItemFootprint Tall = new ItemFootprint(1, 2);
+        private static readonly ItemFootprint Large = new ItemFootprint(2, 2);
+
+        private static readonly ItemDefinition[] Definitions =
         {
-            ItemKind.Potion, ItemKind.Bomb, ItemKind.FrostBomb,
-            ItemKind.OilFlask, ItemKind.ThrowingKnife, ItemKind.RecallScroll,
-            ItemKind.CoinPouch, ItemKind.Gemstone, ItemKind.Relic,
-            ItemKind.Herb, ItemKind.BlastPowder, ItemKind.FrostShard,
-            ItemKind.PipeSpear, ItemKind.HeavyWrench, ItemKind.SignShield, ItemKind.PaddedBoots,
-            ItemKind.CannedFood, ItemKind.ExtractionBeacon
+            Define(ItemKind.Potion, ItemCategory.Consumable, "회복 물약", "POTION",
+                "HP를 회복한다. 마시는 데 행동 1회를 소비한다.", shopPrice: 15),
+            Define(ItemKind.Bomb, ItemCategory.Consumable, "폭탄", "BOMB",
+                "3×3 폭발 — 화상·넉백, 약한 바닥 붕괴와 폭발통 유폭. 본인도 피해를 입는다.", shopPrice: 20),
+            Define(ItemKind.FrostBomb, ItemCategory.Consumable, "냉기 폭탄", "FROST",
+                "낮은 피해의 3×3 냉기 폭발 — 맞은 대상을 빙결시킨다. 폭발통은 터뜨리지 않는다.", shopPrice: 15),
+            Define(ItemKind.OilFlask, ItemCategory.Consumable, "기름 병", "OIL",
+                "3×3 범위에 기름을 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.", 10, footprint: Tall),
+            Define(ItemKind.ThrowingKnife, ItemCategory.Consumable, "투척 단검", "KNIFE",
+                "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.", 10, footprint: Tall),
+            Define(ItemKind.RecallScroll, ItemCategory.Consumable, "귀환 두루마리", "SCROLL",
+                "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.", 25, footprint: Tall),
+            Define(ItemKind.CoinPouch, ItemCategory.Treasure, "동전 주머니", "COIN",
+                "생환하면 소지금 $10을 얻는다. 죽으면 잃는다.", goldValue: 10),
+            Define(ItemKind.Gemstone, ItemCategory.Treasure, "보석", "GEM",
+                "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.", goldValue: 25),
+            Define(ItemKind.Relic, ItemCategory.Treasure, "고대 유물", "RELIC",
+                "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.", goldValue: 60, footprint: Large),
+            Define(ItemKind.Herb, ItemCategory.Material, "약초", "HERB",
+                "조합 재료. 2개를 빻으면 회복 물약이 된다.", shopPrice: 6),
+            Define(ItemKind.BlastPowder, ItemCategory.Material, "화약", "POWDER",
+                "조합 재료. 2개를 뭉치면 폭탄이 된다.", shopPrice: 8),
+            Define(ItemKind.FrostShard, ItemCategory.Material, "서리 수정", "SHARD",
+                "조합 재료. 폭탄에 섞으면 냉기 폭탄이 된다.", shopPrice: 5),
+            DefineEquipment(ItemKind.PipeSpear, "SPEAR", Tall),
+            DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
+            DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
+            DefineEquipment(ItemKind.PaddedBoots, "BOOTS", OneCell),
+            Define(ItemKind.CannedFood, ItemCategory.Consumable, "통조림", "FOOD",
+                "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.", shopPrice: 12),
+            Define(ItemKind.ExtractionBeacon, ItemCategory.Consumable, "비상 송출기", "BEACON",
+                "어디서든 즉시 생환한다. 들고 있는 것을 지키고 판을 끝낸다.", shopPrice: 70)
         };
 
-        /// <summary>생환 시 골드 환산 가치. 0 이면 소모품(창고 보관 대상).</summary>
-        public static int GoldValue(ItemKind kind)
+        private static readonly Dictionary<ItemKind, ItemDefinition> ByKind = BuildIndex();
+
+        public static readonly ItemKind[] AllKinds = BuildAllKinds();
+
+        public static IReadOnlyList<ItemDefinition> All => Definitions;
+
+        public static ItemDefinition For(ItemKind kind)
         {
-            switch (kind)
-            {
-                case ItemKind.CoinPouch: return 10;
-                case ItemKind.Gemstone: return 25;
-                case ItemKind.Relic: return 60;
-                default: return 0;
-            }
+            if (ByKind.TryGetValue(kind, out ItemDefinition definition)) return definition;
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "등록되지 않은 아이템 종류다.");
         }
 
-        /// <summary>
-        /// 아이템 분류의 단일 출처. 장비 여부는 <see cref="EquipmentCatalog"/>에서 파생해
-        /// 목록이 두 벌 생기지 않게 한다.
-        /// </summary>
-        public static ItemCategory CategoryOf(ItemKind kind)
-        {
-            if (GoldValue(kind) > 0) return ItemCategory.Treasure;
-            if (EquipmentCatalog.IsEquipment(kind)) return ItemCategory.Equipment;
-            switch (kind)
-            {
-                case ItemKind.Herb:
-                case ItemKind.BlastPowder:
-                case ItemKind.FrostShard:
-                    return ItemCategory.Material;
-                default:
-                    return ItemCategory.Consumable;
-            }
-        }
+        public static int GoldValue(ItemKind kind) => For(kind).GoldValue;
+        public static ItemCategory CategoryOf(ItemKind kind) => For(kind).Category;
 
         /// <summary>전리품(환금 전용) 여부. 던전 안에서는 사용 불가.</summary>
         public static bool IsTreasure(ItemKind kind) => CategoryOf(kind) == ItemCategory.Treasure;
@@ -96,25 +161,7 @@ namespace ProjectC.Core
         public static bool IsUsable(ItemKind kind) => CategoryOf(kind) == ItemCategory.Consumable;
 
         /// <summary>상점 구매가. 0 이면 비매품(전리품은 팔지 않는다 — 파밍으로만).</summary>
-        public static int ShopPrice(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: return 15;
-                case ItemKind.Bomb: return 20;
-                case ItemKind.FrostBomb: return 15;
-                case ItemKind.OilFlask: return 10;
-                case ItemKind.ThrowingKnife: return 10;
-                case ItemKind.RecallScroll: return 25;
-                case ItemKind.CannedFood: return 12;
-                case ItemKind.ExtractionBeacon: return 70;
-                // 조합 재료 — 재료로 만드는 쪽이 완제품 구매보다 싸게 유지한다.
-                case ItemKind.Herb: return 6;
-                case ItemKind.BlastPowder: return 8;
-                case ItemKind.FrostShard: return 5;
-                default: return 0;
-            }
-        }
+        public static int ShopPrice(ItemKind kind) => For(kind).ShopPrice;
 
         /// <summary>
         /// 긴 단위명이나 G 대신 픽셀 HUD에서 즉시 읽히는 달러 기호를 접두사로 사용한다.
@@ -125,99 +172,66 @@ namespace ProjectC.Core
         /// <summary>조합 재료 여부. 사용 불가 — 조합 화면에서만 소비된다.</summary>
         public static bool IsMaterial(ItemKind kind) => CategoryOf(kind) == ItemCategory.Material;
 
-        public static string DisplayName(ItemKind kind)
-        {
-            switch (kind)
-            {
-                case ItemKind.Potion: return "회복 물약";
-                case ItemKind.Bomb: return "폭탄";
-                case ItemKind.FrostBomb: return "냉기 폭탄";
-                case ItemKind.OilFlask: return "기름 병";
-                case ItemKind.ThrowingKnife: return "투척 단검";
-                case ItemKind.RecallScroll: return "귀환 두루마리";
-                case ItemKind.CoinPouch: return "동전 주머니";
-                case ItemKind.Gemstone: return "보석";
-                case ItemKind.Relic: return "고대 유물";
-                case ItemKind.Herb: return "약초";
-                case ItemKind.BlastPowder: return "화약";
-                case ItemKind.FrostShard: return "서리 수정";
-                case ItemKind.PipeSpear: return "긴 파이프";
-                case ItemKind.HeavyWrench: return "대형 렌치";
-                case ItemKind.SignShield: return "표지판 방패";
-                case ItemKind.PaddedBoots: return "완충 부츠";
-                case ItemKind.CannedFood: return "통조림";
-                case ItemKind.ExtractionBeacon: return "비상 송출기";
-                default: return kind.ToString();
-            }
-        }
+        public static string DisplayName(ItemKind kind) => For(kind).DisplayName;
 
         /// <summary>HUD/피드백용 짧은 영문 라벨. 픽셀 폭이 좁은 액션 문구에서 KR 이름 대신 쓴다.</summary>
-        public static string ShortLabel(ItemKind kind)
+        public static string ShortLabel(ItemKind kind) => For(kind).ShortLabel;
+
+        public static string Description(ItemKind kind) => For(kind).Description;
+
+        private static ItemDefinition Define(
+            ItemKind kind,
+            ItemCategory category,
+            string displayName,
+            string shortLabel,
+            string description,
+            int shopPrice = 0,
+            int goldValue = 0,
+            ItemFootprint? footprint = null)
         {
-            switch (kind)
-            {
-                case ItemKind.Potion: return "POTION";
-                case ItemKind.Bomb: return "BOMB";
-                case ItemKind.FrostBomb: return "FROST";
-                case ItemKind.OilFlask: return "OIL";
-                case ItemKind.ThrowingKnife: return "KNIFE";
-                case ItemKind.RecallScroll: return "SCROLL";
-                case ItemKind.CoinPouch: return "COIN";
-                case ItemKind.Gemstone: return "GEM";
-                case ItemKind.Relic: return "RELIC";
-                case ItemKind.Herb: return "HERB";
-                case ItemKind.BlastPowder: return "POWDER";
-                case ItemKind.FrostShard: return "SHARD";
-                case ItemKind.PipeSpear: return "SPEAR";
-                case ItemKind.HeavyWrench: return "WRENCH";
-                case ItemKind.SignShield: return "SHIELD";
-                case ItemKind.PaddedBoots: return "BOOTS";
-                case ItemKind.CannedFood: return "FOOD";
-                case ItemKind.ExtractionBeacon: return "BEACON";
-                default: return kind.ToString();
-            }
+            return new ItemDefinition(
+                kind, category, displayName, shortLabel, description,
+                goldValue, shopPrice, footprint ?? OneCell);
         }
 
-        public static string Description(ItemKind kind)
+        private static ItemDefinition DefineEquipment(
+            ItemKind kind,
+            string shortLabel,
+            ItemFootprint footprint)
         {
-            switch (kind)
+            EquipmentDefinition equipment = EquipmentCatalog.ForItem(kind) ??
+                throw new InvalidOperationException($"{kind} 장비 정의가 없다.");
+            return Define(
+                kind,
+                ItemCategory.Equipment,
+                equipment.DisplayName,
+                shortLabel,
+                equipment.Description,
+                footprint: footprint);
+        }
+
+        private static Dictionary<ItemKind, ItemDefinition> BuildIndex()
+        {
+            var result = new Dictionary<ItemKind, ItemDefinition>();
+            foreach (ItemDefinition definition in Definitions)
             {
-                case ItemKind.Potion:
-                    return "HP를 회복한다. 마시는 데 행동 1회를 소비한다.";
-                case ItemKind.Bomb:
-                    return "3×3 폭발 — 화상·넉백, 약한 바닥 붕괴와 폭발통 유폭. 본인도 피해를 입는다.";
-                case ItemKind.FrostBomb:
-                    return "낮은 피해의 3×3 냉기 폭발 — 맞은 대상을 빙결시킨다. 폭발통은 터뜨리지 않는다.";
-                case ItemKind.OilFlask:
-                    return "3×3 범위에 기름을 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.";
-                case ItemKind.ThrowingKnife:
-                    return "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.";
-                case ItemKind.RecallScroll:
-                    return "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.";
-                case ItemKind.CoinPouch:
-                    return "생환하면 소지금 $10을 얻는다. 죽으면 잃는다.";
-                case ItemKind.Gemstone:
-                    return "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.";
-                case ItemKind.Relic:
-                    return "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.";
-                case ItemKind.CannedFood:
-                    return "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.";
-                case ItemKind.ExtractionBeacon:
-                    return "어디서든 즉시 생환한다. 들고 있는 것을 지키고 판을 끝낸다.";
-                case ItemKind.PipeSpear:
-                case ItemKind.HeavyWrench:
-                case ItemKind.SignShield:
-                case ItemKind.PaddedBoots:
-                    // 장비 설명의 단일 출처는 EquipmentCatalog — 여기서 중복 정의하지 않는다.
-                    return EquipmentCatalog.ForItem(kind)?.Description ?? kind.ToString();
-                case ItemKind.Herb:
-                    return "조합 재료. 2개를 빻으면 회복 물약이 된다.";
-                case ItemKind.BlastPowder:
-                    return "조합 재료. 2개를 뭉치면 폭탄이 된다.";
-                case ItemKind.FrostShard:
-                    return "조합 재료. 폭탄에 섞으면 냉기 폭탄이 된다.";
-                default: return "";
+                if (result.ContainsKey(definition.Kind))
+                    throw new InvalidOperationException($"{definition.Kind} 아이템 정의가 중복됐다.");
+                result.Add(definition.Kind, definition);
             }
+
+            foreach (ItemKind kind in Enum.GetValues(typeof(ItemKind)))
+                if (!result.ContainsKey(kind))
+                    throw new InvalidOperationException($"{kind} 아이템 정의가 없다.");
+            return result;
+        }
+
+        private static ItemKind[] BuildAllKinds()
+        {
+            var result = new ItemKind[Definitions.Length];
+            for (int i = 0; i < Definitions.Length; i++)
+                result[i] = Definitions[i].Kind;
+            return result;
         }
     }
 

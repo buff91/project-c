@@ -285,9 +285,31 @@ namespace ProjectC.Tests
 
             foreach (ItemKind kind in ItemCatalog.AllKinds)
             {
-                Assert.IsFalse(string.IsNullOrWhiteSpace(ItemCatalog.DisplayName(kind)), kind.ToString());
-                Assert.IsFalse(string.IsNullOrWhiteSpace(ItemCatalog.Description(kind)), kind.ToString());
+                ItemDefinition definition = ItemCatalog.For(kind);
+                Assert.AreEqual(kind, definition.Kind);
+                Assert.AreEqual(definition.DisplayName, ItemCatalog.DisplayName(kind));
+                Assert.AreEqual(definition.ShortLabel, ItemCatalog.ShortLabel(kind));
+                Assert.AreEqual(definition.Description, ItemCatalog.Description(kind));
+                Assert.AreEqual(definition.Category, ItemCatalog.CategoryOf(kind));
+                Assert.AreEqual(definition.GoldValue, ItemCatalog.GoldValue(kind));
+                Assert.AreEqual(definition.ShopPrice, ItemCatalog.ShopPrice(kind));
+                Assert.AreEqual(definition.Footprint, BackpackRules.Footprint(kind));
+                Assert.IsFalse(string.IsNullOrWhiteSpace(definition.DisplayName), kind.ToString());
+                Assert.IsFalse(string.IsNullOrWhiteSpace(definition.ShortLabel), kind.ToString());
+                Assert.IsFalse(string.IsNullOrWhiteSpace(definition.Description), kind.ToString());
+                Assert.Greater(definition.Footprint.Width, 0, kind.ToString());
+                Assert.Greater(definition.Footprint.Height, 0, kind.ToString());
             }
+        }
+
+        [Test]
+        public void For_UnregisteredEnumValueThrowsInsteadOfUsingSilentDefaults()
+        {
+            var unknown = (ItemKind)999;
+
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => ItemCatalog.For(unknown));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => ItemCatalog.CategoryOf(unknown));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => BackpackRules.Footprint(unknown));
         }
     }
 }

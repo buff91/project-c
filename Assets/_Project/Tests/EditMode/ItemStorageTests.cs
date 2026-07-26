@@ -94,7 +94,7 @@ namespace ProjectC.Tests
                 Assert.AreEqual(
                     category == ItemCategory.Equipment,
                     EquipmentCatalog.IsEquipment(kind),
-                    $"{kind} — 장비 분류는 EquipmentCatalog 에서만 파생돼야 한다");
+                    $"{kind} — ItemCatalog와 EquipmentCatalog의 장비 목록이 어긋났다");
                 Assert.AreEqual(category == ItemCategory.Consumable, ItemCatalog.IsUsable(kind), $"{kind}");
             }
         }
