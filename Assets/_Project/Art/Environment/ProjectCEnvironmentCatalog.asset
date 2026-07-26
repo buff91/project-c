@@ -104,7 +104,8 @@ MonoBehaviour:
   goblin: {fileID: 21300000, guid: 7ff67453ca97d480d88a9ed4421f8a93, type: 3}
   skeleton: {fileID: 21300000, guid: ab7f344e226794bd89069311fc91b6db, type: 3}
   slime: {fileID: 21300000, guid: f166d5b1d9cfe4bd58763be1c0de5232, type: 3}
-  slinger: {fileID: 0}
+  slinger: {fileID: 1138881672649902624, guid: f88ee544c02bb4c69af2c570a70a4421, type: 3}
+  arcDrone: {fileID: 0}
   graveWarden: {fileID: 0}
   merchant: {fileID: 21300000, guid: 3d7833257dfec46fc91f747f23ebb9ab, type: 3}
   explosiveBarrel: {fileID: 21300000, guid: 4c8099366907c4441ba6cb466d3b2e32, type: 3}
@@ -113,6 +114,7 @@ MonoBehaviour:
   hubPortal: {fileID: 21300000, guid: e4d1ff0e00f914136a4586cb9c473035, type: 3}
   playerFootprint: {fileID: 21300000, guid: 63e3ddf2470b3425f9a80b064b7dfd7d, type: 3}
   selection: {fileID: 21300000, guid: e4d063a3610f0444096a92a37d8a4634, type: 3}
+  actorAnimations: []
   potion: {fileID: 21300000, guid: a7a56b266ed4a49e3b2234db75fcf583, type: 3}
   bomb: {fileID: 21300000, guid: 52c7ba7074469415dacd16d036c373a3, type: 3}
   frostBomb: {fileID: 21300000, guid: 0bec232e238bd45359b4cff188f5c97d, type: 3}

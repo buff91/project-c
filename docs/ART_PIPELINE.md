@@ -171,3 +171,15 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
 후면 벽은 횃불/배너/연금술 선반/무기 장식 모듈을 조합한다. 광원 오버레이는 정렬 오프셋 `-1`,
 바닥은 `-2`, 액터/소품은 `+1`을 사용하며 시점 회전 시 모두 같은 `GridPos`로 재투영한다.
 이 분리를 없애고 던전 바닥에 따뜻한 광원색을 굽지 말 것. FOV·기름·물·화상·빙결 색 판독이 우선이다.
+
+## 8. 로컬 자동화 진입점
+
+- 생성: ComfyUI Desktop의 `127.0.0.1:8188` REST API +
+  `python3 Tools/ArtPipeline/comfy_batch.py`
+- 정적 마감: `Tools/ArtPipeline/aseprite_conform.sh INPUT OUTPUT WIDTH HEIGHT strict`
+- 상세 실행법: `docs/art-direction/comfyui/README.md`
+
+ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자동 실행한다. Civitai 모델은
+체크포인트·LoRA·ControlNet·IPAdapter의 base model 세대를 맞추고, 채택 시 모델 버전·URL·
+라이선스를 prompt 문서에 기록한다. Aseprite conform은 캔버스·알파·공용 팔레트를 강제한 뒤
+정식 파일명의 `.aseprite`로 저장한다. 애니메이션 프레임 생성은 자동화 범위가 아니다.

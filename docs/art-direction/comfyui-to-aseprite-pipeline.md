@@ -5,6 +5,10 @@
 > 대체·강화하는 통제형 생성 루트다. 마감(그리드·피벗·팔레트 잠금)은 여전히 결정론적 단계
 > (Python 후처리 또는 Aseprite)가 맡는다.
 >
+> **자동화 결정(2026-07-26)**: 로컬 ComfyUI Desktop은 MCP가 아니라 `127.0.0.1:8188`
+> REST API로 제어한다(`Tools/ArtPipeline/comfy_batch.py`). 정적 최종본 승격은
+> Aseprite CLI/Lua(`aseprite_conform.sh`)를 사용한다. 실행 예시는 `comfyui/README.md`.
+>
 > 개념 워크플로 상위 문서: `ai-to-aseprite-workflow.md`. 규격은 `asset-spec-sheet.md`.
 > 팔레트 SSOT: `Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl`.
 

@@ -1,0 +1,93 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "zavychromaxl_v100.safetensors"
+    },
+    "_meta": {
+      "title": "Project-C SDXL Checkpoint"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["1", 0],
+      "clip": ["1", 1],
+      "lora_name": "project-c-pixelart-redmond-sdxl-v1-lite64.safetensors",
+      "strength_model": 0.45,
+      "strength_clip": 0.45
+    },
+    "_meta": {
+      "title": "PixelArtRedmond"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "Pixel Art, PixArFK, polished chunky isometric pixel art game actor, full body single post-apocalyptic scavenger slinger, three-quarter isometric view, crouched shoulders and backpack, one raised throwing arm, clearly visible sling strap, practical patched concrete-gray and rust-brown clothing, one tiny warning-neon red goggle point, strong readable silhouette, feet visible and level, isolated centered character, flat solid magenta background, crisp hard edges, deliberate pixel clusters, restrained colors"
+    },
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "multiple characters, cropped feet, ground shadow, scenery, floor, text, label, watermark, photorealism, smooth 3d, vector art, anti-aliasing haze, fantasy armor, medieval clothing, sword, shield, bow, neon overload, cyan body, symmetrical front portrait, close-up"
+    },
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Actor Draft Canvas"
+    }
+  },
+  "6": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["2", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0],
+      "seed": 42001,
+      "steps": 28,
+      "cfg": 6.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "Fixed Seed Draft"
+    }
+  },
+  "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Decode Actor"
+    }
+  },
+  "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["7", 0],
+      "filename_prefix": "project-c/actor-idle"
+    },
+    "_meta": {
+      "title": "Save Actor Draft"
+    }
+  }
+}
