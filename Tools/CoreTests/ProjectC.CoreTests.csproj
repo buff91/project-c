@@ -51,6 +51,7 @@
       새 테스트는 기본으로 여기 포함된다 — Core 규칙 테스트라면 그대로 두면 되고,
       Unity 타입을 쓴다면 이 목록에 한 줄 추가한다 (빌드 에러가 그걸 알려준다).
     -->
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/AtomicJsonStoreTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentSaveProfileTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentViewportServiceTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DisplaySettingsDataTests.cs" />

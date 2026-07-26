@@ -464,7 +464,8 @@ tileFloor == activeFloor → visible || explored
 
 ### 11.2 씬 얇은 진입점 & 서비스
 - **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력→`GridPos`/액션(장치 추상화), `ActorPicker` 주입.
-- **정적 서비스**: `RunSaveStore`(JSON 1파일)·`MetaStore`(영속 창고)·`DisplaySettingsStore`·`RunTelemetryStore`,
+- **정적 서비스**: `AtomicJsonStore`(임시 파일 교체 + 백업 복구)·`RunSaveStore`(체크포인트)·
+  `MetaStore`(영속 창고)·`DisplaySettingsStore`·`RunTelemetryStore`,
   `DevelopmentSaveProfile`(격리 개발 저장 루트)·`DevelopmentViewportService`(에디터 해상도/모드 강제).
 - **씬 라우팅**: `FrontEndFlow`(씬 이름 상수)·`TitleEntryRouting`(타이틀 목적지 + `이어하기`
   노출 규칙)·`DungeonSelection`(선택 던전 전달)·`MainMenuController`.

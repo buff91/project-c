@@ -1,4 +1,3 @@
-using System.IO;
 using ProjectC.Core;
 using UnityEngine;
 
@@ -7,28 +6,30 @@ namespace ProjectC.Gameplay
     /// <summary>메타 창고 파일 입출력. 판 종료(사망 포함)에도 유지된다.</summary>
     public static class MetaStore
     {
-        private static string SavePath => Path.Combine(
+        private static string SavePath => System.IO.Path.Combine(
             DevelopmentSaveProfile.ActiveRootPath,
             DevelopmentSaveProfile.MetaFileName);
 
         public static MetaSaveData LoadOrNew()
         {
-            if (!File.Exists(SavePath)) return new MetaSaveData();
-            try
+            if (AtomicJsonStore.TryLoad(
+                    SavePath,
+                    out MetaSaveData data,
+                    out bool recoveredFromBackup))
             {
-                return JsonUtility.FromJson<MetaSaveData>(File.ReadAllText(SavePath)) ?? new MetaSaveData();
+                if (recoveredFromBackup)
+                    Debug.LogWarning("[Meta] 손상된 메타 저장을 백업에서 복구했다.");
+                return data;
             }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[Meta] 창고 파일 파싱 실패 — 새로 시작: {e.Message}");
-                return new MetaSaveData();
-            }
+
+            if (AtomicJsonStore.HasSave(SavePath))
+                Debug.LogWarning("[Meta] 메타 저장과 백업을 읽지 못해 새로 시작한다.");
+            return new MetaSaveData();
         }
 
         public static void Save(MetaSaveData data)
         {
-            Directory.CreateDirectory(DevelopmentSaveProfile.ActiveRootPath);
-            File.WriteAllText(SavePath, JsonUtility.ToJson(data));
+            AtomicJsonStore.Save(SavePath, data);
         }
     }
 }
