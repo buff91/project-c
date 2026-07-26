@@ -339,34 +339,14 @@ namespace ProjectC.Core
             GridMap map,
             Random random,
             FloorPlan p,
-            DungeonMetaContext meta)
+            DungeonMetaContext meta,
+            DungeonRegionProfile region)
         {
             ItemKind RollKind()
             {
-                // 분배(/23): 물약3 · 폭탄3 · 냉기1 · 기름1 · 단검1 · 두루마리1 ·
-                // 통조림5(배고픔이 짧은 주기라 자주 먹어야 한다 — 굶어 죽는 게 기본값이 되면 안 된다) ·
-                // 동전2 · 보석1 · 유물1(깊은 층 한정, 얕으면 동전으로 강등) ·
-                // 약초2 · 화약1 · 서리 수정1(조합 재료, GDD §5.6)
-                int roll = random.Next(0, 23);
-                return meta.Resolve(RollRaw(roll));
-            }
-
-            // 분배 자체는 해금 상태와 무관하다 — 게이트는 결과를 치환할 뿐이다.
-            ItemKind RollRaw(int roll)
-            {
-                if (roll < 3) return ItemKind.Potion;
-                if (roll < 6) return ItemKind.Bomb;
-                if (roll < 7) return ItemKind.FrostBomb;
-                if (roll < 8) return ItemKind.OilFlask;
-                if (roll < 9) return ItemKind.ThrowingKnife;
-                if (roll < 10) return ItemKind.RecallScroll;
-                if (roll < 15) return ItemKind.CannedFood;
-                if (roll < 17) return ItemKind.CoinPouch;
-                if (roll < 18) return ItemKind.Gemstone;
-                if (roll < 19) return p.ProgressIndex >= 2 ? ItemKind.Relic : ItemKind.CoinPouch;
-                if (roll < 21) return ItemKind.Herb;
-                if (roll < 22) return ItemKind.BlastPowder;
-                return ItemKind.FrostShard;
+                int roll = random.Next(0, DungeonLootRules.RollCount);
+                return meta.Resolve(
+                    DungeonLootRules.Resolve(region, p.ProgressIndex, roll));
             }
 
             bool IsFree(GridPos pos) =>

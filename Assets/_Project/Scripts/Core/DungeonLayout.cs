@@ -371,7 +371,7 @@ namespace ProjectC.Core
                 PlaceRestSite(map, random, plan, floorCount);
                 PlacePuddle(map, random, plan);
                 PickEnemySpawns(map, random, plan, floorCount);
-                PlaceItems(map, random, plan, meta);
+                PlaceItems(map, random, plan, meta, region);
                 PlaceEquipment(map, random, plan, meta);
                 PlaceExtractionPoint(map, plan, floorCount);
                 PlaceBossLandmark(map, plan, floorCount);
