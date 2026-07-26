@@ -13,10 +13,10 @@
 
 | 항목 | 값 |
 |---|---|
-| 장르 | 모바일 아이소메트릭 다층(elevation) 던전 크롤러 (턴제 로그라이트) |
+| 장르 | 아이소메트릭 다층(elevation) 던전 크롤러 (턴제 로그라이트, 현재 PC 우선 검증) |
 | 엔진 | Unity 6000.5.4f1 · C# · 2D Isometric · URP 17.5 · Input System 1.19 |
-| C# 규모 | Core ≈ 4,785 LOC (41파일) · Gameplay ≈ 11,600 LOC (34파일) · Editor ≈ 800 LOC |
-| 테스트 | EditMode 646 케이스(41파일) · PlayMode 1 스모크 |
+| C# 규모 | 계속 변하는 실측치는 `docs/CODE_STRUCTURE.md`와 소스 트리를 따른다 |
+| 테스트 | Core shim + EditMode 규칙 테스트 + PlayMode 실제 씬 스모크 |
 | 어셈블리 | `ProjectC.Core`, `ProjectC.Gameplay`, `ProjectC.ArtPipeline.Editor`, `ProjectC.Tests.EditMode`, `ProjectC.Tests.PlayMode` |
 | 씬 흐름 | `MainMenu`(0) → `Hub`(1) → `IsoPrototype`(2) |
 
@@ -68,9 +68,9 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 Assets/_Project/
   Art/Source/Aseprite/   # 최종 픽셀아트 SSOT (.aseprite 원본)
   Editor/                # ArtPipeline(Aseprite 임포트 규격·Catalog 자동 연결), 씬 빌더, PlayFromMainMenu
-  Scripts/Core/          # 순수 C# 로직 (41파일) — 아래 §4~§9
-  Scripts/Gameplay/      # MonoBehaviour + 서비스 (34파일) — 아래 §10
-  Tests/EditMode/        # 규칙별 *Tests.cs (41파일, 646 케이스)
+  Scripts/Core/          # 순수 C# 로직 — 아래 §4~§9
+  Scripts/Gameplay/      # MonoBehaviour + 서비스 — 아래 §10
+  Tests/EditMode/        # 규칙별 *Tests.cs
   Tests/PlayMode/        # 실제 씬 흐름 통합 스모크
   Scenes/                # MainMenu.unity, Hub.unity, IsoPrototype.unity
   UI/                    # MainMenuHUD, HubHUD, PrototypeHUD.Mobile/Desktop, DisplaySettings, DesignSystem.uss
@@ -131,25 +131,12 @@ Tools/ArtPipeline/       # 플레이스홀더 스프라이트 생성 파이썬 �
 - `DungeonVisualContext`가 `FloorIndex`/`DepthIndex`/`Elevation`/`LocalHeight`를 분리 제공 —
   비주얼 카탈로그가 raw elevation의 부호로 깊이를 추론하지 않게 한다.
 
-> ⚠ **`DepthIndex`의 분리는 아직 이름뿐이다 (알려진 결함, v0.3.2에서 발견).**
-> `DungeonVisualContext.cs:73`이 `DepthIndex = Math.Max(0, -floorIndex)`로 **파생**하고
-> `DungeonDepthBandRules.ForFloor`도 같은 식을 쓴다. 즉 **진행 = 고도 하강**이 하드코딩돼 있다.
-> - **상승 던전에서 조용히 붕괴한다**: floorIndex가 양수면 `Max(0, -양수)`가 전부 **0**이라
->   모든 층이 B1/Shallow로 취급된다. 예외가 나지 않아 밴드 변주·적 혼합·휴식처·탈출구·
->   장비 드랍·보스 아레나가 **말없이 오작동**한다.
-> - **비단조 경로에서는 원리적으로 불가능하다**: `1F→3F→2F→5F`에서 2F의 진행 지수는
->   고도로 역산할 수 없다(GDD §5.1 규약).
-> - **고치는 방향은 파생 수정이 아니라 파생 제거다.** `DungeonFloorInfo`에 진행 지수를
->   1급 필드로 두고 생성기가 경로를 깔며 부여한다.
-> - **규칙 계층은 이미 준비돼 있다** — `DungeonRestRules.ShouldPlace`/`ExtractionRules.
->   HasExtractionPoint`/`EquipmentDropRules.AllowsDrop`/`MonsterRoster.PickForDepth`/
->   `DungeonBandProfiles.ForDepth`/`DungeonBossArenaRules.IsArenaFloor`가 전부
->   `depthIndex`를 **평범한 int 인자**로 받으므로 한 줄도 바뀌지 않는다.
->   갈아끼울 곳은 **파생식 8곳**뿐이다: `DungeonVisualContext`(2) · `RunSaveData.
->   ResolvePreviewDepth` · `IsoPrototypeDemo.Visibility`(3) · `.Lighting` · `.RunLifecycle.GlobalDepth`.
-> - 부수 정리: `DungeonLayout.TopFloorIndex/BottomFloorIndex`는 단조 경로를 전제한 이름이다 —
->   비단조 경로에서는 "진입/최종 층"이지 "최상/최하"가 아니다.
-> - 추적: `ROADMAP.md` → "첫 던전 전환 — 폐병원 / 상승 구조".
+> **진행 지수와 고도는 분리되어 있다.** `DungeonFloorInfo.ProgressIndex`는 생성기가 경로 순서대로
+> 부여하는 1급 데이터이고, 난이도·구간·휴식처·탈출구·드랍·보스 판정은 이 값을 사용한다.
+> `FloorIndex`/`Elevation`은 공간 배치·정렬·시야·낙하 전용이다. 과거의
+> `DepthIndex = Max(0, -floorIndex)` 역산과 `DungeonDepthBandRules.ForFloor`는 상승 던전에서
+> 모든 진행을 0으로 만들던 결함이어서 제거됐다. 내부 호환 이름 `DepthIndex`/`Shallow`/`Deep`을
+> 보더라도 고도나 사용자 표시명으로 해석하지 않는다.
 
 ---
 
@@ -445,19 +432,16 @@ tileFloor == activeFloor → visible || explored
 
 ## 11. Gameplay·프레젠테이션 계층
 
-### 11.1 IsoPrototypeDemo — 오케스트레이터 (partial 7개, ≈6,600 LOC)
+### 11.1 IsoPrototypeDemo — 오케스트레이터 (관심사별 partial)
 던전/허브를 실제로 세우고 굴리는 중심 MonoBehaviour. Core 규칙을 씬·스프라이트·연출로 번역한다.
 
-| 파일 | 책임 |
-|---|---|
-| `IsoPrototypeDemo.cs` | 상태·필드·이벤트, 빌드, 입력 라우팅(탭/스텝/상호작용), 턴/전투 실행, 세이브 |
-| `.Enemies.cs` | 적 페이즈(활성화→틱→Decide→실행), 스폰/증원, 보스 출구 봉인 |
-| `.Falls.cs` | `FallPlayer`/`FallEnemy`, 폭발/넉백/약한 바닥 붕괴/폭발통 밀기 |
-| `.Visibility.cs` | FOV 재계산, 수직 랜드마크/샤프트, 후면 벽, 플레이어 가림 처리 |
-| `.Sprites.cs` | 런타임 임시 픽셀 스프라이트 생성(아트 없을 때 폴백) |
-| `.CombatFx.cs` | 근접 돌진/스쿼시/플래시/버스트/카메라 흔들림, 상태 FX 아이콘 |
-| `.RestSites.cs` | 휴식처 배치·사용·가시성 |
-| `.BossArena.cs` | 최심층 제단(랜드마크) 렌더·FOV 추종, 아레나 위층 접근 전조 알림 |
+> 파셜 파일 수·줄 수·정확한 책임 목록은 자주 변하므로 `docs/CODE_STRUCTURE.md`를 SSOT로 삼는다.
+> 파셜 분할은 탐색성을 높이지만 상태 결합을 줄이지 않으며, 게임 상태를 몰라도 되는 코드는
+> `Prototype*Sprites`처럼 별 타입으로 추출한다.
+
+현재 파셜은 입력·이동·행동·적·낙하·시야·조명·생환·런 수명주기·보스·전투 FX 등으로 나뉜다.
+`IsoPrototypeDemo.Sprites.cs`는 픽셀을 직접 그리지 않고 격자 사실을 별도 스프라이트 팩토리에 넘기는
+어댑터다. 최신 전체 목록과 줄 수는 `docs/CODE_STRUCTURE.md`를 따른다.
 
 - 내부 에이전트(경량 뷰 홀더): `EnemyAgent`, `ItemAgent`, `RestSiteAgent`, `VerticalLandmarkAgent`.
 - 이벤트 다수(`PlayerHpChanged`, `ActiveFloorChanged`, `ExitChoiceRequested`…)로 HUD와 느슨 결합.
@@ -488,9 +472,12 @@ tileFloor == activeFloor → visible || explored
 
 ## 12. 아트 파이프라인 & 툴링 (Editor)
 
-- **ProjectCAsepritePipeline** (`AssetPostprocessor`) — `com.unity.2d.aseprite 5.0.3`. Point/PPU 64/Canvas Pivot/
-  무압축/AnimationClip 강제, 정식 파일명 첫 프레임을 `ProjectCEnvironmentCatalog`에 자동 연결. `Art/Runtime` PNG는 폴백.
-- 규격: 64×32(2:1) 바닥, PPU 64, elevation 1단=16px, 캐릭터 발밑 pivot, 4방향. `IsoGrid(1, 0.5, 0.25)`가 이 비율 사용.
+- **ProjectCAsepritePipeline** (`AssetPostprocessor`) — `com.unity.2d.aseprite 5.0.3`. Point/Canvas Pivot/
+  무압축/AnimationClip을 강제하고, 정식 파일명의 첫 프레임을 `ProjectCEnvironmentCatalog`에 자동 연결한다.
+  `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이다.
+- **최종 월드 아트 레짐**은 128×64/PPU 128이고 `ui-*`는 64를 유지한다. 절차 생성 폴백은
+  64×32 레짐으로 남아 있으며 스프라이트별 PPU로 같은 월드 크기에 공존한다. 정확한 임포트 규격은
+  `docs/ART_PIPELINE.md`, 파일별 구조는 `docs/CODE_STRUCTURE.md`를 따른다.
 - 에디터: `IsoPrototypeSceneBuilder`/`MainMenuSceneBuilder`(씬 자동 구성), `PlayFromMainMenu`, `ArtStyleCapture`.
 - `Tools/ArtPipeline/*.py` — 플레이스홀더 스프라이트 생성(AI 소스 확보 시 교체).
 
@@ -498,10 +485,10 @@ tileFloor == activeFloor → visible || explored
 
 ## 13. 테스트
 
-- **EditMode `ProjectC.Tests.EditMode`** — 646 케이스(41파일). 규칙별 1:1 매핑(`ShadowcastFovTests`,
+- **EditMode `ProjectC.Tests.EditMode`** — 규칙별 1:1 매핑(`ShadowcastFovTests`,
   `ProceduralDungeonTests`, `FallRulesTests`, `MonsterBrainTests`, `BackpackRulesTests`, `TravelRulesTests`…).
   생성 불변식(문 열면 전 walkable 도달·문 닫으면 북쪽 방 차단·Hole 정확히 한 층·2층 관통 방지)을 고정한다.
-- **PlayMode `ProjectC.Tests.PlayMode`** — 격리 개발 프로필에서 `MainMenu→Hub→B1→B10→보스 처치→출구 정복` 스모크.
+- **PlayMode `ProjectC.Tests.PlayMode`** — 격리 개발 프로필에서 `MainMenu→Hub→폐병원 B2→8F→보스 처치→옥상 출구 정복` 스모크.
 - 변경 후에는 숫자를 맹신하지 말고 둘 다 재실행(CLAUDE.md).
 
 ---
@@ -511,11 +498,11 @@ tileFloor == activeFloor → visible || explored
 > 현재 구조는 로직/비주얼 분리, 규칙별 SSOT, 데이터 중심 카탈로그가 잘 지켜지는 **일관된 코드베이스**다.
 > 아래는 리스크가 낮은 개선 후보로, 즉시 실행보다는 검토 대상이다(범위를 좁게 유지).
 
-1. **`IsoPrototypeDemo` 비대화 (≈6,600 LOC / 7 partial).** 던전·허브·전투·연출·세이브를 한 클래스가 소유한다.
+1. **`IsoPrototypeDemo` 비대화.** 던전·허브·전투·연출·세이브를 한 클래스가 소유한다.
    partial로 분할돼 있으나 여전히 상태 공유가 넓다. 후속 리팩터 후보: 허브 로직(`_hub*` 필드군)을 별도
    컴포넌트로, 낙하/폭발 시퀀스를 서비스로 추출. **단, 씬 와이어링 리스크가 커서 테스트 보강 후 진행**을 권장.
-2. **문서 최신화.** `ROADMAP.md` 환경 현황이 Unity `6000.5.0f1`/asmdef 3개로 적혀 있으나 실제는
-   `6000.5.4f1`/asmdef 5개다. `CLAUDE.md` 스냅샷과 정합.
+2. **문서의 변동 수치 최소화.** Unity 버전은 `ProjectSettings/ProjectVersion.txt`, 파일/파셜 지도는
+   `docs/CODE_STRUCTURE.md`, 현재 동작은 `docs/STATUS.md`를 SSOT로 삼아 중복 실측치가 다시 낡지 않게 한다.
 3. **`DungeonFloorInfo.EnemySpawn`** 단일-적 호환 shim(`EnemySpawns[0]`)은 다중 스폰 전환 잔재 — 사용처 정리 후 제거 검토.
 4. **`CombatRules`/`KnockbackRules`/`BombRules`/`OilRules` 등 규칙 클래스가 파일명과 불일치**
    (예: `CombatRules`는 `CombatantState.cs`에). 탐색성만 보면 규칙별 파일 분리가 낫지만, 현재 응집도도 합리적 —
