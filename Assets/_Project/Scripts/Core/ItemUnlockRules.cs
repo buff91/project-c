@@ -217,23 +217,26 @@ namespace ProjectC.Core
         /// (판 종료 화면·기록실)가 안내를 맡는다.
         /// </para>
         /// 전부 열렸으면 null.
+        /// <para>
+        /// <b>거리는 <see cref="RemainingFor"/> 하나로 잰다</b> — 예전에는 이 함수만
+        /// 「이번 판」 계측(<see cref="BountyRules.ReadMetric"/>)을 읽어서, 기록실은
+        /// 「역대 최고 + 투입 기록」으로 재고 판 종료 화면은 이번 판으로 재는 두 축이 생겼다.
+        /// 나쁜 판 뒤에는 같은 조건을 두 화면이 다른 숫자로 말했고, 투입한 기록이
+        /// 안내에 아예 안 잡혔다.
+        /// </para>
         /// </summary>
-        public static ItemUnlockCondition ClosestPending(
-            RunTelemetry telemetry,
-            IReadOnlyCollection<ItemKind> unlocked)
+        public static ItemUnlockCondition ClosestPending(MetaSaveData meta)
         {
+            if (meta == null) return null;
+
             ItemUnlockCondition best = null;
             int bestRemaining = int.MaxValue;
 
             foreach (ItemUnlockCondition condition in Conditions)
             {
-                if (Contains(unlocked, condition.Kind)) continue;
+                if (meta.IsItemUnlocked(condition.Kind)) continue;
 
-                int current = telemetry != null
-                    ? BountyRules.ReadMetric(condition.Metric, telemetry)
-                    : 0;
-                int remaining = condition.Target - current;
-                if (remaining <= 0) remaining = 0;
+                int remaining = RemainingFor(meta, condition);
                 if (remaining >= bestRemaining) continue;
 
                 bestRemaining = remaining;

@@ -106,21 +106,6 @@ namespace ProjectC.Tests
 
         // ── 판 종료 판정 ────────────────────────────────────────────────
 
-        private static RunTelemetry TelemetryWith(BountyMetric metric, int value)
-        {
-            var telemetry = new RunTelemetry();
-            switch (metric)
-            {
-                case BountyMetric.Kills: telemetry.kills = value; break;
-                case BountyMetric.BurnApplications: telemetry.burnApplications = value; break;
-                case BountyMetric.BarrelPushes: telemetry.barrelPushes = value; break;
-                case BountyMetric.SecretRoomsFound: telemetry.secretRoomsFound = value; break;
-                case BountyMetric.EnemyFalls: telemetry.enemyFalls = value; break;
-                default: Assert.Fail($"테스트가 {metric} 를 채우는 방법을 모른다."); break;
-            }
-            return telemetry;
-        }
-
         [Test]
         public void EvaluateUnlocks_OpensOnlyWhenTargetIsMet()
         {
@@ -162,17 +147,42 @@ namespace ProjectC.Tests
         public void ClosestPending_PicksTheNearestGoal_AndNullWhenAllOpen()
         {
             ItemUnlockCondition knife = ItemUnlockRules.Find(ItemKind.ThrowingKnife);
-            // 처치를 목표 직전까지 올리면 그것이 가장 가까운 목표여야 한다.
-            RunTelemetry telemetry = TelemetryWith(knife.Metric, knife.Target - 1);
+            // 최고 기록을 목표 직전까지 올리면 그것이 가장 가까운 목표여야 한다.
+            var meta = new MetaSaveData();
+            meta.RecordUnlockProgress(knife.Kind, knife.Target - 1);
 
-            ItemUnlockCondition closest =
-                ItemUnlockRules.ClosestPending(telemetry, new List<ItemKind>());
+            ItemUnlockCondition closest = ItemUnlockRules.ClosestPending(meta);
             Assert.AreEqual(ItemKind.ThrowingKnife, closest.Kind);
 
-            var all = ItemUnlockRules.Conditions.Select(c => c.Kind).ToList();
+            foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
+                meta.UnlockItem(condition.Kind);
             Assert.IsNull(
-                ItemUnlockRules.ClosestPending(telemetry, all),
+                ItemUnlockRules.ClosestPending(meta),
                 "전부 열렸으면 안내할 다음 목표가 없다.");
+        }
+
+        /// <summary>
+        /// 판 종료 안내와 기록실이 <b>같은 축</b>으로 거리를 재야 한다. 예전에는
+        /// <c>ClosestPending</c>만 이번 판 계측을 읽어서, 투입한 기록이 안내에 안 잡히고
+        /// 나쁜 판 뒤에는 두 화면이 같은 조건을 다른 숫자로 말했다.
+        /// </summary>
+        [Test]
+        public void ClosestPending_CountsInvestedRecords_LikeTheCodexDoes()
+        {
+            ItemUnlockCondition knife = ItemUnlockRules.Find(ItemKind.ThrowingKnife);
+            ItemUnlockCondition other = ItemUnlockRules.Conditions.First(c => c.Kind != knife.Kind);
+
+            // 이번 판 계측은 비어 있고, 진행은 전부 투입한 기록에서 나온다.
+            var meta = new MetaSaveData { records = knife.Target };
+            ItemUnlockRules.InvestRecords(meta, knife, knife.Target - 1);
+            meta.RecordUnlockProgress(other.Kind, 0);
+
+            Assert.AreEqual(
+                1, ItemUnlockRules.RemainingFor(meta, knife),
+                "투입한 기록만큼 남은 진행이 줄어야 한다.");
+            Assert.AreEqual(
+                ItemKind.ThrowingKnife, ItemUnlockRules.ClosestPending(meta).Kind,
+                "투입으로 가까워진 조건이 다음 목표여야 한다.");
         }
 
         [Test]

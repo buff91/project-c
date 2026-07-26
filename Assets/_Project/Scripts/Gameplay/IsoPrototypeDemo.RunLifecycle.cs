@@ -329,11 +329,12 @@ namespace ProjectC.Gameplay
 
             if (_lastRunUnlocks.Count == 0)
             {
-                ItemUnlockCondition next =
-                    ItemUnlockRules.ClosestPending(_runTelemetry, meta.UnlockedItemKinds());
+                // 기록실과 같은 축(역대 최고 + 투입 기록)으로 잰다 — 이번 판 계측으로 재면
+                // 나쁜 판 뒤에 안내가 0 으로 돌아가고 투입한 기록이 안 잡힌다.
+                ItemUnlockCondition next = ItemUnlockRules.ClosestPending(meta);
                 if (next != null)
                 {
-                    int current = BountyRules.ReadMetric(next.Metric, _runTelemetry);
+                    int current = next.Target - ItemUnlockRules.RemainingFor(meta, next);
                     NextUnlockHint =
                         $"{ItemCatalog.DisplayName(next.Kind)} — {next.Requirement} " +
                         $"({current}/{next.Target})";

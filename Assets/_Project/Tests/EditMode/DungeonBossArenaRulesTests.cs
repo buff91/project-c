@@ -30,25 +30,55 @@ namespace ProjectC.Tests
         public void TryApproachCue_OnlyOnFloorAboveArena_AndNamesTheBoss()
         {
             Assert.IsTrue(
-                DungeonBossArenaRules.TryApproachCue("묘지기", 8, 10, bossDefeated: false, out string message));
+                DungeonBossArenaRules.TryApproachCue(
+                    "묘지기", DungeonProgressDirection.Descend, 8, 10, bossDefeated: false, out string message));
             StringAssert.Contains("묘지기", message);
 
             Assert.IsFalse(
-                DungeonBossArenaRules.TryApproachCue("묘지기", 7, 10, bossDefeated: false, out _),
+                DungeonBossArenaRules.TryApproachCue(
+                    "묘지기", DungeonProgressDirection.Descend, 7, 10, bossDefeated: false, out _),
                 "두 층 위에서는 아직 알리지 않는다");
             Assert.IsFalse(
-                DungeonBossArenaRules.TryApproachCue("묘지기", 9, 10, bossDefeated: false, out _),
+                DungeonBossArenaRules.TryApproachCue(
+                    "묘지기", DungeonProgressDirection.Descend, 9, 10, bossDefeated: false, out _),
                 "아레나 층에서는 전조가 아니라 실물이 기다린다");
+        }
+
+        /// <summary>
+        /// 전조가 가리키는 쪽은 던전 방향을 타야 한다. 문구가 "한 층 아래"로 고정이던 시절
+        /// 상승 던전(폐병원)에서 정반대를 가리켰다 — 규칙이 아니라 <b>안내</b>의 결함이라
+        /// 테스트가 없으면 다시 굳는다.
+        /// </summary>
+        [Test]
+        public void TryApproachCue_PointsTheWayProgressActuallyGoes()
+        {
+            Assert.IsTrue(DungeonBossArenaRules.TryApproachCue(
+                "감시자", DungeonProgressDirection.Ascend, 8, 10, bossDefeated: false, out string up));
+            StringAssert.Contains("위", up, "상승 던전에서 보스는 한 층 위에 있다");
+            Assert.IsFalse(up.Contains("아래"), "상승 던전에서 '아래'는 거짓말이다");
+
+            Assert.IsTrue(DungeonBossArenaRules.TryApproachCue(
+                "감시자", DungeonProgressDirection.Descend, 8, 10, bossDefeated: false, out string down));
+            StringAssert.Contains("아래", down);
+
+            // Inward 는 고도가 진행 축이 아니라 위/아래 어휘 자체를 쓰지 않는다.
+            Assert.IsTrue(DungeonBossArenaRules.TryApproachCue(
+                "감시자", DungeonProgressDirection.Inward, 8, 10, bossDefeated: false, out string inward));
+            StringAssert.Contains("구역", inward);
+            Assert.IsFalse(inward.Contains("아래") || inward.Contains("위에서"),
+                "고도가 진행 축이 아닌 던전에 층 방향 어휘를 붙이지 않는다");
         }
 
         [Test]
         public void TryApproachCue_SilentWhenBossIsGoneOrAbsent()
         {
             Assert.IsFalse(
-                DungeonBossArenaRules.TryApproachCue("묘지기", 8, 10, bossDefeated: true, out _),
+                DungeonBossArenaRules.TryApproachCue(
+                    "묘지기", DungeonProgressDirection.Descend, 8, 10, bossDefeated: true, out _),
                 "이미 처치한 위협은 다시 예고하지 않는다");
             Assert.IsFalse(
-                DungeonBossArenaRules.TryApproachCue(null, 8, 10, bossDefeated: false, out _),
+                DungeonBossArenaRules.TryApproachCue(
+                    null, DungeonProgressDirection.Descend, 8, 10, bossDefeated: false, out _),
                 "보스 없는 던전은 전조도 없다");
         }
 
