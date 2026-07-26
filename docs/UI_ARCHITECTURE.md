@@ -27,13 +27,14 @@
 | 인게임 HUD (HP/자원/턴/미니맵/층·높이) | **UI Toolkit** | 상시 오버레이 |
 | 인벤토리 + 조합 | **UI Toolkit** | 6×4 멀티슬롯 백팩(`BackpackLayout`)·레시피 |
 | 메인메뉴 / 설정 | **UI Toolkit** | |
-| 메타 프로그레션 해금 | **UI Toolkit** | 레시피/시작장비/직업 |
+| 메타 프로그레션 해금 | **UI Toolkit** | 레시피/도구/시작 장비/시설 (직업 없음) |
 | 결과 / 게임오버 | **UI Toolkit** | |
 | 오브젝트 상호작용 팝업 (밀기/부수기/열기/줍기) | **UGUI** | 탭한 오브젝트에 앵커 (GDD §4.2) |
 | 조준·타겟·높이 마커 | **UGUI** | 타일/월드 좌표 추종 |
 | 플로팅 데미지 숫자, 월드 툴팁 | **UGUI** | 엔티티 추종 |
 
-> 상호작용 UI의 입력 소비 지점은 `Assets/_Project/Scripts/Gameplay/IsoTapInput.cs`의 `OnTileTapped`(현재 `TODO(M1)`). 게임 로직은 어떤 UI 시스템인지 몰라도 되게 유지.
+> 상호작용 입력은 `IsoTapInput`이 타일/액터 선택으로 추상화하고 `IsoPrototypeDemo`의 문맥 행동 경로로
+> 전달한다. 게임 로직은 어떤 UI 시스템이나 입력 장치에서 왔는지 몰라도 되게 유지한다.
 
 현재 `PrototypeHUD`의 `action-wheel`은 플레이어 화면 좌표를 따라가는 UI Toolkit
 프로토타입이다. v1.5에서는 창 형태의 2×3 팔레트를 쓰지 않고, 플레이어 중심을 비운
