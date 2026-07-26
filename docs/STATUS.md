@@ -150,6 +150,8 @@
   깊이별 변주는 이 공통 톤 위에서만
   제한적으로 적용하며, 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도와 전면 두께로 구분한다.
   **깊이 변주의 통로는 세 가지뿐이다** — 밴드 스프라이트 슬롯, 구조(캐치워크 길이), 광원 밀도(등잔 희소도).
+  단 밴드 바닥 아트가 도착하기 전까지는 절차 오버레이(`BandOverlayColor`)가 밴드 슬롯을 **임시 대행**한다 —
+  역할색 안에서 패턴 밀도만 변주하며, 전용 슬롯이 채워지는 순간 자동 비활성(임시 조치, 아트 도착 시 제거 대상).
   `DungeonSurfaceFor`의 석재색은 모든 깊이에서 같아야 한다(테스트로 고정). 값은 `DungeonBandProfile`.
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
   최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.

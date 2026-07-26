@@ -110,6 +110,32 @@ namespace ProjectC.Tests.EditMode
         }
 
         [Test]
+        public void MappedTile_BandOverlay_CachesPerBand_NeverSharesAcrossBands()
+        {
+            // 캐시 키에 밴드가 빠지면 첫 밴드가 그린 결과를 전 층이 재사용한다 — 이 계약을 고정한다.
+            var environment = NewEnvironment();
+            Sprite floor = MakeReadableSprite(128, 64, 128f, "floor-band");
+            var baseColor = new Color32(84, 74, 66, 255);
+
+            Sprite mid = environment.GetMappedTileSprite(
+                floor, baseColor, extruded: false, hubFaces: false, ProjectC.Core.DungeonDepthBand.Mid);
+            Sprite deep = environment.GetMappedTileSprite(
+                floor, baseColor, extruded: false, hubFaces: false, ProjectC.Core.DungeonDepthBand.Deep);
+            Sprite midAgain = environment.GetMappedTileSprite(
+                floor, baseColor, extruded: false, hubFaces: false, ProjectC.Core.DungeonDepthBand.Mid);
+            Sprite shallowDefault = environment.GetMappedTileSprite(
+                floor, baseColor, extruded: false, hubFaces: false);
+            Sprite shallowExplicit = environment.GetMappedTileSprite(
+                floor, baseColor, extruded: false, hubFaces: false, ProjectC.Core.DungeonDepthBand.Shallow);
+
+            Assert.AreNotSame(mid, deep, "밴드가 다르면 다른 스프라이트여야 한다");
+            Assert.AreNotSame(mid, shallowDefault, "오버레이 밴드는 공용 바닥과 달라야 한다");
+            Assert.AreSame(mid, midAgain, "같은 밴드는 캐시를 재사용해야 한다");
+            Assert.AreSame(shallowDefault, shallowExplicit, "기본 인자 = Shallow(오버레이 없음)");
+            Assert.AreEqual(128f, mid.pixelsPerUnit, "오버레이가 레짐/PPU를 바꾸면 안 된다");
+        }
+
+        [Test]
         public void MappedTile_NonIntegerScale_ReturnsSourceUntouched()
         {
             var environment = NewEnvironment();

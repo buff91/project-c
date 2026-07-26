@@ -194,6 +194,37 @@ namespace ProjectC.Gameplay
             }
         }
 
+        /// <summary>
+        /// 이 밴드의 바닥이 전용 슬롯 없이 공용 바닥으로 폴백되는 상태인가.
+        /// 절차 밴드 오버레이(임시 — 밴드 아트 도착 전 대행)는 이때만 켠다.
+        /// 전용 아트가 슬롯에 연결되는 순간 자동으로 꺼진다. 판정은 FloorFor의 선택 사슬과
+        /// 동일해야 한다 — 어긋나면 전용 아트 위에 오버레이가 얹히거나 폴백이 민짜가 된다.
+        /// </summary>
+        public bool BandFloorFallsBackToShared(DungeonVisualContext context)
+        {
+            Sprite flat;
+            Sprite raised;
+            switch (context.DepthBand)
+            {
+                case DungeonDepthBand.Mid:
+                    flat = midFloor;
+                    raised = midRaisedFloor;
+                    break;
+                case DungeonDepthBand.Deep:
+                    flat = deepFloor;
+                    raised = deepRaisedFloor;
+                    break;
+                case DungeonDepthBand.Boss:
+                    flat = bossFloor != null ? bossFloor : deepFloor;
+                    raised = bossRaisedFloor;
+                    break;
+                default:
+                    return false; // Shallow은 공용 바닥이 곧 정답 — 오버레이 없음.
+            }
+
+            return (context.IsRaised && raised != null ? raised : flat) == null;
+        }
+
         private Sprite FloorFor(DungeonVisualContext context)
         {
             Sprite flat;

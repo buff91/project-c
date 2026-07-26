@@ -120,7 +120,20 @@ namespace ProjectC.Gameplay
             {
                 Sprite mapped = _palette.Catalog.TileFor(kind, context);
                 if (mapped != null)
-                    return GetMappedTileSprite(mapped, baseColor, extruded, facts.HubMode);
+                {
+                    // 밴드 전용 바닥 아트가 없는 동안만 절차 오버레이가 슬롯을 임시 대행한다
+                    // (docs/STATUS.md "깊이 변주의 통로" 참조 — 전용 아트가 오면 자동 비활성).
+                    // Hole/WeakFloor는 바닥이 아니라 전용 표식이라 마모를 얹지 않는다.
+                    DungeonDepthBand overlayBand =
+                        !facts.HubMode &&
+                        kind != TileKind.Hole &&
+                        kind != TileKind.WeakFloor &&
+                        _palette.Catalog.BandFloorFallsBackToShared(context)
+                            ? context.DepthBand
+                            : DungeonDepthBand.Shallow;
+                    return GetMappedTileSprite(
+                        mapped, baseColor, extruded, facts.HubMode, overlayBand);
+                }
             }
 
             string key =
@@ -269,7 +282,8 @@ namespace ProjectC.Gameplay
             Sprite topSprite,
             Color32 baseColor,
             bool extruded,
-            bool hubFaces)
+            bool hubFaces,
+            DungeonDepthBand overlayBand = DungeonDepthBand.Shallow)
         {
             Texture2D source = topSprite.texture;
             Rect sourceRect = topSprite.rect;
@@ -284,9 +298,11 @@ namespace ProjectC.Gameplay
                 sourceHeight != TilePixelHeight * scale)
                 return topSprite;
 
+            // 캐시 키에 밴드가 반드시 들어간다 — 빠지면 첫 밴드가 그린 결과를 전 층이 재사용한다.
+            // 타일별 variant는 키에 넣지 않는다(타일 수만큼 텍스처가 생기는 캐시 폭발 방지).
             string key =
                 $"mapped-tile-{topSprite.name}-{sourceWidth}x{sourceHeight}" +
-                $"-{baseColor.r}-{baseColor.g}-{baseColor.b}-x{extruded}";
+                $"-{baseColor.r}-{baseColor.g}-{baseColor.b}-x{extruded}-b{overlayBand}";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             int textureHeight = (extruded ? 48 : TilePixelHeight) * scale;
@@ -304,8 +320,14 @@ namespace ProjectC.Gameplay
             for (int px = 0; px < sourceWidth; px++)
             {
                 Color pixel = pixels[py * sourceWidth + px];
-                if (pixel.a > 0f)
-                    texture.SetPixel(px, py + topOffset, ToneMapEnvironmentPixel(pixel, baseColor));
+                if (pixel.a <= 0f) continue;
+                Color32? overlay = BandOverlayColor(overlayBand, px / scale, py / scale);
+                texture.SetPixel(
+                    px,
+                    py + topOffset,
+                    overlay.HasValue
+                        ? ToRuntimeColor(overlay.Value, pixel.a)
+                        : ToneMapEnvironmentPixel(pixel, baseColor));
             }
 
             texture.Apply(false, true);
@@ -354,6 +376,40 @@ namespace ProjectC.Gameplay
             cached = CreateSprite(texture, pivot, sourceSprite.pixelsPerUnit);
             _spriteCache[key] = cached;
             return cached;
+        }
+
+        /// <summary>
+        /// 절차 밴드 오버레이 — **임시 조치.** 밴드 전용 바닥 슬롯(mid/deep/boss)이 비어 있는
+        /// 동안만 공용 바닥 위에 층대(帶) 구분을 얹는다. 전용 아트가 연결되면 호출부 판정
+        /// (BandFloorFallsBackToShared)이 자동으로 끈다 — 그때 이 함수는 지워도 된다.
+        ///
+        /// 규칙: 석재 "색"은 깊이별로 바꾸지 않는다(DungeonSurfaceFor 테스트 고정) —
+        /// 기존 역할색(Seam/StoneShadow/StoneLight/Moss) 안에서 **배치 밀도만** 변주한다.
+        /// 좌표는 원본 픽셀 밀도(64-공간)로 받아 128-레짐에서도 패턴 간격이 유지된다.
+        /// </summary>
+        private Color32? BandOverlayColor(DungeonDepthBand band, int sx, int sy)
+        {
+            switch (band)
+            {
+                case DungeonDepthBand.Mid:
+                    // 마모·파편 — 드문 깨짐 군집이 "쓰인 지 오래된 층"을 알린다.
+                    if ((sx + sy * 5) % 31 == 0) return _palette.StoneShadow;
+                    if ((sx * 3 - sy + 7) % 43 == 0) return _palette.Seam;
+                    return null;
+                case DungeonDepthBand.Deep:
+                    // 잠식 — 이끼/오염 군집이 늘고 그림자 얼룩이 붙는다.
+                    if ((sx + sy * 3) % 23 == 0 && (sx + sy) % 2 == 0) return _palette.Moss;
+                    if ((sx * 5 + sy * 2) % 41 == 0) return _palette.StoneShadow;
+                    return null;
+                case DungeonDepthBand.Boss:
+                    // 아레나 — 줄눈이 도드라지고 파편·하이라이트가 최다.
+                    if ((sx + sy * 2) % 17 == 0) return _palette.Seam;
+                    if ((sx * 3 + sy) % 29 == 0) return _palette.StoneShadow;
+                    if ((sx * 7 - sy + 11) % 47 == 0) return _palette.StoneLight;
+                    return null;
+                default:
+                    return null;
+            }
         }
 
         private Color ToneMapEnvironmentPixel(
