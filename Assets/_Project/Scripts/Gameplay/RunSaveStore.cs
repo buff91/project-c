@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace ProjectC.Gameplay
 {
-    /// <summary>층 체크포인트 저장 파일 입출력. JSON 한 파일, 판 종료 시 삭제.</summary>
+    /// <summary>층 체크포인트 저장 파일 입출력. 원자적 JSON + 직전 정상 백업, 판 종료 시 삭제.</summary>
     public static class RunSaveStore
     {
         /// <summary>메인 메뉴의 "이어하기"가 켠다. 게임 씬이 소비 후 끈다.</summary>
