@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using ProjectC.EditorTools;
+using ProjectC.Gameplay;
 using UnityEngine;
 
 namespace ProjectC.Tests

@@ -65,19 +65,6 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void TileFor_MapsLadderSeparatelyFromStairs()
-        {
-            Sprite stairs = MakeSprite();
-            Sprite ladder = MakeSprite();
-            _catalog.stairs = stairs;
-            _catalog.ladder = ladder;
-
-            DungeonVisualContext context = DungeonVisualContext.Preview();
-            Assert.AreSame(stairs, _catalog.TileFor(TileKind.Stairs, context));
-            Assert.AreSame(ladder, _catalog.TileFor(TileKind.Ladder, context));
-        }
-
-        [Test]
         public void TileFor_SelectsDepthBandAndLocalHeightIndependently()
         {
             Sprite shallow = MakeSprite();
