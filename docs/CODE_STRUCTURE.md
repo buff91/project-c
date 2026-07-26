@@ -85,10 +85,11 @@
 - **시야**: `SightRules.cs`(수평·경사·수직 시야선 + 개구부 투시 + 근접 도달 기하 + 컬럼 span
   해석 `ViewColumn`) · `GridVisibility.cs`(옥탄트 셰도우캐스팅 골격만; 컬럼 판정은 위임) —
   옛 `VerticalOpeningRules`는 `SightRules`에 흡수됐다.
-- **아이템/상호작용**: `Items.cs`(`ItemKind`·`ItemCategory`·`ItemCatalog`·`Inventory`·`ItemSpawn`) ·
+- **아이템/상호작용**: `Items.cs`(`ItemKind`·`ItemDefinition`·`ItemCatalog`·`Inventory`·`ItemSpawn`) ·
   `ItemStorage.cs`(수량 목록 저장 연산) · `Interactions.cs`(`OilRules`·`BombRules`·`BombResult`).
-  **아이템 종류를 늘릴 때 손댈 곳은 `ItemKind` + `ItemCatalog` 뿐이다** — 세이브·창고·로드아웃은
-  목록 기반이라 필드를 추가하지 않는다.
+  **아이템 종류를 늘릴 때 손댈 곳은 `ItemKind` + `ItemCatalog`의 정의 한 줄뿐이다** — 분류·경제·표시·
+  백팩 크기는 `ItemDefinition` 하나에 모여 있고, 미등록 enum은 즉시 실패한다. 세이브·창고·로드아웃은
+  목록 기반이라 필드를 추가하지 않는다. 장비 행동 규칙과 제작가는 계속 `EquipmentCatalog`가 소유한다.
 - **던전 생성**: `DungeonLayout.cs`(`DungeonFloorInfo`·`DungeonLayout`·`DungeonGenerator.Generate`+헬퍼)
   + `DungeonGenerator.Planning.cs` / `.Carving.cs` / `.Placement.cs` — `partial static class`로 단계 분할.
 - **조명**: `GridLighting.cs` *(main 브랜치, 병합됨)*.
@@ -107,7 +108,7 @@
 | 백팩 ↔ 세이브 아이템 수량 매핑 | `RunSaveData.WriteItems` / `AddItemsTo` |
 | 몬스터 표시명·피해소스 매칭 | `MonsterArchetype.DisplayName` + `MonsterRoster.MatchSource` |
 | 아이템 짧은 라벨(HUD) | `ItemCatalog.ShortLabel` |
-| 아이템 표시 정보(이름·설명·가격) | `ItemCatalog` |
+| 아이템 분류·표시·경제·백팩 크기 | `ItemCatalog`의 `ItemDefinition` 표 |
 | 원소 반응 상태 부여(폭발 후) | `IsoPrototypeDemo.Falls.ApplyStatusToCombatantsInRegion` |
 | 원거리 명중 연출 | `IsoPrototypeDemo.Actions.FireRanged` |
 | 시야선·수직 개구부·근접 도달 기하·컬럼 span 해석 | `SightRules` (`CombatRules`·`GridVisibility`가 위임) |
@@ -121,7 +122,7 @@
 | 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` |
 | 장비 정의·효과 | `EquipmentCatalog` (전투 보정은 `CombatLoadout`) |
 | 장비 제작·장착 | `ForgeRules` (+ `MetaSaveData.equippedWeaponId/GearId`) |
-| 아이템 백팩 면적 | `BackpackRules.Footprint` |
+| 아이템 백팩 면적 | `ItemCatalog.For(kind).Footprint` (`BackpackRules.Footprint`은 호환 위임) |
 | 아이템 분류(소모품/전리품/재료/장비) | `ItemCatalog.CategoryOf` |
 | 아이템 수량 저장·복원 | `ItemStorage` (`MetaSaveData.stash/loadout`·`RunSaveData.items` 공유) |
 | 플레이어 기본 수치·기본 지급품 | `SurvivorProfile` (영웅 3종/`HeroRoster`를 대체 — 직업 없음) |
@@ -136,7 +137,6 @@
 리팩토링 감사에서 식별했으나, 순회 순서·타이밍·런타임 입력에 의존해 **테스트 실행 없이는
 안전을 증명할 수 없어 보류**한 항목. 반영 시 EditMode/PlayMode로 가드할 것.
 
-- `ItemDefinition` 단일 표(Gold/Shop/Desc/Footprint 스위치 통합) — `ShortLabel`만 선반영.
 - 블라스트 3×3 · 젖은 웅덩이 BFS 공용 이터레이터(`ShockRules`/`WaterRules`/`Items`/`SecretRoomRules`).
 - 공용 `Tween(duration, step)` 코루틴(수기 애니메이션 ~8곳).
 - 입력 소스 추상화(`IsoTapInput`의 `#if` 5중 + HUD 포인터/키보드 헬퍼).
