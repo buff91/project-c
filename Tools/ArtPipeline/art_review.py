@@ -920,7 +920,6 @@ CREATE TABLE IF NOT EXISTS apply_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, created_at);
-CREATE INDEX IF NOT EXISTS idx_jobs_batch ON jobs(batch_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_candidates_job ON candidates(job_id, ordinal);
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_actions_status ON actions(status, created_at);
@@ -976,6 +975,10 @@ class ReviewStore:
                     connection.execute(
                         f"ALTER TABLE jobs ADD COLUMN {column} TEXT"
                     )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_jobs_batch "
+                "ON jobs(batch_id, created_at)"
+            )
             candidate_columns = {
                 row["name"]
                 for row in connection.execute(

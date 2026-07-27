@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -333,6 +334,43 @@ class StoreTests(unittest.TestCase):
         self.assertIsNotNone(claimed)
         self.assertEqual(self.job_id, claimed["id"])
         self.assertIsNone(self.store.claim_job())
+
+    def test_legacy_database_adds_batch_columns_before_index(self) -> None:
+        legacy_path = self.root / "legacy.sqlite3"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE jobs (
+                    id TEXT PRIMARY KEY,
+                    recipe_id TEXT NOT NULL,
+                    recipe_path TEXT NOT NULL,
+                    recipe_hash TEXT NOT NULL,
+                    recipe_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    requested_by TEXT NOT NULL,
+                    candidate_count INTEGER NOT NULL,
+                    base_seed INTEGER NOT NULL,
+                    notes TEXT NOT NULL DEFAULT '',
+                    parent_candidate_id TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    error TEXT
+                )
+                """
+            )
+        ReviewStore(legacy_path)
+        with sqlite3.connect(legacy_path) as connection:
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(jobs)")
+            }
+            indexes = {
+                row[1]
+                for row in connection.execute("PRAGMA index_list(jobs)")
+            }
+        self.assertIn("batch_id", columns)
+        self.assertIn("batch_item_id", columns)
+        self.assertIn("idx_jobs_batch", indexes)
 
     def test_allowlist_fails_closed_when_unconfigured(self) -> None:
         with unittest.mock.patch.dict(
