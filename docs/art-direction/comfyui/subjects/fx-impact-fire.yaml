@@ -1,0 +1,12 @@
+schema_version: 1
+id: fx-impact-fire
+name: fire impact · flame fan
+slot: fx-impact-fire
+asset_type: effect
+readability_goal: 24~32px에서 UI 아이콘이 아니라 방향성 있는 파편·부분 호로 읽혀야 한다.
+prompt:
+  positive: asymmetric fan of three orange flame tongues and four separated embers moving up-right, dark
+    gaps, no circle, no ring
+output_canvas:
+- 24
+- 24

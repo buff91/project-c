@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import io
 import json
 import sqlite3
@@ -18,10 +19,14 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 from art_review import (
+    ASSET_TYPES,
     BatchRegistry,
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    SlotCatalog,
+    WorkflowTypeRegistry,
+    derive_asset_type,
     image_metrics,
 )
 from art_asset import (
@@ -49,9 +54,15 @@ from art_slack_bot import (
     candidate_blocks,
     find_candidate_from_text,
     find_feedback_target,
+    modal_select,
+    modal_text,
+    modal_view,
     parse_animation_action,
     parse_shot_action,
+    recipe_list_text,
+    recipes_by_asset_type,
     slack_help_text,
+    slot_label,
     shot_blocks,
 )
 
@@ -70,6 +81,265 @@ class RecipeTests(unittest.TestCase):
         self.assertIn("actor-slinger-animation-v5", recipes)
         self.assertIn("fx-impact-suite-v1", recipes)
         self.assertIn("fx-impact-suite-v2", recipes)
+
+    def test_every_recipe_declares_a_known_asset_type(self) -> None:
+        known = {type_id for type_id, _ in ASSET_TYPES}
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                self.assertIn(
+                    "asset_type",
+                    recipe.purpose,
+                    "레시피는 에셋 타입을 파생에 맡기지 말고 명시한다",
+                )
+                self.assertIn(recipe.asset_type, known)
+
+    def test_asset_type_splits_actor_recipes_by_intent(self) -> None:
+        """같은 actor 카테고리라도 고르는 목적이 다르면 다른 타입이다."""
+        recipes = self.registry.load_all()
+        self.assertEqual("concept", recipes["actor-concept-sdxl-v1"].asset_type)
+        self.assertEqual(
+            "character", recipes["actor-slinger-idle-v1"].asset_type
+        )
+        self.assertEqual(
+            "animation", recipes["actor-slinger-animation-v5"].asset_type
+        )
+        self.assertEqual(
+            "environment",
+            recipes["environment-hospital-style-v1"].asset_type,
+        )
+        self.assertEqual("effect", recipes["fx-impact-suite-v1"].asset_type)
+
+    def test_derive_asset_type_covers_recipes_without_declaration(self) -> None:
+        self.assertEqual("concept", derive_asset_type("actor", "concept"))
+        self.assertEqual("concept", derive_asset_type("effect", "concept"))
+        self.assertEqual("character", derive_asset_type("actor", "gameplay"))
+        self.assertEqual(
+            "animation", derive_asset_type("actor", "animation-source")
+        )
+        self.assertEqual(
+            "effect", derive_asset_type("effect", "animation-source")
+        )
+        self.assertEqual("prop", derive_asset_type("item", "gameplay"))
+        self.assertEqual("ui", derive_asset_type("ui", "gameplay"))
+
+    def test_unknown_asset_type_is_rejected(self) -> None:
+        from art_review import Recipe
+
+        document = dict(self.registry.get("actor-slinger-idle-v1").document)
+        document["purpose"] = dict(document["purpose"])
+        document["purpose"]["asset_type"] = "괴상한타입"
+        with self.assertRaisesRegex(ReviewError, "asset_type"):
+            Recipe.from_document(document, path=Path("memory.yaml"))
+
+    def test_slack_groups_recipes_by_asset_type(self) -> None:
+        groups = recipes_by_asset_type(self.registry)
+        labels = [label for _type_id, label, _recipes in groups]
+        self.assertEqual(["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"], labels)
+        listed = recipe_list_text(self.registry)
+        self.assertIn("*애니메이션*", listed)
+        self.assertIn("actor-slinger-animation-v5", listed)
+
+        element = modal_view(self.registry)["blocks"][0]["element"]
+        self.assertNotIn(
+            "options",
+            element,
+            "드롭다운은 평평한 목록이 아니라 타입별 그룹이어야 한다",
+        )
+        self.assertEqual(
+            ["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"],
+            [group["label"]["text"] for group in element["option_groups"]],
+        )
+
+    def test_every_recipe_satisfies_its_workflow_type_contract(self) -> None:
+        types = WorkflowTypeRegistry().load_all()
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                self.assertIn(recipe.workflow_type, types)
+                recipe.validate_workflow_type()
+
+    def test_unknown_workflow_type_is_rejected(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"].__setitem__(
+                "type", "sd15-magic"
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "Unknown workflow type"):
+            recipe.validate_workflow_type()
+
+    def test_missing_required_binding_is_rejected(self) -> None:
+        """타입만 맞고 바인딩이 없으면 ComfyUI가 조용히 기본값을 쓴다."""
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["bindings"].pop("seed")
+        )
+        with self.assertRaisesRegex(ReviewError, "requires bindings seed"):
+            recipe.validate_workflow_type()
+
+    def test_missing_required_upload_is_rejected(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["uploads"].pop("6.image")
+        )
+        with self.assertRaisesRegex(ReviewError, "requires upload 6.image"):
+            recipe.validate_workflow_type()
+
+    def test_shot_level_upload_satisfies_the_contract(self) -> None:
+        """포즈 가이드처럼 샷마다 다른 입력은 샷이 채워도 계약이 성립한다."""
+        recipe = self.registry.get("actor-slinger-animation-v5")
+        self.assertNotIn("6.image", recipe.pipeline.get("uploads", {}))
+        self.assertTrue(
+            all("6.image" in (shot.uploads or {}) for shot in recipe.shots)
+        )
+        recipe.validate_workflow_type()
+
+    def test_workflow_type_registry_describes_capabilities(self) -> None:
+        openpose = WorkflowTypeRegistry().get("sd15-img2img-openpose")
+        self.assertTrue(openpose.supports_denoise)
+        self.assertTrue(openpose.supports_controlnet)
+        txt2img = WorkflowTypeRegistry().get("sdxl-txt2img")
+        self.assertFalse(txt2img.supports_denoise)
+        self.assertFalse(txt2img.supports_controlnet)
+        self.assertEqual((), txt2img.required_uploads)
+
+    def _mutated_recipe(self, mutate):
+        from art_review import Recipe
+
+        document = copy.deepcopy(
+            self.registry.get("actor-slinger-idle-v1").document
+        )
+        mutate(document)
+        return Recipe.from_document(document, path=Path("memory.yaml"))
+
+    def test_overrides_change_only_the_named_fields(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        adjusted = recipe.with_overrides(
+            positive="짧은 슬링을 든 약탈자",
+            checkpoint="dreamshaper_9.safetensors",
+        )
+        self.assertEqual("짧은 슬링을 든 약탈자", adjusted.prompt["positive"])
+        self.assertEqual(
+            "dreamshaper_9.safetensors", adjusted.pipeline["checkpoint"]
+        )
+        self.assertEqual(("모델", "긍정 프롬프트"), adjusted.adjustments)
+        self.assertNotEqual(recipe.digest, adjusted.digest)
+        # 원본은 건드리지 않는다 — YAML 은 여전히 SSOT다.
+        self.assertEqual(
+            "dreamshaper_8.safetensors", recipe.pipeline["checkpoint"]
+        )
+        self.assertEqual((), recipe.adjustments)
+        self.assertEqual(
+            recipe.prompt["negative"], adjusted.prompt["negative"]
+        )
+
+    def test_overrides_that_change_nothing_return_the_same_recipe(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        self.assertIs(
+            recipe,
+            recipe.with_overrides(
+                positive=recipe.prompt["positive"],
+                checkpoint=recipe.pipeline["checkpoint"],
+            ),
+        )
+        self.assertIs(recipe, recipe.with_overrides())
+
+    def test_override_to_incompatible_workflow_is_rejected(self) -> None:
+        """타입을 바꾸면 노드 번호 체계가 달라진다 — 폼에서 막아야 한다."""
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        with self.assertRaisesRegex(ReviewError, "does not exist in"):
+            recipe.with_overrides(workflow_type="sdxl-txt2img")
+
+    def test_binding_node_validation_catches_missing_nodes(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["bindings"].__setitem__(
+                "seed", "999.seed"
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "node '999'"):
+            recipe.validate_binding_nodes()
+
+    def test_unity_slot_catalog_reads_the_editor_source(self) -> None:
+        slots = SlotCatalog().load_all()
+        self.assertGreater(len(slots), 40)
+        self.assertEqual("slinger", slots["actor-slinger"])
+        self.assertEqual("fxImpactFire", slots["fx-impact-fire"])
+        self.assertNotIn("actor-concept", slots)
+
+    def test_slot_names_come_from_the_monster_roster(self) -> None:
+        """표시명을 파이프라인이 다시 적으면 게임과 갈린다."""
+        catalog = SlotCatalog()
+        name, description = catalog.describe("actor-slinger")
+        self.assertEqual("투석 약탈자", name)
+        self.assertIn("원거리", description)
+        self.assertEqual("감시자", catalog.describe("actor-grave-warden")[0])
+        self.assertEqual("약탈자", catalog.describe("actor-goblin")[0])
+
+    def test_goblin_summary_is_not_the_class_comment(self) -> None:
+        """선언 바로 위에 붙은 주석만 그 몬스터의 설명이다."""
+        _name, description = SlotCatalog().describe("actor-goblin")
+        self.assertIn("Goblin", description)
+        self.assertNotIn("몬스터 명단", description)
+
+    def test_slots_without_a_game_name_stay_nameless(self) -> None:
+        """모르는 슬롯의 이름을 지어내지 않는다."""
+        catalog = SlotCatalog()
+        for slot in ("actor-player", "env-floor", "fx-impact-fire"):
+            with self.subTest(slot=slot):
+                self.assertIsNone(catalog.describe(slot)[0])
+        self.assertIsNone(catalog.describe("actor-nope")[0])
+
+    def test_cards_show_the_game_name_beside_the_slot_id(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        self.assertEqual("투석 약탈자", recipe.slot_display_name)
+        self.assertIn("*투석 약탈자* · `actor-slinger`", slot_label(recipe))
+        nameless = self.registry.get("actor-concept-sdxl-v1")
+        self.assertIsNone(nameless.slot_display_name)
+        self.assertEqual("`actor-concept`", slot_label(nameless))
+
+    def test_publishing_recipes_only_target_registered_slots(self) -> None:
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                recipe.validate_slot_registration()
+                if recipe.publishes_to_unity:
+                    for slot in recipe.target_slots:
+                        self.assertTrue(
+                            SlotCatalog().is_registered(slot),
+                            f"{recipe_id} publishes to unregistered {slot}",
+                        )
+
+    def test_unregistered_slot_blocks_unity_promotion(self) -> None:
+        """미등록 슬롯에 게시하면 Unity 가 읽지 않는 죽은 파일이 된다."""
+        recipe = self._mutated_recipe(
+            lambda document: document["purpose"].__setitem__(
+                "slot", "actor-does-not-exist"
+            )
+        )
+        self.assertTrue(recipe.publishes_to_unity)
+        with self.assertRaisesRegex(ReviewError, "unregistered slot"):
+            recipe.validate_slot_registration()
+
+    def test_non_publishing_recipes_may_use_intermediate_slots(self) -> None:
+        """콘셉트·소스시트는 Unity 슬롯이 아닌 곳을 겨눠도 된다."""
+        concept = self.registry.get("actor-concept-sdxl-v1")
+        self.assertFalse(concept.publishes_to_unity)
+        self.assertFalse(SlotCatalog().is_registered(concept.slot))
+        concept.validate_slot_registration()
+
+        sheet = self.registry.get("environment-hospital-style-v1")
+        self.assertFalse(sheet.publishes_to_unity)
+        sheet.validate_slot_registration()
+
+    def test_unknown_promotion_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "promotion"):
+            self._mutated_recipe(
+                lambda document: document["output"].__setitem__(
+                    "promotion", "asprite"
+                )
+            )
+
+    def test_multi_shot_slots_are_all_checked(self) -> None:
+        """샷이 슬롯을 갈아타므로 대표 슬롯만 봐서는 부족하다."""
+        recipe = self.registry.get("fx-impact-suite-v2")
+        self.assertGreater(len(recipe.target_slots), 1)
+        for slot in recipe.target_slots:
+            self.assertTrue(SlotCatalog().is_registered(slot))
 
     def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
         plan = BatchRegistry().get("style-sampler")
@@ -716,6 +986,81 @@ class StoreTests(unittest.TestCase):
             for element in block["elements"]
         }
         self.assertIn("art_candidate_apply", approved_actions)
+
+    def test_candidate_card_carries_job_identity(self) -> None:
+        """후보 카드가 유일한 완료 알림이므로 작업 ID와 묶음 위치를 직접 진다."""
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        blocks = candidate_blocks(
+            self.recipe,
+            candidate,
+            job_id=self.job_id,
+            batch_position=(2, 3),
+        )
+        self.assertIn("(2/3)", blocks[1]["text"]["text"])
+        context = blocks[2]["elements"][0]["text"]
+        self.assertIn(f"작업 `{self.job_id}`", context)
+
+    def test_candidate_card_flags_an_adjusted_run(self) -> None:
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        adjusted = self.recipe.with_overrides(positive="짧은 슬링")
+        blocks = candidate_blocks(adjusted, candidate)
+        self.assertIn("이번 실행 조정", blocks[1]["text"]["text"])
+        self.assertIn("긍정 프롬프트", blocks[1]["text"]["text"])
+        plain = candidate_blocks(self.recipe, candidate)
+        self.assertNotIn("이번 실행 조정", plain[1]["text"]["text"])
+
+    def test_modal_prefills_the_selected_recipe(self) -> None:
+        registry = RecipeRegistry()
+        empty = modal_view(registry)
+        self.assertEqual(
+            ["recipe", None, "count", "notes"],
+            [block.get("block_id") for block in empty["blocks"]],
+        )
+        filled = modal_view(
+            registry, selected_recipe_id="actor-slinger-idle-v1"
+        )
+        by_id = {
+            block.get("block_id"): block
+            for block in filled["blocks"]
+            if block.get("block_id")
+        }
+        self.assertIn("workflow_type", by_id)
+        recipe = registry.get("actor-slinger-idle-v1")
+        self.assertEqual(
+            recipe.pipeline["checkpoint"],
+            by_id["checkpoint"]["element"]["initial_value"],
+        )
+        self.assertIn(
+            recipe.prompt["positive"][:40],
+            by_id["positive"]["element"]["initial_value"],
+        )
+        self.assertEqual(
+            recipe.workflow_type,
+            by_id["workflow_type"]["element"]["initial_option"]["value"],
+        )
+
+    def test_blank_modal_fields_mean_leave_the_recipe_alone(self) -> None:
+        values = {
+            "checkpoint": {"value": {"value": "   "}},
+            "positive": {"value": {"value": "짧은 슬링"}},
+        }
+        self.assertIsNone(modal_text(values, "checkpoint"))
+        self.assertIsNone(modal_text(values, "negative"))
+        self.assertEqual("짧은 슬링", modal_text(values, "positive"))
+        self.assertIsNone(modal_select(values, "workflow_type"))
+
+    def test_candidate_card_omits_position_for_single_candidate(self) -> None:
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        blocks = candidate_blocks(
+            self.recipe,
+            candidate,
+            job_id=self.job_id,
+            batch_position=(1, 1),
+        )
+        self.assertNotIn("(1/1)", blocks[1]["text"]["text"])
 
     def test_shot_card_has_scoped_review_controls(self) -> None:
         candidate_id = self.add_candidate()

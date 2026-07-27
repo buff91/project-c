@@ -1,0 +1,11 @@
+schema_version: 1
+id: fx-impact-suite
+name: 전투 이펙트 6종
+asset_type: effect
+members:
+- fx-impact-physical
+- fx-impact-fire
+- fx-impact-frost
+- fx-impact-heavy
+- fx-status-burn
+- fx-status-freeze

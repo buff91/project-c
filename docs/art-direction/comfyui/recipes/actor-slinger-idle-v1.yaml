@@ -4,6 +4,7 @@ name: 투석 약탈자 기본 자세 v1
 
 purpose:
   category: actor
+  asset_type: character
   slot: actor-slinger
   use: gameplay
   readability_goal: 치켜든 팔, 긴 슬링, 후드와 붉은 외눈이 96×128에서도 분리되어야 한다.

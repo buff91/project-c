@@ -247,6 +247,7 @@
 | 백팩 ↔ 세이브 아이템 수량 매핑 | `RunSaveData.WriteItems` / `AddItemsTo` |
 | 몬스터 표시명·피해소스 매칭 | `MonsterArchetype.DisplayName` + `MonsterRoster.MatchSource` |
 | 보스 표시명 | `MonsterRoster.GraveWarden`의 `displayName`(= "감시자"). `DungeonCatalog`가 문자열을 다시 적지 않고 이 값을 참조한다 — 주지 않으면 화면에 코드 ID `GraveWarden`이 뜬다 |
+| 아트 슬롯 ID 발급 (슬롯 이름 → `IsoVisualCatalog` 필드) | `ProjectCAsepritePipeline.CatalogSlots`. 아트 파이프라인(`Tools/ArtPipeline/art_review.py`의 `SlotCatalog`)이 이 목록을 **복제하지 않고 파싱해서** 레시피 슬롯을 검증한다 — 여기 없는 슬롯에 게시하면 Unity가 읽지 않는 `.aseprite`가 생긴다. 새 슬롯은 여기 먼저 등록한다 |
 | 아이템 짧은 라벨(HUD) | `ItemCatalog.ShortLabel` |
 | 아이템 분류·표시·경제·백팩 크기 | `ItemCatalog`의 `ItemDefinition` 표 |
 | 블라스트 3×3 순회 | `BombRules.ForEachBlastCell(center, visit)` (`Interactions.cs`). `OilRules`·`ShockRules`·`WaterRules`·`SecretRoomRules`가 전부 이걸 부른다 — 예전에는 같은 이중 루프가 여러 파일에 손으로 적혀 있어 한 곳만 반경이 달라져도 조용히 갈렸다 |

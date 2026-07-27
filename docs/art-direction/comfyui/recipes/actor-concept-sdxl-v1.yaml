@@ -4,6 +4,7 @@ name: 포스트아포 액터 콘셉트 SDXL v1
 
 purpose:
   category: actor
+  asset_type: concept
   slot: actor-concept
   use: concept
   readability_goal: Project-C 진영 색과 복장 어휘를 탐색하되 정식 슬롯에는 자동 승격하지 않는다.
@@ -20,7 +21,9 @@ output:
   key_tolerance: 48
   trim_detached: true
   palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
-  promotion: aseprite
+  # 콘셉트 탐색이다. actor-concept 은 Unity 슬롯이 아니므로 정식 승격하지
+  # 않는다 — purpose.readability_goal 이 처음부터 그렇게 말하고 있었다.
+  promotion: concept-only
   allow_replace: false
 
 pipeline:

@@ -1,0 +1,82 @@
+schema_version: 1
+
+# 레시피의 `pipeline.type` 이 고르는 목록이자, 그 타입이 성립하려면 무엇이
+# 있어야 하는가의 계약이다. 여기 없는 타입을 쓰면 검증이 막는다.
+#
+# `requires.bindings` 는 레시피 `pipeline.bindings` 에 반드시 있어야 하는 논리
+# 이름이다. `requires.uploads` 는 **역할 이름 → ComfyUI NODE.INPUT** 이다 —
+# 대상(subject)은 자기 가이드 이미지를 `style_source`/`pose` 같은 역할로만 알고,
+# 그게 몇 번 노드에 꽂히는지는 워크플로 타입이 안다. 대상이 노드 번호를 알면
+# 워크플로를 바꿀 때마다 대상 파일을 전부 고쳐야 한다.
+#
+# 업로드는 레시피 전체(`pipeline.uploads`) 또는 샷 하나(`shots[].uploads`)
+# 어느 쪽에서 채워도 된다 — 포즈 가이드처럼 샷마다 다른 입력이 있기 때문이다.
+#
+# 순서가 곧 생성 폼 드롭다운 순서다.
+
+types:
+  - id: sdxl-txt2img
+    label: SDXL txt2img
+    summary: 프롬프트만으로 처음부터 만든다. 참조 이미지가 없을 때.
+    default_workflow: docs/art-direction/comfyui/actor-idle.api.json
+    requires:
+      bindings:
+        - checkpoint
+        - positive
+        - negative
+        - seed
+        - steps
+        - cfg
+        - sampler
+        - scheduler
+      uploads: {}
+    supports:
+      denoise: false
+      controlnet: false
+
+  - id: sdxl-img2img
+    label: SDXL img2img (스타일 트랜스퍼)
+    summary: 기존 시트를 원본으로 넣고 화풍만 옮긴다. 배치와 구도는 원본이 정한다.
+    default_workflow: >-
+      docs/art-direction/comfyui/environment-styletransfer.api.json
+    requires:
+      bindings:
+        - checkpoint
+        - positive
+        - negative
+        - seed
+        - steps
+        - cfg
+        - denoise
+        - sampler
+        - scheduler
+      uploads:
+        source_sheet: 7.image
+    supports:
+      denoise: true
+      controlnet: false
+
+  - id: sd15-img2img-openpose
+    label: SD1.5 img2img + OpenPose
+    summary: >-
+      스타일 원본으로 정체성을, OpenPose 가이드로 자세를 고정한다. 같은 캐릭터의
+      여러 자세를 뽑을 때 쓴다.
+    default_workflow: >-
+      docs/art-direction/comfyui/actor-slinger-openpose.api.json
+    requires:
+      bindings:
+        - checkpoint
+        - positive
+        - negative
+        - seed
+        - steps
+        - cfg
+        - denoise
+        - sampler
+        - scheduler
+      uploads:
+        style_source: 5.image
+        pose: 6.image
+    supports:
+      denoise: true
+      controlnet: true

@@ -4,6 +4,7 @@ name: 전투 이펙트 원천 키프레임 v1
 
 purpose:
   category: effect
+  asset_type: effect
   slot: fx-impact-physical
   use: animation-source
   readability_goal: 상태/임팩트 슬롯에서 폭발 중심과 반경이 선명하게 보이고 과도한 반짝임이 없어야 한다.

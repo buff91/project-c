@@ -37,6 +37,30 @@ DEFAULT_DB_PATH = DEFAULT_STATE_DIR / "art-review.sqlite3"
 DEFAULT_OUTPUT_ROOT = (
     PROJECT_ROOT / "docs/art-direction/comfyui/output/review"
 )
+DEFAULT_WORKFLOW_TYPES_PATH = (
+    PROJECT_ROOT / "docs/art-direction/comfyui/workflow-types.yaml"
+)
+# Unity 슬롯 ID의 발급처. 여기 없는 슬롯은 정식 승격 대상이 아니다 — 게시해봐야
+# 에디터가 읽지 않는 죽은 파일이 된다. 목록을 복제하지 않고 원본을 읽는다.
+UNITY_SLOT_SOURCE = (
+    PROJECT_ROOT
+    / "Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs"
+)
+# 몬스터 표시명의 SSOT. 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+# 어긋난다 — DungeonCatalog 가 보스 이름에 대해 지키는 규칙과 같다.
+UNITY_MONSTER_SOURCE = (
+    PROJECT_ROOT / "Assets/_Project/Scripts/Core/MonsterRoster.cs"
+)
+# 정식 슬롯에 실제로 파일을 쓰는 승격 방식. 나머지는 검수/중간 산출물이다.
+PUBLISHING_PROMOTION = "aseprite"
+VALID_PROMOTIONS = frozenset(
+    {
+        PUBLISHING_PROMOTION,
+        "animation-review-only",
+        "manual-processor",
+        "concept-only",
+    }
+)
 VALID_JOB_STATES = {
     "queued",
     "running",
@@ -64,6 +88,49 @@ VALID_APPLY_STATES = {
     "failed",
     "cancelled",
 }
+
+# 사람이 레시피를 고를 때 쓰는 축이다. `category`(무엇의 슬롯인가)나
+# `use`(무슨 용도인가)와 다르다 — 같은 actor 카테고리라도 콘셉트 탐색과 런타임
+# 스프라이트와 애니 키포즈는 고르는 순간의 목적이 서로 다르기 때문이다.
+# 순서가 곧 목록·드롭다운 표시 순서다.
+ASSET_TYPES: tuple[tuple[str, str], ...] = (
+    ("concept", "컨셉"),
+    ("environment", "배경"),
+    ("character", "캐릭터"),
+    ("animation", "애니메이션"),
+    ("effect", "이펙트"),
+    ("prop", "소품·아이템"),
+    ("ui", "UI"),
+)
+ASSET_TYPE_LABELS = dict(ASSET_TYPES)
+VALID_ASSET_TYPES = frozenset(ASSET_TYPE_LABELS)
+ANIMATION_USES = frozenset({"animation-source", "animation-review-only"})
+
+
+def derive_asset_type(category: str, use: str) -> str:
+    """`purpose.asset_type`이 없는 레시피의 폴백.
+
+    콘셉트 탐색이 가장 강한 신호다 — 어느 카테고리든 콘셉트는 콘셉트다.
+    그다음은 카테고리가 결정하되, actor만 용도에 따라 캐릭터와 애니메이션으로
+    갈린다.
+    """
+    if use == "concept":
+        return "concept"
+    if category == "effect":
+        return "effect"
+    if category == "environment":
+        return "environment"
+    if category == "ui":
+        return "ui"
+    if category in {"item", "prop", "marker"}:
+        return "prop"
+    if use in ANIMATION_USES:
+        return "animation"
+    return "character"
+
+
+def asset_type_label(asset_type: str) -> str:
+    return ASSET_TYPE_LABELS.get(asset_type, asset_type)
 
 
 class ReviewError(RuntimeError):
@@ -198,6 +265,81 @@ class Recipe:
         return str(self.purpose["slot"])
 
     @property
+    def asset_type(self) -> str:
+        """사람이 고르는 축. 명시값이 없으면 category/use에서 파생한다."""
+        declared = str(self.purpose.get("asset_type", "")).strip()
+        if declared:
+            return declared
+        return derive_asset_type(
+            str(self.purpose.get("category", "")),
+            str(self.purpose.get("use", "")),
+        )
+
+    @property
+    def asset_type_label(self) -> str:
+        return asset_type_label(self.asset_type)
+
+    @property
+    def workflow_type(self) -> str:
+        return str(self.pipeline.get("type", "")).strip()
+
+    @property
+    def adjustments(self) -> tuple[str, ...]:
+        """이번 실행에서 레시피 YAML과 달라진 항목. 없으면 빈 튜플."""
+        declared = self.document.get("adjustments", [])
+        if not isinstance(declared, list):
+            return ()
+        return tuple(str(item) for item in declared)
+
+    def with_overrides(
+        self,
+        *,
+        workflow_type: str | None = None,
+        checkpoint: str | None = None,
+        positive: str | None = None,
+        negative: str | None = None,
+        registry: "WorkflowTypeRegistry | None" = None,
+    ) -> "Recipe":
+        """이번 실행에만 적용할 조정본을 만든다.
+
+        YAML 은 건드리지 않는다. job 이 `recipe_json` 으로 문서 전체를
+        스냅샷하므로 조정본도 원본과 똑같이 재현 가능하다. 조정한 항목은
+        `adjustments` 에 남겨 카드가 "원본 그대로가 아니다"를 말할 수 있게 한다.
+        """
+        document = copy.deepcopy(self.document)
+        changed: list[str] = []
+
+        if workflow_type and workflow_type != self.workflow_type:
+            resolved = (registry or WorkflowTypeRegistry()).get(workflow_type)
+            document["pipeline"]["type"] = resolved.id
+            if resolved.default_workflow:
+                document["pipeline"]["workflow"] = resolved.default_workflow
+            changed.append("워크플로")
+        if checkpoint and checkpoint != self.pipeline.get("checkpoint"):
+            document["pipeline"]["checkpoint"] = checkpoint
+            changed.append("모델")
+        if positive is not None and positive != self.prompt.get("positive"):
+            document["prompt"]["positive"] = positive
+            changed.append("긍정 프롬프트")
+        if negative is not None and negative != self.prompt.get("negative"):
+            document["prompt"]["negative"] = negative
+            changed.append("제외 프롬프트")
+
+        if not changed:
+            return self
+        document["adjustments"] = [
+            *self.adjustments,
+            *(item for item in changed if item not in self.adjustments),
+        ]
+        adjusted = Recipe.from_document(document, path=self.path)
+        # 조정으로 계약이 깨지지 않았는지 지금 본다 — 워커가 아니라 폼에서
+        # 막아야 사람이 무엇을 잘못 골랐는지 안다.
+        adjusted.validate_workflow_type(registry)
+        if "워크플로" in changed:
+            adjusted.validate_binding_nodes()
+        return adjusted
+
+    @property
     def canvas(self) -> tuple[int, int]:
         width, height = self.output["canvas"]
         return int(width), int(height)
@@ -328,8 +470,22 @@ class Recipe:
         for key in ("category", "slot", "use"):
             if not purpose.get(key):
                 raise ReviewError(f"Recipe {path} purpose.{key} is required")
+        declared_type = str(purpose.get("asset_type", "")).strip()
+        if declared_type and declared_type not in VALID_ASSET_TYPES:
+            known = ", ".join(sorted(VALID_ASSET_TYPES))
+            raise ReviewError(
+                f"Recipe {path} purpose.asset_type {declared_type!r} "
+                f"is unknown; expected one of: {known}"
+            )
 
         output = _mapping(root["output"], "output")
+        promotion = str(output.get("promotion", PUBLISHING_PROMOTION))
+        if promotion not in VALID_PROMOTIONS:
+            known = ", ".join(sorted(VALID_PROMOTIONS))
+            raise ReviewError(
+                f"Recipe {path} output.promotion {promotion!r} is unknown; "
+                f"expected one of: {known}"
+            )
         canvas = output.get("canvas")
         if (
             not isinstance(canvas, list)
@@ -524,6 +680,140 @@ class Recipe:
                         f"Recipe {self.id} shot {shot.id} upload {target} "
                         f"is missing: {path}"
                     )
+        self.validate_workflow_type()
+        self.validate_binding_nodes()
+        self.validate_slot_registration()
+
+    @property
+    def promotion(self) -> str:
+        return str(self.output.get("promotion", PUBLISHING_PROMOTION))
+
+    @property
+    def publishes_to_unity(self) -> bool:
+        return self.promotion == PUBLISHING_PROMOTION
+
+    @property
+    def target_slots(self) -> tuple[str, ...]:
+        """이 레시피가 게시할 수 있는 슬롯 전부 — 샷이 슬롯을 갈아탈 수 있다."""
+        slots = [self.slot]
+        slots.extend(shot.slot for shot in self.shots if shot.slot)
+        return tuple(dict.fromkeys(slots))
+
+    def unity_field_for(
+        self,
+        slot: str,
+        catalog: "SlotCatalog | None" = None,
+    ) -> str | None:
+        return (catalog or SlotCatalog()).field_for(slot)
+
+    @property
+    def slot_display_name(self) -> str | None:
+        """슬롯이 게임에서 불리는 이름. 모르는 슬롯은 지어내지 않는다."""
+        try:
+            return SlotCatalog().describe(self.slot)[0]
+        except ReviewError:
+            return None
+
+    def validate_slot_registration(
+        self,
+        catalog: "SlotCatalog | None" = None,
+    ) -> None:
+        """정식 승격 레시피는 Unity 가 실제로 읽는 슬롯만 겨눌 수 있다.
+
+        슬롯 이름은 정규식만 맞으면 무엇이든 통과했다. 그래서 미등록 슬롯에
+        게시하면 `.aseprite` 파일이 만들어지고 아무 일도 일어나지 않는다 —
+        에디터가 읽지 않으므로 게임에는 영영 나타나지 않는데 파이프라인은
+        "반영 완료"라고 말한다.
+        """
+        if not self.publishes_to_unity:
+            return
+        registry = catalog or SlotCatalog()
+        known = registry.load_all()
+        unregistered = [
+            slot for slot in self.target_slots if slot not in known
+        ]
+        if unregistered:
+            raise ReviewError(
+                f"Recipe {self.id} promotes to Unity but targets "
+                f"unregistered slot(s): {', '.join(unregistered)}. "
+                f"Register them in {UNITY_SLOT_SOURCE.name} "
+                "(CatalogSlots) first, or use a non-publishing "
+                "output.promotion."
+            )
+
+    def validate_binding_nodes(self) -> None:
+        """바인딩·업로드가 가리키는 노드가 워크플로 JSON 에 실제로 있는지 본다.
+
+        없으면 워커가 ComfyError 로 죽는다 — 6장 생성을 큐에 넣고 몇 분 기다린
+        뒤에 알게 되느니 검증에서 잡는다. 특히 워크플로 타입을 바꾸면 노드
+        번호 체계가 통째로 달라진다.
+        """
+        import comfy_batch
+
+        prompt = comfy_batch.load_prompt(self.workflow_path)
+        targets: dict[str, str] = {
+            str(target): f"binding {name}"
+            for name, target in self.pipeline.get("bindings", {}).items()
+        }
+        targets.update(
+            {str(target): "upload"
+             for target in self.pipeline.get("uploads", {})}
+        )
+        for shot in self.shots:
+            targets.update(
+                {str(target): f"shot {shot.id} upload"
+                 for target in (shot.uploads or {})}
+            )
+        for target, label in sorted(targets.items()):
+            node_id = target.split(".", 1)[0]
+            if node_id not in prompt:
+                raise ReviewError(
+                    f"Recipe {self.id} {label} points at node {node_id!r}, "
+                    f"which does not exist in {self.workflow_path.name}"
+                )
+
+    def validate_workflow_type(
+        self,
+        registry: "WorkflowTypeRegistry | None" = None,
+    ) -> None:
+        """`pipeline.type` 이 선언한 계약을 레시피가 실제로 채우는지 본다.
+
+        타입 문자열만 맞고 바인딩이나 업로드가 비어 있으면 ComfyUI 는 조용히
+        기본값으로 생성한다 — seed 재현성이 무너지는데 아무도 모른다.
+        """
+        declared = str(self.pipeline.get("type", "")).strip()
+        if not declared:
+            raise ReviewError(f"Recipe {self.id} pipeline.type is required")
+        workflow_type = (registry or WorkflowTypeRegistry()).get(declared)
+
+        bindings = set(self.pipeline.get("bindings", {}))
+        missing_bindings = [
+            name
+            for name in workflow_type.required_bindings
+            if name not in bindings
+        ]
+        if missing_bindings:
+            raise ReviewError(
+                f"Recipe {self.id} type {declared} requires bindings "
+                f"{', '.join(missing_bindings)}"
+            )
+
+        # 업로드는 레시피 전체 또는 샷 하나가 채우면 된다 — 포즈 가이드처럼
+        # 샷마다 다른 입력이 있기 때문이다.
+        recipe_uploads = set(self.pipeline.get("uploads", {}))
+        for target in workflow_type.required_uploads:
+            if target in recipe_uploads:
+                continue
+            unfilled = [
+                shot.id
+                for shot in self.shots
+                if target not in (shot.uploads or {})
+            ]
+            if unfilled:
+                raise ReviewError(
+                    f"Recipe {self.id} type {declared} requires upload "
+                    f"{target}; missing on shot(s): {', '.join(unfilled)}"
+                )
 
     def assignments(
         self,
@@ -600,6 +890,7 @@ class Recipe:
         return {
             "id": self.id,
             "name": self.name,
+            "asset_type": self.asset_type,
             "digest": self.digest,
             "purpose": self.purpose,
             "output": self.output,
@@ -626,6 +917,212 @@ class Recipe:
                 for shot in self.shots
             ],
         }
+
+
+class SlotCatalog:
+    """Unity 가 실제로 읽는 아트 슬롯의 발급 목록.
+
+    `ProjectCAsepritePipeline.CatalogSlots` 가 슬롯 ID → `IsoVisualCatalog`
+    필드명의 SSOT다. 파이썬이 목록을 따로 들고 있으면 반드시 어긋나므로
+    원본을 그대로 읽는다. 여기 없는 슬롯 ID는 존재하지 않는 것이다.
+    """
+
+    _ENTRY = re.compile(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}')
+
+    def __init__(self, path: Path = UNITY_SLOT_SOURCE):
+        self.path = path
+
+    def load_all(self) -> dict[str, str]:
+        if not self.path.is_file():
+            raise ReviewError(f"Unity slot source is missing: {self.path}")
+        source = self.path.read_text(encoding="utf-8")
+        try:
+            start = source.index("CatalogSlots =")
+            block = source[start:]
+            block = block[: block.index("};")]
+        except ValueError as exc:
+            raise ReviewError(
+                f"{self.path} has no readable CatalogSlots block"
+            ) from exc
+        slots = {
+            slot: field for slot, field in self._ENTRY.findall(block)
+        }
+        if not slots:
+            raise ReviewError(f"{self.path} declares no catalog slots")
+        return slots
+
+    def field_for(self, slot: str) -> str | None:
+        return self.load_all().get(slot)
+
+    def is_registered(self, slot: str) -> bool:
+        return slot in self.load_all()
+
+    _ARCHETYPE = re.compile(
+        r"public\s+static\s+readonly\s+MonsterArchetype\s+(\w+)\s*="
+    )
+    _DISPLAY_NAME = re.compile(r'displayName:\s*"([^"]+)"')
+    _TAGS = re.compile(r"</?\w+[^>]*>")
+
+    def monster_names(
+        self,
+        path: Path = UNITY_MONSTER_SOURCE,
+    ) -> dict[str, tuple[str, str]]:
+        """archetype 필드명 → (표시명, 한 줄 설명).
+
+        표시명을 파이프라인이 다시 적으면 게임과 갈린다. `MonsterRoster` 를
+        읽는다 — 없으면 이름 없이 슬롯 ID 만 보여주지, 지어내지 않는다.
+        """
+        if not path.is_file():
+            return {}
+        lines = path.read_text(encoding="utf-8").splitlines()
+        found: dict[str, tuple[str, str]] = {}
+        doc: list[str] = []
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("///"):
+                # 바로 위에 붙은 주석만 이 선언의 것이다 — 사이에 다른 코드가
+                # 끼면 클래스 주석을 몬스터 설명으로 착각한다.
+                doc.append(stripped.lstrip("/").strip())
+                continue
+            match = self._ARCHETYPE.search(stripped)
+            if match is None:
+                if stripped:
+                    doc = []
+                continue
+            tail = "\n".join(lines[index:index + 12])
+            display = self._DISPLAY_NAME.search(tail)
+            summary = self._TAGS.sub("", " ".join(doc)).strip()
+            # 첫 문장까지만 — 카드 한 줄에 들어가야 한다.
+            headline = summary.split(".")[0].strip()
+            found[match.group(1)] = (
+                display.group(1) if display else match.group(1),
+                headline,
+            )
+            doc = []
+        return found
+
+    def describe(self, slot: str) -> tuple[str | None, str]:
+        """슬롯의 (표시명, 설명). 이름을 아는 슬롯만 이름이 있다."""
+        field = self.field_for(slot)
+        if not field:
+            return None, ""
+        archetype = field[:1].upper() + field[1:]
+        return self.monster_names().get(archetype, (None, ""))
+
+
+@dataclass(frozen=True)
+class WorkflowType:
+    """`pipeline.type` 하나의 계약. workflow-types.yaml 이 소유한다."""
+
+    document: dict[str, Any]
+
+    @property
+    def id(self) -> str:
+        return str(self.document["id"])
+
+    @property
+    def label(self) -> str:
+        return str(self.document.get("label") or self.id)
+
+    @property
+    def summary_text(self) -> str:
+        return str(self.document.get("summary", "")).strip()
+
+    @property
+    def default_workflow(self) -> str:
+        return str(self.document.get("default_workflow", "")).strip()
+
+    @property
+    def required_bindings(self) -> tuple[str, ...]:
+        requires = _mapping(self.document.get("requires", {}), "requires")
+        return tuple(str(name) for name in requires.get("bindings", []))
+
+    @property
+    def upload_roles(self) -> dict[str, str]:
+        """역할 이름 → ComfyUI NODE.INPUT. 대상은 역할만 알면 된다."""
+        requires = _mapping(self.document.get("requires", {}), "requires")
+        uploads = requires.get("uploads", {}) or {}
+        if not isinstance(uploads, dict):
+            raise ReviewError(
+                f"Workflow type {self.id} requires.uploads must be a "
+                "mapping of role -> NODE.INPUT"
+            )
+        return {str(role): str(target) for role, target in uploads.items()}
+
+    @property
+    def required_uploads(self) -> tuple[str, ...]:
+        return tuple(sorted(self.upload_roles.values()))
+
+    def node_for_role(self, role: str) -> str | None:
+        return self.upload_roles.get(role)
+
+    @property
+    def supports_denoise(self) -> bool:
+        supports = _mapping(self.document.get("supports", {}), "supports")
+        return bool(supports.get("denoise", False))
+
+    @property
+    def supports_controlnet(self) -> bool:
+        supports = _mapping(self.document.get("supports", {}), "supports")
+        return bool(supports.get("controlnet", False))
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "label": self.label,
+            "summary": self.summary_text,
+            "default_workflow": self.default_workflow,
+            "requires": {
+                "bindings": list(self.required_bindings),
+                "uploads": dict(self.upload_roles),
+            },
+            "supports": {
+                "denoise": self.supports_denoise,
+                "controlnet": self.supports_controlnet,
+            },
+        }
+
+
+class WorkflowTypeRegistry:
+    def __init__(self, path: Path = DEFAULT_WORKFLOW_TYPES_PATH):
+        self.path = path.resolve()
+
+    def load_all(self) -> dict[str, WorkflowType]:
+        if not self.path.is_file():
+            raise ReviewError(
+                f"Workflow type registry is missing: {self.path}"
+            )
+        with self.path.open("r", encoding="utf-8") as handle:
+            document = _mapping(yaml.safe_load(handle) or {}, "workflow-types")
+        if document.get("schema_version") != 1:
+            raise ReviewError(
+                f"{self.path} has unsupported schema_version "
+                f"{document.get('schema_version')!r}"
+            )
+        types: dict[str, WorkflowType] = {}
+        for index, raw in enumerate(document.get("types", []) or []):
+            entry = _mapping(raw, f"types[{index}]")
+            if not str(entry.get("id", "")).strip():
+                raise ReviewError(f"{self.path} types[{index}] has no id")
+            workflow_type = WorkflowType(document=entry)
+            if workflow_type.id in types:
+                raise ReviewError(
+                    f"Duplicate workflow type {workflow_type.id!r}"
+                )
+            types[workflow_type.id] = workflow_type
+        if not types:
+            raise ReviewError(f"{self.path} declares no workflow types")
+        return types
+
+    def get(self, type_id: str) -> WorkflowType:
+        types = self.load_all()
+        try:
+            return types[type_id]
+        except KeyError as exc:
+            available = ", ".join(types) or "(none)"
+            raise ReviewError(
+                f"Unknown workflow type {type_id!r}; available: {available}"
+            ) from exc
 
 
 class RecipeRegistry:

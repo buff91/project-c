@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from art_review import (
+    ASSET_TYPES,
     BatchRegistry,
     DEFAULT_BATCH_DIR,
     DEFAULT_DB_PATH,
@@ -26,6 +27,9 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    SlotCatalog,
+    WorkflowTypeRegistry,
+    asset_type_label,
     project_path,
     recipe_from_job,
 )
@@ -61,15 +65,6 @@ def log_error(context: str) -> None:
     print(f"error: {context}", file=sys.stderr)
     traceback.print_exc()
 
-
-ART_CATEGORY_LABELS = {
-    "actor": "캐릭터",
-    "effect": "전투 이펙트",
-    "environment": "환경",
-    "item": "아이템",
-    "prop": "소품",
-    "ui": "UI",
-}
 
 JOB_STATE_LABELS = {
     "queued": "대기 중",
@@ -122,11 +117,6 @@ CANDIDATE_STATE_VIEW = {
         "스레드의 오류 내용을 확인한 뒤 다시 요청하세요.",
     ),
 }
-
-
-def category_label(recipe: Recipe) -> str:
-    category = str(recipe.purpose.get("category", "art"))
-    return ART_CATEGORY_LABELS.get(category, category)
 
 
 def job_state_label(state: str) -> str:
@@ -254,6 +244,8 @@ def candidate_blocks(
     *,
     status: str | None = None,
     approved: bool = False,
+    job_id: str | None = None,
+    batch_position: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     generation = recipe.generation
     state = status or candidate["status"]
@@ -261,6 +253,22 @@ def candidate_blocks(
     shot_summary = (
         f" · 샷 {len(recipe.shots)}개"
         if recipe.is_multi_shot
+        else ""
+    )
+    # 별도의 "생성 완료" 요약 메시지를 두지 않는다 — 후보 카드가 완료를 알리는
+    # 유일한 메시지이므로 작업 ID와 묶음 내 위치를 카드가 직접 진다.
+    position_summary = (
+        f" ({batch_position[0]}/{batch_position[1]})"
+        if batch_position is not None and batch_position[1] > 1
+        else ""
+    )
+    job_summary = f"작업 `{job_id}` · " if job_id else ""
+    # 조정본으로 돌린 실행은 레시피 YAML 을 그대로 읽어도 재현되지 않는다.
+    # 카드가 그걸 말하지 않으면 나중에 "왜 다르지"로 돌아온다.
+    adjusted_summary = (
+        f"\n✏️ *이번 실행 조정*  {' · '.join(recipe.adjustments)} "
+        "(레시피 YAML 은 그대로)"
+        if recipe.adjustments
         else ""
     )
     buttons: list[dict[str, Any]] = [
@@ -351,9 +359,11 @@ def candidate_blocks(
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {category_label(recipe)} · `{recipe.slot}`"
+                    f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}"
                     f"{shot_summary}\n"
-                    f"*후보*  `{candidate['id']}` · seed `{candidate['seed']}`\n\n"
+                    f"*후보*  `{candidate['id']}`{position_summary} · "
+                    f"seed `{candidate['seed']}`"
+                    f"{adjusted_summary}\n\n"
                     f"*지금 할 일*\n{next_action}"
                 ),
             },
@@ -364,6 +374,7 @@ def candidate_blocks(
                 {
                     "type": "mrkdwn",
                     "text": (
+                        f"{job_summary}"
                         f"`{recipe.id}` · {generation['steps']} steps · "
                         f"CFG {generation['cfg']} · denoise "
                         f"{generation.get('denoise')} · "
@@ -582,7 +593,10 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {category_label(recipe)} · `{recipe.slot}`\n"
+                    f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}\n"
+                    f"{slot_description_line(recipe)}"
+                    f"*Unity*  {unity_target_label(recipe)}\n"
+                    f"*워크플로*  {workflow_type_label(recipe)}\n"
                     f"*목표*  {recipe.purpose.get('readability_goal')}\n"
                     f"*출력*  {generation['width']}×{generation['height']} · "
                     f"{generation['steps']} steps · CFG {generation['cfg']} · "
@@ -651,34 +665,279 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
     ]
 
 
-def modal_view(registry: RecipeRegistry) -> dict[str, Any]:
-    options = [
-        {
-            "text": {
-                "type": "plain_text",
-                "text": truncate(recipe.name, 75),
-            },
-            "value": recipe.id,
+def recipes_by_asset_type(
+    registry: RecipeRegistry,
+) -> list[tuple[str, str, list[Recipe]]]:
+    """레시피를 에셋 타입으로 묶는다. ASSET_TYPES 순서를 그대로 따른다."""
+    grouped: dict[str, list[Recipe]] = {}
+    for recipe in registry.load_all().values():
+        grouped.setdefault(recipe.asset_type, []).append(recipe)
+    ordered = [
+        (type_id, label, grouped.pop(type_id))
+        for type_id, label in ASSET_TYPES
+        if type_id in grouped
+    ]
+    # 열거에 없는 타입이 생겨도 목록에서 사라지지 않게 뒤에 붙인다.
+    ordered.extend(
+        (type_id, asset_type_label(type_id), recipes)
+        for type_id, recipes in sorted(grouped.items())
+    )
+    return ordered
+
+
+def slot_label(recipe: Recipe) -> str:
+    """`actor-slinger` 만 보고는 그게 뭔지 알 수 없다. 게임의 이름을 앞에 둔다."""
+    name = recipe.slot_display_name
+    return f"*{name}* · `{recipe.slot}`" if name else f"`{recipe.slot}`"
+
+
+def slot_description_line(recipe: Recipe) -> str:
+    """레시피 카드에만 붙는 한 줄 설명. 게임 쪽 정의를 그대로 가져온다."""
+    try:
+        _name, description = SlotCatalog().describe(recipe.slot)
+    except ReviewError:
+        return ""
+    return f"*정체*  {description}\n" if description else ""
+
+
+def unity_target_label(recipe: Recipe) -> str:
+    """이 레시피가 결국 Unity 의 무엇을 채우는지. 검수 시점에 보여야 한다."""
+    if not recipe.publishes_to_unity:
+        return f"없음 · {recipe.promotion} (정식 슬롯에 쓰지 않는다)"
+    try:
+        catalog = SlotCatalog()
+        fields = [
+            f"`IsoVisualCatalog.{catalog.field_for(slot)}`"
+            for slot in recipe.target_slots
+            if catalog.field_for(slot)
+        ]
+    except ReviewError:
+        return "확인 불가"
+    return " · ".join(fields) or "미등록"
+
+
+def workflow_type_label(recipe: Recipe) -> str:
+    """레지스트리에 있으면 사람 말로, 없으면 원문 그대로 — 카드는 죽지 않는다."""
+    try:
+        return WorkflowTypeRegistry().get(recipe.workflow_type).label
+    except ReviewError:
+        return recipe.workflow_type or "미지정"
+
+
+def recipe_list_text(registry: RecipeRegistry) -> str:
+    groups = recipes_by_asset_type(registry)
+    if not groups:
+        return "등록된 레시피가 없습니다."
+    sections = [
+        "\n".join(
+            [f"*{label}*"]
+            + [
+                f"• `{recipe.id}` — {recipe.name}"
+                for recipe in recipes
+            ]
+        )
+        for _type_id, label, recipes in groups
+    ]
+    return "\n\n".join(sections)
+
+
+MODAL_RECIPE_ACTION = "art_new_recipe_select"
+
+
+def modal_text(values: dict[str, Any], block_id: str) -> str | None:
+    """빈 칸은 "레시피 값 그대로"라는 뜻이지 "빈 문자열로 바꿔라"가 아니다."""
+    block = values.get(block_id) or {}
+    raw = (block.get("value") or {}).get("value")
+    if raw is None:
+        return None
+    text = raw.strip()
+    return text or None
+
+
+def modal_select(values: dict[str, Any], block_id: str) -> str | None:
+    block = values.get(block_id) or {}
+    option = (block.get("value") or {}).get("selected_option")
+    if not option:
+        return None
+    return str(option.get("value")) or None
+
+
+def _text_input(
+    block_id: str,
+    label: str,
+    *,
+    value: str | None = None,
+    placeholder: str | None = None,
+    multiline: bool = False,
+) -> dict[str, Any]:
+    element: dict[str, Any] = {
+        "type": "plain_text_input",
+        "action_id": "value",
+        "multiline": multiline,
+    }
+    if value:
+        # Slack 은 3000자를 넘는 initial_value 를 거절한다.
+        element["initial_value"] = truncate(value, 2900)
+    if placeholder:
+        element["placeholder"] = {
+            "type": "plain_text",
+            "text": placeholder,
         }
-        for recipe in registry.load_all().values()
-    ][:100]
     return {
-        "type": "modal",
-        "callback_id": "art_new_job_modal",
-        "title": {"type": "plain_text", "text": "아트 생성"},
-        "submit": {"type": "plain_text", "text": "큐에 추가"},
-        "close": {"type": "plain_text", "text": "취소"},
-        "blocks": [
-            {
-                "type": "input",
-                "block_id": "recipe",
-                "label": {"type": "plain_text", "text": "레시피"},
-                "element": {
-                    "type": "static_select",
-                    "action_id": "value",
-                    "options": options,
+        "type": "input",
+        "block_id": block_id,
+        "optional": True,
+        "label": {"type": "plain_text", "text": label},
+        "element": element,
+    }
+
+
+def modal_view(
+    registry: RecipeRegistry,
+    *,
+    selected_recipe_id: str | None = None,
+    workflow_types: WorkflowTypeRegistry | None = None,
+) -> dict[str, Any]:
+    """생성 폼. 레시피를 고르면 그 값이 채워지고, 그 자리에서 고칠 수 있다.
+
+    조정값은 이번 job 의 recipe_json 스냅샷에만 들어간다 — YAML 은 그대로다.
+    """
+    # 평평한 목록은 레시피가 늘수록 못 읽는다. Slack option_groups로 에셋
+    # 타입별 소제목을 붙여 "지금 만들려는 게 뭔가"부터 좁히게 한다.
+    option_groups = []
+    selected_option = None
+    for _type_id, label, recipes in recipes_by_asset_type(registry):
+        options = []
+        for recipe in recipes:
+            option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": truncate(recipe.name, 75),
                 },
-            },
+                "value": recipe.id,
+            }
+            if recipe.id == selected_recipe_id:
+                selected_option = option
+            options.append(option)
+        option_groups.append(
+            {
+                "label": {"type": "plain_text", "text": truncate(label, 75)},
+                "options": options[:100],
+            }
+        )
+    option_groups = option_groups[:100]
+
+    recipe_element: dict[str, Any] = {
+        "type": "static_select",
+        "action_id": MODAL_RECIPE_ACTION,
+        "placeholder": {
+            "type": "plain_text",
+            "text": "에셋 타입에서 고르세요",
+        },
+        "option_groups": option_groups,
+    }
+    if selected_option is not None:
+        recipe_element["initial_option"] = selected_option
+
+    selected = (
+        registry.get(selected_recipe_id) if selected_recipe_id else None
+    )
+    types = (workflow_types or WorkflowTypeRegistry()).load_all().values()
+    type_options = [
+        {
+            "text": {"type": "plain_text", "text": truncate(entry.label, 75)},
+            "value": entry.id,
+        }
+        for entry in types
+    ]
+    type_element: dict[str, Any] = {
+        "type": "static_select",
+        "action_id": "value",
+        "options": type_options,
+    }
+    if selected is not None:
+        current = next(
+            (
+                option
+                for option in type_options
+                if option["value"] == selected.workflow_type
+            ),
+            None,
+        )
+        if current is not None:
+            type_element["initial_option"] = current
+
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "input",
+            "block_id": "recipe",
+            "dispatch_action": True,
+            "label": {"type": "plain_text", "text": "레시피"},
+            "element": recipe_element,
+        }
+    ]
+    if selected is None:
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": (
+                            "레시피를 고르면 프롬프트·모델·워크플로가 채워지고, "
+                            "이 자리에서 이번 실행만 고칠 수 있습니다."
+                        ),
+                    }
+                ],
+            }
+        )
+    else:
+        blocks.extend(
+            [
+                {"type": "divider"},
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": (
+                                f"아래는 `{selected.id}` 의 현재 값입니다. "
+                                "고치면 *이번 실행에만* 적용되고 레시피 YAML 은 "
+                                "그대로입니다."
+                            ),
+                        }
+                    ],
+                },
+                {
+                    "type": "input",
+                    "block_id": "workflow_type",
+                    "optional": True,
+                    "label": {"type": "plain_text", "text": "워크플로"},
+                    "element": type_element,
+                },
+                _text_input(
+                    "checkpoint",
+                    "모델 (checkpoint)",
+                    value=str(selected.pipeline.get("checkpoint", "")),
+                    placeholder="예: dreamshaper_8.safetensors",
+                ),
+                _text_input(
+                    "positive",
+                    "긍정 프롬프트",
+                    value=str(selected.prompt.get("positive", "")),
+                    multiline=True,
+                ),
+                _text_input(
+                    "negative",
+                    "제외 프롬프트",
+                    value=str(selected.prompt.get("negative", "")),
+                    multiline=True,
+                ),
+                {"type": "divider"},
+            ]
+        )
+    blocks.extend(
+        [
             {
                 "type": "input",
                 "block_id": "count",
@@ -687,25 +946,26 @@ def modal_view(registry: RecipeRegistry) -> dict[str, Any]:
                 "element": {
                     "type": "plain_text_input",
                     "action_id": "value",
-                    "initial_value": "4",
+                    "initial_value": str(
+                        selected.candidate_count if selected else 4
+                    ),
                 },
             },
-            {
-                "type": "input",
-                "block_id": "notes",
-                "optional": True,
-                "label": {"type": "plain_text", "text": "이번 배치 메모"},
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "value",
-                    "multiline": True,
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "예: 팔은 유지하고 슬링 길이만 짧게",
-                    },
-                },
-            },
-        ],
+            _text_input(
+                "notes",
+                "이번 배치 메모",
+                placeholder="예: 팔은 유지하고 슬링 길이만 짧게",
+                multiline=True,
+            ),
+        ]
+    )
+    return {
+        "type": "modal",
+        "callback_id": "art_new_job_modal",
+        "title": {"type": "plain_text", "text": "아트 생성"},
+        "submit": {"type": "plain_text", "text": "큐에 추가"},
+        "close": {"type": "plain_text", "text": "취소"},
+        "blocks": blocks,
     }
 
 
@@ -800,6 +1060,7 @@ class SlackReviewService:
         candidate_id: str,
         *,
         outbox_id: int | None = None,
+        batch_position: tuple[int, int] | None = None,
     ) -> None:
         candidate = self.store.get_candidate(candidate_id)
         job = self.store.get_job(candidate["job_id"])
@@ -813,6 +1074,8 @@ class SlackReviewService:
                     recipe,
                     candidate,
                     approved=self.store.candidate_is_approved(candidate_id),
+                    job_id=job["id"],
+                    batch_position=batch_position,
                 ),
             )
             root_ts = response["ts"]
@@ -978,66 +1241,41 @@ class SlackReviewService:
         payload = json.loads(row["payload_json"])
         kind = row["kind"]
         if kind == "job_ready":
+            # 후보 카드가 곧 완료 알림이다. 별도의 "생성 완료" 요약 메시지를 앞에
+            # 세우면 후보 1개짜리 job에서 같은 말을 두 번 하게 되고, 사람이 눌러야
+            # 하는 버튼은 어차피 아래 카드에만 있다.
             job_id = payload["job_id"]
-            job = self.store.get_job(job_id)
-            recipe = recipe_from_job(job)
-            announcement_step = f"job:{job_id}:announcement"
-            if not self.store.outbox_delivery_done(
-                row["id"],
-                announcement_step,
-            ):
-                client.chat_postMessage(
-                    channel=self.channel_id,
-                    text=f"생성 완료 · {recipe.name} · 후보 {job['candidate_count']}개",
-                    blocks=[
-                    {
-                        "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "✅ 아트 후보 생성 완료",
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                f"*대상*  {category_label(recipe)} · `{recipe.slot}`\n"
-                                f"*레시피*  {recipe.name}\n"
-                                f"*결과*  후보 {job['candidate_count']}개"
-                            ),
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                "*다음 단계*\n"
-                                "아래 후보 카드를 보고 채택·제외·변형을 선택하세요."
-                            ),
-                        },
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
+            candidates = self.store.list_candidates(job_id)
+            total = len(candidates)
+            if total == 0:
+                job = self.store.get_job(job_id)
+                recipe = recipe_from_job(job)
+                empty_step = f"job:{job_id}:empty"
+                if not self.store.outbox_delivery_done(row["id"], empty_step):
+                    client.chat_postMessage(
+                        channel=self.channel_id,
+                        text=f"생성 완료 · {recipe.name} · 후보 없음",
+                        blocks=[
                             {
-                                "type": "mrkdwn",
-                                "text": f"작업 `{job_id}`",
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": (
+                                        f"⚠️ *{recipe.name}* 생성이 끝났지만 "
+                                        f"후보가 없습니다.\n작업 `{job_id}`"
+                                    ),
+                                },
                             }
                         ],
-                    },
-                    ],
-                )
-                self.store.mark_outbox_delivery(
-                    row["id"],
-                    announcement_step,
-                )
-            for candidate in self.store.list_candidates(job_id):
+                    )
+                    self.store.mark_outbox_delivery(row["id"], empty_step)
+                return
+            for index, candidate in enumerate(candidates, start=1):
                 self.post_candidate(
                     client,
                     candidate["id"],
                     outbox_id=row["id"],
+                    batch_position=(index, total),
                 )
         elif kind == "job_failed":
             client.chat_postMessage(
@@ -1657,14 +1895,9 @@ def register_handlers(
                     view=modal_view(registry),
                 )
             elif verb == "recipes":
-                values = registry.load_all().values()
                 respond(
                     response_type="ephemeral",
-                    text="\n".join(
-                        f"• *{category_label(recipe)}* · `{recipe.id}`\n"
-                        f"  {recipe.name}"
-                        for recipe in values
-                    ),
+                    text=recipe_list_text(registry),
                 )
             elif verb == "recipe" and len(words) >= 2:
                 recipe = registry.get(words[1])
@@ -1946,6 +2179,28 @@ def register_handlers(
                 text=f"처리하지 못했습니다: {exc}",
             )
 
+    @app.action(MODAL_RECIPE_ACTION)
+    def art_new_recipe_select(
+        ack: Callable[..., None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        """레시피를 고르는 순간 그 값으로 폼을 다시 그린다.
+
+        빈 칸을 두고 "고치고 싶은 것만 쓰세요"라고 하면 사람은 지금 값이
+        무엇인지 모른 채 쓰게 된다. 채워서 보여주고 고치게 한다.
+        """
+        ack()
+        try:
+            selected = body["actions"][0]["selected_option"]["value"]
+            client.views_update(
+                view_id=body["view"]["id"],
+                hash=body["view"]["hash"],
+                view=modal_view(registry, selected_recipe_id=selected),
+            )
+        except Exception:
+            log_error("modal recipe prefill failed")
+
     @app.view("art_new_job_modal")
     def art_new_job_modal(
         ack: Callable[..., None],
@@ -1957,7 +2212,10 @@ def register_handlers(
         try:
             require_allowed(user_id)
             values = view["state"]["values"]
-            recipe_id = values["recipe"]["value"]["selected_option"]["value"]
+            recipe_id = (
+                values["recipe"][MODAL_RECIPE_ACTION]["selected_option"]
+                ["value"]
+            )
             count_text = values["count"]["value"].get("value") or ""
             try:
                 count = int(count_text) if count_text else None
@@ -1975,6 +2233,12 @@ def register_handlers(
                 return
             notes = values["notes"]["value"].get("value") or ""
             recipe = registry.get(recipe_id)
+            recipe = recipe.with_overrides(
+                workflow_type=modal_select(values, "workflow_type"),
+                checkpoint=modal_text(values, "checkpoint"),
+                positive=modal_text(values, "positive"),
+                negative=modal_text(values, "negative"),
+            )
         except Exception as exc:
             ack(
                 response_action="errors",

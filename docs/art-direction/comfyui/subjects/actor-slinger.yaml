@@ -1,0 +1,47 @@
+schema_version: 1
+id: actor-slinger
+slot: actor-slinger
+asset_type: character
+
+# 표시명은 적지 않는다 — MonsterRoster.Slinger 의 displayName("투석 약탈자")을
+# 그대로 쓴다. 여기 다시 적으면 게임과 갈린다.
+
+readability_goal: 치켜든 팔, 긴 슬링, 후드와 붉은 외눈이 96×128에서도 분리되어야 한다.
+
+prompt:
+  # 정체성 — 어느 방법으로 뽑든 이 캐릭터를 이 캐릭터이게 하는 문장.
+  positive: >-
+    single male post-apocalyptic hooded masked raider slinger, red hood, dark
+    face mask, patched charcoal concrete-gray and rust-brown coat, compact
+    backpack, crouched shoulders, one small red glowing goggle
+  # 대표 동작 — 정지 컷 한 장을 뽑을 때만 붙는다(방법이 고른다).
+  signature_pose: >-
+    right arm raised high overhead spinning a long leather sling, visible
+    curved sling cord with stone pouch, left arm extended for balance, empty
+    hands except the sling cord
+  # 이 대상에서만 배제할 것. 일반 품질 제외는 방법이 가진다.
+  negative: >-
+    female, woman, girl, skirt, dress, bare legs, slingshot, gun, rifle, bow,
+    sword, shield, fantasy armor, medieval
+
+guides:
+  # 경로는 대상이 안다. 어느 변형을 쓸지는 방법이 고른다.
+  style_source:
+    default: docs/art-direction/comfyui/guides/actor-slinger-style-source.png
+    runtime-512: >-
+      docs/art-direction/comfyui/guides/actor-slinger-runtime-source-512-v1.png
+  pose: docs/art-direction/comfyui/guides/actor-slinger-openpose.png
+
+# 포즈 샷 id → 그 포즈의 OpenPose 가이드. 방법이 정한 포즈 목록과 이 키가 맞아야
+# 한다 — 없는 포즈는 방법의 기본 pose 가이드로 떨어진다.
+pose_guides:
+  idle: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+  walk-contact-a: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-a.png
+  walk-pass: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-pass.png
+  walk-contact-b: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-b.png
+  attack-windup: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
+  attack-release: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
+  attack-recovery: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-recovery.png
+  hit: docs/art-direction/comfyui/guides/openpose/actor-slinger-hit.png
+  fall: docs/art-direction/comfyui/guides/openpose/actor-slinger-fall.png
+  death: docs/art-direction/comfyui/guides/openpose/actor-slinger-death.png

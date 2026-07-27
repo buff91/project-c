@@ -55,10 +55,115 @@ art-review.sqlite3
 애니메이션·이펙트의 Aseprite 프레임/태그 마감 규칙은
 `docs/art-direction/animation-effect-workflow.md`가 소유한다.
 
+### 2-a. 에셋 타입 (`purpose.asset_type`)
+
+레시피를 **고를 때** 쓰는 축이다. `category`(어느 슬롯 계열인가)와도, `use`(무슨 용도인가)와도
+다르다 — 같은 `actor` 카테고리라도 콘셉트 탐색·런타임 스프라이트·애니 키포즈는 고르는 순간의
+목적이 서로 다르기 때문이다. `/art recipes`와 생성 폼 드롭다운, `art_runner.py recipes`가
+모두 이 순서로 묶어 보여준다.
+
+| `asset_type` | 표시 | 무엇인가 |
+|---|---|---|
+| `concept` | 컨셉 | 방향 탐색용. 정식 슬롯으로 승격하지 않는다 |
+| `environment` | 배경 | 환경 타일·소스시트 |
+| `character` | 캐릭터 | 런타임에 바로 쓰는 액터 스프라이트 |
+| `animation` | 애니메이션 | 상태별 키포즈 묶음. Aseprite 마감이 뒤따른다 |
+| `effect` | 이펙트 | 전투 FX 키포즈 |
+| `prop` | 소품·아이템 | 아이템·소품·마커 |
+| `ui` | UI | UI 아이콘·프레임 |
+
+`ASSET_TYPES`(`art_review.py`)가 목록과 순서의 SSOT다. 새 타입은 여기에 먼저 추가한다 —
+레시피에 없는 타입을 쓰면 검증이 막는다. 필드를 빠뜨린 레시피는 `derive_asset_type()`이
+`category`/`use`에서 파생하지만, **레시피는 명시하는 것이 규칙**이고 테스트가 이를 강제한다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py recipes --asset-type animation
+```
+
+### 2-b. Unity 슬롯 (`purpose.slot`) — ID는 발급받는다
+
+에셋 타입이 "무엇을 만드나"라면, 슬롯은 **"Unity 의 무엇을 채우나"**다. 같은 `캐릭터` 타입
+안에서도 `actor-slinger`와 `actor-goblin`은 서로 다른 `IsoVisualCatalog` 필드를 채운다.
+
+**슬롯 ID의 발급처는 `Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs`의
+`CatalogSlots`다.** 파이썬은 이 목록을 복제하지 않고 그대로 읽는다(`SlotCatalog`) — 복제하면
+반드시 어긋난다. 여기 없는 슬롯 ID는 **존재하지 않는 것**이다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py slots actor-       # 액터 슬롯과 Unity 필드
+python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가 없는 슬롯
+```
+
+#### 슬롯이 게임에서 무엇인지
+
+`actor-slinger`만 보고는 그게 뭔지 알 수 없다. 몬스터 슬롯은 표시명과 한 줄 설명을
+**`MonsterRoster`에서 읽어온다** — 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+갈리기 때문이다(`DungeonCatalog`가 보스 이름에 대해 지키는 규칙과 같다).
+
+```
+*대상*  캐릭터 · *투석 약탈자* · `actor-slinger`
+*정체*  투석 약탈자(코드 ID Slinger): 유일한 원거리 교전 몬스터
+```
+
+이름을 아는 슬롯만 이름이 붙는다. `actor-player`·`env-floor`·`fx-*`처럼 `MonsterRoster`에
+없는 슬롯은 **ID만 보여주고 설명을 지어내지 않는다.** 새 몬스터의 설명이 카드에 뜨게 하려면
+`MonsterRoster`의 선언 **바로 위**에 `/// <summary>` 한 줄을 적으면 된다.
+
+#### 승격하는 레시피는 등록된 슬롯만 겨눌 수 있다
+
+`output.promotion`이 슬롯 요구를 가른다.
+
+| `promotion` | 정식 슬롯에 쓰나 | 슬롯 등록 필요 |
+|---|---|---|
+| `aseprite` | ✓ `Art/Source/Aseprite/<slot>.aseprite` | **필수** |
+| `animation-review-only` | ✗ 검수 초안까지 | 불필요 |
+| `manual-processor` | ✗ 지정 processor 를 거친다 | 불필요 |
+| `concept-only` | ✗ 방향 탐색 전용 | 불필요 |
+
+슬롯 이름은 예전엔 정규식(`^(actor|env|item|marker|prop|fx)-...`)만 통과하면 됐다. 그래서
+미등록 슬롯에 게시하면 `.aseprite` 파일이 생기고 **아무 일도 일어나지 않는데** 파이프라인은
+"반영 완료"라고 말했다. 이제 레시피 검증과 게시 경로가 둘 다 발급 목록을 확인한다 — Spark 가
+`--target-slot`으로 넘긴 값도 같은 관문을 지난다. 멀티샷은 샷이 슬롯을 갈아타므로 대표 슬롯이
+아니라 **`target_slots` 전부**를 본다.
+
+#### 새 캐릭터(또는 새 슬롯)를 추가하는 순서
+
+1. `ProjectCAsepritePipeline.cs`의 `CatalogSlots`에 `{ "actor-<이름>", "<필드명>" }`을 더해
+   **ID를 발급**한다. `IsoVisualCatalog`에 같은 이름의 Sprite 필드가 있어야 한다.
+2. 필요하면 `ProjectCArtPivots.cs`에 피벗을 등록한다.
+3. 그다음에 그 슬롯을 겨누는 레시피를 만든다. 순서를 뒤집으면 검증이 막는다 — **의도한 것이다.**
+   Unity 가 읽을 자리가 없는데 그림부터 만들면, 승인·마감까지 다 하고 나서야 갈 곳이 없음을 안다.
+
+### 2-c. 워크플로 타입 (`pipeline.type`)
+
+`docs/art-direction/comfyui/workflow-types.yaml`이 목록과 **계약**을 소유한다. 타입은
+"어떤 ComfyUI 워크플로 계열인가"를 말하고, 그 타입이 성립하려면 레시피가 무엇을 채워야
+하는지를 함께 선언한다.
+
+| `pipeline.type` | 표시 | 필수 업로드 | denoise | ControlNet |
+|---|---|---|---|---|
+| `sdxl-txt2img` | SDXL txt2img | 없음 | ✗ | ✗ |
+| `sdxl-img2img` | SDXL img2img (스타일 트랜스퍼) | `7.image` | ✓ | ✗ |
+| `sd15-img2img-openpose` | SD1.5 img2img + OpenPose | `5.image` · `6.image` | ✓ | ✓ |
+
+`requires.bindings`에 적힌 논리 이름이 레시피 `pipeline.bindings`에 없으면 검증이 막는다 —
+**타입 문자열만 맞고 바인딩이 비어 있으면 ComfyUI는 조용히 기본값으로 생성하고 seed
+재현성이 무너지는데 아무도 모르기 때문이다.** `requires.uploads`는 레시피 전체
+(`pipeline.uploads`)나 샷 하나(`shots[].uploads`) 어느 쪽에서 채워도 된다 — 포즈 가이드처럼
+샷마다 다른 입력이 있다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py workflow-types
+python3 Tools/ArtPipeline/art_runner.py workflow-types sd15-img2img-openpose
+```
+
+새 워크플로 계열을 늘릴 때는 `.api.json`을 두고 이 파일에 타입을 먼저 추가한다. 레지스트리에
+없는 타입을 레시피가 쓰면 `art_recipe_tool.py validate`와 `art_runner.py init`이 막는다.
+
 경로는 `docs/art-direction/comfyui/recipes/`다. 모든 레시피는 다음 정보를 사람이 읽을 수
 있게 기록한다.
 
-- `purpose`: 카테고리·정식 슬롯·게임/콘셉트/소스시트 용도·가독성 목표
+- `purpose`: 카테고리·**에셋 타입**·정식 슬롯·게임/콘셉트/소스시트 용도·가독성 목표
 - `output`: 최종 캔버스·피벗·크로마키·팔레트·승격 방식
 - `pipeline`: ComfyUI API 워크플로·checkpoint·논리값→노드 입력 binding
 - `loras`: 파일명·노드·base model·model/CLIP 강도·용도·출처
@@ -99,8 +204,8 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 용도 | Slack | 로컬 CLI | 언제 쓰나 |
 |---|---|---|---|
 | 전체 도움말 | `/art help` | `art_runner.py --help` | 지원하는 명령 확인 |
-| 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피와 후보 수를 폼에서 선택 |
-| 레시피 목록 | `/art recipes` | `art_runner.py recipes` | 사용할 recipe ID 확인 |
+| 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피를 고르고 프롬프트·모델·워크플로를 이번 실행만 조정 |
+| 레시피 목록 | `/art recipes` | `art_runner.py recipes [--asset-type <타입>]` | 에셋 타입별로 묶인 recipe ID 확인 |
 | 레시피 상세 | `/art recipe <recipe-id>` | `art_runner.py recipes <recipe-id>` | 모델·LoRA·프롬프트·steps 확인 |
 | 전체 세트 생성 | `/art run <recipe-id> [count]` | `art_runner.py submit <recipe-id> --count <n>` | 확정한 설정으로 후보 또는 멀티샷 세트 생성 |
 | 한 샷 시험 | `/art shot <recipe-id> <shot-id> [count]` | `art_runner.py submit <recipe-id> --shot <shot-id> --count <n>` | 전체 세트를 만들기 전에 포즈·효과 한 장만 검증 |
@@ -111,6 +216,22 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
 | 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
 | 작업 상세 | 카드와 스레드 | `art_runner.py job <job-id>` | candidate ID, seed, 출력 경로 확인 |
+
+#### 생성 폼의 이번 실행 조정
+
+`/art new` 폼에서 레시피를 고르면 그 레시피의 **현재 워크플로·모델(checkpoint)·긍정/제외
+프롬프트가 채워진 채로** 나타나고, 그 자리에서 고칠 수 있다. 빈 칸으로 두면 "레시피 값 그대로"
+라는 뜻이다.
+
+조정값은 **이번 job 에만** 적용된다 — 레시피 YAML 은 그대로다. 대신 job 이 문서 전체를
+`recipe_json` 으로 스냅샷하므로 조정본도 원본과 똑같이 재현 가능하고, 후보 카드에
+`✏️ 이번 실행 조정  모델 · 긍정 프롬프트` 로 무엇이 달라졌는지 표시된다. 결과가 좋아서
+계속 쓸 설정이면 `art_recipe_tool.py clone` 으로 `-rN` 레시피를 만든다 — **조정만으로는
+다음 실행에 남지 않는다.**
+
+워크플로 타입을 바꾸면 워크플로 JSON 도 함께 바뀌므로, 레시피의 바인딩이 새 JSON 의 노드와
+맞지 않으면 폼이 제출을 거부한다. 워커가 아니라 폼에서 막는다 — 6장 생성을 큐에 넣고 몇 분
+기다린 뒤에 알 일이 아니다.
 
 `count`는 후보 **세트 수**이며 1~12다. 멀티샷 레시피에서 `count 2`는 샷 두 장이 아니라
 전체 샷 묶음 두 세트를 뜻한다. 비용이 큰 액터/이펙트는 반드시 한 샷 `count 1`로 먼저
@@ -340,12 +461,15 @@ Slack 명령:
 메시지는 사람이 훑는 순서에 맞춰 구성한다.
 
 - **제목**: 상태 아이콘 + `검토 대기/채택됨/준비 완료/반영 완료` + 자산 이름
-- **본문**: 대상 종류·슬롯·후보 ID와 지금 해야 할 한 가지 행동
-- **하단 작은 글씨**: recipe ID, steps, CFG, denoise 같은 재현 정보
+- **본문**: 대상 종류·슬롯·후보 ID(묶음이면 `(2/3)`)와 지금 해야 할 한 가지 행동
+- **하단 작은 글씨**: 작업 ID, recipe ID, steps, CFG, denoise 같은 재현 정보
 - **스레드**: 원본 이미지, 샷별 카드, Aseprite 미리보기, GIF, 오류와 후속 작업
 
-후보마다 독립된 채널 카드가 생기며 원본 이미지는 그 카드의 스레드에 업로드된다. 채널에는
-완료 요약과 후보 카드만 남기고 기술 로그와 수정 대화는 스레드에 모은다.
+후보마다 독립된 채널 카드가 생기며 원본 이미지는 그 카드의 스레드에 업로드된다. **후보 카드가
+곧 생성 완료 알림이다** — 앞에 별도의 요약 메시지를 세우지 않는다. 후보 1개짜리 job에서
+같은 말이 두 번 나오고, 사람이 눌러야 할 버튼은 어차피 카드에만 있기 때문이다. 그래서 작업
+ID와 묶음 내 위치는 카드가 직접 진다. 채널에는 후보 카드만 남기고 기술 로그와 수정 대화는
+스레드에 모은다. 생성이 끝났는데 후보가 0개인 예외 상황에서만 경고 메시지 하나가 올라간다.
 
 멀티샷 레시피는 후보 카드 아래에 샷별 원본과 카드도 함께 올린다. 각 샷 카드에는
 **✅ 채택 / ❌ 제외 / 🔁 이 샷만 2개** 버튼이 있다. 마지막 버튼은 전체 묶음을 다시 만들지

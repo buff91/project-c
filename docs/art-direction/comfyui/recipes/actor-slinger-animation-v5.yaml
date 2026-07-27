@@ -3,6 +3,7 @@ id: actor-slinger-animation-v5
 name: 투석 약탈자 런타임 액션 키프레임 v5 · identity/pose balance
 purpose:
   category: actor
+  asset_type: animation
   slot: actor-slinger
   use: animation-source
   readability_goal: 버전 고정 512 identity 가이드와 동일 seed로 캐릭터 정체성을 유지하면서 OpenPose 동작 변화가 읽혀야 한다.

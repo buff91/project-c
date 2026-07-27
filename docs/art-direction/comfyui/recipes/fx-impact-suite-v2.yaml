@@ -4,6 +4,7 @@ name: 전투 이펙트 원천 키프레임 v2
 
 purpose:
   category: effect
+  asset_type: effect
   slot: fx-impact-physical
   use: animation-source
   readability_goal: 24~32px에서 UI 아이콘이 아니라 방향성 있는 파편·부분 호로 읽혀야 한다.
