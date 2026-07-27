@@ -39,6 +39,7 @@ from art_review import (
     ReviewStore,
     ShotSpec,
     VALID_ASSET_TYPES,
+    WorkflowTypeRegistry,
     image_metrics,
     make_id,
     project_path,
@@ -1131,6 +1132,14 @@ def command_recipes(args: argparse.Namespace) -> None:
     json_print([recipe.summary() for recipe in selected])
 
 
+def command_workflow_types(args: argparse.Namespace) -> None:
+    types = WorkflowTypeRegistry().load_all()
+    if args.type_id:
+        json_print(WorkflowTypeRegistry().get(args.type_id).summary())
+        return
+    json_print([entry.summary() for entry in types.values()])
+
+
 def resolve_batch_jobs(
     store: ReviewStore,
     batch_id: str,
@@ -1562,6 +1571,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     recipes.set_defaults(handler=command_recipes)
+
+    workflow_types = subparsers.add_parser("workflow-types")
+    workflow_types.add_argument("type_id", nargs="?")
+    workflow_types.set_defaults(handler=command_workflow_types)
 
     batches = subparsers.add_parser("batches")
     batches.add_argument("batch_id", nargs="?")

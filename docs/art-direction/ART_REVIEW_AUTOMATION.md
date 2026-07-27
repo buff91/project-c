@@ -80,6 +80,32 @@ art-review.sqlite3
 python3 Tools/ArtPipeline/art_runner.py recipes --asset-type animation
 ```
 
+### 2-b. 워크플로 타입 (`pipeline.type`)
+
+`docs/art-direction/comfyui/workflow-types.yaml`이 목록과 **계약**을 소유한다. 타입은
+"어떤 ComfyUI 워크플로 계열인가"를 말하고, 그 타입이 성립하려면 레시피가 무엇을 채워야
+하는지를 함께 선언한다.
+
+| `pipeline.type` | 표시 | 필수 업로드 | denoise | ControlNet |
+|---|---|---|---|---|
+| `sdxl-txt2img` | SDXL txt2img | 없음 | ✗ | ✗ |
+| `sdxl-img2img` | SDXL img2img (스타일 트랜스퍼) | `7.image` | ✓ | ✗ |
+| `sd15-img2img-openpose` | SD1.5 img2img + OpenPose | `5.image` · `6.image` | ✓ | ✓ |
+
+`requires.bindings`에 적힌 논리 이름이 레시피 `pipeline.bindings`에 없으면 검증이 막는다 —
+**타입 문자열만 맞고 바인딩이 비어 있으면 ComfyUI는 조용히 기본값으로 생성하고 seed
+재현성이 무너지는데 아무도 모르기 때문이다.** `requires.uploads`는 레시피 전체
+(`pipeline.uploads`)나 샷 하나(`shots[].uploads`) 어느 쪽에서 채워도 된다 — 포즈 가이드처럼
+샷마다 다른 입력이 있다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py workflow-types
+python3 Tools/ArtPipeline/art_runner.py workflow-types sd15-img2img-openpose
+```
+
+새 워크플로 계열을 늘릴 때는 `.api.json`을 두고 이 파일에 타입을 먼저 추가한다. 레지스트리에
+없는 타입을 레시피가 쓰면 `art_recipe_tool.py validate`와 `art_runner.py init`이 막는다.
+
 경로는 `docs/art-direction/comfyui/recipes/`다. 모든 레시피는 다음 정보를 사람이 읽을 수
 있게 기록한다.
 

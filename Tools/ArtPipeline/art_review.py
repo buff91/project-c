@@ -37,6 +37,9 @@ DEFAULT_DB_PATH = DEFAULT_STATE_DIR / "art-review.sqlite3"
 DEFAULT_OUTPUT_ROOT = (
     PROJECT_ROOT / "docs/art-direction/comfyui/output/review"
 )
+DEFAULT_WORKFLOW_TYPES_PATH = (
+    PROJECT_ROOT / "docs/art-direction/comfyui/workflow-types.yaml"
+)
 VALID_JOB_STATES = {
     "queued",
     "running",
@@ -254,6 +257,10 @@ class Recipe:
     @property
     def asset_type_label(self) -> str:
         return asset_type_label(self.asset_type)
+
+    @property
+    def workflow_type(self) -> str:
+        return str(self.pipeline.get("type", "")).strip()
 
     @property
     def canvas(self) -> tuple[int, int]:
@@ -589,6 +596,50 @@ class Recipe:
                         f"Recipe {self.id} shot {shot.id} upload {target} "
                         f"is missing: {path}"
                     )
+        self.validate_workflow_type()
+
+    def validate_workflow_type(
+        self,
+        registry: "WorkflowTypeRegistry | None" = None,
+    ) -> None:
+        """`pipeline.type` 이 선언한 계약을 레시피가 실제로 채우는지 본다.
+
+        타입 문자열만 맞고 바인딩이나 업로드가 비어 있으면 ComfyUI 는 조용히
+        기본값으로 생성한다 — seed 재현성이 무너지는데 아무도 모른다.
+        """
+        declared = str(self.pipeline.get("type", "")).strip()
+        if not declared:
+            raise ReviewError(f"Recipe {self.id} pipeline.type is required")
+        workflow_type = (registry or WorkflowTypeRegistry()).get(declared)
+
+        bindings = set(self.pipeline.get("bindings", {}))
+        missing_bindings = [
+            name
+            for name in workflow_type.required_bindings
+            if name not in bindings
+        ]
+        if missing_bindings:
+            raise ReviewError(
+                f"Recipe {self.id} type {declared} requires bindings "
+                f"{', '.join(missing_bindings)}"
+            )
+
+        # 업로드는 레시피 전체 또는 샷 하나가 채우면 된다 — 포즈 가이드처럼
+        # 샷마다 다른 입력이 있기 때문이다.
+        recipe_uploads = set(self.pipeline.get("uploads", {}))
+        for target in workflow_type.required_uploads:
+            if target in recipe_uploads:
+                continue
+            unfilled = [
+                shot.id
+                for shot in self.shots
+                if target not in (shot.uploads or {})
+            ]
+            if unfilled:
+                raise ReviewError(
+                    f"Recipe {self.id} type {declared} requires upload "
+                    f"{target}; missing on shot(s): {', '.join(unfilled)}"
+                )
 
     def assignments(
         self,
@@ -692,6 +743,107 @@ class Recipe:
                 for shot in self.shots
             ],
         }
+
+
+@dataclass(frozen=True)
+class WorkflowType:
+    """`pipeline.type` 하나의 계약. workflow-types.yaml 이 소유한다."""
+
+    document: dict[str, Any]
+
+    @property
+    def id(self) -> str:
+        return str(self.document["id"])
+
+    @property
+    def label(self) -> str:
+        return str(self.document.get("label") or self.id)
+
+    @property
+    def summary_text(self) -> str:
+        return str(self.document.get("summary", "")).strip()
+
+    @property
+    def default_workflow(self) -> str:
+        return str(self.document.get("default_workflow", "")).strip()
+
+    @property
+    def required_bindings(self) -> tuple[str, ...]:
+        requires = _mapping(self.document.get("requires", {}), "requires")
+        return tuple(str(name) for name in requires.get("bindings", []))
+
+    @property
+    def required_uploads(self) -> tuple[str, ...]:
+        requires = _mapping(self.document.get("requires", {}), "requires")
+        return tuple(str(target) for target in requires.get("uploads", []))
+
+    @property
+    def supports_denoise(self) -> bool:
+        supports = _mapping(self.document.get("supports", {}), "supports")
+        return bool(supports.get("denoise", False))
+
+    @property
+    def supports_controlnet(self) -> bool:
+        supports = _mapping(self.document.get("supports", {}), "supports")
+        return bool(supports.get("controlnet", False))
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "label": self.label,
+            "summary": self.summary_text,
+            "default_workflow": self.default_workflow,
+            "requires": {
+                "bindings": list(self.required_bindings),
+                "uploads": list(self.required_uploads),
+            },
+            "supports": {
+                "denoise": self.supports_denoise,
+                "controlnet": self.supports_controlnet,
+            },
+        }
+
+
+class WorkflowTypeRegistry:
+    def __init__(self, path: Path = DEFAULT_WORKFLOW_TYPES_PATH):
+        self.path = path.resolve()
+
+    def load_all(self) -> dict[str, WorkflowType]:
+        if not self.path.is_file():
+            raise ReviewError(
+                f"Workflow type registry is missing: {self.path}"
+            )
+        with self.path.open("r", encoding="utf-8") as handle:
+            document = _mapping(yaml.safe_load(handle) or {}, "workflow-types")
+        if document.get("schema_version") != 1:
+            raise ReviewError(
+                f"{self.path} has unsupported schema_version "
+                f"{document.get('schema_version')!r}"
+            )
+        types: dict[str, WorkflowType] = {}
+        for index, raw in enumerate(document.get("types", []) or []):
+            entry = _mapping(raw, f"types[{index}]")
+            if not str(entry.get("id", "")).strip():
+                raise ReviewError(f"{self.path} types[{index}] has no id")
+            workflow_type = WorkflowType(document=entry)
+            if workflow_type.id in types:
+                raise ReviewError(
+                    f"Duplicate workflow type {workflow_type.id!r}"
+                )
+            types[workflow_type.id] = workflow_type
+        if not types:
+            raise ReviewError(f"{self.path} declares no workflow types")
+        return types
+
+    def get(self, type_id: str) -> WorkflowType:
+        types = self.load_all()
+        try:
+            return types[type_id]
+        except KeyError as exc:
+            available = ", ".join(types) or "(none)"
+            raise ReviewError(
+                f"Unknown workflow type {type_id!r}; available: {available}"
+            ) from exc
 
 
 class RecipeRegistry:

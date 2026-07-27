@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import io
 import json
 import sqlite3
@@ -23,6 +24,7 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    WorkflowTypeRegistry,
     derive_asset_type,
     image_metrics,
 )
@@ -143,6 +145,64 @@ class RecipeTests(unittest.TestCase):
             ["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"],
             [group["label"]["text"] for group in element["option_groups"]],
         )
+
+    def test_every_recipe_satisfies_its_workflow_type_contract(self) -> None:
+        types = WorkflowTypeRegistry().load_all()
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                self.assertIn(recipe.workflow_type, types)
+                recipe.validate_workflow_type()
+
+    def test_unknown_workflow_type_is_rejected(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"].__setitem__(
+                "type", "sd15-magic"
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "Unknown workflow type"):
+            recipe.validate_workflow_type()
+
+    def test_missing_required_binding_is_rejected(self) -> None:
+        """타입만 맞고 바인딩이 없으면 ComfyUI가 조용히 기본값을 쓴다."""
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["bindings"].pop("seed")
+        )
+        with self.assertRaisesRegex(ReviewError, "requires bindings seed"):
+            recipe.validate_workflow_type()
+
+    def test_missing_required_upload_is_rejected(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["uploads"].pop("6.image")
+        )
+        with self.assertRaisesRegex(ReviewError, "requires upload 6.image"):
+            recipe.validate_workflow_type()
+
+    def test_shot_level_upload_satisfies_the_contract(self) -> None:
+        """포즈 가이드처럼 샷마다 다른 입력은 샷이 채워도 계약이 성립한다."""
+        recipe = self.registry.get("actor-slinger-animation-v5")
+        self.assertNotIn("6.image", recipe.pipeline.get("uploads", {}))
+        self.assertTrue(
+            all("6.image" in (shot.uploads or {}) for shot in recipe.shots)
+        )
+        recipe.validate_workflow_type()
+
+    def test_workflow_type_registry_describes_capabilities(self) -> None:
+        openpose = WorkflowTypeRegistry().get("sd15-img2img-openpose")
+        self.assertTrue(openpose.supports_denoise)
+        self.assertTrue(openpose.supports_controlnet)
+        txt2img = WorkflowTypeRegistry().get("sdxl-txt2img")
+        self.assertFalse(txt2img.supports_denoise)
+        self.assertFalse(txt2img.supports_controlnet)
+        self.assertEqual((), txt2img.required_uploads)
+
+    def _mutated_recipe(self, mutate):
+        from art_review import Recipe
+
+        document = copy.deepcopy(
+            self.registry.get("actor-slinger-idle-v1").document
+        )
+        mutate(document)
+        return Recipe.from_document(document, path=Path("memory.yaml"))
 
     def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
         plan = BatchRegistry().get("style-sampler")

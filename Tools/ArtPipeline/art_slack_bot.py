@@ -27,6 +27,7 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    WorkflowTypeRegistry,
     asset_type_label,
     project_path,
     recipe_from_job,
@@ -583,6 +584,7 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
                 "type": "mrkdwn",
                 "text": (
                     f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`\n"
+                    f"*워크플로*  {workflow_type_label(recipe)}\n"
                     f"*목표*  {recipe.purpose.get('readability_goal')}\n"
                     f"*출력*  {generation['width']}×{generation['height']} · "
                     f"{generation['steps']} steps · CFG {generation['cfg']} · "
@@ -669,6 +671,14 @@ def recipes_by_asset_type(
         for type_id, recipes in sorted(grouped.items())
     )
     return ordered
+
+
+def workflow_type_label(recipe: Recipe) -> str:
+    """레지스트리에 있으면 사람 말로, 없으면 원문 그대로 — 카드는 죽지 않는다."""
+    try:
+        return WorkflowTypeRegistry().get(recipe.workflow_type).label
+    except ReviewError:
+        return recipe.workflow_type or "미지정"
 
 
 def recipe_list_text(registry: RecipeRegistry) -> str:
