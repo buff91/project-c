@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace ProjectC.Gameplay
 {
-    /// <summary>메타 창고 파일 입출력. 판 종료(사망 포함)에도 유지된다.</summary>
+    /// <summary>메타 창고 파일 입출력. 원자적 JSON + 직전 정상 백업, 판 종료에도 유지된다.</summary>
     public static class MetaStore
     {
         private static string SavePath => System.IO.Path.Combine(

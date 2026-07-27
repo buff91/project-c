@@ -1,0 +1,134 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "dreamshaper_8.safetensors"
+    },
+    "_meta": {
+      "title": "DreamShaper 8 SD1.5"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["1", 0],
+      "clip": ["1", 1],
+      "lora_name": "pixelartV3.safetensors",
+      "strength_model": 0.35,
+      "strength_clip": 0.3
+    },
+    "_meta": {
+      "title": "PixelArt V3 SD1.5"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "pixelart, best quality pixel art game sprite, full body single male post-apocalyptic hooded masked raider slinger matching the source scavenger costume and proportions, dynamic three-quarter isometric pose, right arm raised high overhead spinning a long leather sling, visible curved sling cord with stone pouch, left arm extended for balance, crouched shoulders, compact backpack, patched charcoal concrete-gray and rust-brown clothing, one small red glowing goggle, strong readable silhouette, feet on one baseline, empty hands except the sling cord, isolated centered cutout, flat solid pure magenta background, hard pixel clusters, limited colors"
+    },
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["2", 1],
+      "text": "worst quality, low quality, female, woman, girl, skirt, dress, bare legs, malformed anatomy, extra arms, extra legs, missing limbs, arms down, neutral pose, slingshot, gun, rifle, bow, sword, shield, boxes, crates, furniture, surrounding props, multiple people, cropped feet, floor, ground, cast shadow, scenery, white border, gray background, gradient background, text, watermark, photorealistic, smooth 3d, vector art, fantasy armor, medieval"
+    },
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "5": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "actor-slinger-style-source.png"
+    },
+    "_meta": {
+      "title": "Existing Project-C Raider Style Source"
+    }
+  },
+  "6": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "actor-slinger-openpose.png"
+    },
+    "_meta": {
+      "title": "Uploaded OpenPose Map"
+    }
+  },
+  "7": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11p_sd15_openpose_fp16.safetensors"
+    },
+    "_meta": {
+      "title": "SD1.5 OpenPose ControlNet"
+    }
+  },
+  "8": {
+    "class_type": "ControlNetApplyAdvanced",
+    "inputs": {
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "control_net": ["7", 0],
+      "image": ["6", 0],
+      "strength": 1.0,
+      "start_percent": 0.0,
+      "end_percent": 0.9
+    },
+    "_meta": {
+      "title": "Apply Pose"
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["2", 0],
+      "positive": ["8", 0],
+      "negative": ["8", 1],
+      "latent_image": ["12", 0],
+      "seed": 51002,
+      "steps": 24,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.78
+    },
+    "_meta": {
+      "title": "Pose-Locked Sample"
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["9", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Decode Actor"
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["10", 0],
+      "filename_prefix": "project-c/actor-slinger-openpose"
+    },
+    "_meta": {
+      "title": "Save Pose-Locked Draft"
+    }
+  },
+  "12": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["5", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Encode Existing Raider"
+    }
+  }
+}

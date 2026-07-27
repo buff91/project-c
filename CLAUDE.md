@@ -57,11 +57,11 @@ Assets/_Project/
   Scripts/Core/ · Scripts/Gameplay/  # 순수 C# 규칙(격자·시야·경로·생성·전투/상태·낙하·AI·아이템)
                                      # / MonoBehaviour·씬 연동(IsoPrototypeDemo 는 관심사별 partial)
   Tests/EditMode/ · Tests/PlayMode/  # 규칙별 *Tests.cs · 씬 흐름 통합 스모크
-  Scenes/ · UI/ · Editor/ArtPipeline/ · Captures/  # 씬 · UXML/USS · Aseprite 임포트 메뉴 · 검증 캡처
-  Art/Source/Aseprite/               # 원본이 도착할 자리 + 기준 팔레트 .gpl — 아직 .aseprite 원본은 없다
+  Scenes/ · UI/ · Editor/ArtPipeline/  # 씬 · UXML/USS · Aseprite 임포트 메뉴
+  Art/Source/Aseprite/               # 정식 .aseprite 원본 + 기준 팔레트 .gpl — 게시 파이프라인이 여기에 쓴다
   Art/Runtime/ · Art/Environment/    # 실제로 게임에 연결된 PNG + 환경 카탈로그 (현재 동작 경로)
 Tools/  ArtPipeline(후처리 파이썬) · CoreTests(에디터 없이 도는 dotnet shim) · Hooks(로컬 검증 훅)
-docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction/)
+docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction/ · captures/ 검증 참고 이미지)
 ```
 
 ## 검증 (테스트 · 훅 · CI · MCP)
@@ -75,8 +75,9 @@ docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction
 - **CI**(`.github/workflows/core-tests.yml`)는 **`release/**` 브랜치 한정**이다. `main`과 작업 브랜치에는 CI가 없어
   위 훅이 유일한 방어선 — **훅을 끄고 작업하지 않는다.**
 - **Unity MCP**는 붙어 있는 세션에서만 쓴다(연결 여부는 `docs/ROADMAP.md`「환경 현황」 — 웹/원격 세션엔 에디터가
-  없다). 스크립트 수정 후 `read_console`로 컴파일 에러 확인. 캡처(`manage_ui render_ui`)는 `Assets/Screenshots/`로
-  떨어지며 **리포에서 제외한다**(`.gitignore`) — 필요하면 그때 다시 찍는다.
+  없다). 스크립트 수정 후 `read_console`로 컴파일 에러 확인. 캡처(`manage_ui render_ui`)는 도구 제약상
+  `Assets/Screenshots/`에 임시로 떨어지지만 **Unity 참조가 없는 보관본은 즉시 `docs/captures/`로 옮긴다.**
+  임시 경로는 리포에서 제외한다(`.gitignore`).
 
 ## 스킬 (반복 절차는 여기에 있다)
 

@@ -11,7 +11,7 @@ namespace ProjectC.EditorTools
     /// <summary>허브와 전투 월드 아트의 공통 카탈로그 연결을 540×960으로 검증한다.</summary>
     public static class ArtStyleCapture
     {
-        private const string CaptureRoot = "Assets/_Project/Captures";
+        private const string CaptureRoot = "docs/captures";
 
         [MenuItem("Project-C/Capture Art Style Pair")]
         public static void CapturePair()
@@ -19,7 +19,6 @@ namespace ProjectC.EditorTools
             ProjectCArtImporter.ReimportRuntimeArt();
             CaptureScene("Assets/_Project/Scenes/Hub.unity", "art-v2-hub-world.png");
             CaptureScene("Assets/_Project/Scenes/IsoPrototype.unity", "art-v2-combat-world.png");
-            AssetDatabase.Refresh();
         }
 
         private static void CaptureScene(string scenePath, string fileName)

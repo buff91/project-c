@@ -1,0 +1,141 @@
+schema_version: 1
+id: fx-impact-suite-v2
+name: 전투 이펙트 원천 키프레임 v2
+
+purpose:
+  category: effect
+  slot: fx-impact-physical
+  use: animation-source
+  readability_goal: 24~32px에서 UI 아이콘이 아니라 방향성 있는 파편·부분 호로 읽혀야 한다.
+  animation_scope: burst-and-loop
+
+output:
+  canvas: [24, 24]
+  pivot: [0.5, 0.5]
+  fit: contain
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: animation-review-only
+  allow_replace: false
+
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 6.seed
+    width: 5.width
+    height: 5.height
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+
+generation:
+  width: 768
+  height: 768
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.5
+  denoise: 1.0
+  candidates: 1
+  seed_strategy: sequential-random-base
+
+prompt:
+  positive: >-
+    Pixel Art, PixArFK, single compact gameplay VFX sprite, asymmetric broken
+    outward motion, three to six chunky deliberate particle clusters, clear
+    empty space between particles, isolated cutout, flat solid pure magenta
+    background touching every image border, crisp hard pixel edges, restrained
+    Project-C colors, readable after reduction to 24 pixels
+  negative: >-
+    UI icon, ability icon, badge, button, target reticle, mandala, magic portal,
+    orb, complete circle, complete ring, concentric rings, radial symmetry,
+    circular border, enclosing frame, opaque disc, decorative emblem, smooth
+    gradient, blurry glow haze, text, watermark, logo, photographic, realistic
+    fire, anti-aliasing
+
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 30
+  maximum_visible_pixels: 900
+  reject_if:
+    [ui-icon, complete-ring, concentric-rings, radial-symmetry, opaque-center]
+
+animation:
+  sequence:
+    - state: burst
+      frame_count: 6
+      fps: 30
+      tags: [burst]
+    - state: status-loop
+      frame_count: 8
+      fps: 12
+      tags: [idle-loop]
+
+effect_variants:
+  variants:
+    - id: fx-impact-physical
+      label: physical impact · broken chips
+      slot: fx-impact-physical
+      output_canvas: [24, 24]
+      seed_offset: 0
+      prompt_suffix: >-
+        , one off-center white impact star, three pale concrete chips, two short
+        directional speed streaks, no arc, no ring
+    - id: fx-impact-fire
+      label: fire impact · flame fan
+      slot: fx-impact-fire
+      output_canvas: [24, 24]
+      seed_offset: 101
+      prompt_suffix: >-
+        , asymmetric fan of three orange flame tongues and four separated
+        embers moving up-right, dark gaps, no circle, no ring
+    - id: fx-impact-frost
+      label: frost impact · ice shards
+      slot: fx-impact-frost
+      output_canvas: [24, 24]
+      seed_offset: 211
+      prompt_suffix: >-
+        , four angular cyan ice shards exploding in a broken diagonal cross,
+        small pale core, unequal shard lengths, no circle, no ring
+    - id: fx-impact-heavy
+      label: heavy impact · broken shock arc
+      slot: fx-impact-heavy
+      output_canvas: [32, 32]
+      seed_offset: 307
+      prompt_suffix: >-
+        , large one-sided broken shockwave arc, thick lower-left impact wedge,
+        five dark concrete fragments, open on the upper-right, never a full ring
+    - id: fx-status-burn
+      label: burn status · open foot aura
+      slot: fx-status-burn
+      output_canvas: [32, 24]
+      seed_offset: 401
+      prompt_suffix: >-
+        , low isometric open elliptical foot aura, only two broken orange arcs
+        along the lower half, three small flame tongues, transparent empty
+        center for the actor, open at the top, no complete ring
+    - id: fx-status-freeze
+      label: freeze status · crystal foot aura
+      slot: fx-status-freeze
+      output_canvas: [32, 24]
+      seed_offset: 503
+      prompt_suffix: >-
+        , low isometric open elliptical foot aura, four cyan crystals on the
+        lower left and right, transparent empty center for the actor, open at
+        the top, no complete ring
+
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

@@ -1,0 +1,43 @@
+schema_version: 1
+id: style-sampler
+name: Project-C 스타일 샘플러
+description: 캐릭터·환경·이펙트·애니메이션을 한 장씩 만들어 현재 아트 방향을 빠르게 비교한다.
+items:
+  - id: actor-concept
+    recipe: actor-concept-sdxl-v1
+    count: 1
+    notes: 캐릭터 콘셉트 스타일 비교
+  - id: actor-runtime
+    recipe: actor-slinger-idle-v1
+    count: 1
+    notes: 실제 게임 크기 액터 가독성 확인
+  - id: environment
+    recipe: environment-hospital-style-v1
+    count: 1
+    notes: 폐병원 환경 재료와 투영 확인
+  - id: effect
+    recipe: fx-impact-suite-v2
+    count: 1
+    shot_cycle:
+      - fx-impact-physical
+      - fx-impact-fire
+      - fx-impact-frost
+      - fx-impact-heavy
+      - fx-status-burn
+      - fx-status-freeze
+    notes: 실행할 때마다 다음 전투 이펙트 한 장
+  - id: animation
+    recipe: actor-slinger-animation-v5
+    count: 1
+    shot_cycle:
+      - idle
+      - walk-contact-a
+      - walk-pass
+      - walk-contact-b
+      - attack-windup
+      - attack-release
+      - attack-recovery
+      - hit
+      - fall
+      - death
+    notes: 실행할 때마다 다음 애니메이션 키포즈 한 장

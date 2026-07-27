@@ -8,6 +8,15 @@
 > (img2img + ControlNet + LoRA 슬롯). IPAdapter와 LineArt 전처리기는 커스텀 노드라
 > 코어에서 빼고 아래 "권장 추가"로 안내한다. 노드가 빨갛게 뜨면 설치 버전 차이 —
 > 우클릭 → Add Node로 대체한다.
+>
+> **자동화 결정(2026-07-26)**: MCP 대신 **ComfyUI Desktop의 로컬 REST API**를 사용한다.
+> 실행은 `Tools/ArtPipeline/comfy_batch.py`, 결정론적 마감은 Aseprite CLI/Lua
+> (`aseprite_conform.sh` → `aseprite_conform.lua`)가 담당한다.
+>
+> **실제 운영 진입점**: 생성·수동 배치·큐·승인 보관·Aseprite 준비·Spark 게임 반영을
+> Slack과 로컬 CLI에서 실행하는 전체 명령표는
+> [`../ART_REVIEW_AUTOMATION.md`](../ART_REVIEW_AUTOMATION.md)의
+> 「트리거·사용 가이드」를 따른다.
 
 ## 1. 준비물 (ComfyUI Manager로 설치)
 - **SDXL 체크포인트** (`models/checkpoints`)
@@ -45,3 +54,197 @@
 - **액터 애니메이션을 여기서 만들지 말 것.** idle 베이스 포즈 참고까지만 뽑고
   프레임은 Aseprite 손작업(발 고정·팔레트·실루엣 일관). 근거: 파이프라인 문서 §1·§4.
 - 에셋 내부에 `#ff00ff` 사용 금지(후처리 크로마키가 지움).
+
+## 7. REST 자동 실행
+
+### 7-a. Desktop과 모델
+
+ComfyUI Desktop을 실행하고 로컬 HTTP 서버를 `127.0.0.1:8188`에 둔다. 이 머신의 Desktop
+모델 루트는 `~/Documents/ComfyUI/models`다.
+
+- 체크포인트 → `models/checkpoints`
+- LoRA → `models/loras`
+- ControlNet → `models/controlnet`
+- IPAdapter → `models/ipadapter`
+- CLIP Vision → `models/clip_vision`
+
+Civitai 모델을 사용해도 되지만 **base model을 섞지 않는다**. SD1.5 체크포인트에는 SD1.5
+LoRA/ControlNet/IPAdapter, SDXL에는 SDXL용을 맞춘다. 채택 모델은 이름·버전·원문 URL·라이선스
+조건을 생성 시트의 prompt 문서에 함께 기록한다.
+
+연결과 실제 로더 선택지를 먼저 확인한다:
+
+```bash
+python3 Tools/ArtPipeline/comfy_batch.py status
+python3 Tools/ArtPipeline/comfy_batch.py models
+```
+
+### 7-b. API 형식으로 저장
+
+이 폴더의 `collapsed-transit-styletransfer.workflow.json`은 **ComfyUI 캔버스 편집 형식**이다.
+Desktop에서 모델과 노드를 채운 뒤 **Save/Export (API Format)**으로 별도 저장해야 REST 실행이
+가능하다. 캔버스 JSON을 `/prompt`에 그대로 보내지 않는다.
+
+API 워크플로 실행 예:
+
+```bash
+python3 Tools/ArtPipeline/comfy_batch.py run \
+  docs/art-direction/comfyui/collapsed-transit-styletransfer.api.json \
+  --upload 5.image=docs/art-direction/project-c-collapsed-transit-environment-source-v2.png \
+  --set 9.seed=42 \
+  --set 9.denoise=0.55 \
+  --output-dir docs/art-direction/comfyui/output
+```
+
+- `--set NODE.INPUT=VALUE`: API 그래프의 입력을 덮어쓴다. 숫자·bool·배열은 JSON으로 해석한다.
+- `--upload NODE.INPUT=PATH`: `/upload/image`에 올리고 반환 파일명을 해당 입력에 넣는다.
+- 기본값은 완료까지 기다린 뒤 `/history`와 `/view`로 결과를 내려받는 것이다.
+- `output/`은 검토용이며 gitignore 대상이다. 채택한 결과만 정식 `*-source-v3.png` 이름으로
+  `docs/art-direction/`에 옮긴다.
+
+## 8. Aseprite CLI/Lua 정적 마감
+
+정확한 슬롯 크기로 추출된 PNG를 `.aseprite` SSOT로 승격한다:
+
+```bash
+Tools/ArtPipeline/aseprite_conform.sh \
+  /path/to/actor-slinger.png \
+  Assets/_Project/Art/Source/Aseprite/actor-slinger.aseprite \
+  96 128 strict
+```
+
+이 명령은 다음을 강제한다.
+
+- 캔버스 크기 검사(`strict`). 의도적인 최근접 크기 변경만 마지막 인자를 `nearest`로 지정한다.
+- 알파 80 미만 완전 투명화, 나머지는 완전 불투명화
+- `project-c-torchstone.gpl` 최근접색으로 무디더 매핑
+- 단일 레이어 이름 `base`, 정식 `.aseprite` 저장
+
+파일은 RGBA를 유지하면서 편집 팔레트를 Torchstone으로 고정한다. 팔레트 인덱스 0이 불투명
+`pc-void`이므로 Indexed 투명 인덱스로 재사용하면 실제 void 픽셀이 사라지기 때문이다.
+애니 액터는 이 명령으로 **idle 베이스만** 만든 뒤 Aseprite에서 공식 태그와 발 고정을 손작업한다.
+
+## 9. 생성부터 슬롯 반영까지 한 명령
+
+`art_asset.py`가 REST 실행과 Aseprite conform을 묶는다.
+
+이미 생성한 PNG를 정식 슬롯에 반영:
+
+```bash
+python3 Tools/ArtPipeline/art_asset.py publish /path/to/slinger.png \
+  --slot actor-slinger --width 96 --height 128 \
+  --fit contain --anchor bottom --key-color ff00ff
+```
+
+ComfyUI API 워크플로부터 실행:
+
+```bash
+python3 Tools/ArtPipeline/art_asset.py generate \
+  docs/art-direction/comfyui/actor-idle.api.json \
+  --slot actor-slinger --width 96 --height 128 \
+  --set 9.seed=42001 \
+  --set 12.lora_name=project-c-pixelart-redmond-sdxl-v1-lite64.safetensors \
+  --output-index 0 --fit contain --anchor bottom --key-color ff00ff
+```
+
+흐름은 `ComfyUI REST → raw PNG(output/, gitignore) → trim/contain → 96×128 prepared PNG →
+Torchstone conform → Art/Source/Aseprite/actor-slinger.aseprite`다. 정식 `.aseprite`가 이미
+있으면 실패하며, 검토 후 교체할 때만 `--force`를 쓴다.
+
+환경 타일처럼 정확한 2:1 외곽이 중요한 입력은 먼저 카테고리 프로세서로 셀을 추출한 뒤
+`publish --fit strict`를 사용한다. `contain`은 액터·소품·아이템 단일 컷아웃용이다.
+
+`art_asset.py`는 정적 단일 컷용이다. 애니메이션/이펙트는 아래의
+`art_runner.py` 멀티샷 레시피가 키포즈 세트를 만들고, 중간 프레임·타이밍은
+Aseprite에서 발 기준선과 피벗을 고정해 마감한다.
+
+## 10. Project-C용 Civitai SDXL LoRA
+
+설치·SHA-256·트리거·생성물 이용 조건 스냅샷은
+`civitai-model-manifest.json`이 기록한다. 현재 조합:
+
+- PixelArtRedmond: 0.35~0.55 — 도트/하드 엣지
+- IsoPixel_SDXL: 0.25~0.45 — 아이소 구도. **크레딧 필요**
+- Envy Junkworld XL: 0.20~0.40 — 녹·고철·폐허 재료
+
+세 LoRA를 모두 최대치로 겹치지 않는다. 환경은
+`IsoPixel 0.3 + Junkworld 0.25 + PixelArt 0.4`, 액터는
+`PixelArt 0.45`부터 시작한다. 최종 색은 LoRA가 아니라 Torchstone conform이 결정한다.
+
+바로 실행 가능한 API 워크플로:
+
+- `actor-idle.api.json` — 1024² 단일 액터 idle 베이스
+- `actor-slinger-openpose.api.json` — SD1.5 OpenPose로 치켜든 팔을 고정한 투석 약탈자
+- `environment-styletransfer.api.json` — 기존 6셀 시트 저 denoise img2img
+
+둘 다 이 머신에 설치된 `zavychromaxl_v100.safetensors`와 manifest의 정식 LoRA 파일명을
+참조한다. ComfyUI Desktop을 켠 뒤 `models` 명령으로 인식 여부를 확인하고 실행한다.
+
+## 11. 애니메이션/이펙트 키프레임 워크플로 (권장)
+
+Project-C는 액터/이펙트의 최종 애니메이션을 AI로 한 번에 찍지 않고, ComfyUI에서
+`키프레임 후보`만 뽑아 Aseprite에서 규칙화한다.
+
+### 권장 순서
+
+1. `art_runner.py`가 레시피의 `pipeline.shots`/`effect_variants.variants`를 각각
+   독립된 ComfyUI REST 작업으로 제출한다.
+2. 한 후보 안의 모든 결과는 라벨이 붙은 `raw.png` 리뷰 시트로 묶이고, 실제 원본은
+   `shots/<shot-id>/raw.png`에 그대로 보존한다.
+3. Slack의 `Aseprite 소스 세트` 또는 CLI `prepare`가 각 샷을 지정 캔버스로 정리하고
+   Torchstone 팔레트의 개별 `.aseprite` 원본과 `aseprite-handoff.json`을 만든다.
+4. Slack의 `애니 초안` 또는 CLI `animation`이 Lua 조립기를 실행해 Tag(`idle`, `walk`,
+   `attack`, `hit`, `fall`, `death`, `burst`, `idle-loop`)와 GIF를 만든다.
+5. Aseprite에서 발 기준선·실루엣·인비트윈·최종 duration을 마감한다.
+6. Slack 평가를 거친 뒤 `Assets/_Project/Art/Source/Aseprite/` 슬롯에 반영한다.
+
+### CLI 실행
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py init
+python3 Tools/ArtPipeline/art_runner.py submit \
+  actor-slinger-animation-v5 --shot idle --count 1
+python3 Tools/ArtPipeline/art_runner.py work --once
+
+python3 Tools/ArtPipeline/art_runner.py submit \
+  actor-slinger-animation-v5 --count 1 --requested-by local
+python3 Tools/ArtPipeline/art_runner.py work --once
+
+python3 Tools/ArtPipeline/art_runner.py submit \
+  fx-impact-suite-v2 --count 1 --requested-by local
+python3 Tools/ArtPipeline/art_runner.py work --once
+
+# Slack의 Aseprite 소스 세트와 같은 준비 작업 후:
+python3 Tools/ArtPipeline/art_runner.py prepare <candidate-id>
+python3 Tools/ArtPipeline/art_runner.py work --once
+python3 Tools/ArtPipeline/art_runner.py animation <candidate-id> \
+  --timing-scale 1.0
+python3 Tools/ArtPipeline/art_runner.py work --once
+```
+
+처음 파라미터를 검증할 때는 전체 10샷을 만들지 말고
+`--shot idle` 또는 `--shot walk-contact-a`로 한 장만 실행한다.
+같은 작업은 Slack에서
+`/art shot actor-slinger-animation-v5 idle 1`로 실행할 수 있다. 백그라운드 서비스가
+실행 중이면 CLI 예제의 `work --once`는 생략한다.
+`--count 1`의 전체 실행은 액터 10개 포즈 샷, 이펙트 6개 슬롯 샷을 생성한다. 후보 수는
+서로 다른 전체 세트의 개수다. OpenPose 가이드를 바꾼 뒤에는
+`python3 Tools/ArtPipeline/generate_openpose_guides.py`로 포즈 가이드를 다시 만든다.
+정식 액터 identity 가이드는
+`python3 Tools/ArtPipeline/generate_actor_identity_guide.py`가 현재
+`actor-slinger.aseprite` 첫 프레임에서 버전 고정 512 입력을 생성한다.
+
+### 샘플 레시피
+
+- `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
+- `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`
+
+### 추천 Slack 체크리스트
+
+- `슬롯 일치`: slot 값과 실제 슬롯 매핑이 맞는가
+- `캔버스/피벗`: 96×128, 24×24, 32×32 등 지정 크기 일치
+- `루프`: 걷기/상태 이펙트의 Tag와 재생 속도가 의도대로인지
+- `팔레트`: `project-c-torchstone.gpl`만 사용
+- `정지 프레임`: idle/fall/hit가 어색하게 고정되지 않는가
+
+더 자세한 운영 규칙은 `docs/art-direction/animation-effect-workflow.md`를 함께 본다.

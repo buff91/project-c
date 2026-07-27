@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "downloadedAt": "2026-07-26",
+  "baseModel": "SDXL 1.0",
+  "installRoot": "~/Documents/ComfyUI/models/loras",
+  "models": [
+    {
+      "purpose": "SD1.5 pixel style for pose-controlled actor drafts",
+      "modelId": 43820,
+      "versionId": 121559,
+      "name": "Illustrious Pixel Art XL & 1.5 By creativehotia",
+      "version": "v3.0 1.5",
+      "filename": "pixelartV3.safetensors",
+      "sha256": "8a2e1ea746eaff717cd8451d9a28349ee7d1d5594e15d7b91e0ed6f9ef743fd3",
+      "source": "https://civitai.com/models/43820",
+      "download": "https://civitai.com/api/download/models/121559",
+      "trainedWords": ["pixelart"],
+      "recommendedWeight": [0.55, 0.7],
+      "attribution": "PixelArt V3 SD1.5 / creativehotia / Civitai model 43820",
+      "licenseSnapshot": {
+        "allowNoCredit": false,
+        "allowCommercialUse": ["Image", "RentCivit"],
+        "allowDerivatives": false,
+        "allowDifferentLicense": true
+      }
+    },
+    {
+      "purpose": "Pixel cluster and hard-edge style anchor",
+      "modelId": 144684,
+      "versionId": 160844,
+      "name": "PixelArtRedmond - Pixel Art Loras",
+      "version": "v1 - Lite 64",
+      "filename": "project-c-pixelart-redmond-sdxl-v1-lite64.safetensors",
+      "sha256": "84e915e2936cd20f98d3391609ddd474d0268b0bc1d2edd7bdeeb5fec2252ab7",
+      "source": "https://civitai.com/models/144684",
+      "download": "https://civitai.com/api/download/models/160844",
+      "trainedWords": ["Pixel Art", "PixArFK"],
+      "recommendedWeight": [0.35, 0.55],
+      "licenseSnapshot": {
+        "allowNoCredit": true,
+        "allowCommercialUse": ["Image", "RentCivit", "Rent"],
+        "allowDerivatives": true,
+        "allowDifferentLicense": false
+      }
+    },
+    {
+      "purpose": "Isometric and diorama composition anchor",
+      "modelId": 149080,
+      "versionId": 166425,
+      "name": "IsoPixel_SDXL",
+      "version": "1",
+      "filename": "project-c-isopixel-sdxl-v1.safetensors",
+      "sha256": "0d03511a5347d4ca4a62cf2c102fd66d5e42652255c5faea6f3f84aa9e0f10c5",
+      "source": "https://civitai.com/models/149080",
+      "download": "https://civitai.com/api/download/models/166425",
+      "trainedWords": [],
+      "recommendedWeight": [0.25, 0.45],
+      "attribution": "IsoPixel_SDXL / Civitai model 149080",
+      "licenseSnapshot": {
+        "allowNoCredit": false,
+        "allowCommercialUse": ["Image", "RentCivit", "Rent"],
+        "allowDerivatives": true,
+        "allowDifferentLicense": false
+      }
+    },
+    {
+      "purpose": "Rust, scrap metal, and post-apocalyptic prop material anchor",
+      "modelId": 233573,
+      "versionId": 263472,
+      "name": "Envy Junkworld XL 01",
+      "version": "v1.0",
+      "filename": "project-c-envy-junkworld-xl01.safetensors",
+      "sha256": "abe7659158acf18fe5334fe6c7d242b85e95b7e370c54a8d9bcc728f84caccce",
+      "source": "https://civitai.com/models/233573",
+      "download": "https://civitai.com/api/download/models/263472",
+      "trainedWords": ["junkworld"],
+      "recommendedWeight": [0.2, 0.4],
+      "licenseSnapshot": {
+        "allowNoCredit": true,
+        "allowCommercialUse": ["Image", "RentCivit", "Rent", "Sell"],
+        "allowDerivatives": true,
+        "allowDifferentLicense": true
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "modelId": 120096,
+      "name": "Pixel Art XL",
+      "reason": "Commercial image use is not allowed by the current Civitai license snapshot."
+    },
+    {
+      "modelId": 374817,
+      "versionId": 418605,
+      "name": "Envy Urban Decay XL 01",
+      "reason": "Suitable style and license, but the public download endpoint returned HTTP 401; not installed."
+    }
+  ]
+}

@@ -548,18 +548,36 @@ namespace ProjectC.Gameplay
             Vector3 start = VisualPosition(from);
             Vector3 end = VisualPosition(to);
             float distance = Mathf.Max(0.35f, Mathf.Abs(end.y - start.y));
+            bool debugView = viewMode == DungeonViewMode.DebugAll;
 
             var shaft = new GameObject(hole ? "Hole Drop Shaft" : "Stair Connection Shaft");
             shaft.transform.SetParent(_shaftRoot, false);
             shaft.transform.position = Vector3.Lerp(start, end, 0.5f) + Vector3.up * 0.05f;
             var renderer = shaft.AddComponent<SpriteRenderer>();
-            renderer.sprite = ActorSprites.GetShaftSprite(hole);
-            renderer.sortingOrder = OverlaySorting.Shaft;
-            renderer.color = new Color(1f, 1f, 1f, viewMode == DungeonViewMode.DebugAll ? 0.72f : 0.9f);
-            shaft.transform.localScale = new Vector3(1.15f, distance, 1f);
+            if (debugView)
+            {
+                renderer.sprite = ActorSprites.GetShaftSprite(hole);
+                renderer.sortingOrder = OverlaySorting.Shaft;
+                renderer.color = new Color(1f, 1f, 1f, 0.72f);
+                shaft.transform.localScale = new Vector3(1.15f, distance, 1f);
+            }
+            else
+            {
+                // PLAY: 개구부는 빛이 없는 허공이다. 발광 점선(진단용) 대신 어두운 보이드
+                // 기둥을 착지 칸 기준 액터 아래로 깔아, 적/아이템/플레이어를 가리지 않으면서
+                // "여기로 떨어진다"가 어둠으로 읽히게 한다.
+                renderer.sprite = ActorSprites.GetVoidShaftSprite();
+                renderer.sortingOrder = _grid.iso.SortingOrder(to, -1);
+                renderer.color = new Color(1f, 1f, 1f, 0.82f);
+                shaft.transform.localScale = new Vector3(0.95f, distance, 1f);
+            }
 
-            CreateShaftEndpoint(from, hole, arrival: false);
-            CreateShaftEndpoint(to, hole, arrival: true);
+            // 양 끝 링은 진단 표시다. PLAY에서는 구멍 타일과 어두운 보이드 기둥만 그린다.
+            if (debugView)
+            {
+                CreateShaftEndpoint(from, hole, arrival: false);
+                CreateShaftEndpoint(to, hole, arrival: true);
+            }
         }
 
         private void CreateShaftEndpoint(GridPos pos, bool hole, bool arrival)

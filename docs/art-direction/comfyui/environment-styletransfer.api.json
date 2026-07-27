@@ -1,0 +1,127 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "zavychromaxl_v100.safetensors"
+    },
+    "_meta": {
+      "title": "Project-C SDXL Checkpoint"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["1", 0],
+      "clip": ["1", 1],
+      "lora_name": "project-c-isopixel-sdxl-v1.safetensors",
+      "strength_model": 0.3,
+      "strength_clip": 0.3
+    },
+    "_meta": {
+      "title": "IsoPixel Structure"
+    }
+  },
+  "3": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["2", 0],
+      "clip": ["2", 1],
+      "lora_name": "project-c-envy-junkworld-xl01.safetensors",
+      "strength_model": 0.25,
+      "strength_clip": 0.25
+    },
+    "_meta": {
+      "title": "Junkworld Materials"
+    }
+  },
+  "4": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["3", 0],
+      "clip": ["3", 1],
+      "lora_name": "project-c-pixelart-redmond-sdxl-v1-lite64.safetensors",
+      "strength_model": 0.4,
+      "strength_clip": 0.4
+    },
+    "_meta": {
+      "title": "PixelArtRedmond Edges"
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "Pixel Art, PixArFK, junkworld, polished chunky isometric pixel art, exact 2:1 dimetric modular game assets, abandoned post-apocalyptic hospital interior, cracked concrete, chipped sanitary tile, oxidized dark steel, exposed rebar, restrained rust-orange wear, saturated amber only for one emergency light, one subtle desaturated teal service stripe, crisp hard edges, blue-black charcoal shadows, preserve exact source sheet cell positions, scale, perspective, silhouettes, spacing, and flat magenta background"
+    },
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "fantasy masonry, wood planks, medieval iron straps, torches, arches, runes, cyberpunk neon overload, excessive dithering, white outline noise, photorealism, smooth 3d, vector look, text, labels, watermark, overlapping cells, changed layout, changed projection, missing assets"
+    },
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "7": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "project-c-collapsed-transit-environment-source-v2.png"
+    },
+    "_meta": {
+      "title": "Upload Existing Six-Cell Sheet"
+    }
+  },
+  "8": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["7", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Encode Source Sheet"
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["4", 0],
+      "positive": ["5", 0],
+      "negative": ["6", 0],
+      "latent_image": ["8", 0],
+      "seed": 43001,
+      "steps": 28,
+      "cfg": 6.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.45
+    },
+    "_meta": {
+      "title": "Low-Denoise Style Transfer"
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["9", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Decode Sheet"
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["10", 0],
+      "filename_prefix": "project-c/environment-styletransfer"
+    },
+    "_meta": {
+      "title": "Save Styled Sheet"
+    }
+  }
+}

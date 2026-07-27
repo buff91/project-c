@@ -1,0 +1,178 @@
+schema_version: 1
+id: actor-slinger-animation-walk-v1
+name: 투석 약탈자 액션 키프레임 v1
+
+purpose:
+  category: actor
+  slot: actor-slinger
+  use: animation-source
+  readability_goal: 액터의 골격 이동이 4방향에서 분리되어 보이고, 발 접점이 방향별로 고정되어야 한다.
+  animation_scope: keyframe-sequence
+
+output:
+  canvas: [96, 128]
+  pivot: [0.5, 0.04]
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: animation-review-only
+  allow_replace: false
+
+pipeline:
+  type: sd15-img2img-openpose
+  workflow: docs/art-direction/comfyui/actor-slinger-openpose.api.json
+  checkpoint: dreamshaper_8.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  uploads:
+    5.image: docs/art-direction/comfyui/guides/actor-slinger-style-source.png
+  shots:
+    - id: idle-south
+      label: idle · south
+      prompt_suffix: ", facing south, balanced idle pose"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle-south.png
+    - id: walk-south-contact
+      label: walk contact · south
+      prompt_suffix: ", facing south, wide readable walk contact pose"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-south-contact.png
+    - id: walk-east-contact
+      label: walk contact · east
+      prompt_suffix: ", facing east, side-facing readable walk contact pose"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-east-contact.png
+    - id: walk-north-contact
+      label: walk contact · north
+      prompt_suffix: ", facing north, back-facing readable walk contact pose"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-north-contact.png
+    - id: walk-west-contact
+      label: walk contact · west
+      prompt_suffix: ", facing west, side-facing readable walk contact pose"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-west-contact.png
+    - id: attack-windup
+      label: attack · windup
+      prompt_suffix: ", attack windup, sling raised behind the head"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
+    - id: attack-impact
+      label: attack · release
+      prompt_suffix: ", attack release, sling arm extended forcefully forward"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
+    - id: hit
+      label: hit reaction
+      prompt_suffix: ", recoiling from a hit, readable backward body bend"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-hit.png
+    - id: death
+      label: death key pose
+      prompt_suffix: ", collapsed death key pose, full body lying on one baseline"
+      uploads:
+        6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-death.png
+
+loras:
+  - name: pixelartV3.safetensors
+    node: 2
+    base_model: SD 1.5
+    model_strength: 0.35
+    clip_strength: 0.30
+    purpose: 동작이 부드러운 픽셀 실루엣 유지
+
+controlnets:
+  - model: control_v11p_sd15_openpose_fp16.safetensors
+    loader_node: 7
+    apply_node: 8
+    strength: 1.0
+    purpose: 팔/다리 방향 고정
+
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 24
+  cfg: 7.0
+  denoise: 0.78
+  candidates: 3
+  seed_strategy: sequential-random-base
+
+prompt:
+  positive: >-
+    pixelart, isometric pixel game sprite, full body character, post-apocalyptic
+    scavenger raider in hooded cloak, same costume as actor-slinger source, sharp
+    readable silhouette, strong shoulders and backpack, one glowing red accent, flat
+    magenta background, isolated cutout, hard pixel edges, limited colors
+  negative: >-
+    text, watermark, label, smooth anti-alias, blurry, low detail, photorealistic,
+    3d render, fantasy armor, medieval, extra limbs, wrong body count
+
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 1800
+  maximum_visible_pixels: 4200
+  silhouette_tags: [grounded-feet, raised-arm, readable-pose]
+  reject_if: [cropped-feet, extra-limbs, malformed-anatomy, perspective-bend]
+
+animation:
+  sequence:
+    - state: idle
+      frame_count: 4
+      fps: 6
+      directions:
+        - north
+        - south
+        - east
+        - west
+      notes: idle 기준 자세만 채택. walk 전환은 Aseprite에서 연산
+    - state: walk
+      frame_count: 8
+      fps: 10
+      directions:
+        - north
+        - south
+        - east
+        - west
+      notes: stride/foot-contact 프레임은 Aseprite에서 보간
+    - state: attack
+      frame_count: 6
+      fps: 10
+      directions:
+        - north
+        - south
+        - east
+        - west
+  tags:
+    idle: loop
+    walk: loop
+    attack: once
+    hit: once
+    fall: once
+    death: once
+
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation

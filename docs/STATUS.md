@@ -195,6 +195,13 @@
   position·scale·color는 전투 FX가 소유하므로 여기서 건드리면 둘이 싸운다). 원샷 태그
   (attack/hit/fall/death)가 루프로 임포트되거나, 태그 규약 밖 클립이 있거나, 태그 클립이 있는데
   idle이 없으면 파이프라인 검증에서 걸린다.
+  로컬 제작 쪽은 ComfyUI `127.0.0.1:8188` REST → YAML 레시피/SQLite 큐 → 샷별
+  Aseprite conform → Lua 타임라인·1×/8× GIF 초안 → Slack Socket Mode 리뷰로 연결돼 있다.
+  `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
+  실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
+  `apply_requests`만 Codex Spark Scheduled가 실제 Unity/Aseprite 참조를 조사해 적용한다.
+  봇은 `com.project-c.art-review` launchd 서비스로 상시 실행하며, 최종 보간·발 기준선·실루엣과
+  정식 슬롯 승격은 여전히 사람의 명시적 채택과 게임 반영 요청 뒤에만 수행한다.
   `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이며 최종본으로 직접 수정하지 않는다.
 - **액터 애니메이션**: 공식 태그 6종(idle/walk/attack/hit/fall/death)은 Core `SpriteClipTags`
   하나가 소유한다 — 베이크(에디터)와 재생 트리거(게임플레이)가 같은 상수를 봐야 문자열이 갈라져
