@@ -55,10 +55,35 @@ art-review.sqlite3
 애니메이션·이펙트의 Aseprite 프레임/태그 마감 규칙은
 `docs/art-direction/animation-effect-workflow.md`가 소유한다.
 
+### 2-a. 에셋 타입 (`purpose.asset_type`)
+
+레시피를 **고를 때** 쓰는 축이다. `category`(어느 슬롯 계열인가)와도, `use`(무슨 용도인가)와도
+다르다 — 같은 `actor` 카테고리라도 콘셉트 탐색·런타임 스프라이트·애니 키포즈는 고르는 순간의
+목적이 서로 다르기 때문이다. `/art recipes`와 생성 폼 드롭다운, `art_runner.py recipes`가
+모두 이 순서로 묶어 보여준다.
+
+| `asset_type` | 표시 | 무엇인가 |
+|---|---|---|
+| `concept` | 컨셉 | 방향 탐색용. 정식 슬롯으로 승격하지 않는다 |
+| `environment` | 배경 | 환경 타일·소스시트 |
+| `character` | 캐릭터 | 런타임에 바로 쓰는 액터 스프라이트 |
+| `animation` | 애니메이션 | 상태별 키포즈 묶음. Aseprite 마감이 뒤따른다 |
+| `effect` | 이펙트 | 전투 FX 키포즈 |
+| `prop` | 소품·아이템 | 아이템·소품·마커 |
+| `ui` | UI | UI 아이콘·프레임 |
+
+`ASSET_TYPES`(`art_review.py`)가 목록과 순서의 SSOT다. 새 타입은 여기에 먼저 추가한다 —
+레시피에 없는 타입을 쓰면 검증이 막는다. 필드를 빠뜨린 레시피는 `derive_asset_type()`이
+`category`/`use`에서 파생하지만, **레시피는 명시하는 것이 규칙**이고 테스트가 이를 강제한다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py recipes --asset-type animation
+```
+
 경로는 `docs/art-direction/comfyui/recipes/`다. 모든 레시피는 다음 정보를 사람이 읽을 수
 있게 기록한다.
 
-- `purpose`: 카테고리·정식 슬롯·게임/콘셉트/소스시트 용도·가독성 목표
+- `purpose`: 카테고리·**에셋 타입**·정식 슬롯·게임/콘셉트/소스시트 용도·가독성 목표
 - `output`: 최종 캔버스·피벗·크로마키·팔레트·승격 방식
 - `pipeline`: ComfyUI API 워크플로·checkpoint·논리값→노드 입력 binding
 - `loras`: 파일명·노드·base model·model/CLIP 강도·용도·출처
@@ -100,7 +125,7 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 |---|---|---|---|
 | 전체 도움말 | `/art help` | `art_runner.py --help` | 지원하는 명령 확인 |
 | 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피와 후보 수를 폼에서 선택 |
-| 레시피 목록 | `/art recipes` | `art_runner.py recipes` | 사용할 recipe ID 확인 |
+| 레시피 목록 | `/art recipes` | `art_runner.py recipes [--asset-type <타입>]` | 에셋 타입별로 묶인 recipe ID 확인 |
 | 레시피 상세 | `/art recipe <recipe-id>` | `art_runner.py recipes <recipe-id>` | 모델·LoRA·프롬프트·steps 확인 |
 | 전체 세트 생성 | `/art run <recipe-id> [count]` | `art_runner.py submit <recipe-id> --count <n>` | 확정한 설정으로 후보 또는 멀티샷 세트 생성 |
 | 한 샷 시험 | `/art shot <recipe-id> <shot-id> [count]` | `art_runner.py submit <recipe-id> --shot <shot-id> --count <n>` | 전체 세트를 만들기 전에 포즈·효과 한 장만 검증 |

@@ -4,6 +4,7 @@ name: 투석 약탈자 런타임 액션 키프레임 v2
 
 purpose:
   category: actor
+  asset_type: animation
   slot: actor-slinger
   use: animation-source
   readability_goal: 현재 Unity 런타임의 상태 태그별 동작이 한 방향 기준으로 명확히 분리되어야 한다.

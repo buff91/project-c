@@ -65,6 +65,49 @@ VALID_APPLY_STATES = {
     "cancelled",
 }
 
+# 사람이 레시피를 고를 때 쓰는 축이다. `category`(무엇의 슬롯인가)나
+# `use`(무슨 용도인가)와 다르다 — 같은 actor 카테고리라도 콘셉트 탐색과 런타임
+# 스프라이트와 애니 키포즈는 고르는 순간의 목적이 서로 다르기 때문이다.
+# 순서가 곧 목록·드롭다운 표시 순서다.
+ASSET_TYPES: tuple[tuple[str, str], ...] = (
+    ("concept", "컨셉"),
+    ("environment", "배경"),
+    ("character", "캐릭터"),
+    ("animation", "애니메이션"),
+    ("effect", "이펙트"),
+    ("prop", "소품·아이템"),
+    ("ui", "UI"),
+)
+ASSET_TYPE_LABELS = dict(ASSET_TYPES)
+VALID_ASSET_TYPES = frozenset(ASSET_TYPE_LABELS)
+ANIMATION_USES = frozenset({"animation-source", "animation-review-only"})
+
+
+def derive_asset_type(category: str, use: str) -> str:
+    """`purpose.asset_type`이 없는 레시피의 폴백.
+
+    콘셉트 탐색이 가장 강한 신호다 — 어느 카테고리든 콘셉트는 콘셉트다.
+    그다음은 카테고리가 결정하되, actor만 용도에 따라 캐릭터와 애니메이션으로
+    갈린다.
+    """
+    if use == "concept":
+        return "concept"
+    if category == "effect":
+        return "effect"
+    if category == "environment":
+        return "environment"
+    if category == "ui":
+        return "ui"
+    if category in {"item", "prop", "marker"}:
+        return "prop"
+    if use in ANIMATION_USES:
+        return "animation"
+    return "character"
+
+
+def asset_type_label(asset_type: str) -> str:
+    return ASSET_TYPE_LABELS.get(asset_type, asset_type)
+
 
 class ReviewError(RuntimeError):
     """Raised for invalid recipes or state transitions."""
@@ -198,6 +241,21 @@ class Recipe:
         return str(self.purpose["slot"])
 
     @property
+    def asset_type(self) -> str:
+        """사람이 고르는 축. 명시값이 없으면 category/use에서 파생한다."""
+        declared = str(self.purpose.get("asset_type", "")).strip()
+        if declared:
+            return declared
+        return derive_asset_type(
+            str(self.purpose.get("category", "")),
+            str(self.purpose.get("use", "")),
+        )
+
+    @property
+    def asset_type_label(self) -> str:
+        return asset_type_label(self.asset_type)
+
+    @property
     def canvas(self) -> tuple[int, int]:
         width, height = self.output["canvas"]
         return int(width), int(height)
@@ -328,6 +386,13 @@ class Recipe:
         for key in ("category", "slot", "use"):
             if not purpose.get(key):
                 raise ReviewError(f"Recipe {path} purpose.{key} is required")
+        declared_type = str(purpose.get("asset_type", "")).strip()
+        if declared_type and declared_type not in VALID_ASSET_TYPES:
+            known = ", ".join(sorted(VALID_ASSET_TYPES))
+            raise ReviewError(
+                f"Recipe {path} purpose.asset_type {declared_type!r} "
+                f"is unknown; expected one of: {known}"
+            )
 
         output = _mapping(root["output"], "output")
         canvas = output.get("canvas")
@@ -600,6 +665,7 @@ class Recipe:
         return {
             "id": self.id,
             "name": self.name,
+            "asset_type": self.asset_type,
             "digest": self.digest,
             "purpose": self.purpose,
             "output": self.output,

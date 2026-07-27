@@ -18,10 +18,12 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 from art_review import (
+    ASSET_TYPES,
     BatchRegistry,
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    derive_asset_type,
     image_metrics,
 )
 from art_asset import (
@@ -49,8 +51,11 @@ from art_slack_bot import (
     candidate_blocks,
     find_candidate_from_text,
     find_feedback_target,
+    modal_view,
     parse_animation_action,
     parse_shot_action,
+    recipe_list_text,
+    recipes_by_asset_type,
     slack_help_text,
     shot_blocks,
 )
@@ -70,6 +75,74 @@ class RecipeTests(unittest.TestCase):
         self.assertIn("actor-slinger-animation-v5", recipes)
         self.assertIn("fx-impact-suite-v1", recipes)
         self.assertIn("fx-impact-suite-v2", recipes)
+
+    def test_every_recipe_declares_a_known_asset_type(self) -> None:
+        known = {type_id for type_id, _ in ASSET_TYPES}
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                self.assertIn(
+                    "asset_type",
+                    recipe.purpose,
+                    "레시피는 에셋 타입을 파생에 맡기지 말고 명시한다",
+                )
+                self.assertIn(recipe.asset_type, known)
+
+    def test_asset_type_splits_actor_recipes_by_intent(self) -> None:
+        """같은 actor 카테고리라도 고르는 목적이 다르면 다른 타입이다."""
+        recipes = self.registry.load_all()
+        self.assertEqual("concept", recipes["actor-concept-sdxl-v1"].asset_type)
+        self.assertEqual(
+            "character", recipes["actor-slinger-idle-v1"].asset_type
+        )
+        self.assertEqual(
+            "animation", recipes["actor-slinger-animation-v5"].asset_type
+        )
+        self.assertEqual(
+            "environment",
+            recipes["environment-hospital-style-v1"].asset_type,
+        )
+        self.assertEqual("effect", recipes["fx-impact-suite-v1"].asset_type)
+
+    def test_derive_asset_type_covers_recipes_without_declaration(self) -> None:
+        self.assertEqual("concept", derive_asset_type("actor", "concept"))
+        self.assertEqual("concept", derive_asset_type("effect", "concept"))
+        self.assertEqual("character", derive_asset_type("actor", "gameplay"))
+        self.assertEqual(
+            "animation", derive_asset_type("actor", "animation-source")
+        )
+        self.assertEqual(
+            "effect", derive_asset_type("effect", "animation-source")
+        )
+        self.assertEqual("prop", derive_asset_type("item", "gameplay"))
+        self.assertEqual("ui", derive_asset_type("ui", "gameplay"))
+
+    def test_unknown_asset_type_is_rejected(self) -> None:
+        from art_review import Recipe
+
+        document = dict(self.registry.get("actor-slinger-idle-v1").document)
+        document["purpose"] = dict(document["purpose"])
+        document["purpose"]["asset_type"] = "괴상한타입"
+        with self.assertRaisesRegex(ReviewError, "asset_type"):
+            Recipe.from_document(document, path=Path("memory.yaml"))
+
+    def test_slack_groups_recipes_by_asset_type(self) -> None:
+        groups = recipes_by_asset_type(self.registry)
+        labels = [label for _type_id, label, _recipes in groups]
+        self.assertEqual(["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"], labels)
+        listed = recipe_list_text(self.registry)
+        self.assertIn("*애니메이션*", listed)
+        self.assertIn("actor-slinger-animation-v5", listed)
+
+        element = modal_view(self.registry)["blocks"][0]["element"]
+        self.assertNotIn(
+            "options",
+            element,
+            "드롭다운은 평평한 목록이 아니라 타입별 그룹이어야 한다",
+        )
+        self.assertEqual(
+            ["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"],
+            [group["label"]["text"] for group in element["option_groups"]],
+        )
 
     def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
         plan = BatchRegistry().get("style-sampler")

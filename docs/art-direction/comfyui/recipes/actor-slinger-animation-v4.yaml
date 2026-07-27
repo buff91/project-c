@@ -3,6 +3,7 @@ id: actor-slinger-animation-v4
 name: 투석 약탈자 런타임 액션 키프레임 v4 · 512 identity lock
 purpose:
   category: actor
+  asset_type: animation
   slot: actor-slinger
   use: animation-source
   readability_goal: 버전 고정 512 identity 가이드의 의상·성별·실루엣을 보존하면서 현재 Unity 상태 태그별 포즈만 바꾼다.

@@ -4,6 +4,7 @@ name: 포스트아포 액터 콘셉트 SDXL v1
 
 purpose:
   category: actor
+  asset_type: concept
   slot: actor-concept
   use: concept
   readability_goal: Project-C 진영 색과 복장 어휘를 탐색하되 정식 슬롯에는 자동 승격하지 않는다.

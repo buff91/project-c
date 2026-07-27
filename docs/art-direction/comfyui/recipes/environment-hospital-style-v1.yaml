@@ -4,6 +4,7 @@ name: 폐병원 환경 스타일 트랜스퍼 v1
 
 purpose:
   category: environment
+  asset_type: environment
   slot: env-collapsed-transit-source
   use: gameplay-source-sheet
   readability_goal: 기존 6셀 배치와 2:1 투영을 보존하면서 재료만 폐병원 포스트아포로 바꾼다.

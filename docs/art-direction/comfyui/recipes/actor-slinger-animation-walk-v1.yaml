@@ -4,6 +4,7 @@ name: 투석 약탈자 액션 키프레임 v1
 
 purpose:
   category: actor
+  asset_type: animation
   slot: actor-slinger
   use: animation-source
   readability_goal: 액터의 골격 이동이 4방향에서 분리되어 보이고, 발 접점이 방향별로 고정되어야 한다.

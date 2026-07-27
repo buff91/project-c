@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from art_review import (
+    ASSET_TYPES,
     BatchRegistry,
     DEFAULT_BATCH_DIR,
     DEFAULT_DB_PATH,
@@ -26,6 +27,7 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    asset_type_label,
     project_path,
     recipe_from_job,
 )
@@ -61,15 +63,6 @@ def log_error(context: str) -> None:
     print(f"error: {context}", file=sys.stderr)
     traceback.print_exc()
 
-
-ART_CATEGORY_LABELS = {
-    "actor": "캐릭터",
-    "effect": "전투 이펙트",
-    "environment": "환경",
-    "item": "아이템",
-    "prop": "소품",
-    "ui": "UI",
-}
 
 JOB_STATE_LABELS = {
     "queued": "대기 중",
@@ -122,11 +115,6 @@ CANDIDATE_STATE_VIEW = {
         "스레드의 오류 내용을 확인한 뒤 다시 요청하세요.",
     ),
 }
-
-
-def category_label(recipe: Recipe) -> str:
-    category = str(recipe.purpose.get("category", "art"))
-    return ART_CATEGORY_LABELS.get(category, category)
 
 
 def job_state_label(state: str) -> str:
@@ -361,7 +349,7 @@ def candidate_blocks(
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {category_label(recipe)} · `{recipe.slot}`"
+                    f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`"
                     f"{shot_summary}\n"
                     f"*후보*  `{candidate['id']}`{position_summary} · "
                     f"seed `{candidate['seed']}`\n\n"
@@ -594,7 +582,7 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {category_label(recipe)} · `{recipe.slot}`\n"
+                    f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`\n"
                     f"*목표*  {recipe.purpose.get('readability_goal')}\n"
                     f"*출력*  {generation['width']}×{generation['height']} · "
                     f"{generation['steps']} steps · CFG {generation['cfg']} · "
@@ -663,16 +651,61 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
     ]
 
 
+def recipes_by_asset_type(
+    registry: RecipeRegistry,
+) -> list[tuple[str, str, list[Recipe]]]:
+    """레시피를 에셋 타입으로 묶는다. ASSET_TYPES 순서를 그대로 따른다."""
+    grouped: dict[str, list[Recipe]] = {}
+    for recipe in registry.load_all().values():
+        grouped.setdefault(recipe.asset_type, []).append(recipe)
+    ordered = [
+        (type_id, label, grouped.pop(type_id))
+        for type_id, label in ASSET_TYPES
+        if type_id in grouped
+    ]
+    # 열거에 없는 타입이 생겨도 목록에서 사라지지 않게 뒤에 붙인다.
+    ordered.extend(
+        (type_id, asset_type_label(type_id), recipes)
+        for type_id, recipes in sorted(grouped.items())
+    )
+    return ordered
+
+
+def recipe_list_text(registry: RecipeRegistry) -> str:
+    groups = recipes_by_asset_type(registry)
+    if not groups:
+        return "등록된 레시피가 없습니다."
+    sections = [
+        "\n".join(
+            [f"*{label}*"]
+            + [
+                f"• `{recipe.id}` — {recipe.name}"
+                for recipe in recipes
+            ]
+        )
+        for _type_id, label, recipes in groups
+    ]
+    return "\n\n".join(sections)
+
+
 def modal_view(registry: RecipeRegistry) -> dict[str, Any]:
-    options = [
+    # 평평한 목록은 레시피가 늘수록 못 읽는다. Slack option_groups로 에셋
+    # 타입별 소제목을 붙여 "지금 만들려는 게 뭔가"부터 좁히게 한다.
+    option_groups = [
         {
-            "text": {
-                "type": "plain_text",
-                "text": truncate(recipe.name, 75),
-            },
-            "value": recipe.id,
+            "label": {"type": "plain_text", "text": truncate(label, 75)},
+            "options": [
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": truncate(recipe.name, 75),
+                    },
+                    "value": recipe.id,
+                }
+                for recipe in recipes
+            ][:100],
         }
-        for recipe in registry.load_all().values()
+        for _type_id, label, recipes in recipes_by_asset_type(registry)
     ][:100]
     return {
         "type": "modal",
@@ -688,7 +721,11 @@ def modal_view(registry: RecipeRegistry) -> dict[str, Any]:
                 "element": {
                     "type": "static_select",
                     "action_id": "value",
-                    "options": options,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "에셋 타입에서 고르세요",
+                    },
+                    "option_groups": option_groups,
                 },
             },
             {
@@ -1647,14 +1684,9 @@ def register_handlers(
                     view=modal_view(registry),
                 )
             elif verb == "recipes":
-                values = registry.load_all().values()
                 respond(
                     response_type="ephemeral",
-                    text="\n".join(
-                        f"• *{category_label(recipe)}* · `{recipe.id}`\n"
-                        f"  {recipe.name}"
-                        for recipe in values
-                    ),
+                    text=recipe_list_text(registry),
                 )
             elif verb == "recipe" and len(words) >= 2:
                 recipe = registry.get(words[1])

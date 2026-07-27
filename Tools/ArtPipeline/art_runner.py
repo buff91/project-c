@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw
 import art_asset
 import comfy_batch
 from art_review import (
+    ASSET_TYPES,
     BatchRegistry,
     DEFAULT_BATCH_DIR,
     DEFAULT_DB_PATH,
@@ -37,6 +38,7 @@ from art_review import (
     ReviewError,
     ReviewStore,
     ShotSpec,
+    VALID_ASSET_TYPES,
     image_metrics,
     make_id,
     project_path,
@@ -1106,7 +1108,27 @@ def command_recipes(args: argparse.Namespace) -> None:
             raise ReviewError(f"Unknown recipe {args.recipe_id}")
         json_print(recipe.summary())
         return
-    json_print([recipe.summary() for recipe in recipes.values()])
+    asset_type = getattr(args, "asset_type", None)
+    if asset_type and asset_type not in VALID_ASSET_TYPES:
+        known = ", ".join(sorted(VALID_ASSET_TYPES))
+        raise ReviewError(
+            f"Unknown asset type {asset_type!r}; expected one of: {known}"
+        )
+    # Slack 목록과 같은 순서로 낸다 — 같은 축을 두 UI가 다르게 정렬하면
+    # "3번째 캐릭터 레시피"라는 말이 통하지 않는다.
+    order = {type_id: index for index, (type_id, _) in enumerate(ASSET_TYPES)}
+    selected = [
+        recipe
+        for recipe in recipes.values()
+        if asset_type is None or recipe.asset_type == asset_type
+    ]
+    selected.sort(
+        key=lambda recipe: (
+            order.get(recipe.asset_type, len(order)),
+            recipe.id,
+        )
+    )
+    json_print([recipe.summary() for recipe in selected])
 
 
 def resolve_batch_jobs(
@@ -1532,6 +1554,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     recipes = subparsers.add_parser("recipes")
     recipes.add_argument("recipe_id", nargs="?")
+    recipes.add_argument(
+        "--asset-type",
+        dest="asset_type",
+        help="에셋 타입으로 거른다: " + ", ".join(
+            type_id for type_id, _ in ASSET_TYPES
+        ),
+    )
     recipes.set_defaults(handler=command_recipes)
 
     batches = subparsers.add_parser("batches")
