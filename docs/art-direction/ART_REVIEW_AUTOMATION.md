@@ -381,6 +381,10 @@ Tools/ArtPipeline/install_art_review_service.sh uninstall
 LaunchAgent는 Mac 로그인 후 봇을 실행한다. ComfyUI Desktop이 꺼져 있으면 생성 job은 실패
 상태와 오류를 Slack에 남기며, Slack 리뷰 자체는 계속 동작한다.
 
+worker가 죽어 `running`으로 남은 job/작업과 `sending`으로 남은 Slack 발송은 worker 재시작 시
+자동으로 큐에 복구된다(기본 1시간 경과 기준, `PROJECTC_ART_STALE_RUNNING_SECONDS`로 조정).
+Slack 발송은 최대 5회까지 재시도하고 그 뒤 실패로 기록된다.
+
 ## 9. Codex Scheduled
 
 자동화 프롬프트 SSOT:

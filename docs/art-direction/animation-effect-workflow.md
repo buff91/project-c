@@ -118,7 +118,6 @@ Slack 명령으로는 각각 `/art prepare <candidate-id>`,
 - `:bone:`: 실루엣/비율 조정
 - `:soap:`: 잡티 정리
 - `:triangular_ruler:`: 피벗/크기/스케일
-- `:star:`: 레퍼런스 라인 보존
 
 Thread 답글은 아래 형식으로 쓰면 자동 분류가 쉬워진다.
 
