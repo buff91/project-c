@@ -15,8 +15,17 @@ usage() {
 case "${1:-}" in
   install)
     mkdir -p "$launch_agents_dir" "$script_dir/.art-review"
-    escaped_root="${project_root//&/\\&}"
-    sed "s&__PROJECT_ROOT__&$escaped_root&g" "$template" > "$destination"
+    PROJECTC_PROJECT_ROOT="$project_root" /usr/bin/python3 -c '
+import os
+import pathlib
+import sys
+
+template = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+pathlib.Path(sys.argv[2]).write_text(
+    template.replace("__PROJECT_ROOT__", os.environ["PROJECTC_PROJECT_ROOT"]),
+    encoding="utf-8",
+)
+' "$template" "$destination"
     launchctl bootout "$domain/com.project-c.art-review" 2>/dev/null || true
     for _attempt in {1..20}; do
       if ! launchctl print "$domain/com.project-c.art-review" \

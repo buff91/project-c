@@ -572,25 +572,23 @@ namespace ProjectC.Gameplay
                 shaft.transform.localScale = new Vector3(0.95f, distance, 1f);
             }
 
-            // 입구 링은 진단 표시다 — PLAY에서는 구멍 타일 자체(짙은 보이드 + 깨진 테두리)가 입구를 그린다.
+            // 양 끝 링은 진단 표시다. PLAY에서는 구멍 타일과 어두운 보이드 기둥만 그린다.
             if (debugView)
+            {
                 CreateShaftEndpoint(from, hole, arrival: false);
-            CreateShaftEndpoint(to, hole, arrival: true);
+                CreateShaftEndpoint(to, hole, arrival: true);
+            }
         }
 
         private void CreateShaftEndpoint(GridPos pos, bool hole, bool arrival)
         {
-            bool debugView = viewMode == DungeonViewMode.DebugAll;
             var endpoint = new GameObject(arrival ? "Shaft Arrival" : "Shaft Entrance");
             endpoint.transform.SetParent(_shaftRoot, false);
             endpoint.transform.position = VisualPosition(pos) + Vector3.up * 0.035f;
             var renderer = endpoint.AddComponent<SpriteRenderer>();
             renderer.sprite = ActorSprites.GetShaftEndpointSprite(hole, arrival);
-            // PLAY의 착지 표식은 바닥 데칼이다 — 그 칸에 선 액터가 항상 앞에 그려져야 한다.
-            renderer.sortingOrder = debugView
-                ? OverlaySorting.ShaftEndpoint
-                : _grid.iso.SortingOrder(pos, -1);
-            renderer.color = new Color(1f, 1f, 1f, arrival ? (debugView ? 0.72f : 0.5f) : 0.95f);
+            renderer.sortingOrder = OverlaySorting.ShaftEndpoint;
+            renderer.color = new Color(1f, 1f, 1f, arrival ? 0.72f : 0.95f);
         }
 
         private void RecomputeVisibility()

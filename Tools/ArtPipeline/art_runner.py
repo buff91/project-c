@@ -81,28 +81,12 @@ def submit_prompt(
     prompt = comfy_batch.load_prompt(recipe.workflow_path)
     comfy_batch.apply_overrides(prompt, recipe.assignments(seed, shot))
     comfy_batch.apply_uploads(comfy_url, prompt, recipe.uploads(shot))
-    response = comfy_batch.request_json(
+    prompt_id, outputs = comfy_batch.execute_prompt(
         comfy_url,
-        "/prompt",
-        method="POST",
-        payload={"prompt": prompt, "client_id": uuid.uuid4().hex},
-        timeout=120.0,
-    )
-    prompt_id = response.get("prompt_id")
-    if not prompt_id:
-        raise ReviewError(
-            f"ComfyUI did not return prompt_id for {recipe.id}: {response}"
-        )
-    record = comfy_batch.wait_for_history(
-        comfy_url,
-        prompt_id,
+        prompt,
+        output_dir,
         timeout=timeout,
         poll_interval=1.0,
-    )
-    outputs = comfy_batch.download_outputs(
-        comfy_url,
-        record,
-        output_dir,
     )
     image_outputs = [
         path for path in outputs
@@ -260,7 +244,18 @@ def process_job(
                 if source.resolve() != destination.resolve():
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(source, destination)
-            metrics = image_metrics(destination)
+            if recipe.is_multi_shot:
+                metrics = {
+                    "shot_count": len(manifest_shots),
+                    "shots": {
+                        item["id"]: image_metrics(
+                            project_path(item["raw_path"])
+                        )
+                        for item in manifest_shots
+                    },
+                }
+            else:
+                metrics = image_metrics(destination)
             store.add_candidate(
                 job_id=job["id"],
                 ordinal=ordinal,
@@ -764,6 +759,7 @@ def publish_candidate(
     candidate_id: str,
     *,
     target_slot: str | None = None,
+    apply_request_id: str | None = None,
 ) -> Path:
     candidate = store.get_candidate(candidate_id)
     if not store.candidate_is_approved(candidate_id):
@@ -791,6 +787,14 @@ def publish_candidate(
         art_asset.validate_slot(slot)
     except art_asset.AssetError as exc:
         raise ReviewError(str(exc)) from exc
+    if not source.is_file() or source.suffix.lower() not in {
+        ".aseprite",
+        ".ase",
+    }:
+        raise ReviewError(
+            f"{candidate_id} has no directly publishable Aseprite source: "
+            f"{source}. Multi-shot handoffs must be finalized first."
+        )
     destination = art_asset.official_output(slot)
     allow_replace = bool(recipe.output.get("allow_replace", False))
     if destination.exists() and not allow_replace:
@@ -801,7 +805,23 @@ def publish_candidate(
     store.set_candidate_status(candidate_id, "publishing")
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists() and allow_replace:
-        backup = source.parent / f"{destination.stem}-previous.aseprite"
+        timestamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        request_suffix = (
+            f"-{apply_request_id}" if apply_request_id else ""
+        )
+        backup = (
+            source.parent
+            / "backups"
+            / (
+                f"{destination.stem}-previous-{timestamp}"
+                f"{request_suffix}{destination.suffix}"
+            )
+        )
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        if backup.exists():
+            backup = backup.with_name(
+                f"{backup.stem}-{uuid.uuid4().hex[:8]}{backup.suffix}"
+            )
         shutil.copy2(destination, backup)
     shutil.copy2(source, destination)
     store.set_candidate_status(
@@ -834,14 +854,27 @@ def approve_candidate(
             f"Cannot approve {candidate_id} from {candidate['status']}"
         )
     raw_path = project_path(candidate["raw_path"])
-    snapshot = raw_path.parent / "approvals" / make_id("APPROVAL")
-    snapshot.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(raw_path, snapshot / "raw.png")
     shot_manifest = raw_path.parent / "shot-manifest.json"
+    snapshot_manifest: dict[str, Any] | None = None
     if shot_manifest.is_file():
         snapshot_manifest = json.loads(
             shot_manifest.read_text(encoding="utf-8")
         )
+        shots = raw_path.parent / "shots"
+        if not shots.is_dir():
+            raise ReviewError(
+                f"Shot manifest exists but shot sources are missing: {shots}"
+            )
+        for shot in snapshot_manifest.get("shots", []):
+            original = project_path(shot["raw_path"])
+            if not original.is_file():
+                raise ReviewError(
+                    f"Approval shot source is missing: {original}"
+                )
+    snapshot = raw_path.parent / "approvals" / make_id("APPROVAL")
+    snapshot.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(raw_path, snapshot / "raw.png")
+    if snapshot_manifest is not None:
         for shot in snapshot_manifest.get("shots", []):
             shot["raw_path"] = relative_project_path(
                 snapshot / "shots" / str(shot["id"]) / "raw.png"
@@ -907,6 +940,10 @@ def reject_candidate(
     if candidate["status"] == "published":
         raise ReviewError(f"Cannot reject published candidate {candidate_id}")
     store.set_candidate_status(candidate_id, "rejected")
+    store.cancel_apply_requests_for_candidate(
+        candidate_id,
+        reason="Candidate was rejected after apply was requested",
+    )
     store.add_feedback(
         event_key=event_key,
         user_id=user_id,
@@ -1288,12 +1325,25 @@ def command_publish(args: argparse.Namespace) -> None:
             f"Apply request {request['id']} cannot publish from "
             f"{request['status']}"
         )
-    store.set_apply_request_status(request["id"], "applying")
-    destination = publish_candidate(
-        store,
-        args.candidate_id,
-        target_slot=args.target_slot,
+    store.set_apply_request_status(
+        request["id"],
+        "applying",
+        expected_statuses=("planning", "applying"),
     )
+    try:
+        destination = publish_candidate(
+            store,
+            args.candidate_id,
+            target_slot=args.target_slot,
+            apply_request_id=request["id"],
+        )
+    except Exception as exc:
+        store.set_apply_request_status(
+            request["id"],
+            "failed",
+            error=str(exc),
+        )
+        raise
     print(destination)
 
 
@@ -1321,8 +1371,13 @@ def command_work(args: argparse.Namespace) -> None:
             timeout=args.timeout,
         )
         return
-    store.recover_stale_running(older_than_seconds=STALE_RUNNING_SECONDS)
+    next_recovery = 0.0
     while not STOP_REQUESTED:
+        if time.monotonic() >= next_recovery:
+            store.recover_stale_running(
+                older_than_seconds=STALE_RUNNING_SECONDS
+            )
+            next_recovery = time.monotonic() + 60.0
         try:
             worked = work_once(
                 store,

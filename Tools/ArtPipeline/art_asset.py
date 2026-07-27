@@ -19,7 +19,6 @@ import shutil
 import statistics
 import subprocess
 import sys
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -339,24 +338,14 @@ def run_comfy(args: argparse.Namespace, raw_dir: Path) -> list[Path]:
     prompt = comfy_batch.load_prompt(args.workflow)
     comfy_batch.apply_overrides(prompt, args.set)
     comfy_batch.apply_uploads(args.url, prompt, args.upload)
-    response = comfy_batch.request_json(
+    prompt_id, outputs = comfy_batch.execute_prompt(
         args.url,
-        "/prompt",
-        method="POST",
-        payload={"prompt": prompt, "client_id": uuid.uuid4().hex},
-        timeout=120.0,
-    )
-    prompt_id = response.get("prompt_id")
-    if not prompt_id:
-        raise AssetError(f"ComfyUI did not return a prompt_id: {response}")
-    print(f"prompt_id: {prompt_id}")
-    record = comfy_batch.wait_for_history(
-        args.url,
-        prompt_id,
+        prompt,
+        raw_dir,
         timeout=args.timeout,
         poll_interval=args.poll_interval,
     )
-    outputs = comfy_batch.download_outputs(args.url, record, raw_dir)
+    print(f"prompt_id: {prompt_id}")
     if not outputs:
         raise AssetError(f"ComfyUI job {prompt_id} returned no image outputs")
     for output in outputs:

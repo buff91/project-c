@@ -35,10 +35,12 @@ from art_runner import (
     decide_candidate_shot,
     process_action,
     publish_candidate,
+    reject_candidate,
     resolve_batch_jobs,
     render_draft_frame,
     review_sheet,
 )
+from comfy_batch import ComfyError, final_output_node_ids, multipart_body
 from art_slack_bot import (
     allowed_user,
     animation_action_value,
@@ -275,6 +277,24 @@ class RecipeTests(unittest.TestCase):
         cleaned = keep_largest_alpha_component(cleaned, 80)
         self.assertEqual(0, cleaned.getpixel((1, 1))[3])
         self.assertEqual(255, cleaned.getpixel((7, 7))[3])
+
+    def test_comfy_final_outputs_only_use_save_nodes(self) -> None:
+        prompt = {
+            "2": {"class_type": "PreviewImage", "inputs": {}},
+            "10": {"class_type": "SaveImage", "inputs": {}},
+        }
+        self.assertEqual(("10",), final_output_node_ids(prompt))
+
+    def test_multipart_rejects_header_injection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "safe.png"
+            source.write_bytes(b"png")
+            with self.assertRaisesRegex(ComfyError, "CR or LF"):
+                multipart_body(
+                    {"bad\r\nheader": "value"},
+                    "image",
+                    source,
+                )
 
 
 class StoreTests(unittest.TestCase):
@@ -532,6 +552,67 @@ class StoreTests(unittest.TestCase):
         resumed = self.store.get_apply_request(request_id)
         self.assertEqual("queued", resumed["status"])
         self.assertEqual("기존 actor-slinger 슬롯 교체", resumed["intent"])
+
+    def test_apply_intent_policy_and_rejection_cancellation(self) -> None:
+        candidate_id = self.add_candidate()
+        approve_candidate(
+            self.store,
+            candidate_id,
+            user_id="U1",
+            event_key="intent-approve",
+        )
+        request_id = self.store.create_apply_request(
+            candidate_id,
+            requested_by="test",
+            intent="first",
+        )
+        self.assertEqual(
+            request_id,
+            self.store.create_apply_request(
+                candidate_id,
+                requested_by="test",
+                intent="latest",
+            ),
+        )
+        self.assertEqual(
+            "latest",
+            self.store.get_apply_request(request_id)["intent"],
+        )
+        self.store.claim_apply_request(request_id)
+        with self.assertRaisesRegex(ReviewError, "already planning"):
+            self.store.create_apply_request(
+                candidate_id,
+                requested_by="test",
+                intent="too late",
+            )
+        reject_candidate(
+            self.store,
+            candidate_id,
+            user_id="U1",
+            event_key="intent-reject",
+        )
+        self.assertEqual(
+            "cancelled",
+            self.store.get_apply_request(request_id)["status"],
+        )
+
+    def test_publish_rejects_multi_shot_handoff_manifest(self) -> None:
+        candidate_id = self.add_candidate()
+        approve_candidate(
+            self.store,
+            candidate_id,
+            user_id="U1",
+            event_key="handoff-approve",
+        )
+        handoff = self.root / "aseprite-handoff.json"
+        handoff.write_text('{"shots": []}', encoding="utf-8")
+        self.store.set_candidate_status(
+            candidate_id,
+            "prepared",
+            aseprite_path=handoff,
+        )
+        with self.assertRaisesRegex(ReviewError, "finalized first"):
+            publish_candidate(self.store, candidate_id)
 
     def test_slack_thread_maps_to_candidate(self) -> None:
         candidate_id = self.add_candidate()

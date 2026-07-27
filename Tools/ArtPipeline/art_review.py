@@ -882,6 +882,13 @@ CREATE TABLE IF NOT EXISTS slack_messages (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS outbox_deliveries (
+    outbox_id INTEGER NOT NULL REFERENCES outbox(id) ON DELETE CASCADE,
+    step_key TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(outbox_id, step_key)
+);
+
 CREATE TABLE IF NOT EXISTS batch_runs (
     id TEXT PRIMARY KEY,
     plan_id TEXT NOT NULL,
@@ -1369,17 +1376,24 @@ class ReviewStore:
 
     def candidate_is_approved(self, candidate_id: str) -> bool:
         with self.connect() as connection:
-            row = connection.execute(
-                """
-                SELECT label FROM feedback
-                WHERE candidate_id = ?
-                  AND source = 'button'
-                  AND label IN ('approve', 'reject')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (candidate_id,),
-            ).fetchone()
+            return self._candidate_is_approved(connection, candidate_id)
+
+    @staticmethod
+    def _candidate_is_approved(
+        connection: sqlite3.Connection,
+        candidate_id: str,
+    ) -> bool:
+        row = connection.execute(
+            """
+            SELECT label FROM feedback
+            WHERE candidate_id = ?
+              AND source = 'button'
+              AND label IN ('approve', 'reject')
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (candidate_id,),
+        ).fetchone()
         return row is not None and row["label"] == "approve"
 
     def shot_decision(
@@ -1487,17 +1501,26 @@ class ReviewStore:
         requested_by: str,
         intent: str = "",
     ) -> str:
-        candidate = self.get_candidate(candidate_id)
-        if not self.candidate_is_approved(candidate_id):
-            raise ReviewError(
-                f"{candidate_id} has no current explicit approval"
-            )
-        if candidate["status"] not in {"approved", "prepared"}:
-            raise ReviewError(
-                f"{candidate_id} cannot be applied from "
-                f"{candidate['status']}"
-            )
         with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            candidate = connection.execute(
+                "SELECT * FROM candidates WHERE id = ?",
+                (candidate_id,),
+            ).fetchone()
+            if candidate is None:
+                raise ReviewError(f"Unknown candidate {candidate_id}")
+            if not self._candidate_is_approved(connection, candidate_id):
+                raise ReviewError(
+                    f"{candidate_id} has no current explicit approval"
+                )
+            if (
+                candidate["status"] not in {"approved", "prepared"}
+                or not candidate["approved_snapshot_path"]
+            ):
+                raise ReviewError(
+                    f"{candidate_id} cannot be applied from "
+                    f"{candidate['status']} without an approval snapshot"
+                )
             active = connection.execute(
                 """
                 SELECT id, status FROM apply_requests
@@ -1509,7 +1532,19 @@ class ReviewStore:
                 (candidate_id,),
             ).fetchone()
             if active:
-                if intent and active["status"] == "needs_input":
+                if not intent:
+                    return str(active["id"])
+                if active["status"] == "queued":
+                    connection.execute(
+                        """
+                        UPDATE apply_requests
+                        SET intent = ?, updated_at = ?, error = NULL
+                        WHERE id = ?
+                        """,
+                        (intent, utc_now(), active["id"]),
+                    )
+                    return str(active["id"])
+                if active["status"] == "needs_input":
                     connection.execute(
                         """
                         UPDATE apply_requests
@@ -1519,7 +1554,19 @@ class ReviewStore:
                         """,
                         (intent, utc_now(), active["id"]),
                     )
-                return str(active["id"])
+                    self._enqueue_outbox(
+                        connection,
+                        "apply_queued",
+                        {
+                            "apply_request_id": str(active["id"]),
+                            "candidate_id": candidate_id,
+                        },
+                    )
+                    return str(active["id"])
+                raise ReviewError(
+                    f"Apply request {active['id']} is already "
+                    f"{active['status']}; create a new request after it finishes"
+                )
             request_id = make_id("APPLY")
             now = utc_now()
             connection.execute(
@@ -1538,13 +1585,14 @@ class ReviewStore:
                     now,
                 ),
             )
-        self.enqueue_outbox(
-            "apply_queued",
-            {
-                "apply_request_id": request_id,
-                "candidate_id": candidate_id,
-            },
-        )
+            self._enqueue_outbox(
+                connection,
+                "apply_queued",
+                {
+                    "apply_request_id": request_id,
+                    "candidate_id": candidate_id,
+                },
+            )
         return request_id
 
     def list_apply_requests(
@@ -1608,6 +1656,40 @@ class ReviewStore:
                 ).fetchone()
             if row is None:
                 return None
+            candidate = connection.execute(
+                "SELECT * FROM candidates WHERE id = ?",
+                (row["candidate_id"],),
+            ).fetchone()
+            valid = (
+                candidate is not None
+                and candidate["status"] in {"approved", "prepared"}
+                and bool(candidate["approved_snapshot_path"])
+                and self._candidate_is_approved(
+                    connection,
+                    row["candidate_id"],
+                )
+            )
+            if not valid:
+                message = "Candidate approval is no longer valid"
+                connection.execute(
+                    """
+                    UPDATE apply_requests
+                    SET status = 'cancelled', updated_at = ?, error = ?
+                    WHERE id = ?
+                    """,
+                    (utc_now(), message, row["id"]),
+                )
+                self._enqueue_outbox(
+                    connection,
+                    "apply_status",
+                    {
+                        "apply_request_id": row["id"],
+                        "status": "cancelled",
+                        "error": message,
+                        "result": None,
+                    },
+                )
+                return None
             connection.execute(
                 """
                 UPDATE apply_requests
@@ -1629,19 +1711,30 @@ class ReviewStore:
         plan: dict[str, Any] | None = None,
         result: dict[str, Any] | None = None,
         error: str | None = None,
+        expected_statuses: tuple[str, ...] | None = None,
     ) -> None:
         if status not in VALID_APPLY_STATES:
             raise ReviewError(f"Invalid apply request status {status!r}")
         with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            expected_clause = ""
+            expected_values: tuple[str, ...] = ()
+            if expected_statuses:
+                expected_clause = (
+                    " AND status IN ("
+                    + ", ".join("?" for _ in expected_statuses)
+                    + ")"
+                )
+                expected_values = expected_statuses
             cursor = connection.execute(
-                """
+                f"""
                 UPDATE apply_requests
                 SET status = ?,
                     plan_json = COALESCE(?, plan_json),
                     result_json = COALESCE(?, result_json),
                     updated_at = ?,
                     error = ?
-                WHERE id = ?
+                WHERE id = ?{expected_clause}
                 """,
                 (
                     status,
@@ -1650,19 +1743,62 @@ class ReviewStore:
                     utc_now(),
                     error,
                     request_id,
+                    *expected_values,
                 ),
             )
-        if cursor.rowcount == 0:
-            raise ReviewError(f"Unknown apply request {request_id}")
-        self.enqueue_outbox(
-            "apply_status",
-            {
-                "apply_request_id": request_id,
-                "status": status,
-                "error": error,
-                "result": result,
-            },
-        )
+            if cursor.rowcount == 0:
+                raise ReviewError(
+                    f"Apply request {request_id} does not exist or changed "
+                    "state concurrently"
+                )
+            self._enqueue_outbox(
+                connection,
+                "apply_status",
+                {
+                    "apply_request_id": request_id,
+                    "status": status,
+                    "error": error,
+                    "result": result,
+                },
+            )
+
+    def cancel_apply_requests_for_candidate(
+        self,
+        candidate_id: str,
+        *,
+        reason: str,
+    ) -> int:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """
+                SELECT id FROM apply_requests
+                WHERE candidate_id = ?
+                  AND status IN ('queued', 'planning', 'applying', 'needs_input')
+                """,
+                (candidate_id,),
+            ).fetchall()
+            now = utc_now()
+            for row in rows:
+                connection.execute(
+                    """
+                    UPDATE apply_requests
+                    SET status = 'cancelled', updated_at = ?, error = ?
+                    WHERE id = ?
+                    """,
+                    (now, reason, row["id"]),
+                )
+                self._enqueue_outbox(
+                    connection,
+                    "apply_status",
+                    {
+                        "apply_request_id": row["id"],
+                        "status": "cancelled",
+                        "error": reason,
+                        "result": None,
+                    },
+                )
+            return len(rows)
 
     def apply_context(self, request_id: str) -> dict[str, Any]:
         request = self.get_apply_request(request_id)
@@ -1864,18 +2000,48 @@ class ReviewStore:
                 (status, utc_now(), error, action_id),
             )
 
-    def enqueue_outbox(self, kind: str, payload: dict[str, Any]) -> int:
+    @staticmethod
+    def _enqueue_outbox(
+        connection: sqlite3.Connection,
+        kind: str,
+        payload: dict[str, Any],
+    ) -> int:
         now = utc_now()
+        cursor = connection.execute(
+            """
+            INSERT INTO outbox (
+                kind, payload_json, status, created_at, updated_at
+            ) VALUES (?, ?, 'pending', ?, ?)
+            """,
+            (kind, canonical_json(payload), now, now),
+        )
+        return int(cursor.lastrowid)
+
+    def enqueue_outbox(self, kind: str, payload: dict[str, Any]) -> int:
         with self.connect() as connection:
-            cursor = connection.execute(
+            return self._enqueue_outbox(connection, kind, payload)
+
+    def outbox_delivery_done(self, outbox_id: int, step_key: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
                 """
-                INSERT INTO outbox (
-                    kind, payload_json, status, created_at, updated_at
-                ) VALUES (?, ?, 'pending', ?, ?)
+                SELECT 1 FROM outbox_deliveries
+                WHERE outbox_id = ? AND step_key = ?
                 """,
-                (kind, canonical_json(payload), now, now),
+                (outbox_id, step_key),
+            ).fetchone()
+        return row is not None
+
+    def mark_outbox_delivery(self, outbox_id: int, step_key: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO outbox_deliveries (
+                    outbox_id, step_key, created_at
+                ) VALUES (?, ?, ?)
+                """,
+                (outbox_id, step_key, utc_now()),
             )
-            return int(cursor.lastrowid)
 
     def pending_outbox(self, limit: int = 20) -> list[sqlite3.Row]:
         with self.connect() as connection:

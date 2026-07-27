@@ -14,8 +14,13 @@ fi
 # python.org 배포판은 macOS Keychain 인증서를 자동으로 사용하지 않을 수 있다.
 # Slack SDK의 urllib 연결이 검증된 CA 번들을 사용하도록 명시한다.
 if [[ -z "${SSL_CERT_FILE:-}" ]]; then
-  SSL_CERT_FILE="$("$python_bin" -c 'import certifi; print(certifi.where())')"
-  export SSL_CERT_FILE
+  if certifi_path="$("$python_bin" -c 'import certifi; print(certifi.where())' 2>/dev/null)"; then
+    SSL_CERT_FILE="$certifi_path"
+    export SSL_CERT_FILE
+  else
+    echo "warning: certifi is not installed; using the system CA configuration." >&2
+    echo "install with: $python_bin -m pip install -r Tools/ArtPipeline/requirements-art-review.txt" >&2
+  fi
 fi
 
 cd "$project_root"

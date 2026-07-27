@@ -121,6 +121,11 @@ def multipart_body(
     file_field: str,
     source: Path,
 ) -> tuple[bytes, str]:
+    def disposition_value(value: str) -> str:
+        if "\r" in value or "\n" in value:
+            raise ComfyError("Multipart names cannot contain CR or LF")
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     boundary = f"project-c-{uuid.uuid4().hex}"
     chunks: list[bytes] = []
     for name, value in fields.items():
@@ -128,7 +133,8 @@ def multipart_body(
             [
                 f"--{boundary}\r\n".encode(),
                 (
-                    f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
+                    "Content-Disposition: form-data; "
+                    f'name="{disposition_value(name)}"\r\n\r\n'
                 ).encode(),
                 value.encode(),
                 b"\r\n",
@@ -140,8 +146,9 @@ def multipart_body(
         [
             f"--{boundary}\r\n".encode(),
             (
-                f'Content-Disposition: form-data; name="{file_field}"; '
-                f'filename="{source.name}"\r\n'
+                "Content-Disposition: form-data; "
+                f'name="{disposition_value(file_field)}"; '
+                f'filename="{disposition_value(source.name)}"\r\n'
             ).encode(),
             f"Content-Type: {content_type}\r\n\r\n".encode(),
             source.read_bytes(),
@@ -255,19 +262,51 @@ def wait_for_history(
         if prompt_id in history:
             record = history[prompt_id]
             status = record.get("status", {})
-            if status.get("status_str") == "error":
+            status_name = str(status.get("status_str", "")).lower()
+            if status_name in {
+                "error",
+                "interrupted",
+                "cancelled",
+                "canceled",
+            }:
                 raise ComfyError(
-                    f"ComfyUI job {prompt_id} failed: "
+                    f"ComfyUI job {prompt_id} ended as {status_name}: "
                     f"{json.dumps(status, ensure_ascii=False)}"
                 )
-            return record
+            if status.get("completed") is True or record.get("outputs"):
+                return record
         time.sleep(poll_interval)
     raise ComfyError(f"Timed out waiting for ComfyUI job {prompt_id}")
 
 
-def output_descriptors(record: dict[str, Any]) -> list[dict[str, str]]:
+def final_output_node_ids(prompt: dict[str, Any]) -> tuple[str, ...]:
+    node_ids = tuple(
+        sorted(
+            (
+                str(node_id)
+                for node_id, node in prompt.items()
+                if node.get("class_type") in {"SaveImage", "SaveAnimatedWEBP"}
+            ),
+            key=lambda value: (not value.isdigit(), int(value) if value.isdigit() else value),
+        )
+    )
+    if not node_ids:
+        raise ComfyError("Workflow has no final SaveImage/SaveAnimatedWEBP node")
+    return node_ids
+
+
+def output_descriptors(
+    record: dict[str, Any],
+    *,
+    node_ids: tuple[str, ...] | None = None,
+) -> list[dict[str, str]]:
     result: list[dict[str, str]] = []
-    for node_output in record.get("outputs", {}).values():
+    outputs = record.get("outputs", {})
+    selected = node_ids or tuple(
+        sorted(outputs, key=lambda value: (not str(value).isdigit(), str(value)))
+    )
+    for node_id in selected:
+        node_output = outputs.get(str(node_id), {})
         for collection_name in ("images", "gifs", "audio"):
             for item in node_output.get(collection_name, []):
                 if isinstance(item, dict) and "filename" in item:
@@ -279,10 +318,12 @@ def download_outputs(
     base_url: str,
     record: dict[str, Any],
     output_dir: Path,
+    *,
+    node_ids: tuple[str, ...] | None = None,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
-    for item in output_descriptors(record):
+    for item in output_descriptors(record, node_ids=node_ids):
         query = urlencode(
             {
                 "filename": item["filename"],
@@ -301,13 +342,17 @@ def download_outputs(
     return written
 
 
-def command_run(args: argparse.Namespace) -> None:
-    prompt = load_prompt(args.workflow)
-    apply_overrides(prompt, args.set)
-    apply_uploads(args.url, prompt, args.upload)
-
+def execute_prompt(
+    base_url: str,
+    prompt: dict[str, Any],
+    output_dir: Path,
+    *,
+    timeout: float,
+    poll_interval: float = 1.0,
+) -> tuple[str, list[Path]]:
+    node_ids = final_output_node_ids(prompt)
     response = request_json(
-        args.url,
+        base_url,
         "/prompt",
         method="POST",
         payload={"prompt": prompt, "client_id": uuid.uuid4().hex},
@@ -316,17 +361,46 @@ def command_run(args: argparse.Namespace) -> None:
     prompt_id = response.get("prompt_id")
     if not prompt_id:
         raise ComfyError(f"ComfyUI did not return a prompt_id: {response}")
-    print(prompt_id)
-    if args.no_wait:
-        return
-
     record = wait_for_history(
-        args.url,
+        base_url,
         prompt_id,
+        timeout=timeout,
+        poll_interval=poll_interval,
+    )
+    return prompt_id, download_outputs(
+        base_url,
+        record,
+        output_dir,
+        node_ids=node_ids,
+    )
+
+
+def command_run(args: argparse.Namespace) -> None:
+    prompt = load_prompt(args.workflow)
+    apply_overrides(prompt, args.set)
+    apply_uploads(args.url, prompt, args.upload)
+
+    if args.no_wait:
+        response = request_json(
+            args.url,
+            "/prompt",
+            method="POST",
+            payload={"prompt": prompt, "client_id": uuid.uuid4().hex},
+            timeout=120.0,
+        )
+        prompt_id = response.get("prompt_id")
+        if not prompt_id:
+            raise ComfyError(f"ComfyUI did not return a prompt_id: {response}")
+        print(prompt_id)
+        return
+    prompt_id, written = execute_prompt(
+        args.url,
+        prompt,
+        args.output_dir,
         timeout=args.timeout,
         poll_interval=args.poll_interval,
     )
-    written = download_outputs(args.url, record, args.output_dir)
+    print(prompt_id)
     if not written:
         raise ComfyError(f"Job {prompt_id} completed without downloadable outputs")
     for path in written:

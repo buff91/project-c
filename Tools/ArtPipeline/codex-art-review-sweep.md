@@ -1,6 +1,7 @@
 # Project-C 아트 리뷰·게임 반영 자동 처리
 
-`/Users/buff/github/private/project-c`에서 다음 작업만 수행하라.
+Project-C 저장소 루트에서 다음 작업만 수행하라. 시작 전에 현재 작업 디렉터리에
+`Tools/ArtPipeline/art_runner.py`가 있는지 확인하고, 없으면 작업을 중단하라.
 
 ## A. 자연어 리뷰 피드백
 

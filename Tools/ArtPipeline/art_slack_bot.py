@@ -31,6 +31,7 @@ from art_review import (
 )
 from art_runner import (
     DEFAULT_COMFY_URL,
+    STALE_RUNNING_SECONDS,
     approve_candidate,
     decide_candidate_shot,
     load_shot_manifest,
@@ -793,39 +794,56 @@ class SlackReviewService:
         self.poll_interval = poll_interval
         self.run_worker = run_worker
 
-    def post_candidate(self, client: Any, candidate_id: str) -> None:
+    def post_candidate(
+        self,
+        client: Any,
+        candidate_id: str,
+        *,
+        outbox_id: int | None = None,
+    ) -> None:
         candidate = self.store.get_candidate(candidate_id)
         job = self.store.get_job(candidate["job_id"])
         recipe = recipe_from_job(job)
-        response = client.chat_postMessage(
-            channel=self.channel_id,
-            text=f"검토 대기 · {recipe.name} · {candidate_id}",
-            blocks=candidate_blocks(
-                recipe,
-                candidate,
-                approved=self.store.candidate_is_approved(candidate_id),
-            ),
-        )
-        root_ts = response["ts"]
-        self.store.map_slack_message(
-            message_ts=root_ts,
-            channel_id=self.channel_id,
-            kind="candidate-root",
-            job_id=job["id"],
-            candidate_id=candidate_id,
-        )
+        mapping = self.store.find_candidate_slack_message(candidate_id)
+        if mapping is None:
+            response = client.chat_postMessage(
+                channel=self.channel_id,
+                text=f"검토 대기 · {recipe.name} · {candidate_id}",
+                blocks=candidate_blocks(
+                    recipe,
+                    candidate,
+                    approved=self.store.candidate_is_approved(candidate_id),
+                ),
+            )
+            root_ts = response["ts"]
+            self.store.map_slack_message(
+                message_ts=root_ts,
+                channel_id=self.channel_id,
+                kind="candidate-root",
+                job_id=job["id"],
+                candidate_id=candidate_id,
+            )
+        else:
+            root_ts = mapping["message_ts"]
         raw_path = project_path(candidate["raw_path"])
-        client.files_upload_v2(
-            channel=self.channel_id,
-            thread_ts=root_ts,
-            file=str(raw_path),
-            title=f"생성 원본 · {candidate_id}",
-            initial_comment=(
-                f"🖼️ *생성 원본* · seed `{candidate['seed']}`\n"
-                "수정 의견은 이 메시지에 답장하세요. "
-                "예: `팔은 유지하고 무기만 짧게`"
-            ),
-        )
+        raw_step = f"candidate:{candidate_id}:raw"
+        if (
+            outbox_id is None
+            or not self.store.outbox_delivery_done(outbox_id, raw_step)
+        ):
+            client.files_upload_v2(
+                channel=self.channel_id,
+                thread_ts=root_ts,
+                file=str(raw_path),
+                title=f"생성 원본 · {candidate_id}",
+                initial_comment=(
+                    f"🖼️ *생성 원본* · seed `{candidate['seed']}`\n"
+                    "수정 의견은 이 메시지에 답장하세요. "
+                    "예: `팔은 유지하고 무기만 짧게`"
+                ),
+            )
+            if outbox_id is not None:
+                self.store.mark_outbox_delivery(outbox_id, raw_step)
         if recipe.is_multi_shot:
             manifest = load_shot_manifest(raw_path.parent)
             manifest_by_id = {
@@ -836,29 +854,49 @@ class SlackReviewService:
                 if item is None:
                     continue
                 shot_path = project_path(item["raw_path"])
-                client.files_upload_v2(
-                    channel=self.channel_id,
-                    thread_ts=root_ts,
-                    file=str(shot_path),
-                    title=f"{shot.label} · {shot.id}",
-                    initial_comment=(
-                        f"🖼️ *샷 원본* · `{shot.id}`\n"
-                        f"수정 의견: `[{shot.id}] 바꿀 내용`"
-                    ),
+                upload_step = f"candidate:{candidate_id}:shot:{shot.id}:file"
+                if (
+                    outbox_id is None
+                    or not self.store.outbox_delivery_done(
+                        outbox_id,
+                        upload_step,
+                    )
+                ):
+                    client.files_upload_v2(
+                        channel=self.channel_id,
+                        thread_ts=root_ts,
+                        file=str(shot_path),
+                        title=f"{shot.label} · {shot.id}",
+                        initial_comment=(
+                            f"🖼️ *샷 원본* · `{shot.id}`\n"
+                            f"수정 의견: `[{shot.id}] 바꿀 내용`"
+                        ),
+                    )
+                    if outbox_id is not None:
+                        self.store.mark_outbox_delivery(
+                            outbox_id,
+                            upload_step,
+                        )
+                shot_mapping = (
+                    self.store.find_candidate_shot_slack_message(
+                        candidate_id,
+                        shot.id,
+                    )
                 )
-                shot_response = client.chat_postMessage(
-                    channel=self.channel_id,
-                    thread_ts=root_ts,
-                    text=f"샷 검토 대기 · {shot.label} · {shot.id}",
-                    blocks=shot_blocks(recipe, candidate, shot),
-                )
-                self.store.map_slack_message(
-                    message_ts=shot_response["ts"],
-                    channel_id=self.channel_id,
-                    kind=f"shot:{shot.id}",
-                    job_id=job["id"],
-                    candidate_id=candidate_id,
-                )
+                if shot_mapping is None:
+                    shot_response = client.chat_postMessage(
+                        channel=self.channel_id,
+                        thread_ts=root_ts,
+                        text=f"샷 검토 대기 · {shot.label} · {shot.id}",
+                        blocks=shot_blocks(recipe, candidate, shot),
+                    )
+                    self.store.map_slack_message(
+                        message_ts=shot_response["ts"],
+                        channel_id=self.channel_id,
+                        kind=f"shot:{shot.id}",
+                        job_id=job["id"],
+                        candidate_id=candidate_id,
+                    )
 
     def update_candidate(self, client: Any, candidate_id: str) -> None:
         mapping = self.store.find_candidate_slack_message(candidate_id)
@@ -943,10 +981,15 @@ class SlackReviewService:
             job_id = payload["job_id"]
             job = self.store.get_job(job_id)
             recipe = recipe_from_job(job)
-            client.chat_postMessage(
-                channel=self.channel_id,
-                text=f"생성 완료 · {recipe.name} · 후보 {job['candidate_count']}개",
-                blocks=[
+            announcement_step = f"job:{job_id}:announcement"
+            if not self.store.outbox_delivery_done(
+                row["id"],
+                announcement_step,
+            ):
+                client.chat_postMessage(
+                    channel=self.channel_id,
+                    text=f"생성 완료 · {recipe.name} · 후보 {job['candidate_count']}개",
+                    blocks=[
                     {
                         "type": "header",
                         "text": {
@@ -984,10 +1027,18 @@ class SlackReviewService:
                             }
                         ],
                     },
-                ],
-            )
+                    ],
+                )
+                self.store.mark_outbox_delivery(
+                    row["id"],
+                    announcement_step,
+                )
             for candidate in self.store.list_candidates(job_id):
-                self.post_candidate(client, candidate["id"])
+                self.post_candidate(
+                    client,
+                    candidate["id"],
+                    outbox_id=row["id"],
+                )
         elif kind == "job_failed":
             client.chat_postMessage(
                 channel=self.channel_id,
@@ -1245,17 +1296,28 @@ class SlackReviewService:
                         f"outbox {row['id']} ({row['kind']}) "
                         f"{'retrying' if retry else 'failed permanently'}"
                     )
-                    self.store.finish_outbox(
-                        row["id"],
-                        error=str(exc),
-                        retry=retry,
-                    )
+                    try:
+                        self.store.finish_outbox(
+                            row["id"],
+                            error=str(exc),
+                            retry=retry,
+                        )
+                    except Exception:
+                        log_error(
+                            f"outbox {row['id']} failure bookkeeping failed"
+                        )
             if failed:
                 STOP_EVENT.wait(self.poll_interval)
 
     def worker_loop(self) -> None:
+        next_recovery = 0.0
         while not STOP_EVENT.is_set():
             try:
+                if time.monotonic() >= next_recovery:
+                    self.store.recover_stale_running(
+                        older_than_seconds=STALE_RUNNING_SECONDS
+                    )
+                    next_recovery = time.monotonic() + 60.0
                 worked = work_once(
                     self.store,
                     comfy_url=self.comfy_url,
@@ -1461,6 +1523,8 @@ def register_handlers(
         if not allowed_user(user_id):
             return
         item = event.get("item", {})
+        if item.get("type") != "message":
+            return
         mapping = store.find_slack_message(item.get("ts", ""))
         if mapping is None:
             return
