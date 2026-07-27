@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from art_review import (
+    BatchRegistry,
+    DEFAULT_BATCH_DIR,
     DEFAULT_DB_PATH,
     DEFAULT_OUTPUT_ROOT,
     DEFAULT_RECIPE_DIR,
@@ -33,6 +35,7 @@ from art_runner import (
     decide_candidate_shot,
     load_shot_manifest,
     reject_candidate,
+    resolve_batch_jobs,
     work_once,
 )
 
@@ -73,6 +76,7 @@ JOB_STATE_LABELS = {
     "awaiting_review": "검토 대기",
     "failed": "실패",
     "complete": "완료",
+    "cancelled": "취소됨",
 }
 
 CANDIDATE_STATE_VIEW = {
@@ -83,8 +87,8 @@ CANDIDATE_STATE_VIEW = {
     ),
     "approved": (
         "✅",
-        "채택됨",
-        "Aseprite 준비 결과를 확인한 뒤 정식 반영할 수 있습니다.",
+        "채택·보관됨",
+        "원본 스냅샷이 보관되었습니다. 게임 반영은 Spark에 별도로 요청하세요.",
     ),
     "rejected": (
         "⚫",
@@ -142,13 +146,15 @@ def slack_help_text() -> str:
         "• `/art recipes` · `/art recipe <recipe-id>`\n"
         "• `/art run <recipe-id> [count]` — 레시피 전체 생성\n"
         "• `/art shot <recipe-id> <shot-id> [count]` — 한 샷만 시험 생성\n"
-        "• `/art status` — 최근 작업 확인\n\n"
+        "• `/art batches` · `/art batch <batch-id>` — 다용도 묶음 조회·실행\n"
+        "• `/art queue` · `/art cancel <job-id>` · `/art retry <job-id>`\n\n"
         "*후보 전체*\n"
         "• `/art approve <candidate-id>` · `/art reject <candidate-id>`\n"
         "• `/art variation <candidate-id> [count]`\n"
         "• `/art prepare <candidate-id>` — Aseprite 마감본 준비\n"
         "• `/art animation <candidate-id> [timing-scale]`\n"
-        "• `/art publish <candidate-id> confirm` — 정식 슬롯 반영\n\n"
+        "• `/art apply <candidate-id> confirm` — Spark 게임 반영 요청\n"
+        "• `/art applies` — 반영 요청 상태\n\n"
         "*멀티샷의 한 샷*\n"
         "• `/art shot-approve <candidate-id> <shot-id>`\n"
         "• `/art shot-reject <candidate-id> <shot-id>`\n"
@@ -302,28 +308,27 @@ def candidate_blocks(
     if (
         approved
         and state in {"approved", "prepared"}
-        and recipe.output.get("promotion", "aseprite") == "aseprite"
     ):
         buttons.append(
             {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "🚀 Unity 반영"},
+                "text": {"type": "plain_text", "text": "🚀 게임 반영 요청"},
                 "style": "danger",
-                "action_id": "art_candidate_publish",
+                "action_id": "art_candidate_apply",
                 "value": candidate["id"],
                 "confirm": {
                     "title": {
                         "type": "plain_text",
-                        "text": "정식 슬롯에 반영할까요?",
+                        "text": "Spark에 게임 반영을 요청할까요?",
                     },
                     "text": {
                         "type": "mrkdwn",
                         "text": (
-                            "승인된 후보만 Aseprite 원본 슬롯에 저장합니다. "
-                            "기존 파일 교체는 레시피가 명시적으로 허용해야 합니다."
+                            "지금 파일을 덮지 않습니다. Codex Spark가 실제 Unity 참조를 "
+                            "조사해 교체 대상을 정하고, 모호하면 스레드로 다시 묻습니다."
                         ),
                     },
-                    "confirm": {"type": "plain_text", "text": "반영"},
+                    "confirm": {"type": "plain_text", "text": "요청"},
                     "deny": {"type": "plain_text", "text": "취소"},
                     "style": "danger",
                 },
@@ -773,6 +778,7 @@ class SlackReviewService:
         channel_id: str,
         comfy_url: str,
         output_root: Path,
+        batch_dir: Path = DEFAULT_BATCH_DIR,
         work_timeout: float,
         poll_interval: float,
         run_worker: bool,
@@ -782,6 +788,7 @@ class SlackReviewService:
         self.channel_id = channel_id
         self.comfy_url = comfy_url
         self.output_root = output_root
+        self.batch_dir = batch_dir
         self.work_timeout = work_timeout
         self.poll_interval = poll_interval
         self.run_worker = run_worker
@@ -1042,6 +1049,48 @@ class SlackReviewService:
                         )
                     ),
                 )
+        elif kind == "batch_queued":
+            client.chat_postMessage(
+                channel=self.channel_id,
+                text=(
+                    f"배치 대기열 등록 · {payload['plan_id']} · "
+                    f"{len(payload['job_ids'])}개 작업"
+                ),
+                blocks=[
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "📦 다용도 아트 배치를 시작했습니다",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": (
+                                f"*배치* `{payload['plan_id']}`\n"
+                                f"*생성 작업* {len(payload['job_ids'])}개\n"
+                                "각 결과가 준비되는 순서대로 검토 카드가 올라옵니다."
+                            ),
+                        },
+                    },
+                    {
+                        "type": "context",
+                        "elements": [
+                            {
+                                "type": "mrkdwn",
+                                "text": f"배치 실행 `{payload['batch_id']}`",
+                            }
+                        ],
+                    },
+                ],
+            )
+        elif kind == "job_cancelled":
+            client.chat_postMessage(
+                channel=self.channel_id,
+                text=f"🛑 대기 작업을 취소했습니다 · `{payload['job_id']}`",
+            )
         elif kind == "candidate_status":
             self.update_candidate(client, payload["candidate_id"])
         elif kind == "shot_status":
@@ -1111,6 +1160,53 @@ class SlackReviewService:
                 ),
             )
             self.update_candidate(client, payload["candidate_id"])
+        elif kind == "apply_queued":
+            self.post_thread(
+                client,
+                payload["candidate_id"],
+                (
+                    "🤖 *Codex Spark 게임 반영 요청을 등록했습니다.*\n"
+                    "후보는 그대로 보관됩니다. Spark가 Unity 참조와 기존 에셋을 "
+                    "조사해 대상을 정하며, 모호하면 이 스레드로 질문합니다.\n"
+                    f"요청 `{payload['apply_request_id']}`"
+                ),
+            )
+        elif kind == "apply_status":
+            status = payload["status"]
+            labels = {
+                "planning": "대상 분석 중",
+                "applying": "게임 반영 중",
+                "needs_input": "사용자 선택 필요",
+                "complete": "게임 반영 완료",
+                "failed": "게임 반영 실패",
+                "cancelled": "반영 요청 취소",
+            }
+            request = self.store.get_apply_request(
+                payload["apply_request_id"]
+            )
+            detail = ""
+            if payload.get("error"):
+                detail = f"\n```{truncate(payload['error'], 1400)}```"
+            elif payload.get("result"):
+                detail = (
+                    "\n"
+                    + truncate(
+                        json.dumps(
+                            payload["result"],
+                            ensure_ascii=False,
+                            indent=2,
+                        ),
+                        1400,
+                    )
+                )
+            self.post_thread(
+                client,
+                request["candidate_id"],
+                (
+                    f"🤖 *Spark 반영 상태: {labels.get(status, status)}*"
+                    f"{detail}\n요청 `{request['id']}`"
+                ),
+            )
         elif kind in {"action_failed"}:
             candidate_id = payload.get("candidate_id")
             text = (
@@ -1272,10 +1368,13 @@ def register_handlers(
             payload={"timing_scale": timing_scale},
         )
 
-    @app.action("art_candidate_publish")
+    @app.action("art_candidate_apply")
     @safe_action
-    def publish(action: dict[str, Any], user_id: str) -> None:
-        queue_action("publish", action, user_id)
+    def apply_candidate(action: dict[str, Any], user_id: str) -> None:
+        store.create_apply_request(
+            action["value"],
+            requested_by=f"slack:{user_id}",
+        )
 
     def decide_shot(
         decision: str,
@@ -1510,6 +1609,43 @@ def register_handlers(
                     text=recipe.name,
                     blocks=recipe_blocks(recipe),
                 )
+            elif verb == "batches":
+                plans = BatchRegistry(service.batch_dir).load_all().values()
+                respond(
+                    response_type="ephemeral",
+                    text="\n".join(
+                        f"• *{plan.name}* · `/art batch {plan.id}`\n"
+                        f"  {plan.description or '설명 없음'}"
+                        for plan in plans
+                    ) or "등록된 배치가 없습니다.",
+                )
+            elif verb == "batch" and len(words) >= 2:
+                plan, batch_jobs = resolve_batch_jobs(
+                    store,
+                    words[1],
+                    batch_dir=service.batch_dir,
+                    recipe_dir=registry.directory,
+                )
+                batch_id, job_ids = store.create_batch_run(
+                    plan,
+                    requested_by=f"slack:{user_id}",
+                    jobs=batch_jobs,
+                )
+                store.enqueue_outbox(
+                    "batch_queued",
+                    {
+                        "batch_id": batch_id,
+                        "plan_id": plan.id,
+                        "job_ids": job_ids,
+                    },
+                )
+                respond(
+                    response_type="ephemeral",
+                    text=(
+                        f"📦 *{plan.name}* 배치를 대기열에 넣었습니다.\n"
+                        f"생성 작업 {len(job_ids)}개 · 배치 `{batch_id}`"
+                    ),
+                )
             elif verb == "run" and len(words) >= 2:
                 recipe = registry.get(words[1])
                 count = (
@@ -1559,8 +1695,14 @@ def register_handlers(
                         f"완료되면 채널에 검토 카드가 올라옵니다. 작업 `{job_id}`"
                     ),
                 )
-            elif verb == "status":
+            elif verb in {"status", "queue"}:
                 jobs = store.list_jobs(limit=10)
+                if verb == "queue":
+                    jobs = [
+                        job
+                        for job in jobs
+                        if job["status"] in {"queued", "running", "failed"}
+                    ]
                 respond(
                     response_type="ephemeral",
                     text="\n".join(
@@ -1568,6 +1710,25 @@ def register_handlers(
                         f"`{job['recipe_id']}`\n  `{job['id']}`"
                         for job in jobs
                     ) or "작업이 없습니다.",
+                )
+            elif verb in {"cancel", "retry"} and len(words) >= 2:
+                if verb == "cancel":
+                    store.cancel_job(words[1])
+                    store.enqueue_outbox(
+                        "job_cancelled",
+                        {"job_id": words[1]},
+                    )
+                    message = "대기 작업을 취소했습니다."
+                else:
+                    store.retry_job(words[1])
+                    store.enqueue_outbox(
+                        "job_queued",
+                        {"job_id": words[1]},
+                    )
+                    message = "실패 작업을 다시 대기열에 넣었습니다."
+                respond(
+                    response_type="ephemeral",
+                    text=f"{message}\n작업 `{words[1]}`",
                 )
             elif verb in {"approve", "reject"} and len(words) >= 2:
                 handler = (
@@ -1628,11 +1789,33 @@ def register_handlers(
                     {"timing_scale": timing_scale},
                 )
             elif (
-                verb == "publish"
+                verb == "apply"
                 and len(words) >= 3
                 and words[2].lower() == "confirm"
             ):
-                candidate_action("publish", words[1])
+                request_id = store.create_apply_request(
+                    words[1],
+                    requested_by=f"slack:{user_id}",
+                    intent=" ".join(words[3:]),
+                )
+                respond(
+                    response_type="ephemeral",
+                    text=(
+                        "🤖 Codex Spark 게임 반영 요청을 등록했습니다.\n"
+                        f"요청 `{request_id}`"
+                    ),
+                )
+            elif verb == "applies":
+                requests = store.list_apply_requests(limit=10)
+                respond(
+                    response_type="ephemeral",
+                    text="\n".join(
+                        f"• *{request['status']}* · "
+                        f"`{request['candidate_id']}`\n"
+                        f"  요청 `{request['id']}`"
+                        for request in requests
+                    ) or "게임 반영 요청이 없습니다.",
+                )
             elif verb in {"shot-approve", "shot-reject"} and len(words) >= 3:
                 decision = verb.removeprefix("shot-")
                 decide_candidate_shot(
@@ -1754,6 +1937,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
     parser.add_argument("--recipe-dir", type=Path, default=DEFAULT_RECIPE_DIR)
+    parser.add_argument("--batch-dir", type=Path, default=DEFAULT_BATCH_DIR)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--comfy-url", default=DEFAULT_COMFY_URL)
     parser.add_argument("--work-timeout", type=float, default=1800.0)
@@ -1799,6 +1983,7 @@ def main() -> int:
             channel_id=channel_id,
             comfy_url=args.comfy_url,
             output_root=args.output_root,
+            batch_dir=args.batch_dir,
             work_timeout=args.work_timeout,
             poll_interval=args.poll_interval,
             run_worker=not args.no_worker,

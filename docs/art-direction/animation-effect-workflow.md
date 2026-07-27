@@ -76,11 +76,14 @@ Slack 버튼 없이도 같은 단계를 직접 실행할 수 있다.
 python3 Tools/ArtPipeline/art_runner.py prepare <candidate-id>
 python3 Tools/ArtPipeline/art_runner.py animation <candidate-id> \
   --timing-scale 1.0
-python3 Tools/ArtPipeline/art_runner.py publish <candidate-id>
+python3 Tools/ArtPipeline/art_runner.py approve <candidate-id>
+python3 Tools/ArtPipeline/art_runner.py apply-request <candidate-id>
 ```
 
 Slack 명령으로는 각각 `/art prepare <candidate-id>`,
-`/art animation <candidate-id> 1.0`, `/art publish <candidate-id> confirm`이다.
+`/art animation <candidate-id> 1.0`, `/art approve <candidate-id>`,
+`/art apply <candidate-id> confirm`이다. 승인은 스냅샷을 보관할 뿐 Unity 에셋을 바꾸지 않으며,
+Spark 반영 요청이 실제 참조를 조사해 대상을 하나로 확정한 뒤에만 게임 파일을 갱신한다.
 샷별 승인·거절·변형을 포함한 전체 대응표는
 [`ART_REVIEW_AUTOMATION.md`](ART_REVIEW_AUTOMATION.md)의 「트리거·사용 가이드」가 소유한다.
 

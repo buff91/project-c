@@ -21,14 +21,18 @@ art-review.sqlite3
      │                 ▼
      │            Aseprite CLI
      │
-     └──────── Codex Scheduled
-                  자연어 피드백 → 새 레시피 버전 → 새 job
+     ├──────── Codex Scheduled
+     │            자연어 피드백 → 새 레시피 버전 → 새 job
+     │
+     └──────── apply_requests ───── Codex Spark Scheduled
+                                  대상 분석 → 에셋 연결 → Unity 검증
 ```
 
 - **레시피 YAML**: 모델·LoRA·워크플로·프롬프트·생성값·용도·승격 규칙의 SSOT.
-- **SQLite**: job, 후보, 피드백, 버튼 작업, Slack 메시지 연결을 영구 기록한다.
+- **배치 YAML**: 여러 용도의 레시피를 한 번에 넣는 수동/예약 실행 단위다.
+- **SQLite**: batch run, job, 후보, 피드백, Spark 반영 요청과 Slack 연결을 영구 기록한다.
 - **Slack**: 사람이 보는 리뷰 UI다. 기록의 SSOT는 아니다.
-- **Codex Scheduled**: 스레드 자연어처럼 판단이 필요한 피드백만 처리한다.
+- **Codex Scheduled (Spark)**: 자연어 피드백과 승인된 후보의 실제 게임 반영만 처리한다.
 - **Runner**: 승인·거절·변형·Aseprite 마감처럼 결정론적인 작업만 실행한다.
 
 상태 DB와 토큰은 `Tools/ArtPipeline/.art-review/`에 있으며 git에서 제외된다. 생성 후보는
@@ -100,12 +104,22 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 레시피 상세 | `/art recipe <recipe-id>` | `art_runner.py recipes <recipe-id>` | 모델·LoRA·프롬프트·steps 확인 |
 | 전체 세트 생성 | `/art run <recipe-id> [count]` | `art_runner.py submit <recipe-id> --count <n>` | 확정한 설정으로 후보 또는 멀티샷 세트 생성 |
 | 한 샷 시험 | `/art shot <recipe-id> <shot-id> [count]` | `art_runner.py submit <recipe-id> --shot <shot-id> --count <n>` | 전체 세트를 만들기 전에 포즈·효과 한 장만 검증 |
-| 최근 작업 | `/art status` | `art_runner.py jobs` | job ID와 큐 상태 확인 |
+| 배치 목록 | `/art batches` | `art_runner.py batches` | 등록된 다용도 배치 확인 |
+| 배치 실행 | `/art batch style-sampler` | `art_runner.py batch-submit style-sampler` | 용도별 후보를 한꺼번에 큐에 등록 |
+| 활성 큐 | `/art queue` | `art_runner.py queue` | 대기·실행·실패 job 확인 |
+| 최근 작업 | `/art status` | `art_runner.py jobs` | 완료 항목을 포함한 최근 job 확인 |
+| 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
+| 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
 | 작업 상세 | 카드와 스레드 | `art_runner.py job <job-id>` | candidate ID, seed, 출력 경로 확인 |
 
 `count`는 후보 **세트 수**이며 1~12다. 멀티샷 레시피에서 `count 2`는 샷 두 장이 아니라
 전체 샷 묶음 두 세트를 뜻한다. 비용이 큰 액터/이펙트는 반드시 한 샷 `count 1`로 먼저
 검증한다.
+
+기본 `style-sampler` 배치는 액터 콘셉트 1장, 실제 크기 액터 1장, 환경 1장, 이펙트 1장,
+애니메이션 키포즈 1장을 만든다. 이펙트와 애니메이션은 매 실행마다 다음 shot으로 회전하므로
+한 번에 비싼 전체 세트를 만들지 않는다. 나중에 Scheduled 생성 주기를 정해도 같은
+`batch-submit style-sampler`를 호출한다.
 
 ### 3-b. 검수와 후처리
 
@@ -119,11 +133,15 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 한 샷 변형 | **이 샷만 변형 2장** 또는 `/art shot-variation <candidate-id> <shot-id> [count]` | `shot-variation <candidate-id> <shot-id> --count <n>` | 해당 shot ID만 분리한 새 job |
 | Aseprite 준비 | **Aseprite 마감/소스 세트** 또는 `/art prepare <candidate-id>` | `prepare <candidate-id>` | 크로마키·캔버스·팔레트 정리와 `.aseprite` 인계 |
 | 애니 초안 | **애니 초안** 또는 `/art animation <candidate-id> [timing-scale]` | `animation <candidate-id> --timing-scale <n>` | 태그 타임라인과 검수 GIF 조립 |
-| 정식 반영 | 확인창의 **Unity 반영** 또는 `/art publish <candidate-id> confirm` | `publish <candidate-id>` | 승인된 결과를 정식 Aseprite 슬롯에 저장 |
+| 게임 반영 요청 | **게임 반영 요청** 또는 `/art apply <candidate-id> confirm` | `apply-request <candidate-id>` | Spark가 실제 교체 대상을 분석하도록 큐에 등록 |
+| 반영 상태 | `/art applies` | `apply-requests` | 분석·선택 필요·적용 완료 상태 확인 |
 
 `timing-scale`은 0.5~2.0이며 1보다 작으면 빠르고 크면 느리다. Slack의 빠르게/기본
-속도/느리게 버튼도 같은 작업이다. `publish`는 후보 전체의 명시적 승인과 레시피의 교체 허가를
-모두 검사한다. Slack 명령은 실수 방지를 위해 마지막 `confirm`이 필수다.
+속도/느리게 버튼도 같은 작업이다. 채택 시 생성 원본·멀티샷·승인 메타데이터를
+`approvals/APPROVAL-.../` 스냅샷으로 보관한다. 승인만으로 Unity 파일은 바뀌지 않는다. Slack의 `apply`는
+실수 방지를 위해 마지막 `confirm`이 필수며, 실제 대상 선택과 반영은 Spark가 담당한다.
+Spark가 `needs_input`을 남기면 후보 스레드에 답한다. 다음 Scheduled 실행이 답을 intent로
+기록해 같은 요청을 다시 `queued`로 돌린다.
 
 ### 3-c. 자연어 피드백
 
@@ -149,7 +167,9 @@ python3 Tools/ArtPipeline/art_runner.py feedback \
 4. 카드에서 샷을 평가하고 필요하면 해당 샷만 변형한다.
 5. 설정이 읽힐 때만 `/art run <recipe-id> 1`로 전체 세트를 만든다.
 6. `Aseprite 소스 세트` → `애니 초안` 순서로 만들고 Aseprite에서 인비트윈과 피벗을 마감한다.
-7. 후보 전체를 채택한 뒤에만 `Unity 반영`으로 정식 슬롯에 게시한다.
+7. 후보 전체를 채택해 스냅샷을 보관한다.
+8. 실제 게임에 쓸 후보만 `게임 반영 요청`한다. Spark가 기존 에셋·카탈로그 참조를 조사해
+   대상을 하나로 확정하거나, 모호하면 Slack 스레드에 선택지를 남긴다.
 
 후보 ID는 카드 제목의 `ART-...-C01`, job ID는 `/art status`에서 찾는다. shot ID는 레시피
 상세 카드, 샷 카드 제목 또는 CLI `recipes <recipe-id>`에서 확인한다.
@@ -172,6 +192,9 @@ python3 Tools/ArtPipeline/art_runner.py submit \
 
 python3 Tools/ArtPipeline/art_runner.py submit \
   actor-slinger-animation-v5 --shot idle --count 1
+
+python3 Tools/ArtPipeline/art_runner.py batches
+python3 Tools/ArtPipeline/art_runner.py batch-submit style-sampler
 ```
 
 한 작업만 처리하거나 계속 감시:
@@ -185,9 +208,21 @@ python3 Tools/ArtPipeline/art_runner.py work
 
 ```bash
 python3 Tools/ArtPipeline/art_runner.py jobs
+python3 Tools/ArtPipeline/art_runner.py queue
+python3 Tools/ArtPipeline/art_runner.py batch-runs
 python3 Tools/ArtPipeline/art_runner.py job ART-...
 python3 Tools/ArtPipeline/art_runner.py feedback-context
 ```
+
+대기 작업 취소와 실패 작업 재시도:
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py cancel ART-...
+python3 Tools/ArtPipeline/art_runner.py retry ART-...
+```
+
+`cancel`은 `queued` 상태에서만, `retry`는 `failed` 상태에서만 성공한다. 실행 중인 ComfyUI
+요청을 강제로 끊지 않으므로 중간 파일과 DB가 어긋나지 않는다.
 
 CLI 리뷰:
 
@@ -203,7 +238,9 @@ python3 Tools/ArtPipeline/art_runner.py shot-variation \
   ART-...-C01 attack-release --count 2
 python3 Tools/ArtPipeline/art_runner.py prepare ART-...-C01
 python3 Tools/ArtPipeline/art_runner.py animation ART-...-C01 --timing-scale 1.0
-python3 Tools/ArtPipeline/art_runner.py publish ART-...-C01
+python3 Tools/ArtPipeline/art_runner.py apply-request \
+  ART-...-C01 --intent "투석 약탈자 런타임 교체"
+python3 Tools/ArtPipeline/art_runner.py apply-requests
 python3 Tools/ArtPipeline/art_runner.py work --once
 ```
 
@@ -211,9 +248,10 @@ python3 Tools/ArtPipeline/art_runner.py work --once
 상황에서만 큐 입력 뒤 `work --once`를 실행한다. 별도의 장기 `work` 프로세스와 LaunchAgent를
 동시에 운영하지 않는다.
 
-`publish`는 승인/마감 후보에만 허용된다. 정식 `.aseprite`가 이미 있으면 레시피의
-`output.allow_replace`가 `true`인 검토된 새 버전만 교체할 수 있다. 교체 전 원본은 해당 후보
-출력 폴더에 백업된다.
+`apply-request`는 승인/마감 후보에만 허용된다. Spark가 요청을 claim하고 실제 교체 대상이
+확정된 뒤에만 내부 `publish --apply-request ... --target-slot ...`을 호출할 수 있다. 정식
+`.aseprite`가 이미 있으면 레시피의 `output.allow_replace`가 `true`인 검토된 새 버전만
+교체할 수 있다. 교체 전 원본은 해당 후보 출력 폴더에 백업된다.
 
 ## 5. Slack 앱 만들기
 
@@ -281,6 +319,11 @@ Slack 명령:
 /art shot actor-slinger-animation-v5 idle 1
 /art run actor-slinger-idle-v1 6
 /art status
+/art batches
+/art batch style-sampler
+/art queue
+/art cancel ART-...
+/art retry ART-...
 
 /art approve ART-...-C01
 /art reject ART-...-C02
@@ -290,7 +333,8 @@ Slack 명령:
 /art shot-variation ART-...-C01 attack-release 2
 /art prepare ART-...-C01
 /art animation ART-...-C01 1.0
-/art publish ART-...-C01 confirm
+/art apply ART-...-C01 confirm
+/art applies
 ```
 
 메시지는 사람이 훑는 순서에 맞춰 구성한다.
@@ -320,13 +364,13 @@ Slack 명령:
 
 버튼:
 
-- **✅ 채택**: 후보 상태를 승인으로 변경
+- **✅ 채택**: 후보 상태를 승인으로 변경하고 원본·샷·승인 메타데이터 스냅샷을 보관
 - **❌ 제외**: 후보 제외
 - **🔁 비슷하게 4개**: 같은 레시피로 새 seed 배치 생성
 - **🧹 Aseprite 준비/소스**: 크로마키·캔버스·Torchstone 팔레트 시험 결과 업로드
 - **🎞 애니 초안**: 샷 세트를 `.aseprite` 타임라인으로 조립하고 8× GIF를 업로드
 - **빠르게 / 기본 속도 / 느리게**: 프레임은 유지하고 duration만 재조립
-- **🚀 Unity 반영**: 확인창 후 정식 Aseprite 소스에 저장. 기존 슬롯 교체는 별도 레시피 허가 필요
+- **🚀 게임 반영 요청**: 파일을 즉시 덮지 않고 Spark 큐에 등록. Spark가 교체 대상과 검증 경로를 결정
 
 멀티샷 카드의 전체 **채택/거절/변형**은 세트 단위다. 특정 슬롯만 판단할 때는 반드시
 스레드의 샷별 버튼을 사용한다.
@@ -391,6 +435,11 @@ Slack 발송은 최대 5회까지 재시도하고 그 뒤 실패로 기록된다
 
 `Tools/ArtPipeline/codex-art-review-sweep.md`
 
+기존 Codex 자동화 `Project-C 아트 리뷰·게임 반영`은 시간당 한 번 Spark low로 실행되며, 생성
+스케줄이 아니라 **대기 중인 자연어 피드백과 게임 반영 요청만** 처리한다. 생성 배치 스케줄은
+아직 활성화하지 않았다. 나중에 주기를 정하면 동일한 `batch-submit style-sampler` 명령을 별도
+Scheduled 작업에서 호출한다.
+
 Scheduled 실행은 다음 원칙을 따른다.
 
 - pending 피드백이 없으면 아무것도 수정하지 않는다.
@@ -398,16 +447,20 @@ Scheduled 실행은 다음 원칙을 따른다.
 - 스레드 자연어만 이미지와 레시피를 함께 보고 해석한다.
 - 기존 레시피를 덮어쓰지 않고 `-rN` 새 버전을 만든다.
 - 명시적인 재생성 요구가 있을 때만 job을 만든다.
-- 정식 슬롯 교체와 Unity 반영은 자동으로 하지 않는다.
+- 한 실행에서 Spark 반영 요청은 최대 한 건만 claim한다.
+- 승인 스냅샷이 없으면 적용하지 않는다.
+- 실제 Unity/Aseprite 참조가 하나로 확정될 때만 반영하고, 모호하면 `needs_input`으로 Slack에 묻는다.
+- 대상·이유·검증 계획을 먼저 기록한 뒤 Aseprite 슬롯 또는 데이터 중심 카탈로그를 갱신한다.
+- Unity MCP가 없으면 에디터 검증을 통과했다고 쓰지 않고 결과에 `pending`을 남긴다.
 
 로컬 자동화는 Mac이 깨어 있고 Codex 앱과 ComfyUI가 실행 중일 때만 생성까지 이어진다. 자동화는
-처음에는 **PAUSED** 상태로 만들어 토큰·채널 연결과 수동 배치 1회를 확인한 뒤 활성화한다.
+현재 자동화는 **ACTIVE**다. 빈 큐에서는 파일을 수정하지 않는다.
 
 ## 10. 운영 원칙
 
 - Slack의 메시지 보존 기간과 무관하게 SQLite와 레시피 YAML이 기록을 소유한다.
 - 모델/LoRA 파일을 교체하면 레시피도 새 버전으로 만든다.
-- 후보 생성은 자동화해도 정식 슬롯 덮어쓰기는 사람의 명시적 승인 없이는 하지 않는다.
+- 후보 생성은 자동화해도 정식 슬롯 덮어쓰기는 사람의 승인과 별도 게임 반영 요청 없이는 하지 않는다.
 - 액터 AI 생성은 상태별 키포즈에서 멈춘다. walk/attack의 인비트윈, 발 기준선,
   hit/fall/death의 실루엣과 최종 타이밍은 Aseprite 손작업이다.
 - 환경 소스시트는 직접 Aseprite 슬롯에 게시하지 않고 지정 processor를 거친다.

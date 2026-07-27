@@ -26,6 +26,8 @@ from PIL import Image, ImageDraw
 import art_asset
 import comfy_batch
 from art_review import (
+    BatchRegistry,
+    DEFAULT_BATCH_DIR,
     DEFAULT_DB_PATH,
     DEFAULT_OUTPUT_ROOT,
     DEFAULT_RECIPE_DIR,
@@ -36,10 +38,12 @@ from art_review import (
     ReviewStore,
     ShotSpec,
     image_metrics,
+    make_id,
     project_path,
     relative_project_path,
     recipe_from_job,
     row_dict,
+    utc_now,
 )
 
 
@@ -755,7 +759,12 @@ def prepare_candidate(
     return prepared_path, aseprite_path, preview_path
 
 
-def publish_candidate(store: ReviewStore, candidate_id: str) -> Path:
+def publish_candidate(
+    store: ReviewStore,
+    candidate_id: str,
+    *,
+    target_slot: str | None = None,
+) -> Path:
     candidate = store.get_candidate(candidate_id)
     if not store.candidate_is_approved(candidate_id):
         raise ReviewError(
@@ -777,11 +786,12 @@ def publish_candidate(store: ReviewStore, candidate_id: str) -> Path:
         prepare_candidate(store, candidate_id)
         candidate = store.get_candidate(candidate_id)
     source = project_path(candidate["aseprite_path"])
+    slot = target_slot or recipe.slot
     try:
-        art_asset.validate_slot(recipe.slot)
+        art_asset.validate_slot(slot)
     except art_asset.AssetError as exc:
         raise ReviewError(str(exc)) from exc
-    destination = art_asset.official_output(recipe.slot)
+    destination = art_asset.official_output(slot)
     allow_replace = bool(recipe.output.get("allow_replace", False))
     if destination.exists() and not allow_replace:
         raise ReviewError(
@@ -803,7 +813,7 @@ def publish_candidate(store: ReviewStore, candidate_id: str) -> Path:
         "candidate_published",
         {
             "candidate_id": candidate_id,
-            "slot": recipe.slot,
+            "slot": slot,
             "path": str(destination),
             "unity_sync": "pending",
         },
@@ -823,6 +833,54 @@ def approve_candidate(
         raise ReviewError(
             f"Cannot approve {candidate_id} from {candidate['status']}"
         )
+    raw_path = project_path(candidate["raw_path"])
+    snapshot = raw_path.parent / "approvals" / make_id("APPROVAL")
+    snapshot.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(raw_path, snapshot / "raw.png")
+    shot_manifest = raw_path.parent / "shot-manifest.json"
+    if shot_manifest.is_file():
+        snapshot_manifest = json.loads(
+            shot_manifest.read_text(encoding="utf-8")
+        )
+        for shot in snapshot_manifest.get("shots", []):
+            shot["raw_path"] = relative_project_path(
+                snapshot / "shots" / str(shot["id"]) / "raw.png"
+            )
+        (snapshot / shot_manifest.name).write_text(
+            json.dumps(snapshot_manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    shots = raw_path.parent / "shots"
+    if shots.is_dir():
+        shutil.copytree(shots, snapshot / "shots", dirs_exist_ok=True)
+    job = store.get_job(candidate["job_id"])
+    (snapshot / "recipe.json").write_text(
+        json.dumps(
+            json.loads(job["recipe_json"]),
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (snapshot / "approval.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "candidate_id": candidate_id,
+                "approved_by": user_id,
+                "approved_at": utc_now(),
+                "source_path": relative_project_path(raw_path),
+                "recipe_id": job["recipe_id"],
+                "recipe_hash": job["recipe_hash"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    store.set_approved_snapshot(candidate_id, snapshot)
     store.set_candidate_status(candidate_id, "approved")
     store.add_feedback(
         event_key=event_key,
@@ -1014,6 +1072,90 @@ def command_recipes(args: argparse.Namespace) -> None:
     json_print([recipe.summary() for recipe in recipes.values()])
 
 
+def resolve_batch_jobs(
+    store: ReviewStore,
+    batch_id: str,
+    *,
+    batch_dir: Path,
+    recipe_dir: Path,
+) -> tuple[Any, list[tuple[str, Recipe, int, str | None, str]]]:
+    plan = BatchRegistry(batch_dir).get(batch_id)
+    recipes = RecipeRegistry(recipe_dir)
+    plan.validate_recipes(recipes)
+    jobs: list[tuple[str, Recipe, int, str | None, str]] = []
+    for item in plan.items:
+        recipe = recipes.get(item.recipe_id)
+        shot_id = item.shot or store.next_batch_shot(
+            plan.id,
+            item.id,
+            item.shot_cycle,
+        )
+        if shot_id:
+            recipe = recipe.only_shot(shot_id)
+        recipe.validate_files()
+        note_parts = [item.notes]
+        if shot_id:
+            note_parts.append(f"rotating shot: {shot_id}")
+        jobs.append(
+            (
+                item.id,
+                recipe,
+                item.candidate_count,
+                shot_id,
+                " · ".join(part for part in note_parts if part),
+            )
+        )
+    return plan, jobs
+
+
+def command_batches(args: argparse.Namespace) -> None:
+    batches = BatchRegistry(args.batch_dir).load_all()
+    recipes = RecipeRegistry(args.recipe_dir)
+    if args.batch_id:
+        plan = batches.get(args.batch_id)
+        if plan is None:
+            raise ReviewError(f"Unknown batch {args.batch_id}")
+        plan.validate_recipes(recipes)
+        json_print(plan.summary())
+        return
+    for plan in batches.values():
+        plan.validate_recipes(recipes)
+    json_print([plan.summary() for plan in batches.values()])
+
+
+def command_batch_submit(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    plan, jobs = resolve_batch_jobs(
+        store,
+        args.batch_id,
+        batch_dir=args.batch_dir,
+        recipe_dir=args.recipe_dir,
+    )
+    run_id, job_ids = store.create_batch_run(
+        plan,
+        requested_by=args.requested_by,
+        jobs=jobs,
+        notes=args.notes,
+    )
+    store.enqueue_outbox(
+        "batch_queued",
+        {
+            "batch_id": run_id,
+            "plan_id": plan.id,
+            "job_ids": job_ids,
+        },
+    )
+    json_print({"batch_id": run_id, "job_ids": job_ids})
+
+
+def command_batch_runs(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    if args.batch_id:
+        json_print(store.get_batch_run(args.batch_id))
+        return
+    json_print(store.list_batch_runs(limit=args.limit))
+
+
 def command_submit(args: argparse.Namespace) -> None:
     recipe = RecipeRegistry(args.recipe_dir).get(args.recipe_id)
     if args.shot:
@@ -1050,6 +1192,109 @@ def command_job(args: argparse.Namespace) -> None:
         for candidate in store.list_candidates(args.job_id)
     ]
     json_print(job)
+
+
+def command_queue(args: argparse.Namespace) -> None:
+    jobs = ReviewStore(args.db).list_jobs(limit=args.limit)
+    visible = (
+        jobs
+        if args.all
+        else [
+            job
+            for job in jobs
+            if job["status"] in {"queued", "running", "failed"}
+        ]
+    )
+    json_print([row_dict(job) for job in visible])
+
+
+def command_job_control(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    if args.control == "cancel":
+        store.cancel_job(args.job_id)
+        kind = "job_cancelled"
+    else:
+        store.retry_job(args.job_id)
+        kind = "job_queued"
+    store.enqueue_outbox(kind, {"job_id": args.job_id})
+    print(args.job_id)
+
+
+def command_apply_request(args: argparse.Namespace) -> None:
+    request_id = ReviewStore(args.db).create_apply_request(
+        args.candidate_id,
+        requested_by=args.requested_by,
+        intent=args.intent,
+    )
+    print(request_id)
+
+
+def command_apply_requests(args: argparse.Namespace) -> None:
+    rows = ReviewStore(args.db).list_apply_requests(
+        status=args.status,
+        limit=args.limit,
+    )
+    json_print([row_dict(row) for row in rows])
+
+
+def command_claim_apply(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    request = store.claim_apply_request(args.request_id)
+    if request is None:
+        json_print({})
+        return
+    json_print(store.apply_context(request["id"]))
+
+
+def load_optional_json(
+    path: Path | None,
+    raw: str | None,
+) -> dict[str, Any] | None:
+    if path is not None and raw is not None:
+        raise ReviewError("Use either a JSON file or inline JSON, not both")
+    if path is None and raw is None:
+        return None
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8") if path is not None else raw
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReviewError(f"Cannot load JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ReviewError("Apply metadata must be a JSON object")
+    return value
+
+
+def command_apply_status(args: argparse.Namespace) -> None:
+    ReviewStore(args.db).set_apply_request_status(
+        args.request_id,
+        args.status,
+        plan=load_optional_json(args.plan_file, args.plan_json),
+        result=load_optional_json(args.result_file, args.result_json),
+        error=args.error,
+    )
+
+
+def command_publish(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    request = store.get_apply_request(args.apply_request)
+    if request["candidate_id"] != args.candidate_id:
+        raise ReviewError(
+            f"Apply request {request['id']} belongs to "
+            f"{request['candidate_id']}, not {args.candidate_id}"
+        )
+    if request["status"] not in {"planning", "applying"}:
+        raise ReviewError(
+            f"Apply request {request['id']} cannot publish from "
+            f"{request['status']}"
+        )
+    store.set_apply_request_status(request["id"], "applying")
+    destination = publish_candidate(
+        store,
+        args.candidate_id,
+        target_slot=args.target_slot,
+    )
+    print(destination)
 
 
 def command_work(args: argparse.Namespace) -> None:
@@ -1220,6 +1465,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_RECIPE_DIR,
     )
+    parser.add_argument(
+        "--batch-dir",
+        type=Path,
+        default=DEFAULT_BATCH_DIR,
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init = subparsers.add_parser("init")
@@ -1228,6 +1478,21 @@ def build_parser() -> argparse.ArgumentParser:
     recipes = subparsers.add_parser("recipes")
     recipes.add_argument("recipe_id", nargs="?")
     recipes.set_defaults(handler=command_recipes)
+
+    batches = subparsers.add_parser("batches")
+    batches.add_argument("batch_id", nargs="?")
+    batches.set_defaults(handler=command_batches)
+
+    batch_submit = subparsers.add_parser("batch-submit")
+    batch_submit.add_argument("batch_id")
+    batch_submit.add_argument("--notes", default="")
+    batch_submit.add_argument("--requested-by", default="cli")
+    batch_submit.set_defaults(handler=command_batch_submit)
+
+    batch_runs = subparsers.add_parser("batch-runs")
+    batch_runs.add_argument("batch_id", nargs="?")
+    batch_runs.add_argument("--limit", type=int, default=20)
+    batch_runs.set_defaults(handler=command_batch_runs)
 
     submit = subparsers.add_parser("submit")
     submit.add_argument("recipe_id")
@@ -1251,6 +1516,55 @@ def build_parser() -> argparse.ArgumentParser:
     job.add_argument("job_id")
     job.set_defaults(handler=command_job)
 
+    queue = subparsers.add_parser("queue")
+    queue.add_argument("--limit", type=int, default=50)
+    queue.add_argument("--all", action="store_true")
+    queue.set_defaults(handler=command_queue)
+
+    for command_name in ("cancel", "retry"):
+        control = subparsers.add_parser(command_name)
+        control.add_argument("job_id")
+        control.set_defaults(
+            handler=command_job_control,
+            control=command_name,
+        )
+
+    apply_request = subparsers.add_parser("apply-request")
+    apply_request.add_argument("candidate_id")
+    apply_request.add_argument("--intent", default="")
+    apply_request.add_argument("--requested-by", default="cli")
+    apply_request.set_defaults(handler=command_apply_request)
+
+    apply_requests = subparsers.add_parser("apply-requests")
+    apply_requests.add_argument("--status")
+    apply_requests.add_argument("--limit", type=int, default=50)
+    apply_requests.set_defaults(handler=command_apply_requests)
+
+    claim_apply = subparsers.add_parser("claim-apply")
+    claim_apply.add_argument("request_id", nargs="?")
+    claim_apply.set_defaults(handler=command_claim_apply)
+
+    apply_status = subparsers.add_parser("apply-status")
+    apply_status.add_argument("request_id")
+    apply_status.add_argument(
+        "status",
+        choices=(
+            "queued",
+            "planning",
+            "applying",
+            "needs_input",
+            "complete",
+            "failed",
+            "cancelled",
+        ),
+    )
+    apply_status.add_argument("--plan-file", type=Path)
+    apply_status.add_argument("--plan-json")
+    apply_status.add_argument("--result-file", type=Path)
+    apply_status.add_argument("--result-json")
+    apply_status.add_argument("--error")
+    apply_status.set_defaults(handler=command_apply_status)
+
     work = subparsers.add_parser("work")
     work.add_argument("--job-id")
     work.add_argument("--once", action="store_true")
@@ -1264,7 +1578,6 @@ def build_parser() -> argparse.ArgumentParser:
         "approve",
         "reject",
         "prepare",
-        "publish",
         "animation",
     ):
         action = subparsers.add_parser(action_name)
@@ -1280,6 +1593,12 @@ def build_parser() -> argparse.ArgumentParser:
                 else action_name
             ),
         )
+
+    publish = subparsers.add_parser("publish")
+    publish.add_argument("candidate_id")
+    publish.add_argument("--apply-request", required=True)
+    publish.add_argument("--target-slot")
+    publish.set_defaults(handler=command_publish)
 
     variation = subparsers.add_parser("variation")
     variation.add_argument("candidate_id")
@@ -1352,6 +1671,7 @@ def main() -> int:
     try:
         args.db = args.db.expanduser().resolve()
         args.recipe_dir = args.recipe_dir.expanduser().resolve()
+        args.batch_dir = args.batch_dir.expanduser().resolve()
         if hasattr(args, "output_root"):
             args.output_root = args.output_root.expanduser().resolve()
         args.handler(args)

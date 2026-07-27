@@ -16,7 +16,13 @@ TOOLS_DIR = Path(__file__).resolve().parents[1]
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from art_review import RecipeRegistry, ReviewError, ReviewStore, image_metrics
+from art_review import (
+    BatchRegistry,
+    RecipeRegistry,
+    ReviewError,
+    ReviewStore,
+    image_metrics,
+)
 from art_asset import (
     detect_border_color,
     keep_largest_alpha_component,
@@ -29,6 +35,7 @@ from art_runner import (
     decide_candidate_shot,
     process_action,
     publish_candidate,
+    resolve_batch_jobs,
     render_draft_frame,
     review_sheet,
 )
@@ -60,6 +67,20 @@ class RecipeTests(unittest.TestCase):
         self.assertIn("actor-slinger-animation-v5", recipes)
         self.assertIn("fx-impact-suite-v1", recipes)
         self.assertIn("fx-impact-suite-v2", recipes)
+
+    def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
+        plan = BatchRegistry().get("style-sampler")
+        plan.validate_recipes(self.registry)
+        self.assertEqual(
+            {
+                "actor-concept",
+                "actor-runtime",
+                "environment",
+                "effect",
+                "animation",
+            },
+            {item.id for item in plan.items},
+        )
 
     def test_cli_candidate_count_is_bounded(self) -> None:
         parser = build_parser()
@@ -399,7 +420,118 @@ class StoreTests(unittest.TestCase):
         )
         candidate = self.store.get_candidate(candidate_id)
         self.assertEqual("approved", candidate["status"])
+        snapshot = Path(candidate["approved_snapshot_path"])
+        self.assertTrue(snapshot.is_dir())
+        self.assertTrue((snapshot / "raw.png").is_file())
+        self.assertTrue((snapshot / "approval.json").is_file())
+        self.assertTrue((snapshot / "recipe.json").is_file())
         self.assertEqual([], self.store.pending_feedback())
+
+    def test_batch_rotates_expensive_single_shots(self) -> None:
+        plan, first_jobs = resolve_batch_jobs(
+            self.store,
+            "style-sampler",
+            batch_dir=BatchRegistry().directory,
+            recipe_dir=RecipeRegistry().directory,
+        )
+        first_effect = next(
+            recipe for item, recipe, *_ in first_jobs if item == "effect"
+        )
+        first_animation = next(
+            recipe for item, recipe, *_ in first_jobs if item == "animation"
+        )
+        self.assertEqual("fx-impact-physical", first_effect.shots[0].id)
+        self.assertEqual("idle", first_animation.shots[0].id)
+        batch_id, job_ids = self.store.create_batch_run(
+            plan,
+            requested_by="test",
+            jobs=first_jobs,
+        )
+        self.assertEqual(5, len(job_ids))
+        run = self.store.get_batch_run(batch_id)
+        self.assertEqual("style-sampler", run["plan_id"])
+        self.assertEqual(5, len(run["jobs"]))
+
+        _, second_jobs = resolve_batch_jobs(
+            self.store,
+            "style-sampler",
+            batch_dir=BatchRegistry().directory,
+            recipe_dir=RecipeRegistry().directory,
+        )
+        second_effect = next(
+            recipe for item, recipe, *_ in second_jobs if item == "effect"
+        )
+        second_animation = next(
+            recipe for item, recipe, *_ in second_jobs if item == "animation"
+        )
+        self.assertEqual("fx-impact-fire", second_effect.shots[0].id)
+        self.assertEqual("walk-contact-a", second_animation.shots[0].id)
+
+    def test_only_queued_jobs_cancel_and_only_failed_jobs_retry(self) -> None:
+        self.store.cancel_job(self.job_id)
+        self.assertEqual("cancelled", self.store.get_job(self.job_id)["status"])
+        with self.assertRaisesRegex(ReviewError, "cannot be cancelled"):
+            self.store.cancel_job(self.job_id)
+        with self.store.connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET status = 'failed' WHERE id = ?",
+                (self.job_id,),
+            )
+        self.store.retry_job(self.job_id)
+        self.assertEqual("queued", self.store.get_job(self.job_id)["status"])
+        with self.assertRaisesRegex(ReviewError, "cannot be retried"):
+            self.store.retry_job(self.job_id)
+
+    def test_apply_request_is_separate_from_approval_and_claimable(self) -> None:
+        candidate_id = self.add_candidate()
+        with self.assertRaisesRegex(ReviewError, "explicit approval"):
+            self.store.create_apply_request(
+                candidate_id,
+                requested_by="test",
+            )
+        approve_candidate(
+            self.store,
+            candidate_id,
+            user_id="U1",
+            event_key="apply-approve",
+        )
+        request_id = self.store.create_apply_request(
+            candidate_id,
+            requested_by="test",
+            intent="투석 약탈자 런타임 교체",
+        )
+        self.assertEqual(
+            request_id,
+            self.store.create_apply_request(
+                candidate_id,
+                requested_by="test",
+            ),
+        )
+        claimed = self.store.claim_apply_request()
+        self.assertEqual(request_id, claimed["id"])
+        context = self.store.apply_context(request_id)
+        self.assertEqual(candidate_id, context["candidate"]["id"])
+        self.assertEqual("planning", context["request"]["status"])
+        self.store.set_apply_request_status(
+            request_id,
+            "needs_input",
+            plan={"question": "교체 대상?"},
+        )
+        self.assertEqual(
+            "needs_input",
+            self.store.get_apply_request(request_id)["status"],
+        )
+        self.assertEqual(
+            request_id,
+            self.store.create_apply_request(
+                candidate_id,
+                requested_by="test",
+                intent="기존 actor-slinger 슬롯 교체",
+            ),
+        )
+        resumed = self.store.get_apply_request(request_id)
+        self.assertEqual("queued", resumed["status"])
+        self.assertEqual("기존 actor-slinger 슬롯 교체", resumed["intent"])
 
     def test_slack_thread_maps_to_candidate(self) -> None:
         candidate_id = self.add_candidate()
@@ -464,7 +596,7 @@ class StoreTests(unittest.TestCase):
             if block["type"] == "actions"
             for element in block["elements"]
         }
-        self.assertIn("art_candidate_publish", approved_actions)
+        self.assertIn("art_candidate_apply", approved_actions)
 
     def test_shot_card_has_scoped_review_controls(self) -> None:
         candidate_id = self.add_candidate()
@@ -544,7 +676,9 @@ class StoreTests(unittest.TestCase):
             "/art approve <candidate-id>",
             "/art animation <candidate-id> [timing-scale]",
             "/art shot-variation <candidate-id> <shot-id> [count]",
-            "/art publish <candidate-id> confirm",
+            "/art batches",
+            "/art queue",
+            "/art apply <candidate-id> confirm",
         ):
             self.assertIn(command, help_text)
 

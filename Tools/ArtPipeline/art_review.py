@@ -24,6 +24,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECIPE_DIR = (
     PROJECT_ROOT / "docs/art-direction/comfyui/recipes"
 )
+DEFAULT_BATCH_DIR = (
+    PROJECT_ROOT / "docs/art-direction/comfyui/batches"
+)
 DEFAULT_STATE_DIR = Path(
     os.environ.get(
         "PROJECTC_ART_REVIEW_STATE",
@@ -40,6 +43,7 @@ VALID_JOB_STATES = {
     "awaiting_review",
     "failed",
     "complete",
+    "cancelled",
 }
 VALID_CANDIDATE_STATES = {
     "generated",
@@ -50,6 +54,15 @@ VALID_CANDIDATE_STATES = {
     "publishing",
     "published",
     "failed",
+}
+VALID_APPLY_STATES = {
+    "queued",
+    "planning",
+    "applying",
+    "needs_input",
+    "complete",
+    "failed",
+    "cancelled",
 }
 
 
@@ -641,6 +654,148 @@ class RecipeRegistry:
             ) from exc
 
 
+@dataclass(frozen=True)
+class BatchItem:
+    id: str
+    recipe_id: str
+    candidate_count: int = 1
+    shot: str | None = None
+    shot_cycle: tuple[str, ...] = ()
+    notes: str = ""
+
+
+@dataclass(frozen=True)
+class BatchPlan:
+    path: Path
+    document: dict[str, Any]
+
+    @property
+    def id(self) -> str:
+        return str(self.document["id"])
+
+    @property
+    def name(self) -> str:
+        return str(self.document["name"])
+
+    @property
+    def description(self) -> str:
+        return str(self.document.get("description", ""))
+
+    @property
+    def items(self) -> tuple[BatchItem, ...]:
+        result: list[BatchItem] = []
+        for index, raw in enumerate(self.document["items"]):
+            item = _mapping(raw, f"items[{index}]")
+            cycle = item.get("shot_cycle", [])
+            result.append(
+                BatchItem(
+                    id=str(item["id"]),
+                    recipe_id=str(item["recipe"]),
+                    candidate_count=_positive_int(
+                        item.get("count", 1),
+                        f"items[{index}].count",
+                    ),
+                    shot=(
+                        str(item["shot"])
+                        if item.get("shot")
+                        else None
+                    ),
+                    shot_cycle=tuple(str(value) for value in cycle),
+                    notes=str(item.get("notes", "")),
+                )
+            )
+        return tuple(result)
+
+    @classmethod
+    def load(cls, path: Path) -> "BatchPlan":
+        resolved = path.resolve()
+        try:
+            document = yaml.safe_load(resolved.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise ReviewError(f"Cannot load batch {resolved}: {exc}") from exc
+        root = _mapping(document, "batch")
+        if root.get("schema_version") != 1:
+            raise ReviewError(
+                f"Batch {resolved} has unsupported schema_version"
+            )
+        for key in ("id", "name", "items"):
+            if not root.get(key):
+                raise ReviewError(f"Batch {resolved} is missing {key!r}")
+        if not isinstance(root["items"], list):
+            raise ReviewError(f"Batch {resolved} items must be a list")
+        plan = cls(path=resolved, document=root)
+        item_ids = [item.id for item in plan.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ReviewError(f"Batch {resolved} has duplicate item ids")
+        for item in plan.items:
+            if item.shot and item.shot_cycle:
+                raise ReviewError(
+                    f"Batch item {item.id} cannot set shot and shot_cycle"
+                )
+            if not item.id or not SHOT_ID_PATTERN.fullmatch(item.id):
+                raise ReviewError(f"Invalid batch item id {item.id!r}")
+        return plan
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "items": [
+                {
+                    "id": item.id,
+                    "recipe_id": item.recipe_id,
+                    "candidate_count": item.candidate_count,
+                    "shot": item.shot,
+                    "shot_cycle": list(item.shot_cycle),
+                    "notes": item.notes,
+                }
+                for item in self.items
+            ],
+        }
+
+    def validate_recipes(self, recipes: RecipeRegistry) -> None:
+        for item in self.items:
+            recipe = recipes.get(item.recipe_id)
+            available_shots = {shot.id for shot in recipe.shots}
+            requested = (
+                ([item.shot] if item.shot else [])
+                + list(item.shot_cycle)
+            )
+            unknown = [shot for shot in requested if shot not in available_shots]
+            if unknown:
+                raise ReviewError(
+                    f"Batch {self.id} item {item.id} references unknown "
+                    f"shots {unknown} in {recipe.id}"
+                )
+
+
+class BatchRegistry:
+    def __init__(self, directory: Path = DEFAULT_BATCH_DIR):
+        self.directory = directory.resolve()
+
+    def load_all(self) -> dict[str, BatchPlan]:
+        batches: dict[str, BatchPlan] = {}
+        if not self.directory.is_dir():
+            return batches
+        for path in sorted(self.directory.glob("*.yaml")):
+            plan = BatchPlan.load(path)
+            if plan.id in batches:
+                raise ReviewError(f"Duplicate batch id {plan.id!r}")
+            batches[plan.id] = plan
+        return batches
+
+    def get(self, batch_id: str) -> BatchPlan:
+        batches = self.load_all()
+        try:
+            return batches[batch_id]
+        except KeyError as exc:
+            available = ", ".join(sorted(batches)) or "(none)"
+            raise ReviewError(
+                f"Unknown batch {batch_id!r}; available: {available}"
+            ) from exc
+
+
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
@@ -656,6 +811,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     base_seed INTEGER NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
     parent_candidate_id TEXT,
+    batch_id TEXT,
+    batch_item_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     error TEXT
@@ -669,6 +826,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     raw_path TEXT NOT NULL,
     prepared_path TEXT,
     aseprite_path TEXT,
+    approved_snapshot_path TEXT,
     status TEXT NOT NULL,
     metrics_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -724,11 +882,44 @@ CREATE TABLE IF NOT EXISTS slack_messages (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS batch_runs (
+    id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    plan_path TEXT NOT NULL,
+    plan_json TEXT NOT NULL,
+    requested_by TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS batch_cursors (
+    plan_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    next_index INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(plan_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS apply_requests (
+    id TEXT PRIMARY KEY,
+    candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+    requested_by TEXT NOT NULL,
+    intent TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'queued',
+    plan_json TEXT,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    error TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_batch ON jobs(batch_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_candidates_job ON candidates(job_id, ordinal);
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_actions_status ON actions(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_apply_status
+ON apply_requests(status, created_at);
 """
 
 
@@ -756,16 +947,38 @@ class ReviewStore:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
-            columns = {
+            outbox_columns = {
                 row["name"]
                 for row in connection.execute(
                     "PRAGMA table_info(outbox)"
                 ).fetchall()
             }
-            if "attempts" not in columns:
+            if "attempts" not in outbox_columns:
                 connection.execute(
                     "ALTER TABLE outbox "
                     "ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
+                )
+            job_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(jobs)"
+                ).fetchall()
+            }
+            for column in ("batch_id", "batch_item_id"):
+                if column not in job_columns:
+                    connection.execute(
+                        f"ALTER TABLE jobs ADD COLUMN {column} TEXT"
+                    )
+            candidate_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(candidates)"
+                ).fetchall()
+            }
+            if "approved_snapshot_path" not in candidate_columns:
+                connection.execute(
+                    "ALTER TABLE candidates "
+                    "ADD COLUMN approved_snapshot_path TEXT"
                 )
 
     def recover_stale_running(
@@ -806,6 +1019,14 @@ class ReviewStore:
                 """,
                 (now, cutoff),
             ).rowcount
+            recovered += connection.execute(
+                """
+                UPDATE apply_requests
+                SET status = 'queued', updated_at = ?
+                WHERE status IN ('planning', 'applying') AND updated_at < ?
+                """,
+                (now, cutoff),
+            ).rowcount
         return recovered
 
     def create_job(
@@ -817,6 +1038,8 @@ class ReviewStore:
         base_seed: int | None = None,
         notes: str = "",
         parent_candidate_id: str | None = None,
+        batch_id: str | None = None,
+        batch_item_id: str | None = None,
     ) -> str:
         count = candidate_count or recipe.candidate_count
         _positive_int(count, "candidate_count")
@@ -831,8 +1054,11 @@ class ReviewStore:
                 INSERT INTO jobs (
                     id, recipe_id, recipe_path, recipe_hash, recipe_json,
                     status, requested_by, candidate_count, base_seed, notes,
-                    parent_candidate_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)
+                    parent_candidate_id, batch_id, batch_item_id,
+                    created_at, updated_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
                 """,
                 (
                     job_id,
@@ -845,11 +1071,132 @@ class ReviewStore:
                     seed,
                     notes,
                     parent_candidate_id,
+                    batch_id,
+                    batch_item_id,
                     now,
                     now,
                 ),
             )
         return job_id
+
+    def create_batch_run(
+        self,
+        plan: BatchPlan,
+        *,
+        requested_by: str,
+        jobs: list[tuple[str, Recipe, int, str | None, str]],
+        notes: str = "",
+    ) -> tuple[str, list[str]]:
+        """Persist one validated batch and all of its generation jobs."""
+        batch_id = make_id("BATCH")
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO batch_runs (
+                    id, plan_id, plan_path, plan_json, requested_by,
+                    notes, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    batch_id,
+                    plan.id,
+                    relative_project_path(plan.path),
+                    canonical_json(plan.document),
+                    requested_by,
+                    notes,
+                    utc_now(),
+                ),
+            )
+        job_ids = [
+            self.create_job(
+                recipe,
+                requested_by=requested_by,
+                candidate_count=count,
+                notes=item_notes,
+                batch_id=batch_id,
+                batch_item_id=item_id,
+            )
+            for item_id, recipe, count, _shot_id, item_notes in jobs
+        ]
+        return batch_id, job_ids
+
+    def next_batch_shot(
+        self,
+        plan_id: str,
+        item_id: str,
+        shots: tuple[str, ...],
+    ) -> str | None:
+        if not shots:
+            return None
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT next_index FROM batch_cursors
+                WHERE plan_id = ? AND item_id = ?
+                """,
+                (plan_id, item_id),
+            ).fetchone()
+            index = int(row["next_index"]) if row else 0
+            selected = shots[index % len(shots)]
+            connection.execute(
+                """
+                INSERT INTO batch_cursors (plan_id, item_id, next_index)
+                VALUES (?, ?, ?)
+                ON CONFLICT(plan_id, item_id) DO UPDATE SET
+                    next_index = excluded.next_index
+                """,
+                (plan_id, item_id, index + 1),
+            )
+        return selected
+
+    def list_batch_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT b.*,
+                       COUNT(j.id) AS job_count,
+                       SUM(CASE WHEN j.status = 'queued' THEN 1 ELSE 0 END)
+                           AS queued_count,
+                       SUM(CASE WHEN j.status = 'running' THEN 1 ELSE 0 END)
+                           AS running_count,
+                       SUM(CASE WHEN j.status = 'failed' THEN 1 ELSE 0 END)
+                           AS failed_count,
+                       SUM(CASE WHEN j.status = 'cancelled' THEN 1 ELSE 0 END)
+                           AS cancelled_count,
+                       SUM(CASE WHEN j.status = 'awaiting_review' THEN 1 ELSE 0 END)
+                           AS review_count
+                FROM batch_runs b
+                LEFT JOIN jobs j ON j.batch_id = b.id
+                GROUP BY b.id
+                ORDER BY b.created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [row_dict(row) for row in rows]
+
+    def get_batch_run(self, batch_id: str) -> dict[str, Any]:
+        with self.connect() as connection:
+            batch = connection.execute(
+                "SELECT * FROM batch_runs WHERE id = ?",
+                (batch_id,),
+            ).fetchone()
+            jobs = connection.execute(
+                """
+                SELECT * FROM jobs
+                WHERE batch_id = ?
+                ORDER BY created_at
+                """,
+                (batch_id,),
+            ).fetchall()
+        if batch is None:
+            raise ReviewError(f"Unknown batch run {batch_id}")
+        return {
+            **row_dict(batch),
+            "plan_json": json.loads(batch["plan_json"]),
+            "jobs": [row_dict(job) for job in jobs],
+        }
 
     def get_job(self, job_id: str) -> sqlite3.Row:
         with self.connect() as connection:
@@ -937,6 +1284,38 @@ class ReviewStore:
                 WHERE id = ?
                 """,
                 (status, utc_now(), error, job_id),
+            )
+
+    def cancel_job(self, job_id: str) -> None:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs
+                SET status = 'cancelled', updated_at = ?, error = NULL
+                WHERE id = ? AND status = 'queued'
+                """,
+                (utc_now(), job_id),
+            )
+        if cursor.rowcount == 0:
+            job = self.get_job(job_id)
+            raise ReviewError(
+                f"Job {job_id} cannot be cancelled from {job['status']}"
+            )
+
+    def retry_job(self, job_id: str) -> None:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs
+                SET status = 'queued', updated_at = ?, error = NULL
+                WHERE id = ? AND status = 'failed'
+                """,
+                (utc_now(), job_id),
+            )
+        if cursor.rowcount == 0:
+            job = self.get_job(job_id)
+            raise ReviewError(
+                f"Job {job_id} cannot be retried from {job['status']}"
             )
 
     def add_candidate(
@@ -1079,6 +1458,254 @@ class ReviewStore:
                     candidate_id,
                 ),
             )
+
+    def set_approved_snapshot(
+        self,
+        candidate_id: str,
+        snapshot_path: Path,
+    ) -> None:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE candidates
+                SET approved_snapshot_path = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    relative_project_path(snapshot_path),
+                    utc_now(),
+                    candidate_id,
+                ),
+            )
+        if cursor.rowcount == 0:
+            raise ReviewError(f"Unknown candidate {candidate_id}")
+
+    def create_apply_request(
+        self,
+        candidate_id: str,
+        *,
+        requested_by: str,
+        intent: str = "",
+    ) -> str:
+        candidate = self.get_candidate(candidate_id)
+        if not self.candidate_is_approved(candidate_id):
+            raise ReviewError(
+                f"{candidate_id} has no current explicit approval"
+            )
+        if candidate["status"] not in {"approved", "prepared"}:
+            raise ReviewError(
+                f"{candidate_id} cannot be applied from "
+                f"{candidate['status']}"
+            )
+        with self.connect() as connection:
+            active = connection.execute(
+                """
+                SELECT id, status FROM apply_requests
+                WHERE candidate_id = ?
+                  AND status IN ('queued', 'planning', 'applying', 'needs_input')
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (candidate_id,),
+            ).fetchone()
+            if active:
+                if intent and active["status"] == "needs_input":
+                    connection.execute(
+                        """
+                        UPDATE apply_requests
+                        SET status = 'queued', intent = ?, updated_at = ?,
+                            error = NULL
+                        WHERE id = ?
+                        """,
+                        (intent, utc_now(), active["id"]),
+                    )
+                return str(active["id"])
+            request_id = make_id("APPLY")
+            now = utc_now()
+            connection.execute(
+                """
+                INSERT INTO apply_requests (
+                    id, candidate_id, requested_by, intent, status,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'queued', ?, ?)
+                """,
+                (
+                    request_id,
+                    candidate_id,
+                    requested_by,
+                    intent,
+                    now,
+                    now,
+                ),
+            )
+        self.enqueue_outbox(
+            "apply_queued",
+            {
+                "apply_request_id": request_id,
+                "candidate_id": candidate_id,
+            },
+        )
+        return request_id
+
+    def list_apply_requests(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[sqlite3.Row]:
+        with self.connect() as connection:
+            if status:
+                return connection.execute(
+                    """
+                    SELECT * FROM apply_requests
+                    WHERE status = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (status, limit),
+                ).fetchall()
+            return connection.execute(
+                """
+                SELECT * FROM apply_requests
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+    def get_apply_request(self, request_id: str) -> sqlite3.Row:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM apply_requests WHERE id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise ReviewError(f"Unknown apply request {request_id}")
+        return row
+
+    def claim_apply_request(
+        self,
+        request_id: str | None = None,
+    ) -> sqlite3.Row | None:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if request_id:
+                row = connection.execute(
+                    """
+                    SELECT * FROM apply_requests
+                    WHERE id = ? AND status = 'queued'
+                    """,
+                    (request_id,),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    """
+                    SELECT * FROM apply_requests
+                    WHERE status = 'queued'
+                    ORDER BY created_at
+                    LIMIT 1
+                    """
+                ).fetchone()
+            if row is None:
+                return None
+            connection.execute(
+                """
+                UPDATE apply_requests
+                SET status = 'planning', updated_at = ?, error = NULL
+                WHERE id = ? AND status = 'queued'
+                """,
+                (utc_now(), row["id"]),
+            )
+            return connection.execute(
+                "SELECT * FROM apply_requests WHERE id = ?",
+                (row["id"],),
+            ).fetchone()
+
+    def set_apply_request_status(
+        self,
+        request_id: str,
+        status: str,
+        *,
+        plan: dict[str, Any] | None = None,
+        result: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        if status not in VALID_APPLY_STATES:
+            raise ReviewError(f"Invalid apply request status {status!r}")
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE apply_requests
+                SET status = ?,
+                    plan_json = COALESCE(?, plan_json),
+                    result_json = COALESCE(?, result_json),
+                    updated_at = ?,
+                    error = ?
+                WHERE id = ?
+                """,
+                (
+                    status,
+                    canonical_json(plan) if plan is not None else None,
+                    canonical_json(result) if result is not None else None,
+                    utc_now(),
+                    error,
+                    request_id,
+                ),
+            )
+        if cursor.rowcount == 0:
+            raise ReviewError(f"Unknown apply request {request_id}")
+        self.enqueue_outbox(
+            "apply_status",
+            {
+                "apply_request_id": request_id,
+                "status": status,
+                "error": error,
+                "result": result,
+            },
+        )
+
+    def apply_context(self, request_id: str) -> dict[str, Any]:
+        request = self.get_apply_request(request_id)
+        candidate = self.get_candidate(request["candidate_id"])
+        job = self.get_job(candidate["job_id"])
+        recipe = recipe_from_job(job)
+        with self.connect() as connection:
+            feedback = connection.execute(
+                """
+                SELECT * FROM feedback
+                WHERE candidate_id = ?
+                ORDER BY created_at
+                """,
+                (candidate["id"],),
+            ).fetchall()
+        return {
+            "request": row_dict(request),
+            "candidate": {
+                **row_dict(candidate),
+                "raw_path": str(project_path(candidate["raw_path"])),
+                "prepared_path": (
+                    str(project_path(candidate["prepared_path"]))
+                    if candidate["prepared_path"]
+                    else None
+                ),
+                "aseprite_path": (
+                    str(project_path(candidate["aseprite_path"]))
+                    if candidate["aseprite_path"]
+                    else None
+                ),
+                "approved_snapshot_path": (
+                    str(project_path(candidate["approved_snapshot_path"]))
+                    if candidate["approved_snapshot_path"]
+                    else None
+                ),
+            },
+            "job": {
+                **row_dict(job),
+                "recipe_json": json.loads(job["recipe_json"]),
+            },
+            "recipe": recipe.summary(),
+            "feedback": [row_dict(row) for row in feedback],
+        }
 
     def add_feedback(
         self,

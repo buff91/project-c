@@ -13,7 +13,7 @@
 > 실행은 `Tools/ArtPipeline/comfy_batch.py`, 결정론적 마감은 Aseprite CLI/Lua
 > (`aseprite_conform.sh` → `aseprite_conform.lua`)가 담당한다.
 >
-> **실제 운영 진입점**: 생성·샷 시험·승인·변형·Aseprite 준비·애니 초안·정식 반영을
+> **실제 운영 진입점**: 생성·수동 배치·큐·승인 보관·Aseprite 준비·Spark 게임 반영을
 > Slack과 로컬 CLI에서 실행하는 전체 명령표는
 > [`../ART_REVIEW_AUTOMATION.md`](../ART_REVIEW_AUTOMATION.md)의
 > 「트리거·사용 가이드」를 따른다.

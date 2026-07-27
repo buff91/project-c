@@ -178,7 +178,7 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
   `python3 Tools/ArtPipeline/comfy_batch.py`
 - 정적 마감: `Tools/ArtPipeline/aseprite_conform.sh INPUT OUTPUT WIDTH HEIGHT strict`
 - 상세 실행법: `docs/art-direction/comfyui/README.md`
-- 레시피·Slack 리뷰·Codex Scheduled:
+- 레시피·수동 배치·Slack 리뷰·Codex Spark 반영:
   `docs/art-direction/ART_REVIEW_AUTOMATION.md`
 
 ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자동 실행한다. Civitai 모델은
