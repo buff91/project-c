@@ -53,6 +53,8 @@ from art_slack_bot import (
     candidate_blocks,
     find_candidate_from_text,
     find_feedback_target,
+    modal_select,
+    modal_text,
     modal_view,
     parse_animation_action,
     parse_shot_action,
@@ -203,6 +205,53 @@ class RecipeTests(unittest.TestCase):
         )
         mutate(document)
         return Recipe.from_document(document, path=Path("memory.yaml"))
+
+    def test_overrides_change_only_the_named_fields(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        adjusted = recipe.with_overrides(
+            positive="짧은 슬링을 든 약탈자",
+            checkpoint="dreamshaper_9.safetensors",
+        )
+        self.assertEqual("짧은 슬링을 든 약탈자", adjusted.prompt["positive"])
+        self.assertEqual(
+            "dreamshaper_9.safetensors", adjusted.pipeline["checkpoint"]
+        )
+        self.assertEqual(("모델", "긍정 프롬프트"), adjusted.adjustments)
+        self.assertNotEqual(recipe.digest, adjusted.digest)
+        # 원본은 건드리지 않는다 — YAML 은 여전히 SSOT다.
+        self.assertEqual(
+            "dreamshaper_8.safetensors", recipe.pipeline["checkpoint"]
+        )
+        self.assertEqual((), recipe.adjustments)
+        self.assertEqual(
+            recipe.prompt["negative"], adjusted.prompt["negative"]
+        )
+
+    def test_overrides_that_change_nothing_return_the_same_recipe(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        self.assertIs(
+            recipe,
+            recipe.with_overrides(
+                positive=recipe.prompt["positive"],
+                checkpoint=recipe.pipeline["checkpoint"],
+            ),
+        )
+        self.assertIs(recipe, recipe.with_overrides())
+
+    def test_override_to_incompatible_workflow_is_rejected(self) -> None:
+        """타입을 바꾸면 노드 번호 체계가 달라진다 — 폼에서 막아야 한다."""
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        with self.assertRaisesRegex(ReviewError, "does not exist in"):
+            recipe.with_overrides(workflow_type="sdxl-txt2img")
+
+    def test_binding_node_validation_catches_missing_nodes(self) -> None:
+        recipe = self._mutated_recipe(
+            lambda document: document["pipeline"]["bindings"].__setitem__(
+                "seed", "999.seed"
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "node '999'"):
+            recipe.validate_binding_nodes()
 
     def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
         plan = BatchRegistry().get("style-sampler")
@@ -863,6 +912,56 @@ class StoreTests(unittest.TestCase):
         self.assertIn("(2/3)", blocks[1]["text"]["text"])
         context = blocks[2]["elements"][0]["text"]
         self.assertIn(f"작업 `{self.job_id}`", context)
+
+    def test_candidate_card_flags_an_adjusted_run(self) -> None:
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        adjusted = self.recipe.with_overrides(positive="짧은 슬링")
+        blocks = candidate_blocks(adjusted, candidate)
+        self.assertIn("이번 실행 조정", blocks[1]["text"]["text"])
+        self.assertIn("긍정 프롬프트", blocks[1]["text"]["text"])
+        plain = candidate_blocks(self.recipe, candidate)
+        self.assertNotIn("이번 실행 조정", plain[1]["text"]["text"])
+
+    def test_modal_prefills_the_selected_recipe(self) -> None:
+        registry = RecipeRegistry()
+        empty = modal_view(registry)
+        self.assertEqual(
+            ["recipe", None, "count", "notes"],
+            [block.get("block_id") for block in empty["blocks"]],
+        )
+        filled = modal_view(
+            registry, selected_recipe_id="actor-slinger-idle-v1"
+        )
+        by_id = {
+            block.get("block_id"): block
+            for block in filled["blocks"]
+            if block.get("block_id")
+        }
+        self.assertIn("workflow_type", by_id)
+        recipe = registry.get("actor-slinger-idle-v1")
+        self.assertEqual(
+            recipe.pipeline["checkpoint"],
+            by_id["checkpoint"]["element"]["initial_value"],
+        )
+        self.assertIn(
+            recipe.prompt["positive"][:40],
+            by_id["positive"]["element"]["initial_value"],
+        )
+        self.assertEqual(
+            recipe.workflow_type,
+            by_id["workflow_type"]["element"]["initial_option"]["value"],
+        )
+
+    def test_blank_modal_fields_mean_leave_the_recipe_alone(self) -> None:
+        values = {
+            "checkpoint": {"value": {"value": "   "}},
+            "positive": {"value": {"value": "짧은 슬링"}},
+        }
+        self.assertIsNone(modal_text(values, "checkpoint"))
+        self.assertIsNone(modal_text(values, "negative"))
+        self.assertEqual("짧은 슬링", modal_text(values, "positive"))
+        self.assertIsNone(modal_select(values, "workflow_type"))
 
     def test_candidate_card_omits_position_for_single_candidate(self) -> None:
         candidate_id = self.add_candidate()

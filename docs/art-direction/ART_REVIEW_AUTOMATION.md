@@ -150,7 +150,7 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 용도 | Slack | 로컬 CLI | 언제 쓰나 |
 |---|---|---|---|
 | 전체 도움말 | `/art help` | `art_runner.py --help` | 지원하는 명령 확인 |
-| 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피와 후보 수를 폼에서 선택 |
+| 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피를 고르고 프롬프트·모델·워크플로를 이번 실행만 조정 |
 | 레시피 목록 | `/art recipes` | `art_runner.py recipes [--asset-type <타입>]` | 에셋 타입별로 묶인 recipe ID 확인 |
 | 레시피 상세 | `/art recipe <recipe-id>` | `art_runner.py recipes <recipe-id>` | 모델·LoRA·프롬프트·steps 확인 |
 | 전체 세트 생성 | `/art run <recipe-id> [count]` | `art_runner.py submit <recipe-id> --count <n>` | 확정한 설정으로 후보 또는 멀티샷 세트 생성 |
@@ -162,6 +162,22 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
 | 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
 | 작업 상세 | 카드와 스레드 | `art_runner.py job <job-id>` | candidate ID, seed, 출력 경로 확인 |
+
+#### 생성 폼의 이번 실행 조정
+
+`/art new` 폼에서 레시피를 고르면 그 레시피의 **현재 워크플로·모델(checkpoint)·긍정/제외
+프롬프트가 채워진 채로** 나타나고, 그 자리에서 고칠 수 있다. 빈 칸으로 두면 "레시피 값 그대로"
+라는 뜻이다.
+
+조정값은 **이번 job 에만** 적용된다 — 레시피 YAML 은 그대로다. 대신 job 이 문서 전체를
+`recipe_json` 으로 스냅샷하므로 조정본도 원본과 똑같이 재현 가능하고, 후보 카드에
+`✏️ 이번 실행 조정  모델 · 긍정 프롬프트` 로 무엇이 달라졌는지 표시된다. 결과가 좋아서
+계속 쓸 설정이면 `art_recipe_tool.py clone` 으로 `-rN` 레시피를 만든다 — **조정만으로는
+다음 실행에 남지 않는다.**
+
+워크플로 타입을 바꾸면 워크플로 JSON 도 함께 바뀌므로, 레시피의 바인딩이 새 JSON 의 노드와
+맞지 않으면 폼이 제출을 거부한다. 워커가 아니라 폼에서 막는다 — 6장 생성을 큐에 넣고 몇 분
+기다린 뒤에 알 일이 아니다.
 
 `count`는 후보 **세트 수**이며 1~12다. 멀티샷 레시피에서 `count 2`는 샷 두 장이 아니라
 전체 샷 묶음 두 세트를 뜻한다. 비용이 큰 액터/이펙트는 반드시 한 샷 `count 1`로 먼저

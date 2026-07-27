@@ -263,6 +263,62 @@ class Recipe:
         return str(self.pipeline.get("type", "")).strip()
 
     @property
+    def adjustments(self) -> tuple[str, ...]:
+        """이번 실행에서 레시피 YAML과 달라진 항목. 없으면 빈 튜플."""
+        declared = self.document.get("adjustments", [])
+        if not isinstance(declared, list):
+            return ()
+        return tuple(str(item) for item in declared)
+
+    def with_overrides(
+        self,
+        *,
+        workflow_type: str | None = None,
+        checkpoint: str | None = None,
+        positive: str | None = None,
+        negative: str | None = None,
+        registry: "WorkflowTypeRegistry | None" = None,
+    ) -> "Recipe":
+        """이번 실행에만 적용할 조정본을 만든다.
+
+        YAML 은 건드리지 않는다. job 이 `recipe_json` 으로 문서 전체를
+        스냅샷하므로 조정본도 원본과 똑같이 재현 가능하다. 조정한 항목은
+        `adjustments` 에 남겨 카드가 "원본 그대로가 아니다"를 말할 수 있게 한다.
+        """
+        document = copy.deepcopy(self.document)
+        changed: list[str] = []
+
+        if workflow_type and workflow_type != self.workflow_type:
+            resolved = (registry or WorkflowTypeRegistry()).get(workflow_type)
+            document["pipeline"]["type"] = resolved.id
+            if resolved.default_workflow:
+                document["pipeline"]["workflow"] = resolved.default_workflow
+            changed.append("워크플로")
+        if checkpoint and checkpoint != self.pipeline.get("checkpoint"):
+            document["pipeline"]["checkpoint"] = checkpoint
+            changed.append("모델")
+        if positive is not None and positive != self.prompt.get("positive"):
+            document["prompt"]["positive"] = positive
+            changed.append("긍정 프롬프트")
+        if negative is not None and negative != self.prompt.get("negative"):
+            document["prompt"]["negative"] = negative
+            changed.append("제외 프롬프트")
+
+        if not changed:
+            return self
+        document["adjustments"] = [
+            *self.adjustments,
+            *(item for item in changed if item not in self.adjustments),
+        ]
+        adjusted = Recipe.from_document(document, path=self.path)
+        # 조정으로 계약이 깨지지 않았는지 지금 본다 — 워커가 아니라 폼에서
+        # 막아야 사람이 무엇을 잘못 골랐는지 안다.
+        adjusted.validate_workflow_type(registry)
+        if "워크플로" in changed:
+            adjusted.validate_binding_nodes()
+        return adjusted
+
+    @property
     def canvas(self) -> tuple[int, int]:
         width, height = self.output["canvas"]
         return int(width), int(height)
@@ -597,6 +653,38 @@ class Recipe:
                         f"is missing: {path}"
                     )
         self.validate_workflow_type()
+        self.validate_binding_nodes()
+
+    def validate_binding_nodes(self) -> None:
+        """바인딩·업로드가 가리키는 노드가 워크플로 JSON 에 실제로 있는지 본다.
+
+        없으면 워커가 ComfyError 로 죽는다 — 6장 생성을 큐에 넣고 몇 분 기다린
+        뒤에 알게 되느니 검증에서 잡는다. 특히 워크플로 타입을 바꾸면 노드
+        번호 체계가 통째로 달라진다.
+        """
+        import comfy_batch
+
+        prompt = comfy_batch.load_prompt(self.workflow_path)
+        targets: dict[str, str] = {
+            str(target): f"binding {name}"
+            for name, target in self.pipeline.get("bindings", {}).items()
+        }
+        targets.update(
+            {str(target): "upload"
+             for target in self.pipeline.get("uploads", {})}
+        )
+        for shot in self.shots:
+            targets.update(
+                {str(target): f"shot {shot.id} upload"
+                 for target in (shot.uploads or {})}
+            )
+        for target, label in sorted(targets.items()):
+            node_id = target.split(".", 1)[0]
+            if node_id not in prompt:
+                raise ReviewError(
+                    f"Recipe {self.id} {label} points at node {node_id!r}, "
+                    f"which does not exist in {self.workflow_path.name}"
+                )
 
     def validate_workflow_type(
         self,
