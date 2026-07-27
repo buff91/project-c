@@ -254,6 +254,8 @@ def candidate_blocks(
     *,
     status: str | None = None,
     approved: bool = False,
+    job_id: str | None = None,
+    batch_position: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     generation = recipe.generation
     state = status or candidate["status"]
@@ -263,6 +265,14 @@ def candidate_blocks(
         if recipe.is_multi_shot
         else ""
     )
+    # 별도의 "생성 완료" 요약 메시지를 두지 않는다 — 후보 카드가 완료를 알리는
+    # 유일한 메시지이므로 작업 ID와 묶음 내 위치를 카드가 직접 진다.
+    position_summary = (
+        f" ({batch_position[0]}/{batch_position[1]})"
+        if batch_position is not None and batch_position[1] > 1
+        else ""
+    )
+    job_summary = f"작업 `{job_id}` · " if job_id else ""
     buttons: list[dict[str, Any]] = [
         {
             "type": "button",
@@ -353,7 +363,8 @@ def candidate_blocks(
                 "text": (
                     f"*대상*  {category_label(recipe)} · `{recipe.slot}`"
                     f"{shot_summary}\n"
-                    f"*후보*  `{candidate['id']}` · seed `{candidate['seed']}`\n\n"
+                    f"*후보*  `{candidate['id']}`{position_summary} · "
+                    f"seed `{candidate['seed']}`\n\n"
                     f"*지금 할 일*\n{next_action}"
                 ),
             },
@@ -364,6 +375,7 @@ def candidate_blocks(
                 {
                     "type": "mrkdwn",
                     "text": (
+                        f"{job_summary}"
                         f"`{recipe.id}` · {generation['steps']} steps · "
                         f"CFG {generation['cfg']} · denoise "
                         f"{generation.get('denoise')} · "
@@ -800,6 +812,7 @@ class SlackReviewService:
         candidate_id: str,
         *,
         outbox_id: int | None = None,
+        batch_position: tuple[int, int] | None = None,
     ) -> None:
         candidate = self.store.get_candidate(candidate_id)
         job = self.store.get_job(candidate["job_id"])
@@ -813,6 +826,8 @@ class SlackReviewService:
                     recipe,
                     candidate,
                     approved=self.store.candidate_is_approved(candidate_id),
+                    job_id=job["id"],
+                    batch_position=batch_position,
                 ),
             )
             root_ts = response["ts"]
@@ -978,66 +993,41 @@ class SlackReviewService:
         payload = json.loads(row["payload_json"])
         kind = row["kind"]
         if kind == "job_ready":
+            # 후보 카드가 곧 완료 알림이다. 별도의 "생성 완료" 요약 메시지를 앞에
+            # 세우면 후보 1개짜리 job에서 같은 말을 두 번 하게 되고, 사람이 눌러야
+            # 하는 버튼은 어차피 아래 카드에만 있다.
             job_id = payload["job_id"]
-            job = self.store.get_job(job_id)
-            recipe = recipe_from_job(job)
-            announcement_step = f"job:{job_id}:announcement"
-            if not self.store.outbox_delivery_done(
-                row["id"],
-                announcement_step,
-            ):
-                client.chat_postMessage(
-                    channel=self.channel_id,
-                    text=f"생성 완료 · {recipe.name} · 후보 {job['candidate_count']}개",
-                    blocks=[
-                    {
-                        "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "✅ 아트 후보 생성 완료",
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                f"*대상*  {category_label(recipe)} · `{recipe.slot}`\n"
-                                f"*레시피*  {recipe.name}\n"
-                                f"*결과*  후보 {job['candidate_count']}개"
-                            ),
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                "*다음 단계*\n"
-                                "아래 후보 카드를 보고 채택·제외·변형을 선택하세요."
-                            ),
-                        },
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
+            candidates = self.store.list_candidates(job_id)
+            total = len(candidates)
+            if total == 0:
+                job = self.store.get_job(job_id)
+                recipe = recipe_from_job(job)
+                empty_step = f"job:{job_id}:empty"
+                if not self.store.outbox_delivery_done(row["id"], empty_step):
+                    client.chat_postMessage(
+                        channel=self.channel_id,
+                        text=f"생성 완료 · {recipe.name} · 후보 없음",
+                        blocks=[
                             {
-                                "type": "mrkdwn",
-                                "text": f"작업 `{job_id}`",
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": (
+                                        f"⚠️ *{recipe.name}* 생성이 끝났지만 "
+                                        f"후보가 없습니다.\n작업 `{job_id}`"
+                                    ),
+                                },
                             }
                         ],
-                    },
-                    ],
-                )
-                self.store.mark_outbox_delivery(
-                    row["id"],
-                    announcement_step,
-                )
-            for candidate in self.store.list_candidates(job_id):
+                    )
+                    self.store.mark_outbox_delivery(row["id"], empty_step)
+                return
+            for index, candidate in enumerate(candidates, start=1):
                 self.post_candidate(
                     client,
                     candidate["id"],
                     outbox_id=row["id"],
+                    batch_position=(index, total),
                 )
         elif kind == "job_failed":
             client.chat_postMessage(

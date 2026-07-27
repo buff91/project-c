@@ -717,6 +717,31 @@ class StoreTests(unittest.TestCase):
         }
         self.assertIn("art_candidate_apply", approved_actions)
 
+    def test_candidate_card_carries_job_identity(self) -> None:
+        """후보 카드가 유일한 완료 알림이므로 작업 ID와 묶음 위치를 직접 진다."""
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        blocks = candidate_blocks(
+            self.recipe,
+            candidate,
+            job_id=self.job_id,
+            batch_position=(2, 3),
+        )
+        self.assertIn("(2/3)", blocks[1]["text"]["text"])
+        context = blocks[2]["elements"][0]["text"]
+        self.assertIn(f"작업 `{self.job_id}`", context)
+
+    def test_candidate_card_omits_position_for_single_candidate(self) -> None:
+        candidate_id = self.add_candidate()
+        candidate = self.store.get_candidate(candidate_id)
+        blocks = candidate_blocks(
+            self.recipe,
+            candidate,
+            job_id=self.job_id,
+            batch_position=(1, 1),
+        )
+        self.assertNotIn("(1/1)", blocks[1]["text"]["text"])
+
     def test_shot_card_has_scoped_review_controls(self) -> None:
         candidate_id = self.add_candidate()
         candidate = self.store.get_candidate(candidate_id)
