@@ -4,7 +4,11 @@ schema_version: 1
 # 있어야 하는가의 계약이다. 여기 없는 타입을 쓰면 검증이 막는다.
 #
 # `requires.bindings` 는 레시피 `pipeline.bindings` 에 반드시 있어야 하는 논리
-# 이름, `requires.uploads` 는 반드시 채워져야 하는 ComfyUI NODE.INPUT 이다.
+# 이름이다. `requires.uploads` 는 **역할 이름 → ComfyUI NODE.INPUT** 이다 —
+# 대상(subject)은 자기 가이드 이미지를 `style_source`/`pose` 같은 역할로만 알고,
+# 그게 몇 번 노드에 꽂히는지는 워크플로 타입이 안다. 대상이 노드 번호를 알면
+# 워크플로를 바꿀 때마다 대상 파일을 전부 고쳐야 한다.
+#
 # 업로드는 레시피 전체(`pipeline.uploads`) 또는 샷 하나(`shots[].uploads`)
 # 어느 쪽에서 채워도 된다 — 포즈 가이드처럼 샷마다 다른 입력이 있기 때문이다.
 #
@@ -25,7 +29,7 @@ types:
         - cfg
         - sampler
         - scheduler
-      uploads: []
+      uploads: {}
     supports:
       denoise: false
       controlnet: false
@@ -47,7 +51,7 @@ types:
         - sampler
         - scheduler
       uploads:
-        - 7.image
+        source_sheet: 7.image
     supports:
       denoise: true
       controlnet: false
@@ -71,8 +75,8 @@ types:
         - sampler
         - scheduler
       uploads:
-        - 5.image
-        - 6.image
+        style_source: 5.image
+        pose: 6.image
     supports:
       denoise: true
       controlnet: true

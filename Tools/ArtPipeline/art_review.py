@@ -1038,9 +1038,23 @@ class WorkflowType:
         return tuple(str(name) for name in requires.get("bindings", []))
 
     @property
-    def required_uploads(self) -> tuple[str, ...]:
+    def upload_roles(self) -> dict[str, str]:
+        """역할 이름 → ComfyUI NODE.INPUT. 대상은 역할만 알면 된다."""
         requires = _mapping(self.document.get("requires", {}), "requires")
-        return tuple(str(target) for target in requires.get("uploads", []))
+        uploads = requires.get("uploads", {}) or {}
+        if not isinstance(uploads, dict):
+            raise ReviewError(
+                f"Workflow type {self.id} requires.uploads must be a "
+                "mapping of role -> NODE.INPUT"
+            )
+        return {str(role): str(target) for role, target in uploads.items()}
+
+    @property
+    def required_uploads(self) -> tuple[str, ...]:
+        return tuple(sorted(self.upload_roles.values()))
+
+    def node_for_role(self, role: str) -> str | None:
+        return self.upload_roles.get(role)
 
     @property
     def supports_denoise(self) -> bool:
@@ -1060,7 +1074,7 @@ class WorkflowType:
             "default_workflow": self.default_workflow,
             "requires": {
                 "bindings": list(self.required_bindings),
-                "uploads": list(self.required_uploads),
+                "uploads": dict(self.upload_roles),
             },
             "supports": {
                 "denoise": self.supports_denoise,

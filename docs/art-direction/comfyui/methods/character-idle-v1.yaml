@@ -1,0 +1,97 @@
+schema_version: 1
+id: character-idle-v1
+name: 기본 자세 v1
+applies_to:
+- character
+use: gameplay
+animation_scope: idle-base-only
+category: actor
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: aseprite
+  allow_replace: false
+pipeline:
+  type: sd15-img2img-openpose
+  workflow: docs/art-direction/comfyui/actor-slinger-openpose.api.json
+  checkpoint: dreamshaper_8.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 24
+  cfg: 7.0
+  denoise: 0.78
+  candidates: 6
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: pixelart, best quality pixel art game sprite, full body
+  use_signature_pose: true
+  suffix: dynamic three-quarter isometric pose, strong readable silhouette, feet on one baseline, isolated
+    centered cutout, flat solid magenta background, hard pixel clusters, limited colors
+  negative: worst quality, low quality, malformed anatomy, extra arms, extra legs, missing limbs, arms
+    down, neutral pose, boxes, crates, furniture, surrounding props, multiple people, cropped feet, floor,
+    ground, cast shadow, scenery, white border, gray background, gradient background, text, watermark,
+    photorealistic, smooth 3d, vector art
+loras:
+- name: pixelartV3.safetensors
+  node: 2
+  base_model: SD 1.5
+  model_strength: 0.35
+  clip_strength: 0.3
+  purpose: 기존 Project-C 액터와 가까운 하드 픽셀 질감
+  attribution: Civitai model 43820 / version 121559
+controlnets:
+- model: control_v11p_sd15_openpose_fp16.safetensors
+  loader_node: 7
+  apply_node: 8
+  strength: 1.0
+  purpose: 오른팔을 머리 위로 든 투척 자세 고정
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 1800
+  maximum_visible_pixels: 4200
+  silhouette_tags:
+  - raised-arm
+  - visible-sling
+  - grounded-feet
+  - red-warning-eye
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - firearm
+  - fantasy-armor
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation
