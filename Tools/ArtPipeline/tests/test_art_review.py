@@ -62,6 +62,7 @@ from art_slack_bot import (
     recipe_list_text,
     recipes_by_asset_type,
     slack_help_text,
+    slot_label,
     shot_blocks,
 )
 
@@ -260,6 +261,37 @@ class RecipeTests(unittest.TestCase):
         self.assertEqual("slinger", slots["actor-slinger"])
         self.assertEqual("fxImpactFire", slots["fx-impact-fire"])
         self.assertNotIn("actor-concept", slots)
+
+    def test_slot_names_come_from_the_monster_roster(self) -> None:
+        """표시명을 파이프라인이 다시 적으면 게임과 갈린다."""
+        catalog = SlotCatalog()
+        name, description = catalog.describe("actor-slinger")
+        self.assertEqual("투석 약탈자", name)
+        self.assertIn("원거리", description)
+        self.assertEqual("감시자", catalog.describe("actor-grave-warden")[0])
+        self.assertEqual("약탈자", catalog.describe("actor-goblin")[0])
+
+    def test_goblin_summary_is_not_the_class_comment(self) -> None:
+        """선언 바로 위에 붙은 주석만 그 몬스터의 설명이다."""
+        _name, description = SlotCatalog().describe("actor-goblin")
+        self.assertIn("Goblin", description)
+        self.assertNotIn("몬스터 명단", description)
+
+    def test_slots_without_a_game_name_stay_nameless(self) -> None:
+        """모르는 슬롯의 이름을 지어내지 않는다."""
+        catalog = SlotCatalog()
+        for slot in ("actor-player", "env-floor", "fx-impact-fire"):
+            with self.subTest(slot=slot):
+                self.assertIsNone(catalog.describe(slot)[0])
+        self.assertIsNone(catalog.describe("actor-nope")[0])
+
+    def test_cards_show_the_game_name_beside_the_slot_id(self) -> None:
+        recipe = self.registry.get("actor-slinger-idle-v1")
+        self.assertEqual("투석 약탈자", recipe.slot_display_name)
+        self.assertIn("*투석 약탈자* · `actor-slinger`", slot_label(recipe))
+        nameless = self.registry.get("actor-concept-sdxl-v1")
+        self.assertIsNone(nameless.slot_display_name)
+        self.assertEqual("`actor-concept`", slot_label(nameless))
 
     def test_publishing_recipes_only_target_registered_slots(self) -> None:
         for recipe_id, recipe in self.registry.load_all().items():

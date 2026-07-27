@@ -46,6 +46,11 @@ UNITY_SLOT_SOURCE = (
     PROJECT_ROOT
     / "Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs"
 )
+# 몬스터 표시명의 SSOT. 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+# 어긋난다 — DungeonCatalog 가 보스 이름에 대해 지키는 규칙과 같다.
+UNITY_MONSTER_SOURCE = (
+    PROJECT_ROOT / "Assets/_Project/Scripts/Core/MonsterRoster.cs"
+)
 # 정식 슬롯에 실제로 파일을 쓰는 승격 방식. 나머지는 검수/중간 산출물이다.
 PUBLISHING_PROMOTION = "aseprite"
 VALID_PROMOTIONS = frozenset(
@@ -701,6 +706,14 @@ class Recipe:
     ) -> str | None:
         return (catalog or SlotCatalog()).field_for(slot)
 
+    @property
+    def slot_display_name(self) -> str | None:
+        """슬롯이 게임에서 불리는 이름. 모르는 슬롯은 지어내지 않는다."""
+        try:
+            return SlotCatalog().describe(self.slot)[0]
+        except ReviewError:
+            return None
+
     def validate_slot_registration(
         self,
         catalog: "SlotCatalog | None" = None,
@@ -943,6 +956,58 @@ class SlotCatalog:
 
     def is_registered(self, slot: str) -> bool:
         return slot in self.load_all()
+
+    _ARCHETYPE = re.compile(
+        r"public\s+static\s+readonly\s+MonsterArchetype\s+(\w+)\s*="
+    )
+    _DISPLAY_NAME = re.compile(r'displayName:\s*"([^"]+)"')
+    _TAGS = re.compile(r"</?\w+[^>]*>")
+
+    def monster_names(
+        self,
+        path: Path = UNITY_MONSTER_SOURCE,
+    ) -> dict[str, tuple[str, str]]:
+        """archetype 필드명 → (표시명, 한 줄 설명).
+
+        표시명을 파이프라인이 다시 적으면 게임과 갈린다. `MonsterRoster` 를
+        읽는다 — 없으면 이름 없이 슬롯 ID 만 보여주지, 지어내지 않는다.
+        """
+        if not path.is_file():
+            return {}
+        lines = path.read_text(encoding="utf-8").splitlines()
+        found: dict[str, tuple[str, str]] = {}
+        doc: list[str] = []
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("///"):
+                # 바로 위에 붙은 주석만 이 선언의 것이다 — 사이에 다른 코드가
+                # 끼면 클래스 주석을 몬스터 설명으로 착각한다.
+                doc.append(stripped.lstrip("/").strip())
+                continue
+            match = self._ARCHETYPE.search(stripped)
+            if match is None:
+                if stripped:
+                    doc = []
+                continue
+            tail = "\n".join(lines[index:index + 12])
+            display = self._DISPLAY_NAME.search(tail)
+            summary = self._TAGS.sub("", " ".join(doc)).strip()
+            # 첫 문장까지만 — 카드 한 줄에 들어가야 한다.
+            headline = summary.split(".")[0].strip()
+            found[match.group(1)] = (
+                display.group(1) if display else match.group(1),
+                headline,
+            )
+            doc = []
+        return found
+
+    def describe(self, slot: str) -> tuple[str | None, str]:
+        """슬롯의 (표시명, 설명). 이름을 아는 슬롯만 이름이 있다."""
+        field = self.field_for(slot)
+        if not field:
+            return None, ""
+        archetype = field[:1].upper() + field[1:]
+        return self.monster_names().get(archetype, (None, ""))
 
 
 @dataclass(frozen=True)

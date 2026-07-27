@@ -94,6 +94,21 @@ python3 Tools/ArtPipeline/art_runner.py slots actor-       # 액터 슬롯과 Un
 python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가 없는 슬롯
 ```
 
+#### 슬롯이 게임에서 무엇인지
+
+`actor-slinger`만 보고는 그게 뭔지 알 수 없다. 몬스터 슬롯은 표시명과 한 줄 설명을
+**`MonsterRoster`에서 읽어온다** — 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+갈리기 때문이다(`DungeonCatalog`가 보스 이름에 대해 지키는 규칙과 같다).
+
+```
+*대상*  캐릭터 · *투석 약탈자* · `actor-slinger`
+*정체*  투석 약탈자(코드 ID Slinger): 유일한 원거리 교전 몬스터
+```
+
+이름을 아는 슬롯만 이름이 붙는다. `actor-player`·`env-floor`·`fx-*`처럼 `MonsterRoster`에
+없는 슬롯은 **ID만 보여주고 설명을 지어내지 않는다.** 새 몬스터의 설명이 카드에 뜨게 하려면
+`MonsterRoster`의 선언 **바로 위**에 `/// <summary>` 한 줄을 적으면 된다.
+
 #### 승격하는 레시피는 등록된 슬롯만 겨눌 수 있다
 
 `output.promotion`이 슬롯 요구를 가른다.

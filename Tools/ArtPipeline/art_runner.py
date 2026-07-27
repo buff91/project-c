@@ -1151,14 +1151,18 @@ def command_slots(args: argparse.Namespace) -> None:
         for slot in recipe.target_slots:
             by_slot.setdefault(slot, []).append(recipe.id)
 
+    catalog = SlotCatalog()
     rows = []
     for slot, field in sorted(slots.items()):
         if args.prefix and not slot.startswith(args.prefix):
             continue
         covering = sorted(by_slot.get(slot, []))
+        display_name, description = catalog.describe(slot)
         rows.append(
             {
                 "slot": slot,
+                "display_name": display_name,
+                "description": description,
                 "unity_field": field,
                 "aseprite_source": (
                     relative_project_path(art_asset.official_output(slot))

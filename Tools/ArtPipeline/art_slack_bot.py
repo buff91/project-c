@@ -359,7 +359,7 @@ def candidate_blocks(
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`"
+                    f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}"
                     f"{shot_summary}\n"
                     f"*후보*  `{candidate['id']}`{position_summary} · "
                     f"seed `{candidate['seed']}`"
@@ -593,7 +593,8 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`\n"
+                    f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}\n"
+                    f"{slot_description_line(recipe)}"
                     f"*Unity*  {unity_target_label(recipe)}\n"
                     f"*워크플로*  {workflow_type_label(recipe)}\n"
                     f"*목표*  {recipe.purpose.get('readability_goal')}\n"
@@ -682,6 +683,21 @@ def recipes_by_asset_type(
         for type_id, recipes in sorted(grouped.items())
     )
     return ordered
+
+
+def slot_label(recipe: Recipe) -> str:
+    """`actor-slinger` 만 보고는 그게 뭔지 알 수 없다. 게임의 이름을 앞에 둔다."""
+    name = recipe.slot_display_name
+    return f"*{name}* · `{recipe.slot}`" if name else f"`{recipe.slot}`"
+
+
+def slot_description_line(recipe: Recipe) -> str:
+    """레시피 카드에만 붙는 한 줄 설명. 게임 쪽 정의를 그대로 가져온다."""
+    try:
+        _name, description = SlotCatalog().describe(recipe.slot)
+    except ReviewError:
+        return ""
+    return f"*정체*  {description}\n" if description else ""
 
 
 def unity_target_label(recipe: Recipe) -> str:
