@@ -40,6 +40,22 @@ DEFAULT_OUTPUT_ROOT = (
 DEFAULT_WORKFLOW_TYPES_PATH = (
     PROJECT_ROOT / "docs/art-direction/comfyui/workflow-types.yaml"
 )
+# Unity 슬롯 ID의 발급처. 여기 없는 슬롯은 정식 승격 대상이 아니다 — 게시해봐야
+# 에디터가 읽지 않는 죽은 파일이 된다. 목록을 복제하지 않고 원본을 읽는다.
+UNITY_SLOT_SOURCE = (
+    PROJECT_ROOT
+    / "Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs"
+)
+# 정식 슬롯에 실제로 파일을 쓰는 승격 방식. 나머지는 검수/중간 산출물이다.
+PUBLISHING_PROMOTION = "aseprite"
+VALID_PROMOTIONS = frozenset(
+    {
+        PUBLISHING_PROMOTION,
+        "animation-review-only",
+        "manual-processor",
+        "concept-only",
+    }
+)
 VALID_JOB_STATES = {
     "queued",
     "running",
@@ -458,6 +474,13 @@ class Recipe:
             )
 
         output = _mapping(root["output"], "output")
+        promotion = str(output.get("promotion", PUBLISHING_PROMOTION))
+        if promotion not in VALID_PROMOTIONS:
+            known = ", ".join(sorted(VALID_PROMOTIONS))
+            raise ReviewError(
+                f"Recipe {path} output.promotion {promotion!r} is unknown; "
+                f"expected one of: {known}"
+            )
         canvas = output.get("canvas")
         if (
             not isinstance(canvas, list)
@@ -654,6 +677,56 @@ class Recipe:
                     )
         self.validate_workflow_type()
         self.validate_binding_nodes()
+        self.validate_slot_registration()
+
+    @property
+    def promotion(self) -> str:
+        return str(self.output.get("promotion", PUBLISHING_PROMOTION))
+
+    @property
+    def publishes_to_unity(self) -> bool:
+        return self.promotion == PUBLISHING_PROMOTION
+
+    @property
+    def target_slots(self) -> tuple[str, ...]:
+        """이 레시피가 게시할 수 있는 슬롯 전부 — 샷이 슬롯을 갈아탈 수 있다."""
+        slots = [self.slot]
+        slots.extend(shot.slot for shot in self.shots if shot.slot)
+        return tuple(dict.fromkeys(slots))
+
+    def unity_field_for(
+        self,
+        slot: str,
+        catalog: "SlotCatalog | None" = None,
+    ) -> str | None:
+        return (catalog or SlotCatalog()).field_for(slot)
+
+    def validate_slot_registration(
+        self,
+        catalog: "SlotCatalog | None" = None,
+    ) -> None:
+        """정식 승격 레시피는 Unity 가 실제로 읽는 슬롯만 겨눌 수 있다.
+
+        슬롯 이름은 정규식만 맞으면 무엇이든 통과했다. 그래서 미등록 슬롯에
+        게시하면 `.aseprite` 파일이 만들어지고 아무 일도 일어나지 않는다 —
+        에디터가 읽지 않으므로 게임에는 영영 나타나지 않는데 파이프라인은
+        "반영 완료"라고 말한다.
+        """
+        if not self.publishes_to_unity:
+            return
+        registry = catalog or SlotCatalog()
+        known = registry.load_all()
+        unregistered = [
+            slot for slot in self.target_slots if slot not in known
+        ]
+        if unregistered:
+            raise ReviewError(
+                f"Recipe {self.id} promotes to Unity but targets "
+                f"unregistered slot(s): {', '.join(unregistered)}. "
+                f"Register them in {UNITY_SLOT_SOURCE.name} "
+                "(CatalogSlots) first, or use a non-publishing "
+                "output.promotion."
+            )
 
     def validate_binding_nodes(self) -> None:
         """바인딩·업로드가 가리키는 노드가 워크플로 JSON 에 실제로 있는지 본다.
@@ -831,6 +904,45 @@ class Recipe:
                 for shot in self.shots
             ],
         }
+
+
+class SlotCatalog:
+    """Unity 가 실제로 읽는 아트 슬롯의 발급 목록.
+
+    `ProjectCAsepritePipeline.CatalogSlots` 가 슬롯 ID → `IsoVisualCatalog`
+    필드명의 SSOT다. 파이썬이 목록을 따로 들고 있으면 반드시 어긋나므로
+    원본을 그대로 읽는다. 여기 없는 슬롯 ID는 존재하지 않는 것이다.
+    """
+
+    _ENTRY = re.compile(r'\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}')
+
+    def __init__(self, path: Path = UNITY_SLOT_SOURCE):
+        self.path = path
+
+    def load_all(self) -> dict[str, str]:
+        if not self.path.is_file():
+            raise ReviewError(f"Unity slot source is missing: {self.path}")
+        source = self.path.read_text(encoding="utf-8")
+        try:
+            start = source.index("CatalogSlots =")
+            block = source[start:]
+            block = block[: block.index("};")]
+        except ValueError as exc:
+            raise ReviewError(
+                f"{self.path} has no readable CatalogSlots block"
+            ) from exc
+        slots = {
+            slot: field for slot, field in self._ENTRY.findall(block)
+        }
+        if not slots:
+            raise ReviewError(f"{self.path} declares no catalog slots")
+        return slots
+
+    def field_for(self, slot: str) -> str | None:
+        return self.load_all().get(slot)
+
+    def is_registered(self, slot: str) -> bool:
+        return slot in self.load_all()
 
 
 @dataclass(frozen=True)

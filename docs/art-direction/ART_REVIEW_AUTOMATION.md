@@ -80,7 +80,46 @@ art-review.sqlite3
 python3 Tools/ArtPipeline/art_runner.py recipes --asset-type animation
 ```
 
-### 2-b. 워크플로 타입 (`pipeline.type`)
+### 2-b. Unity 슬롯 (`purpose.slot`) — ID는 발급받는다
+
+에셋 타입이 "무엇을 만드나"라면, 슬롯은 **"Unity 의 무엇을 채우나"**다. 같은 `캐릭터` 타입
+안에서도 `actor-slinger`와 `actor-goblin`은 서로 다른 `IsoVisualCatalog` 필드를 채운다.
+
+**슬롯 ID의 발급처는 `Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs`의
+`CatalogSlots`다.** 파이썬은 이 목록을 복제하지 않고 그대로 읽는다(`SlotCatalog`) — 복제하면
+반드시 어긋난다. 여기 없는 슬롯 ID는 **존재하지 않는 것**이다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py slots actor-       # 액터 슬롯과 Unity 필드
+python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가 없는 슬롯
+```
+
+#### 승격하는 레시피는 등록된 슬롯만 겨눌 수 있다
+
+`output.promotion`이 슬롯 요구를 가른다.
+
+| `promotion` | 정식 슬롯에 쓰나 | 슬롯 등록 필요 |
+|---|---|---|
+| `aseprite` | ✓ `Art/Source/Aseprite/<slot>.aseprite` | **필수** |
+| `animation-review-only` | ✗ 검수 초안까지 | 불필요 |
+| `manual-processor` | ✗ 지정 processor 를 거친다 | 불필요 |
+| `concept-only` | ✗ 방향 탐색 전용 | 불필요 |
+
+슬롯 이름은 예전엔 정규식(`^(actor|env|item|marker|prop|fx)-...`)만 통과하면 됐다. 그래서
+미등록 슬롯에 게시하면 `.aseprite` 파일이 생기고 **아무 일도 일어나지 않는데** 파이프라인은
+"반영 완료"라고 말했다. 이제 레시피 검증과 게시 경로가 둘 다 발급 목록을 확인한다 — Spark 가
+`--target-slot`으로 넘긴 값도 같은 관문을 지난다. 멀티샷은 샷이 슬롯을 갈아타므로 대표 슬롯이
+아니라 **`target_slots` 전부**를 본다.
+
+#### 새 캐릭터(또는 새 슬롯)를 추가하는 순서
+
+1. `ProjectCAsepritePipeline.cs`의 `CatalogSlots`에 `{ "actor-<이름>", "<필드명>" }`을 더해
+   **ID를 발급**한다. `IsoVisualCatalog`에 같은 이름의 Sprite 필드가 있어야 한다.
+2. 필요하면 `ProjectCArtPivots.cs`에 피벗을 등록한다.
+3. 그다음에 그 슬롯을 겨누는 레시피를 만든다. 순서를 뒤집으면 검증이 막는다 — **의도한 것이다.**
+   Unity 가 읽을 자리가 없는데 그림부터 만들면, 승인·마감까지 다 하고 나서야 갈 곳이 없음을 안다.
+
+### 2-c. 워크플로 타입 (`pipeline.type`)
 
 `docs/art-direction/comfyui/workflow-types.yaml`이 목록과 **계약**을 소유한다. 타입은
 "어떤 ComfyUI 워크플로 계열인가"를 말하고, 그 타입이 성립하려면 레시피가 무엇을 채워야

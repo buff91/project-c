@@ -27,6 +27,7 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    SlotCatalog,
     WorkflowTypeRegistry,
     asset_type_label,
     project_path,
@@ -593,6 +594,7 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
                 "type": "mrkdwn",
                 "text": (
                     f"*대상*  {recipe.asset_type_label} · `{recipe.slot}`\n"
+                    f"*Unity*  {unity_target_label(recipe)}\n"
                     f"*워크플로*  {workflow_type_label(recipe)}\n"
                     f"*목표*  {recipe.purpose.get('readability_goal')}\n"
                     f"*출력*  {generation['width']}×{generation['height']} · "
@@ -680,6 +682,22 @@ def recipes_by_asset_type(
         for type_id, recipes in sorted(grouped.items())
     )
     return ordered
+
+
+def unity_target_label(recipe: Recipe) -> str:
+    """이 레시피가 결국 Unity 의 무엇을 채우는지. 검수 시점에 보여야 한다."""
+    if not recipe.publishes_to_unity:
+        return f"없음 · {recipe.promotion} (정식 슬롯에 쓰지 않는다)"
+    try:
+        catalog = SlotCatalog()
+        fields = [
+            f"`IsoVisualCatalog.{catalog.field_for(slot)}`"
+            for slot in recipe.target_slots
+            if catalog.field_for(slot)
+        ]
+    except ReviewError:
+        return "확인 불가"
+    return " · ".join(fields) or "미등록"
 
 
 def workflow_type_label(recipe: Recipe) -> str:

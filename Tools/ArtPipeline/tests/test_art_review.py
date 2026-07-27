@@ -24,6 +24,7 @@ from art_review import (
     RecipeRegistry,
     ReviewError,
     ReviewStore,
+    SlotCatalog,
     WorkflowTypeRegistry,
     derive_asset_type,
     image_metrics,
@@ -252,6 +253,61 @@ class RecipeTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ReviewError, "node '999'"):
             recipe.validate_binding_nodes()
+
+    def test_unity_slot_catalog_reads_the_editor_source(self) -> None:
+        slots = SlotCatalog().load_all()
+        self.assertGreater(len(slots), 40)
+        self.assertEqual("slinger", slots["actor-slinger"])
+        self.assertEqual("fxImpactFire", slots["fx-impact-fire"])
+        self.assertNotIn("actor-concept", slots)
+
+    def test_publishing_recipes_only_target_registered_slots(self) -> None:
+        for recipe_id, recipe in self.registry.load_all().items():
+            with self.subTest(recipe=recipe_id):
+                recipe.validate_slot_registration()
+                if recipe.publishes_to_unity:
+                    for slot in recipe.target_slots:
+                        self.assertTrue(
+                            SlotCatalog().is_registered(slot),
+                            f"{recipe_id} publishes to unregistered {slot}",
+                        )
+
+    def test_unregistered_slot_blocks_unity_promotion(self) -> None:
+        """미등록 슬롯에 게시하면 Unity 가 읽지 않는 죽은 파일이 된다."""
+        recipe = self._mutated_recipe(
+            lambda document: document["purpose"].__setitem__(
+                "slot", "actor-does-not-exist"
+            )
+        )
+        self.assertTrue(recipe.publishes_to_unity)
+        with self.assertRaisesRegex(ReviewError, "unregistered slot"):
+            recipe.validate_slot_registration()
+
+    def test_non_publishing_recipes_may_use_intermediate_slots(self) -> None:
+        """콘셉트·소스시트는 Unity 슬롯이 아닌 곳을 겨눠도 된다."""
+        concept = self.registry.get("actor-concept-sdxl-v1")
+        self.assertFalse(concept.publishes_to_unity)
+        self.assertFalse(SlotCatalog().is_registered(concept.slot))
+        concept.validate_slot_registration()
+
+        sheet = self.registry.get("environment-hospital-style-v1")
+        self.assertFalse(sheet.publishes_to_unity)
+        sheet.validate_slot_registration()
+
+    def test_unknown_promotion_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "promotion"):
+            self._mutated_recipe(
+                lambda document: document["output"].__setitem__(
+                    "promotion", "asprite"
+                )
+            )
+
+    def test_multi_shot_slots_are_all_checked(self) -> None:
+        """샷이 슬롯을 갈아타므로 대표 슬롯만 봐서는 부족하다."""
+        recipe = self.registry.get("fx-impact-suite-v2")
+        self.assertGreater(len(recipe.target_slots), 1)
+        for slot in recipe.target_slots:
+            self.assertTrue(SlotCatalog().is_registered(slot))
 
     def test_style_sampler_batch_covers_each_art_purpose(self) -> None:
         plan = BatchRegistry().get("style-sampler")

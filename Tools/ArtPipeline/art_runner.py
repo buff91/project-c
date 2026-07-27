@@ -38,6 +38,8 @@ from art_review import (
     ReviewError,
     ReviewStore,
     ShotSpec,
+    SlotCatalog,
+    UNITY_SLOT_SOURCE,
     VALID_ASSET_TYPES,
     WorkflowTypeRegistry,
     image_metrics,
@@ -790,6 +792,14 @@ def publish_candidate(
         art_asset.validate_slot(slot)
     except art_asset.AssetError as exc:
         raise ReviewError(str(exc)) from exc
+    # 정규식은 이름의 모양만 본다. 실제로 Unity 가 읽는 슬롯인지는 발급
+    # 목록만 안다 — target_slot 으로 Spark 가 넘긴 값도 여기서 걸린다.
+    if not SlotCatalog().is_registered(slot):
+        raise ReviewError(
+            f"Slot {slot!r} is not registered in "
+            f"{UNITY_SLOT_SOURCE.name} (CatalogSlots); publishing there "
+            "would create an .aseprite file Unity never reads."
+        )
     if not source.is_file() or source.suffix.lower() not in {
         ".aseprite",
         ".ase",
@@ -1130,6 +1140,37 @@ def command_recipes(args: argparse.Namespace) -> None:
         )
     )
     json_print([recipe.summary() for recipe in selected])
+
+
+def command_slots(args: argparse.Namespace) -> None:
+    """Unity 슬롯 발급 목록 + 각 슬롯을 실제로 채우는 것이 무엇인지."""
+    slots = SlotCatalog().load_all()
+    recipes = RecipeRegistry(args.recipe_dir).load_all().values()
+    by_slot: dict[str, list[str]] = {}
+    for recipe in recipes:
+        for slot in recipe.target_slots:
+            by_slot.setdefault(slot, []).append(recipe.id)
+
+    rows = []
+    for slot, field in sorted(slots.items()):
+        if args.prefix and not slot.startswith(args.prefix):
+            continue
+        covering = sorted(by_slot.get(slot, []))
+        rows.append(
+            {
+                "slot": slot,
+                "unity_field": field,
+                "aseprite_source": (
+                    relative_project_path(art_asset.official_output(slot))
+                    if art_asset.official_output(slot).is_file()
+                    else None
+                ),
+                "recipes": covering,
+            }
+        )
+    if args.uncovered:
+        rows = [row for row in rows if not row["recipes"]]
+    json_print(rows)
 
 
 def command_workflow_types(args: argparse.Namespace) -> None:
@@ -1571,6 +1612,19 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     recipes.set_defaults(handler=command_recipes)
+
+    slots = subparsers.add_parser("slots")
+    slots.add_argument(
+        "prefix",
+        nargs="?",
+        help="슬롯 접두사로 거른다. 예: actor-",
+    )
+    slots.add_argument(
+        "--uncovered",
+        action="store_true",
+        help="아직 레시피가 없는 슬롯만 보여준다",
+    )
+    slots.set_defaults(handler=command_slots)
 
     workflow_types = subparsers.add_parser("workflow-types")
     workflow_types.add_argument("type_id", nargs="?")
