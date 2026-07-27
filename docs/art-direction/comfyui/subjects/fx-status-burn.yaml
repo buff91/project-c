@@ -1,0 +1,12 @@
+schema_version: 1
+id: fx-status-burn
+name: burn status · open foot aura
+slot: fx-status-burn
+asset_type: effect
+readability_goal: 24~32px에서 UI 아이콘이 아니라 방향성 있는 파편·부분 호로 읽혀야 한다.
+prompt:
+  positive: low isometric open elliptical foot aura, only two broken orange arcs along the lower half,
+    three small flame tongues, transparent empty center for the actor, open at the top, no complete ring
+output_canvas:
+- 32
+- 24

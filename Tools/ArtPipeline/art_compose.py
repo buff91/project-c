@@ -435,17 +435,21 @@ def resolve(
             _mapping(method.document["generation"], "generation")
         ),
         "prompt": {
+            # 묶음이면 공통 프롬프트만 본문에 둔다 — 대상별 정체성은 샷의
+            # prompt_suffix 로 갈린다. 여기에 첫 멤버를 구우면 나머지 다섯 장이
+            # 전부 그 하나를 닮는다.
             "positive": _join_prompt(
                 str(method.prompt.get("prefix", "")),
-                lead.identity,
+                "" if len(members) > 1 else lead.identity,
                 lead.signature_pose
                 if method.prompt.get("use_signature_pose")
+                and len(members) == 1
                 else "",
                 str(method.prompt.get("suffix", "")),
             ),
             "negative": _join_prompt(
                 str(method.prompt.get("negative", "")),
-                lead.excludes,
+                "" if len(members) > 1 else lead.excludes,
             ),
         },
         "composed_from": {
@@ -481,22 +485,21 @@ def resolve(
     if len(members) > 1:
         # 묶음: 대상마다 한 장. 프롬프트도 대상마다 갈린다.
         for subject in members:
-            shots.append(
-                {
-                    "id": subject.slot,
-                    "label": subject.name,
-                    "slot": subject.slot,
-                    "prompt": _join_prompt(
-                        str(method.prompt.get("prefix", "")),
-                        subject.identity,
-                        subject.signature_pose
-                        if method.prompt.get("use_signature_pose")
-                        else "",
-                        str(method.prompt.get("suffix", "")),
-                    ),
-                    "seed_offset": len(shots) * 97,
-                }
-            )
+            shot: dict[str, Any] = {
+                "id": subject.slot,
+                "label": subject.name,
+                "slot": subject.slot,
+                "prompt_suffix": (
+                    f", {subject.identity}" if subject.identity else ""
+                ),
+                "seed_offset": len(shots) * 97,
+            }
+            if subject.excludes:
+                shot["negative_suffix"] = f", {subject.excludes}"
+            canvas = subject.document.get("output_canvas")
+            if canvas:
+                shot["output_canvas"] = list(canvas)
+            shots.append(shot)
     elif method.poses:
         for pose in method.poses:
             shots.append(
