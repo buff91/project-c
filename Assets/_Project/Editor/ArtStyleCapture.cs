@@ -19,7 +19,6 @@ namespace ProjectC.EditorTools
             ProjectCArtImporter.ReimportRuntimeArt();
             CaptureScene("Assets/_Project/Scenes/Hub.unity", "art-v2-hub-world.png");
             CaptureScene("Assets/_Project/Scenes/IsoPrototype.unity", "art-v2-combat-world.png");
-            AssetDatabase.Refresh();
         }
 
         private static void CaptureScene(string scenePath, string fileName)

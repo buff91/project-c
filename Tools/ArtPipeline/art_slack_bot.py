@@ -11,6 +11,7 @@ import signal
 import sys
 import threading
 import time
+import traceback
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -46,10 +47,15 @@ REACTION_LABELS = {
     "soap": "cleanup",
     "triangular_ruler": "scale-pivot",
     "arrows_counterclockwise": "variation",
-    "star": "preserve-reference",
 }
 CANDIDATE_PATTERN = re.compile(r"\bC\d{2}\b", re.IGNORECASE)
+OUTBOX_MAX_ATTEMPTS = 5
 STOP_EVENT = threading.Event()
+
+
+def log_error(context: str) -> None:
+    print(f"error: {context}", file=sys.stderr)
+    traceback.print_exc()
 
 
 ART_CATEGORY_LABELS = {
@@ -74,11 +80,6 @@ CANDIDATE_STATE_VIEW = {
         "🟡",
         "검토 대기",
         "이미지를 보고 채택·제외·비슷한 변형 중 하나를 선택하세요.",
-    ),
-    "shortlisted": (
-        "⭐",
-        "후보 보존",
-        "비교 후보로 보존했습니다. 최종 채택 여부를 선택하세요.",
     ),
     "approved": (
         "✅",
@@ -204,12 +205,15 @@ def allowed_user(user_id: str) -> bool:
         ).split(",")
         if value.strip()
     }
-    return not configured or user_id in configured
+    return bool(user_id) and user_id in configured
 
 
 def require_allowed(user_id: str) -> None:
     if not allowed_user(user_id):
-        raise ReviewError(f"Slack user {user_id} is not allowed")
+        raise ReviewError(
+            f"Slack user {user_id} is not allowed "
+            "(SLACK_ART_ALLOWED_USERS)"
+        )
 
 
 def truncate(text: str, limit: int) -> str:
@@ -703,8 +707,11 @@ def find_candidate_from_text(
     store: ReviewStore,
     root_ts: str,
     text: str,
+    *,
+    mapping: Any | None = None,
 ) -> tuple[str | None, str | None]:
-    mapping = store.find_slack_message(root_ts)
+    if mapping is None:
+        mapping = store.find_slack_message(root_ts)
     if mapping and mapping["candidate_id"]:
         return mapping["job_id"], mapping["candidate_id"]
     match = CANDIDATE_PATTERN.search(text)
@@ -729,8 +736,13 @@ def find_feedback_target(
     root_ts: str,
     text: str,
 ) -> tuple[str | None, str | None, str | None]:
-    job_id, candidate_id = find_candidate_from_text(store, root_ts, text)
     mapping = store.find_slack_message(root_ts)
+    job_id, candidate_id = find_candidate_from_text(
+        store,
+        root_ts,
+        text,
+        mapping=mapping,
+    )
     if mapping and str(mapping["kind"]).startswith("shot:"):
         return job_id, candidate_id, str(mapping["kind"]).split(":", 1)[1]
     if not job_id:
@@ -1114,10 +1126,16 @@ class SlackReviewService:
 
     def outbox_loop(self, client: Any) -> None:
         while not STOP_EVENT.is_set():
-            rows = self.store.pending_outbox()
+            try:
+                rows = self.store.claim_outbox()
+            except Exception:
+                log_error("outbox claim failed")
+                STOP_EVENT.wait(self.poll_interval)
+                continue
             if not rows:
                 STOP_EVENT.wait(self.poll_interval)
                 continue
+            failed = False
             for row in rows:
                 if STOP_EVENT.is_set():
                     return
@@ -1125,7 +1143,19 @@ class SlackReviewService:
                     self.dispatch_outbox(client, row)
                     self.store.finish_outbox(row["id"])
                 except Exception as exc:
-                    self.store.finish_outbox(row["id"], error=str(exc))
+                    failed = True
+                    retry = row["attempts"] + 1 < OUTBOX_MAX_ATTEMPTS
+                    log_error(
+                        f"outbox {row['id']} ({row['kind']}) "
+                        f"{'retrying' if retry else 'failed permanently'}"
+                    )
+                    self.store.finish_outbox(
+                        row["id"],
+                        error=str(exc),
+                        retry=retry,
+                    )
+            if failed:
+                STOP_EVENT.wait(self.poll_interval)
 
     def worker_loop(self) -> None:
         while not STOP_EVENT.is_set():
@@ -1137,7 +1167,8 @@ class SlackReviewService:
                     timeout=self.work_timeout,
                 )
             except Exception:
-                worked = True
+                log_error("worker iteration failed")
+                worked = False
             if not worked:
                 STOP_EVENT.wait(self.poll_interval)
 
@@ -1655,17 +1686,25 @@ def register_handlers(
         client: Any,
     ) -> None:
         ack()
-        require_allowed(shortcut["user"]["id"])
-        client.views_open(
-            trigger_id=shortcut["trigger_id"],
-            view=modal_view(registry),
-        )
+        user_id = shortcut["user"]["id"]
+        try:
+            require_allowed(user_id)
+            client.views_open(
+                trigger_id=shortcut["trigger_id"],
+                view=modal_view(registry),
+            )
+        except Exception as exc:
+            client.chat_postMessage(
+                channel=user_id,
+                text=f"처리하지 못했습니다: {exc}",
+            )
 
     @app.view("art_new_job_modal")
     def art_new_job_modal(
         ack: Callable[..., None],
         body: dict[str, Any],
         view: dict[str, Any],
+        client: Any,
     ) -> None:
         user_id = body["user"]["id"]
         try:
@@ -1673,7 +1712,14 @@ def register_handlers(
             values = view["state"]["values"]
             recipe_id = values["recipe"]["value"]["selected_option"]["value"]
             count_text = values["count"]["value"].get("value") or ""
-            count = int(count_text) if count_text else None
+            try:
+                count = int(count_text) if count_text else None
+            except ValueError:
+                ack(
+                    response_action="errors",
+                    errors={"count": "후보 수는 정수여야 합니다."},
+                )
+                return
             if count is not None and not 1 <= count <= 12:
                 ack(
                     response_action="errors",
@@ -1682,17 +1728,25 @@ def register_handlers(
                 return
             notes = values["notes"]["value"].get("value") or ""
             recipe = registry.get(recipe_id)
+        except Exception as exc:
+            ack(
+                response_action="errors",
+                errors={"notes": f"작업을 만들 수 없습니다: {exc}"},
+            )
+            return
+        ack()
+        try:
             store.create_job(
                 recipe,
                 requested_by=f"slack:{user_id}",
                 candidate_count=count,
                 notes=notes,
             )
-            ack()
         except Exception as exc:
-            ack(
-                response_action="errors",
-                errors={"notes": f"작업을 만들 수 없습니다: {exc}"},
+            log_error("modal job creation failed")
+            client.chat_postMessage(
+                channel=user_id,
+                text=f"작업을 만들 수 없습니다: {exc}",
             )
 
 
@@ -1726,6 +1780,7 @@ def main() -> int:
         bot_token = require_env("SLACK_BOT_TOKEN")
         app_token = require_env("SLACK_APP_TOKEN")
         channel_id = require_env("SLACK_ART_CHANNEL_ID")
+        require_env("SLACK_ART_ALLOWED_USERS")
         try:
             from slack_bolt import App
             from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -1736,6 +1791,7 @@ def main() -> int:
             ) from exc
 
         store = ReviewStore(args.db)
+        store.recover_stale_running()
         registry = RecipeRegistry(args.recipe_dir)
         service = SlackReviewService(
             store=store,

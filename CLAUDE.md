@@ -58,7 +58,7 @@ Assets/_Project/
                                      # / MonoBehaviour·씬 연동(IsoPrototypeDemo 는 관심사별 partial)
   Tests/EditMode/ · Tests/PlayMode/  # 규칙별 *Tests.cs · 씬 흐름 통합 스모크
   Scenes/ · UI/ · Editor/ArtPipeline/  # 씬 · UXML/USS · Aseprite 임포트 메뉴
-  Art/Source/Aseprite/               # 원본이 도착할 자리 + 기준 팔레트 .gpl — 아직 .aseprite 원본은 없다
+  Art/Source/Aseprite/               # 정식 .aseprite 원본 + 기준 팔레트 .gpl — 게시 파이프라인이 여기에 쓴다
   Art/Runtime/ · Art/Environment/    # 실제로 게임에 연결된 PNG + 환경 카탈로그 (현재 동작 경로)
 Tools/  ArtPipeline(후처리 파이썬) · CoreTests(에디터 없이 도는 dotnet shim) · Hooks(로컬 검증 훅)
 docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction/ · captures/ 검증 참고 이미지)

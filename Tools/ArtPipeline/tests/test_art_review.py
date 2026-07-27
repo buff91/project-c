@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from PIL import Image
@@ -32,6 +33,7 @@ from art_runner import (
     review_sheet,
 )
 from art_slack_bot import (
+    allowed_user,
     animation_action_value,
     animation_timing_blocks,
     candidate_blocks,
@@ -290,6 +292,82 @@ class StoreTests(unittest.TestCase):
         self.assertIsNotNone(claimed)
         self.assertEqual(self.job_id, claimed["id"])
         self.assertIsNone(self.store.claim_job())
+
+    def test_allowlist_fails_closed_when_unconfigured(self) -> None:
+        with unittest.mock.patch.dict(
+            "os.environ",
+            {"SLACK_ART_ALLOWED_USERS": ""},
+        ):
+            self.assertFalse(allowed_user("U123"))
+        with unittest.mock.patch.dict(
+            "os.environ",
+            {"SLACK_ART_ALLOWED_USERS": "U123, U456"},
+        ):
+            self.assertTrue(allowed_user("U123"))
+            self.assertFalse(allowed_user("U789"))
+
+    def test_stale_running_rows_are_requeued(self) -> None:
+        claimed = self.store.claim_job()
+        self.assertEqual(0, self.store.recover_stale_running())
+        with self.store.connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET updated_at = '2000-01-01T00:00:00+00:00' "
+                "WHERE id = ?",
+                (claimed["id"],),
+            )
+        self.assertEqual(1, self.store.recover_stale_running())
+        self.assertEqual("queued", self.store.get_job(claimed["id"])["status"])
+
+    def test_requeued_job_can_replace_its_candidates(self) -> None:
+        first = self.add_candidate()
+        self.assertEqual(first, self.add_candidate())
+
+    def test_outbox_claim_is_atomic_and_retries(self) -> None:
+        outbox_id = self.store.enqueue_outbox("job_ready", {"job_id": "x"})
+        rows = self.store.claim_outbox()
+        self.assertEqual([outbox_id], [row["id"] for row in rows])
+        self.assertEqual([], self.store.claim_outbox())
+        self.store.finish_outbox(outbox_id, error="boom", retry=True)
+        retried = self.store.claim_outbox()
+        self.assertEqual([outbox_id], [row["id"] for row in retried])
+        self.assertEqual(1, retried[0]["attempts"])
+
+    def test_publish_rejects_traversal_slot(self) -> None:
+        import copy as copy_module
+
+        from art_review import Recipe
+
+        document = copy_module.deepcopy(self.recipe.document)
+        document["purpose"]["slot"] = "../../../../evil"
+        bad_recipe = Recipe.from_document(document, path=self.recipe.path)
+        job_id = self.store.create_job(
+            bad_recipe,
+            requested_by="test",
+            candidate_count=1,
+            base_seed=7,
+        )
+        image_path = self.root / "traversal.png"
+        Image.new("RGBA", (8, 8), (120, 80, 40, 255)).save(image_path)
+        candidate_id = self.store.add_candidate(
+            job_id=job_id,
+            ordinal=1,
+            seed=7,
+            raw_path=image_path,
+            metrics=image_metrics(image_path),
+        )
+        approve_candidate(
+            self.store,
+            candidate_id,
+            user_id="test",
+            event_key="traversal-approve",
+        )
+        self.store.set_candidate_status(
+            candidate_id,
+            "prepared",
+            aseprite_path=image_path,
+        )
+        with self.assertRaisesRegex(ReviewError, "Invalid slot"):
+            publish_candidate(self.store, candidate_id)
 
     def test_feedback_is_idempotent(self) -> None:
         candidate_id = self.add_candidate()

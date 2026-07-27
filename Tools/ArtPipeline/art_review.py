@@ -12,7 +12,7 @@ import secrets
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -43,7 +43,6 @@ VALID_JOB_STATES = {
 }
 VALID_CANDIDATE_STATES = {
     "generated",
-    "shortlisted",
     "approved",
     "rejected",
     "preparing",
@@ -757,6 +756,57 @@ class ReviewStore:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(outbox)"
+                ).fetchall()
+            }
+            if "attempts" not in columns:
+                connection.execute(
+                    "ALTER TABLE outbox "
+                    "ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
+                )
+
+    def recover_stale_running(
+        self,
+        *,
+        older_than_seconds: float = 3600.0,
+    ) -> int:
+        """Requeue jobs/actions/outbox rows abandoned by a dead worker."""
+        cutoff = (
+            datetime.now(timezone.utc)
+            - timedelta(seconds=older_than_seconds)
+        ).isoformat(timespec="seconds")
+        now = utc_now()
+        recovered = 0
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            recovered += connection.execute(
+                """
+                UPDATE jobs
+                SET status = 'queued', updated_at = ?
+                WHERE status = 'running' AND updated_at < ?
+                """,
+                (now, cutoff),
+            ).rowcount
+            recovered += connection.execute(
+                """
+                UPDATE actions
+                SET status = 'queued', updated_at = ?
+                WHERE status = 'running' AND updated_at < ?
+                """,
+                (now, cutoff),
+            ).rowcount
+            recovered += connection.execute(
+                """
+                UPDATE outbox
+                SET status = 'pending', updated_at = ?
+                WHERE status = 'sending' AND updated_at < ?
+                """,
+                (now, cutoff),
+            ).rowcount
+        return recovered
 
     def create_job(
         self,
@@ -907,6 +957,13 @@ class ReviewStore:
                     id, job_id, ordinal, seed, raw_path, status,
                     metrics_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, 'generated', ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    seed = excluded.seed,
+                    raw_path = excluded.raw_path,
+                    status = 'generated',
+                    metrics_json = excluded.metrics_json,
+                    updated_at = excluded.updated_at,
+                    error = NULL
                 """,
                 (
                     candidate_id,
@@ -1205,6 +1262,30 @@ class ReviewStore:
                 (limit,),
             ).fetchall()
 
+    def claim_outbox(self, limit: int = 20) -> list[sqlite3.Row]:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """
+                SELECT * FROM outbox
+                WHERE status = 'pending'
+                ORDER BY id
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+            now = utc_now()
+            for row in rows:
+                connection.execute(
+                    """
+                    UPDATE outbox
+                    SET status = 'sending', updated_at = ?
+                    WHERE id = ? AND status = 'pending'
+                    """,
+                    (now, row["id"]),
+                )
+            return rows
+
     def finish_outbox(
         self,
         outbox_id: int,
@@ -1217,10 +1298,17 @@ class ReviewStore:
             connection.execute(
                 """
                 UPDATE outbox
-                SET status = ?, updated_at = ?, error = ?
+                SET status = ?, updated_at = ?, error = ?,
+                    attempts = attempts + ?
                 WHERE id = ?
                 """,
-                (status, utc_now(), error, outbox_id),
+                (
+                    status,
+                    utc_now(),
+                    error,
+                    1 if error or retry else 0,
+                    outbox_id,
+                ),
             )
 
     def map_slack_message(

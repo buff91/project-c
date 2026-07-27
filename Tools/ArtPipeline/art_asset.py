@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+import os
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -238,6 +240,29 @@ def official_output(slot: str) -> Path:
     return ASEPRITE_SOURCE_DIR / f"{slot}.aseprite"
 
 
+def aseprite_binary() -> Path:
+    configured = os.environ.get("PROJECTC_ASEPRITE_BIN")
+    candidates = [
+        Path(configured).expanduser() if configured else None,
+        Path("/Applications/Aseprite.app/Contents/MacOS/aseprite"),
+        Path.home() / "Applications/Aseprite.app/Contents/MacOS/aseprite",
+        (
+            Path.home()
+            / "Library/Application Support/Steam/steamapps/common"
+            / "Aseprite/Aseprite.app/Contents/MacOS/aseprite"
+        ),
+    ]
+    discovered = shutil.which("aseprite")
+    if discovered:
+        candidates.append(Path(discovered))
+    for candidate in candidates:
+        if candidate and candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.resolve()
+    raise AssetError(
+        "Aseprite CLI not found; set PROJECTC_ASEPRITE_BIN"
+    )
+
+
 def conform_to_aseprite(
     prepared: Path,
     output: Path,
@@ -262,6 +287,10 @@ def conform_to_aseprite(
             "strict",
         ],
         cwd=PROJECT_ROOT,
+        env={
+            **os.environ,
+            "PROJECTC_ASEPRITE_BIN": str(aseprite_binary()),
+        },
         check=True,
     )
     if not output.is_file():

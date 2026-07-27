@@ -106,4 +106,3 @@ review:
     soap: cleanup
     triangular_ruler: scale-pivot
     arrows_counterclockwise: variation
-    star: preserve-reference

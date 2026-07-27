@@ -16,6 +16,7 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,9 @@ DEFAULT_COMFY_URL = os.environ.get(
 )
 ASEPRITE_ANIMATION_SCRIPT = (
     Path(__file__).resolve().with_name("aseprite_build_animation.lua")
+)
+STALE_RUNNING_SECONDS = float(
+    os.environ.get("PROJECTC_ART_STALE_RUNNING_SECONDS", 3600.0)
 )
 STOP_REQUESTED = False
 
@@ -273,26 +277,10 @@ def process_job(
 
 
 def aseprite_binary() -> Path:
-    configured = os.environ.get("PROJECTC_ASEPRITE_BIN")
-    candidates = [
-        Path(configured).expanduser() if configured else None,
-        Path("/Applications/Aseprite.app/Contents/MacOS/aseprite"),
-        Path.home() / "Applications/Aseprite.app/Contents/MacOS/aseprite",
-        (
-            Path.home()
-            / "Library/Application Support/Steam/steamapps/common"
-            / "Aseprite/Aseprite.app/Contents/MacOS/aseprite"
-        ),
-    ]
-    discovered = shutil.which("aseprite")
-    if discovered:
-        candidates.append(Path(discovered))
-    for candidate in candidates:
-        if candidate and candidate.is_file() and os.access(candidate, os.X_OK):
-            return candidate.resolve()
-    raise ReviewError(
-        "Aseprite CLI not found; set PROJECTC_ASEPRITE_BIN"
-    )
+    try:
+        return art_asset.aseprite_binary()
+    except art_asset.AssetError as exc:
+        raise ReviewError(str(exc)) from exc
 
 
 def export_aseprite(source: Path, destination: Path) -> None:
@@ -789,6 +777,10 @@ def publish_candidate(store: ReviewStore, candidate_id: str) -> Path:
         prepare_candidate(store, candidate_id)
         candidate = store.get_candidate(candidate_id)
     source = project_path(candidate["aseprite_path"])
+    try:
+        art_asset.validate_slot(recipe.slot)
+    except art_asset.AssetError as exc:
+        raise ReviewError(str(exc)) from exc
     destination = art_asset.official_output(recipe.slot)
     allow_replace = bool(recipe.output.get("allow_replace", False))
     if destination.exists() and not allow_replace:
@@ -1084,13 +1076,18 @@ def command_work(args: argparse.Namespace) -> None:
             timeout=args.timeout,
         )
         return
+    store.recover_stale_running(older_than_seconds=STALE_RUNNING_SECONDS)
     while not STOP_REQUESTED:
-        worked = work_once(
-            store,
-            comfy_url=args.comfy_url,
-            output_root=args.output_root,
-            timeout=args.timeout,
-        )
+        try:
+            worked = work_once(
+                store,
+                comfy_url=args.comfy_url,
+                output_root=args.output_root,
+                timeout=args.timeout,
+            )
+        except Exception:
+            traceback.print_exc()
+            worked = False
         if not worked:
             time.sleep(args.poll_interval)
 
