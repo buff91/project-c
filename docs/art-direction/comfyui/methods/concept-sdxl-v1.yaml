@@ -2,7 +2,8 @@ schema_version: 1
 id: concept-sdxl-v1
 name: SDXL 콘셉트 탐색 v1
 applies_to:
-- concept
+- character
+guide_roles: []
 use: concept
 category: actor
 animation_scope: reference-only
@@ -49,7 +50,21 @@ pipeline:
     denoise: 6.denoise
     sampler: 6.sampler_name
     scheduler: 6.scheduler
-prompt: {}
+prompt:
+  prefix: >-
+    Pixel Art, PixArFK, exactly one full-body game character, single isolated
+    subject, three-quarter isometric view
+  use_signature_pose: true
+  suffix: >-
+    centered cutout with generous empty border, flat solid pure magenta
+    background touching every image border, no floor, no cast shadow, crisp
+    hard pixel clusters, limited palette, readable after reduction to the
+    final gameplay canvas
+  negative: >-
+    multiple characters, duplicate person, character sheet, turnaround sheet,
+    lineup, contact sheet, portrait close-up, cropped feet, floor tile, ground
+    plane, cast shadow, gray background, white background, gradient background,
+    scenery, text, label, watermark, smooth illustration
 loras:
 - name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
   node: 2

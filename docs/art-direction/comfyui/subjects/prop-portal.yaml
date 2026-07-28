@@ -1,0 +1,20 @@
+schema_version: 1
+id: prop-portal
+name: 이상 게이트 idle
+slot: prop-portal
+asset_type: animation
+readability_goal: 고정된 회수 프레임 안에서 열린 틸 균열만 맥동해 출정 게이트로 읽혀야 한다.
+output:
+  canvas: [128, 160]
+  pivot: [0.5, 0.075]
+  fit: contain
+  anchor: bottom
+  padding: 2
+prompt:
+  positive: >-
+    one salvaged hospital evacuation gate frame, asymmetrical oxidized steel
+    uprights, open vertical desaturated teal anomaly fissure, stable grounded
+    base, sparse inward particles
+  negative: >-
+    fantasy stone portal, complete glowing circle, sci-fi ring machine,
+    moving frame, multiple gates, full room

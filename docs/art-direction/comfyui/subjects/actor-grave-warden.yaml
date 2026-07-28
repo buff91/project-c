@@ -1,0 +1,42 @@
+schema_version: 1
+id: actor-grave-warden
+slot: actor-grave-warden
+asset_type: character
+
+# 표시명은 MonsterRoster.GraveWarden 의 displayName("감시자")을 그대로 쓴다.
+# 컨셉 승인 전에는 전용 가이드가 없으므로, txt2img 컨셉 방법만 선택할 수 있다.
+
+readability_goal: >-
+  일반 몬스터보다 약 1.3배 큰 몸통, 센서 마스트, 붉은 네온 외눈이
+  96×128에서도 보스 실루엣으로 즉시 구분되어야 한다.
+
+prompt:
+  positive: >-
+    single hulking post-apocalyptic hospital security warden boss, about 1.3
+    times the mass of a normal scavenger, repurposed concrete-gray riot shell,
+    oxidized steel braces, exposed cables, asymmetrical shoulder plating,
+    tall broken sensor mast, one intense red warning eye, heavy grounded legs,
+    anomalous organic core barely visible through one cracked chest seam
+  signature_pose: >-
+    planted frontal three-quarter isometric guard stance, one heavy arm lowered
+    to block the corridor, sensor mast tilted toward the player
+  negative: >-
+    medieval gravekeeper, fantasy knight, robe, hooded necromancer, tombstone,
+    scythe, sword, shield, pristine robot, sleek android, symmetrical mecha,
+    multiple eyes, small ordinary human silhouette
+
+guides:
+  # 승인 컨셉이 style_source가 되고, 이 가이드는 기본 접지 자세만 제공한다.
+  pose: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+
+pose_guides:
+  idle: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+  walk-contact-a: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-a.png
+  walk-pass: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-pass.png
+  walk-contact-b: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-b.png
+  attack-windup: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
+  attack-release: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
+  attack-recovery: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-recovery.png
+  hit: docs/art-direction/comfyui/guides/openpose/actor-slinger-hit.png
+  fall: docs/art-direction/comfyui/guides/openpose/actor-slinger-fall.png
+  death: docs/art-direction/comfyui/guides/openpose/actor-slinger-death.png

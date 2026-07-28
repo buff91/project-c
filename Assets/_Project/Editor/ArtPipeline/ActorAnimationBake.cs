@@ -54,6 +54,31 @@ namespace ProjectC.EditorTools
             return set;
         }
 
+        /// <summary>환경/소품 원본에서는 idle 태그만 굽는다.</summary>
+        public static EnvironmentAnimationSet ExtractEnvironmentSet(
+            string sourcePath,
+            string slotKey)
+        {
+            var set = new EnvironmentAnimationSet { slotKey = slotKey };
+            IEnumerable<AnimationClip> clips =
+                AssetDatabase.LoadAllAssetsAtPath(sourcePath)
+                    .OfType<AnimationClip>()
+                    .OrderBy(clip => clip.name, StringComparer.Ordinal);
+            foreach (AnimationClip clip in clips)
+            {
+                SpriteClip baked = ExtractClip(clip);
+                if (baked != null &&
+                    string.Equals(
+                        baked.tag,
+                        SpriteClipTags.Idle,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    set.Find(baked.tag) == null)
+                    set.clips.Add(baked);
+            }
+
+            return set;
+        }
+
         /// <summary>태그 규약 밖이거나 sprite 커브가 없으면 null.</summary>
         public static SpriteClip ExtractClip(AnimationClip clip)
         {
@@ -146,6 +171,48 @@ namespace ProjectC.EditorTools
                     {
                         if (x.frames[f] != y.frames[f] ||
                             !Mathf.Approximately(x.frameStartTimes[f], y.frameStartTimes[f]))
+                            return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        public static bool EnvironmentSetsEqual(
+            List<EnvironmentAnimationSet> current,
+            List<EnvironmentAnimationSet> built)
+        {
+            if (current == null || built == null) return current == built;
+            if (current.Count != built.Count) return false;
+            for (int i = 0; i < current.Count; i++)
+            {
+                EnvironmentAnimationSet a = current[i];
+                EnvironmentAnimationSet b = built[i];
+                if (a == null || b == null) return false;
+                if (!string.Equals(a.slotKey, b.slotKey, StringComparison.Ordinal))
+                    return false;
+                int aCount = a.clips?.Count ?? 0;
+                int bCount = b.clips?.Count ?? 0;
+                if (aCount != bCount) return false;
+                for (int c = 0; c < aCount; c++)
+                {
+                    SpriteClip x = a.clips[c];
+                    SpriteClip y = b.clips[c];
+                    if (x == null || y == null) return false;
+                    if (!string.Equals(x.tag, y.tag, StringComparison.Ordinal) ||
+                        x.loop != y.loop ||
+                        !Mathf.Approximately(x.length, y.length))
+                        return false;
+                    int xFrames = x.frames?.Length ?? 0;
+                    int yFrames = y.frames?.Length ?? 0;
+                    if (xFrames != yFrames) return false;
+                    for (int f = 0; f < xFrames; f++)
+                    {
+                        if (x.frames[f] != y.frames[f] ||
+                            !Mathf.Approximately(
+                                x.frameStartTimes[f],
+                                y.frameStartTimes[f]))
                             return false;
                     }
                 }

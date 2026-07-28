@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""대상(subject) × 방법(method) → 하나의 완전한 레시피 문서.
+"""화풍(style) × 세계관(world) × 대상(subject) × 방법(method) 합성.
 
 예전에는 레시피 한 파일이 "무엇을 만드나"와 "어떻게 만드나"를 함께 들고 있었다.
 그래서 같은 캐릭터를 겨누는 레시피 6개에서 43개 필드가 글자 그대로 같았고,
 새 캐릭터 하나를 추가하려면 108줄을 복사해 4곳만 고쳐야 했다. 대상이 선택지로
 보이지 않고 레시피 **이름**에 숨는 것도 같은 원인이다.
 
+- 화풍(`styles/*.yaml`)     : 픽셀 클러스터 · 에지 · 명도 · 렌더링 문법
+- 세계관(`worlds/*.yaml`)   : 테마 · 재료 · 분위기 · 공통 배제
 - 대상(`subjects/*.yaml`)  : 슬롯 · 정체성 프롬프트 · 가이드 이미지
 - 대상 묶음(`subject-sets/*.yaml`) : 함께 검수하는 대상들(이펙트 6종처럼)
 - 방법(`methods/*.yaml`)   : 워크플로 · 모델 · LoRA · 생성값 · 출력 규격 · 포즈 목록
@@ -40,6 +42,45 @@ DEFAULT_SUBJECT_SET_DIR = (
     PROJECT_ROOT / "docs/art-direction/comfyui/subject-sets"
 )
 DEFAULT_METHOD_DIR = PROJECT_ROOT / "docs/art-direction/comfyui/methods"
+DEFAULT_STYLE_DIR = PROJECT_ROOT / "docs/art-direction/comfyui/styles"
+DEFAULT_WORLD_DIR = PROJECT_ROOT / "docs/art-direction/comfyui/worlds"
+
+
+@dataclass(frozen=True)
+class PromptPreset:
+    """화풍 또는 세계관처럼 독립 교체하는 공통 프롬프트 축."""
+
+    path: Path
+    document: dict[str, Any]
+
+    @property
+    def id(self) -> str:
+        return str(self.document["id"])
+
+    @property
+    def name(self) -> str:
+        return str(self.document["name"])
+
+    @property
+    def applies_to(self) -> tuple[str, ...]:
+        return tuple(
+            str(item) for item in (self.document.get("applies_to", []) or [])
+        )
+
+    @property
+    def prompt(self) -> dict[str, Any]:
+        return _mapping(self.document.get("prompt", {}), "prompt")
+
+    def accepts(self, asset_type: str) -> bool:
+        return not self.applies_to or asset_type in self.applies_to
+
+    @classmethod
+    def load(cls, path: Path) -> "PromptPreset":
+        document = _load_yaml(path, "prompt preset")
+        for key in ("id", "name", "applies_to", "prompt"):
+            if key not in document:
+                raise ReviewError(f"Prompt preset {path} is missing {key!r}")
+        return cls(path=path, document=document)
 
 
 def _load_yaml(path: Path, label: str) -> dict[str, Any]:
@@ -244,19 +285,59 @@ class Method:
     def prompt(self) -> dict[str, Any]:
         return _mapping(self.document.get("prompt", {}), "prompt")
 
+    @property
+    def requires_source_candidate(self) -> bool:
+        return bool(self.document.get("requires_source_candidate", False))
+
+    @property
+    def required_guides(self) -> tuple[str, ...]:
+        """이 방법을 고르기 전에 대상이 보유해야 하는 가이드 역할."""
+        return tuple(
+            str(role)
+            for role in (self.document.get("required_guides", []) or [])
+        )
+
+    @property
+    def guide_roles(self) -> tuple[str, ...] | None:
+        """이번 방법이 실제 업로드할 가이드 역할.
+
+        필드가 없으면 대상의 가이드를 모두 쓰고, 빈 목록이면 txt2img 컨셉처럼
+        정체성 문장만 사용한다.
+        """
+        if "guide_roles" not in self.document:
+            return None
+        return tuple(
+            str(role)
+            for role in (self.document.get("guide_roles", []) or [])
+        )
+
     def accepts(self, asset_type: str) -> bool:
         return not self.applies_to or asset_type in self.applies_to
+
+    def accepts_subject(self, subject: Subject) -> bool:
+        if not self.accepts(subject.asset_type):
+            return False
+        output = _mapping(self.document.get("output", {}), "output")
+        if (
+            str(output.get("promotion", "")) == "aseprite"
+            and not SlotCatalog().is_registered(subject.slot)
+        ):
+            return False
+        available = set(subject.guides())
+        return all(role in available for role in self.required_guides)
 
     def summary(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
             "applies_to": list(self.applies_to),
+            "required_guides": list(self.required_guides),
             "poses": [str(pose.get("id")) for pose in self.poses],
             "workflow_type": str(
                 _mapping(self.document.get("pipeline", {}), "pipeline")
                 .get("type", "")
             ),
+            "requires_source_candidate": self.requires_source_candidate,
         }
 
     @classmethod
@@ -325,6 +406,22 @@ class MethodRegistry(_Registry):
         super().__init__(directory)
 
 
+class StyleRegistry(_Registry):
+    loader = PromptPreset
+    label = "art style"
+
+    def __init__(self, directory: Path = DEFAULT_STYLE_DIR):
+        super().__init__(directory)
+
+
+class WorldRegistry(_Registry):
+    loader = PromptPreset
+    label = "world"
+
+    def __init__(self, directory: Path = DEFAULT_WORLD_DIR):
+        super().__init__(directory)
+
+
 def _join_prompt(*parts: str) -> str:
     return ", ".join(part.strip().strip(",") for part in parts if part.strip())
 
@@ -373,6 +470,8 @@ def resolve(
     method: Method,
     subjects: Iterable[Subject],
     *,
+    style: PromptPreset | None = None,
+    world: PromptPreset | None = None,
     set_id: str | None = None,
     set_name: str | None = None,
     workflow_types: WorkflowTypeRegistry | None = None,
@@ -388,12 +487,32 @@ def resolve(
         raise ReviewError(f"Method {method.id} needs at least one subject")
 
     for subject in members:
-        if not method.accepts(subject.asset_type):
+        if not method.accepts_subject(subject):
+            missing = sorted(set(method.required_guides) - set(subject.guides()))
+            details: list[str] = []
+            if missing:
+                details.append(f"missing guides: {', '.join(missing)}")
+            method_output = _mapping(
+                method.document.get("output", {}), "output"
+            )
+            if (
+                str(method_output.get("promotion", "")) == "aseprite"
+                and not SlotCatalog().is_registered(subject.slot)
+            ):
+                details.append(f"unregistered slot: {subject.slot}")
+            detail = f"; {'; '.join(details)}" if details else ""
             raise ReviewError(
                 f"Method {method.id} applies to "
                 f"{', '.join(method.applies_to)}; subject {subject.id} is "
-                f"{subject.asset_type}"
+                f"{subject.asset_type}{detail}"
             )
+        for label, preset in (("Style", style), ("World", world)):
+            if preset is not None and not preset.accepts(subject.asset_type):
+                raise ReviewError(
+                    f"{label} {preset.id} applies to "
+                    f"{', '.join(preset.applies_to)}; subject {subject.id} "
+                    f"is {subject.asset_type}"
+                )
 
     registry = workflow_types or WorkflowTypeRegistry()
     pipeline = copy.deepcopy(
@@ -402,6 +521,13 @@ def resolve(
     workflow_type = registry.get(str(pipeline.get("type", "")))
 
     lead = members[0]
+    output = copy.deepcopy(_mapping(method.document["output"], "output"))
+    if len(members) == 1 and lead.document.get("output"):
+        # 대상별 캔버스/피벗은 대상의 슬롯 계약이다. 방법이 128×64 기본값을
+        # 갖더라도 사다리(64×112)처럼 형태가 다른 대상이 그 값을 덮는다.
+        output.update(
+            copy.deepcopy(_mapping(lead.document["output"], "subject output"))
+        )
     document: dict[str, Any] = {
         "schema_version": 1,
         "id": (
@@ -429,7 +555,7 @@ def resolve(
                 method.document.get("animation_scope", "")
             ),
         },
-        "output": copy.deepcopy(_mapping(method.document["output"], "output")),
+        "output": output,
         "pipeline": pipeline,
         "generation": copy.deepcopy(
             _mapping(method.document["generation"], "generation")
@@ -439,6 +565,8 @@ def resolve(
             # prompt_suffix 로 갈린다. 여기에 첫 멤버를 구우면 나머지 다섯 장이
             # 전부 그 하나를 닮는다.
             "positive": _join_prompt(
+                str(style.prompt.get("positive", "")) if style else "",
+                str(world.prompt.get("positive", "")) if world else "",
                 str(method.prompt.get("prefix", "")),
                 "" if len(members) > 1 else lead.identity,
                 lead.signature_pose
@@ -448,6 +576,8 @@ def resolve(
                 str(method.prompt.get("suffix", "")),
             ),
             "negative": _join_prompt(
+                str(style.prompt.get("negative", "")) if style else "",
+                str(world.prompt.get("negative", "")) if world else "",
                 str(method.prompt.get("negative", "")),
                 "" if len(members) > 1 else lead.excludes,
             ),
@@ -455,9 +585,21 @@ def resolve(
         "composed_from": {
             "method": method.id,
             "subjects": [subject.id for subject in members],
+            **({"style": style.id} if style else {}),
+            **({"world": world.id} if world else {}),
             **({"subject_set": set_id} if set_id else {}),
         },
     }
+    if style is not None:
+        document["art_style"] = {
+            "id": style.id,
+            "name": style.name,
+        }
+    if world is not None:
+        document["world"] = {
+            "id": world.id,
+            "name": world.name,
+        }
     for optional in ("loras", "controlnets", "quality_gates", "review",
                      "animation", "effect_variants"):
         if optional in method.document:
@@ -469,7 +611,14 @@ def resolve(
         str(role): str(name)
         for role, name in (method.document.get("guide_variants", {}) or {}).items()
     }
-    for role, source in lead.guides(variants).items():
+    subject_guides = lead.guides(variants)
+    if method.guide_roles is not None:
+        subject_guides = {
+            role: source
+            for role, source in subject_guides.items()
+            if role in method.guide_roles
+        }
+    for role, source in subject_guides.items():
         node = workflow_type.node_for_role(role)
         if node is None:
             raise ReviewError(
@@ -522,14 +671,28 @@ def resolve_by_id(
     method_id: str,
     target_id: str,
     *,
+    style_id: str | None = None,
+    world_id: str | None = None,
     methods: MethodRegistry | None = None,
     subjects: SubjectRegistry | None = None,
     subject_sets: SubjectSetRegistry | None = None,
+    styles: StyleRegistry | None = None,
+    worlds: WorldRegistry | None = None,
 ) -> Recipe:
     """`target_id` 는 대상 하나이거나 대상 묶음이다."""
     method_registry = methods or MethodRegistry()
     subject_registry = subjects or SubjectRegistry()
     set_registry = subject_sets or SubjectSetRegistry()
+    style = (
+        (styles or StyleRegistry()).get(style_id)
+        if style_id
+        else None
+    )
+    world = (
+        (worlds or WorldRegistry()).get(world_id)
+        if world_id
+        else None
+    )
 
     method = method_registry.get(method_id)
     known_sets = set_registry.load_all()
@@ -541,10 +704,39 @@ def resolve_by_id(
         return resolve(
             method,
             members,
+            style=style,
+            world=world,
             set_id=subject_set.id,
             set_name=subject_set.name,
         )
-    return resolve(method, [subject_registry.get(target_id)])
+    return resolve(
+        method,
+        [subject_registry.get(target_id)],
+        style=style,
+        world=world,
+    )
+
+
+def definition_for_target(
+    target_id: str,
+    *,
+    subjects: SubjectRegistry | None = None,
+    subject_sets: SubjectSetRegistry | None = None,
+) -> str:
+    """폼에 보여줄 캐릭터/대상 정체성 문장."""
+    subject_registry = subjects or SubjectRegistry()
+    set_registry = subject_sets or SubjectSetRegistry()
+    known_sets = set_registry.load_all()
+    if target_id in known_sets:
+        return ", ".join(
+            f"{member.name}: {member.identity}"
+            for member in (
+                subject_registry.get(member_id)
+                for member_id in known_sets[target_id].member_ids
+            )
+        )
+    subject = subject_registry.get(target_id)
+    return subject.identity or subject.readability_goal
 
 
 def targets_for_method(
@@ -564,6 +756,6 @@ def targets_for_method(
     found.extend(
         (subject.id, subject.name)
         for subject in subject_registry.load_all().values()
-        if method.accepts(subject.asset_type)
+        if method.accepts_subject(subject)
     )
     return found

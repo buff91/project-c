@@ -44,6 +44,11 @@ namespace ProjectC.Tests
                 out string merchantSlot));
             Assert.AreEqual("merchant", merchantSlot);
 
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(
+                "Assets/_Project/Art/Source/Aseprite/actor-arc-drone.aseprite",
+                out string arcDroneSlot));
+            Assert.AreEqual("arcDrone", arcDroneSlot);
+
             Assert.IsFalse(ProjectCAsepritePipeline.TryGetCatalogSlot(
                 "Assets/_Project/Art/Source/Aseprite/unknown.aseprite", out _));
         }
@@ -190,6 +195,43 @@ namespace ProjectC.Tests
             Assert.IsFalse(ActorAnimationBake.SetsEqual(Make("idle"), Make("walk")));
             Assert.IsFalse(ActorAnimationBake.SetsEqual(
                 Make("idle"), new System.Collections.Generic.List<ActorAnimationSet>()));
+        }
+
+        [Test]
+        public void EnvironmentSetsEqual_DetectsSlotAndFrameChanges()
+        {
+            Sprite frame = MakeSprite("prop-campfire_0");
+            System.Collections.Generic.List<EnvironmentAnimationSet> Make(
+                string slot,
+                string tag) =>
+                new System.Collections.Generic.List<EnvironmentAnimationSet>
+                {
+                    new EnvironmentAnimationSet
+                    {
+                        slotKey = slot,
+                        clips = new System.Collections.Generic.List<SpriteClip>
+                        {
+                            new SpriteClip
+                            {
+                                tag = tag,
+                                loop = true,
+                                frames = new[] { frame },
+                                frameStartTimes = new[] { 0f },
+                                length = 0.1f
+                            }
+                        }
+                    }
+                };
+
+            Assert.IsTrue(ActorAnimationBake.EnvironmentSetsEqual(
+                Make("hubCampfire", "idle"),
+                Make("hubCampfire", "idle")));
+            Assert.IsFalse(ActorAnimationBake.EnvironmentSetsEqual(
+                Make("hubCampfire", "idle"),
+                Make("hubPortal", "idle")));
+            Assert.IsFalse(ActorAnimationBake.EnvironmentSetsEqual(
+                Make("hubCampfire", "idle"),
+                Make("hubCampfire", "walk")));
         }
 
         private Sprite MakeSprite(string name)

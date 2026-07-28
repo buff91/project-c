@@ -1,0 +1,87 @@
+schema_version: 1
+id: environment-static-refine-v1
+name: 승인 환경 슬롯 정제 v1
+applies_to:
+- environment
+guide_roles: []
+requires_source_candidate: true
+use: gameplay
+category: environment
+animation_scope: static-slot
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: contain
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: aseprite
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 768
+  height: 768
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 24
+  cfg: 5.5
+  denoise: 0.35
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    preserve the approved source silhouette, projection, footprint and
+    material layout, refine into one production-ready modular isometric pixel
+    environment asset
+  suffix: >-
+    flat pure magenta background touching every border, isolated cutout,
+    crisp final-resolution edges
+  negative: >-
+    changed footprint, changed projection, extra object, neighboring tile,
+    full scene, contact sheet, soft shadow, blurry edge, text, watermark
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 승인 형태의 하드 픽셀 클러스터 정리
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  reject_if:
+  - changed-footprint
+  - changed-projection
+  - multiple-assets
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

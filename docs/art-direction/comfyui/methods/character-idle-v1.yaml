@@ -3,6 +3,11 @@ id: character-idle-v1
 name: 기본 자세 v1
 applies_to:
 - character
+requires_source_candidate: true
+required_guides:
+- pose
+guide_roles:
+- pose
 use: gameplay
 animation_scope: idle-base-only
 category: actor

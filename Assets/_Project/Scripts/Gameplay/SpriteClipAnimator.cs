@@ -18,12 +18,12 @@ namespace ProjectC.Gameplay
     internal sealed class SpriteClipAnimator : MonoBehaviour
     {
         private SpriteRenderer _renderer;
-        private ActorAnimationSet _set;
+        private ISpriteClipSet _set;
         private SpriteClip _current;
         private float _clipTime;
         private bool _holdOnEnd;
 
-        internal void Configure(SpriteRenderer renderer, ActorAnimationSet set)
+        internal void Configure(SpriteRenderer renderer, ISpriteClipSet set)
         {
             _renderer = renderer;
             _set = set;

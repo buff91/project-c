@@ -43,6 +43,16 @@ from art_runner import (
     resolve_batch_jobs,
     work_once,
 )
+from art_compose import (
+    MethodRegistry,
+    StyleRegistry,
+    SubjectRegistry,
+    SubjectSetRegistry,
+    WorldRegistry,
+    definition_for_target,
+    resolve_by_id,
+    targets_for_method,
+)
 
 
 REACTION_LABELS = {
@@ -135,6 +145,7 @@ def slack_help_text() -> str:
         "*생성·조회*\n"
         "• `/art new` — 생성 폼 열기\n"
         "• `/art recipes` · `/art recipe <recipe-id>`\n"
+        "• `/art job <job-id>` — 실제 실행 프롬프트·seed·생성값\n"
         "• `/art run <recipe-id> [count]` — 레시피 전체 생성\n"
         "• `/art shot <recipe-id> <shot-id> [count]` — 한 샷만 시험 생성\n"
         "• `/art batches` · `/art batch <batch-id>` — 다용도 묶음 조회·실행\n"
@@ -271,6 +282,18 @@ def candidate_blocks(
         if recipe.adjustments
         else ""
     )
+    style = recipe.document.get("art_style", {})
+    world = recipe.document.get("world", {})
+    direction_summary = "".join(
+        (
+            f"\n*화풍*  {style.get('name')} · `{style.get('id')}`"
+            if style
+            else "",
+            f"\n*세계관*  {world.get('name')} · `{world.get('id')}`"
+            if world
+            else "",
+        )
+    )
     buttons: list[dict[str, Any]] = [
         {
             "type": "button",
@@ -321,6 +344,14 @@ def candidate_blocks(
         buttons.append(
             {
                 "type": "button",
+                "text": {"type": "plain_text", "text": "➡️ 다음 단계 생성"},
+                "action_id": "art_candidate_next_stage",
+                "value": candidate["id"],
+            }
+        )
+        buttons.append(
+            {
+                "type": "button",
                 "text": {"type": "plain_text", "text": "🚀 게임 반영 요청"},
                 "style": "danger",
                 "action_id": "art_candidate_apply",
@@ -360,7 +391,7 @@ def candidate_blocks(
                 "type": "mrkdwn",
                 "text": (
                     f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}"
-                    f"{shot_summary}\n"
+                    f"{shot_summary}{direction_summary}\n"
                     f"*후보*  `{candidate['id']}`{position_summary} · "
                     f"seed `{candidate['seed']}`"
                     f"{adjusted_summary}\n\n"
@@ -378,8 +409,7 @@ def candidate_blocks(
                         f"`{recipe.id}` · {generation['steps']} steps · "
                         f"CFG {generation['cfg']} · denoise "
                         f"{generation.get('denoise')} · "
-                        "상세 설정은 `/art recipe "
-                        f"{recipe.id}`"
+                        "모델·LoRA·전체 프롬프트는 스레드 첫 답글"
                     ),
                 }
             ],
@@ -665,6 +695,97 @@ def recipe_blocks(recipe: Recipe) -> list[dict[str, Any]]:
     ]
 
 
+def job_blocks(job: Any, candidates: list[Any]) -> list[dict[str, Any]]:
+    """원본 YAML이 아니라 실제 job snapshot을 사람이 읽는 순서로 보여준다."""
+    recipe = recipe_from_job(job)
+    generation = recipe.generation
+    candidate_seeds = ", ".join(
+        f"`{candidate['id'].rsplit('-', 1)[-1]}={candidate['seed']}`"
+        for candidate in candidates
+    ) or "아직 후보 없음"
+    source_line = (
+        f"\n*승인 소스*  `{job['parent_candidate_id']}`"
+        if job["parent_candidate_id"]
+        else ""
+    )
+    style = recipe.document.get("art_style", {})
+    world = recipe.document.get("world", {})
+    direction_lines = "".join(
+        (
+            f"*화풍*  {style.get('name')} · `{style.get('id')}`\n"
+            if style
+            else "",
+            f"*세계관*  {world.get('name')} · `{world.get('id')}`\n"
+            if world
+            else "",
+        )
+    )
+    return [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": truncate(f"🔎 실행 상세 · {recipe.name}", 150),
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    f"*작업*  `{job['id']}` · {job_state_label(job['status'])}\n"
+                    f"{direction_lines}"
+                    f"*대상*  {recipe.asset_type_label} · {slot_label(recipe)}\n"
+                    f"*워크플로*  `{recipe.workflow_type}`\n"
+                    f"*모델*  `{recipe.pipeline.get('checkpoint')}`"
+                    f"{source_line}\n"
+                    f"*Base seed*  `{job['base_seed']}`\n"
+                    f"*후보 seed*  {candidate_seeds}\n"
+                    f"*생성값*  {generation['steps']} steps · "
+                    f"CFG {generation['cfg']} · "
+                    f"denoise {generation.get('denoise')} · "
+                    f"{generation.get('sampler')}/"
+                    f"{generation.get('scheduler')}"
+                ),
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": truncate(
+                    f"*Positive*\n{recipe.prompt['positive']}\n\n"
+                    f"*Negative*\n{recipe.prompt.get('negative', '')}",
+                    2900,
+                ),
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": truncate(
+                    f"*LoRA*\n{lora_summary(recipe)}\n\n"
+                    f"*메모*\n{job['notes'] or '없음'}",
+                    2200,
+                ),
+            },
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"recipe snapshot `{recipe.id}` · "
+                        f"hash `{job['recipe_hash'][:12]}`"
+                    ),
+                }
+            ],
+        },
+    ]
+
+
 def recipes_by_asset_type(
     registry: RecipeRegistry,
 ) -> list[tuple[str, str, list[Recipe]]]:
@@ -741,7 +862,30 @@ def recipe_list_text(registry: RecipeRegistry) -> str:
     return "\n\n".join(sections)
 
 
-MODAL_RECIPE_ACTION = "art_new_recipe_select"
+MODAL_STYLE_ACTION = "art_new_style_select"
+MODAL_WORLD_ACTION = "art_new_world_select"
+MODAL_TARGET_ACTION = "art_new_target_select"
+MODAL_METHOD_ACTION = "art_new_method_select"
+MODAL_ADVANCED_ACTION = "art_new_advanced_toggle"
+
+DIVERSITY_PRESETS = {
+    "focused": 2,
+    "balanced": 4,
+    "wide": 6,
+}
+
+
+def diversity_candidate_count(
+    recipe: Recipe | None,
+    preset: str,
+) -> int:
+    if preset not in DIVERSITY_PRESETS:
+        raise ReviewError(f"Unknown diversity preset {preset!r}")
+    if recipe is not None and recipe.is_multi_shot:
+        # 키프레임 레시피의 후보 수는 "한 장"이 아니라 전체 샷 세트 수다.
+        # 액터 10샷에서 일반 6장을 그대로 쓰면 한 클릭으로 60장을 만든다.
+        return {"focused": 1, "balanced": 1, "wide": 2}[preset]
+    return DIVERSITY_PRESETS[preset]
 
 
 def modal_text(values: dict[str, Any], block_id: str) -> str | None:
@@ -792,55 +936,271 @@ def _text_input(
     }
 
 
+def _composition_targets(
+    style_id: str | None = None,
+    world_id: str | None = None,
+) -> list[tuple[str, str, list[tuple[str, str]]]]:
+    presets = [
+        preset
+        for preset in (
+            StyleRegistry().get(style_id) if style_id else None,
+            WorldRegistry().get(world_id) if world_id else None,
+        )
+        if preset is not None
+    ]
+    grouped: dict[str, list[tuple[str, str]]] = {}
+    for subject in SubjectRegistry().load_all().values():
+        if any(
+            not preset.accepts(subject.asset_type)
+            for preset in presets
+        ):
+            continue
+        grouped.setdefault(subject.asset_type, []).append(
+            (subject.id, subject.name)
+        )
+    for subject_set in SubjectSetRegistry().load_all().values():
+        if any(
+            not preset.accepts(subject_set.asset_type)
+            for preset in presets
+        ):
+            continue
+        grouped.setdefault(subject_set.asset_type, []).append(
+            (subject_set.id, subject_set.name)
+        )
+    ordered = [
+        (type_id, label, grouped.pop(type_id))
+        for type_id, label in ASSET_TYPES
+        if type_id in grouped
+    ]
+    ordered.extend(
+        (type_id, asset_type_label(type_id), entries)
+        for type_id, entries in sorted(grouped.items())
+    )
+    return ordered
+
+
+def _target_asset_type(target_id: str) -> str:
+    subject_sets = SubjectSetRegistry().load_all()
+    if target_id in subject_sets:
+        return subject_sets[target_id].asset_type
+    return SubjectRegistry().get(target_id).asset_type
+
+
+def _target_definition(target_id: str) -> str:
+    return definition_for_target(target_id)
+
+
+def _methods_for_target(
+    target_id: str,
+    *,
+    has_source_candidate: bool,
+) -> list[Any]:
+    compatible = [
+        method
+        for method in MethodRegistry().load_all().values()
+        if target_id in {
+            compatible_id
+            for compatible_id, _name in targets_for_method(method)
+        }
+    ]
+    filtered = [
+        method
+        for method in compatible
+        if method.requires_source_candidate == has_source_candidate
+    ]
+
+    def priority(method: Any) -> tuple[int, str]:
+        method_id = method.id.lower()
+        if has_source_candidate:
+            if "idle" in method_id or "refine" in method_id:
+                return (0, method_id)
+            if "action" in method_id or "keyframe" in method_id:
+                return (1, method_id)
+        elif "concept" in method_id:
+            return (0, method_id)
+        return (2, method_id)
+
+    return sorted(filtered, key=priority)
+
+
 def modal_view(
     registry: RecipeRegistry,
     *,
-    selected_recipe_id: str | None = None,
+    selected_style_id: str | None = None,
+    selected_world_id: str | None = None,
+    selected_target_id: str | None = None,
+    selected_method_id: str | None = None,
+    source_candidate_id: str | None = None,
+    advanced: bool = False,
+    diversity: str = "balanced",
     workflow_types: WorkflowTypeRegistry | None = None,
 ) -> dict[str, Any]:
-    """생성 폼. 레시피를 고르면 그 값이 채워지고, 그 자리에서 고칠 수 있다.
+    """빠른 생성과 승인본 발전을 분리한 재현 가능한 생성 폼."""
+    del registry  # 구 레시피 명령과 배치는 유지하고, 생성 폼만 합성 구조를 쓴다.
 
-    조정값은 이번 job 의 recipe_json 스냅샷에만 들어간다 — YAML 은 그대로다.
-    """
-    # 평평한 목록은 레시피가 늘수록 못 읽는다. Slack option_groups로 에셋
-    # 타입별 소제목을 붙여 "지금 만들려는 게 뭔가"부터 좁히게 한다.
-    option_groups = []
-    selected_option = None
-    for _type_id, label, recipes in recipes_by_asset_type(registry):
+    styles = list(StyleRegistry().load_all().values())
+    worlds = list(WorldRegistry().load_all().values())
+    if selected_style_id is None and styles:
+        selected_style_id = styles[0].id
+    if selected_world_id is None and worlds:
+        selected_world_id = worlds[0].id
+    if diversity not in DIVERSITY_PRESETS:
+        diversity = "balanced"
+
+    def preset_element(
+        entries: Any,
+        *,
+        action_id: str,
+        placeholder: str,
+        selected_id: str | None,
+    ) -> dict[str, Any]:
+        options = [
+            {
+                "text": {
+                    "type": "plain_text",
+                    "text": truncate(entry.name, 75),
+                },
+                "value": entry.id,
+            }
+            for entry in entries
+        ]
+        element: dict[str, Any] = {
+            "type": "static_select",
+            "action_id": action_id,
+            "placeholder": {
+                "type": "plain_text",
+                "text": placeholder,
+            },
+            "options": options,
+        }
+        selected = next(
+            (
+                option
+                for option in options
+                if option["value"] == selected_id
+            ),
+            None,
+        )
+        if selected is not None:
+            element["initial_option"] = selected
+        return element
+
+    style_element = preset_element(
+        styles,
+        action_id=MODAL_STYLE_ACTION,
+        placeholder="픽셀 표현·렌더링 화풍을 고르세요",
+        selected_id=selected_style_id,
+    )
+    world_element = preset_element(
+        worlds,
+        action_id=MODAL_WORLD_ACTION,
+        placeholder="세계관·재료·분위기를 고르세요",
+        selected_id=selected_world_id,
+    )
+
+    target_groups: list[dict[str, Any]] = []
+    selected_target_option = None
+    for _type_id, label, targets in _composition_targets(
+        selected_style_id,
+        selected_world_id,
+    ):
         options = []
-        for recipe in recipes:
+        for target_id, target_name in targets:
             option = {
                 "text": {
                     "type": "plain_text",
-                    "text": truncate(recipe.name, 75),
+                    "text": truncate(f"{target_name} · {target_id}", 75),
                 },
-                "value": recipe.id,
+                "value": target_id,
             }
-            if recipe.id == selected_recipe_id:
-                selected_option = option
+            if target_id == selected_target_id:
+                selected_target_option = option
             options.append(option)
-        option_groups.append(
+        target_groups.append(
             {
                 "label": {"type": "plain_text", "text": truncate(label, 75)},
                 "options": options[:100],
             }
         )
-    option_groups = option_groups[:100]
 
-    recipe_element: dict[str, Any] = {
-        "type": "static_select",
-        "action_id": MODAL_RECIPE_ACTION,
-        "placeholder": {
-            "type": "plain_text",
-            "text": "에셋 타입에서 고르세요",
-        },
-        "option_groups": option_groups,
-    }
-    if selected_option is not None:
-        recipe_element["initial_option"] = selected_option
+    target_element: dict[str, Any] | None = None
+    if selected_style_id and selected_world_id:
+        target_element = {
+            "type": "static_select",
+            "action_id": MODAL_TARGET_ACTION,
+            "placeholder": {
+                "type": "plain_text",
+                "text": "어떤 캐릭터·환경·VFX를 만들지 고르세요",
+            },
+            "option_groups": target_groups[:100],
+        }
+        if selected_target_option is not None:
+            target_element["initial_option"] = selected_target_option
+
+    method_element: dict[str, Any] | None = None
+    selected_method_option = None
+    compatible_methods = (
+        _methods_for_target(
+            selected_target_id,
+            has_source_candidate=bool(source_candidate_id),
+        )
+        if selected_target_id
+        else []
+    )
+    compatible_method_ids = {method.id for method in compatible_methods}
+    if selected_method_id not in compatible_method_ids:
+        selected_method_id = (
+            compatible_methods[0].id if compatible_methods else None
+        )
+    method_options = [
+        {
+            "text": {
+                "type": "plain_text",
+                "text": truncate(
+                    (
+                        "승인본 발전 · "
+                        if source_candidate_id
+                        else "새로 탐색 · "
+                    )
+                    + method.name,
+                    75,
+                ),
+            },
+            "value": method.id,
+        }
+        for method in compatible_methods
+    ]
+    for option in method_options:
+        if option["value"] == selected_method_id:
+            selected_method_option = option
+            break
+    if selected_target_id and method_options:
+        method_element = {
+            "type": "static_select",
+            "action_id": MODAL_METHOD_ACTION,
+            "placeholder": {
+                "type": "plain_text",
+                "text": "컨셉·스프라이트·키프레임 중 고르세요",
+            },
+            "options": method_options,
+        }
+        if selected_method_option is not None:
+            method_element["initial_option"] = selected_method_option
 
     selected = (
-        registry.get(selected_recipe_id) if selected_recipe_id else None
+        resolve_by_id(
+            selected_method_id,
+            selected_target_id,
+            style_id=selected_style_id,
+            world_id=selected_world_id,
+        )
+        if (
+            selected_style_id
+            and selected_world_id
+            and selected_target_id
+            and selected_method_option is not None
+        )
+        else None
     )
     types = (workflow_types or WorkflowTypeRegistry()).load_all().values()
     type_options = [
@@ -870,12 +1230,42 @@ def modal_view(
     blocks: list[dict[str, Any]] = [
         {
             "type": "input",
-            "block_id": "recipe",
+            "block_id": "style",
             "dispatch_action": True,
-            "label": {"type": "plain_text", "text": "레시피"},
-            "element": recipe_element,
+            "label": {"type": "plain_text", "text": "1. 화풍"},
+            "element": style_element,
+        },
+        {
+            "type": "input",
+            "block_id": "world",
+            "dispatch_action": True,
+            "label": {"type": "plain_text", "text": "2. 세계관"},
+            "element": world_element,
         }
     ]
+    if target_element is not None:
+        blocks.append(
+            {
+                "type": "input",
+                "block_id": "target",
+                "dispatch_action": True,
+                "label": {
+                    "type": "plain_text",
+                    "text": "3. 제작 대상 / 캐릭터",
+                },
+                "element": target_element,
+            }
+        )
+    if method_element is not None:
+        blocks.append(
+            {
+                "type": "input",
+                "block_id": "method",
+                "dispatch_action": True,
+                "label": {"type": "plain_text", "text": "4. 제작 단계 / 방법"},
+                "element": method_element,
+            }
+        )
     if selected is None:
         blocks.append(
             {
@@ -884,8 +1274,16 @@ def modal_view(
                     {
                         "type": "mrkdwn",
                         "text": (
-                            "레시피를 고르면 프롬프트·모델·워크플로가 채워지고, "
-                            "이 자리에서 이번 실행만 고칠 수 있습니다."
+                            (
+                                "이 대상은 승인된 후보에서만 이어 만들 수 있습니다. "
+                                "기존 후보 카드의 `➡️ 다음 단계 생성`을 누르세요."
+                            )
+                            if selected_target_id and not method_options
+                            else (
+                                "제작 대상만 고르면 새 컨셉에 맞는 방법이 자동으로 "
+                                "선택됩니다. 승인본을 발전시킬 때는 후보 카드의 "
+                                "`➡️ 다음 단계 생성`을 사용하세요."
+                            )
                         ),
                     }
                 ],
@@ -901,70 +1299,205 @@ def modal_view(
                         {
                             "type": "mrkdwn",
                             "text": (
-                                f"아래는 `{selected.id}` 의 현재 값입니다. "
-                                "고치면 *이번 실행에만* 적용되고 레시피 YAML 은 "
-                                "그대로입니다."
+                                (
+                                    f"*승인 후보 `{source_candidate_id}`에서 이어 만듭니다.* "
+                                    "후보 ID를 다시 입력할 필요가 없습니다.\n"
+                                )
+                                if source_candidate_id
+                                else ""
+                            )
+                            + (
+                                f"`{selected.id}` 설정은 job에 저장되어 "
+                                "나중에도 그대로 재현할 수 있습니다."
                             ),
                         }
                     ],
                 },
                 {
-                    "type": "input",
-                    "block_id": "workflow_type",
-                    "optional": True,
-                    "label": {"type": "plain_text", "text": "워크플로"},
-                    "element": type_element,
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": (
+                                    "간단히 보기"
+                                    if advanced
+                                    else "고급 설정 열기"
+                                ),
+                            },
+                            "action_id": MODAL_ADVANCED_ACTION,
+                            "value": "simple" if advanced else "advanced",
+                        }
+                    ],
                 },
                 _text_input(
-                    "checkpoint",
-                    "모델 (checkpoint)",
-                    value=str(selected.pipeline.get("checkpoint", "")),
-                    placeholder="예: dreamshaper_8.safetensors",
-                ),
-                _text_input(
-                    "positive",
-                    "긍정 프롬프트",
-                    value=str(selected.prompt.get("positive", "")),
+                    "target_definition",
+                    "5. 캐릭터 / 대상 정의",
+                    value=_target_definition(selected_target_id),
+                    placeholder=(
+                        "예: 붉은 후드와 외눈 센서, 작은 배낭, "
+                        "머리 위로 슬링을 든 원거리 약탈자"
+                    ),
                     multiline=True,
                 ),
                 _text_input(
-                    "negative",
-                    "제외 프롬프트",
-                    value=str(selected.prompt.get("negative", "")),
+                    "brief",
+                    "6. 이번 생성 내용 (positive에 추가)",
+                    placeholder=(
+                        "예: 폐병원 수색대장, 짧은 산소통, "
+                        "붉은 센서 한 점, 왼쪽 위를 경계"
+                    ),
                     multiline=True,
                 ),
-                {"type": "divider"},
             ]
         )
+        if advanced:
+            blocks.extend(
+                [
+                    {
+                        "type": "input",
+                        "block_id": "workflow_type",
+                        "optional": True,
+                        "label": {"type": "plain_text", "text": "워크플로"},
+                        "element": type_element,
+                    },
+                    _text_input(
+                        "checkpoint",
+                        "모델 (checkpoint)",
+                        value=str(selected.pipeline.get("checkpoint", "")),
+                        placeholder="예: dreamshaper_8.safetensors",
+                    ),
+                    _text_input(
+                        "positive",
+                        "긍정 프롬프트",
+                        value=str(selected.prompt.get("positive", "")),
+                        multiline=True,
+                    ),
+                    _text_input(
+                        "negative",
+                        "제외 프롬프트",
+                        value=str(selected.prompt.get("negative", "")),
+                        multiline=True,
+                    ),
+                    _text_input(
+                        "seed",
+                        "Base seed (비우면 실행 시 난수로 고정)",
+                        placeholder="예: 1667020327",
+                    ),
+                    _text_input(
+                        "steps",
+                        "Steps",
+                        value=str(selected.generation["steps"]),
+                    ),
+                    _text_input(
+                        "cfg",
+                        "CFG",
+                        value=str(selected.generation["cfg"]),
+                    ),
+                    _text_input(
+                        "denoise",
+                        "Denoise",
+                        value=str(selected.generation.get("denoise", 1.0)),
+                    ),
+                ]
+            )
+            workflow = (workflow_types or WorkflowTypeRegistry()).get(
+                selected.workflow_type
+            )
+            if (
+                not source_candidate_id
+                and any(
+                    role in workflow.upload_roles
+                    for role in ("style_source", "source_sheet")
+                )
+            ):
+                blocks.append(
+                    _text_input(
+                        "source_candidate",
+                        "승인 소스 후보 ID",
+                        placeholder="예: ART-...-C01",
+                    )
+                )
+        blocks.append({"type": "divider"})
+
+    diversity_counts = {
+        preset: diversity_candidate_count(selected, preset)
+        for preset in DIVERSITY_PRESETS
+    }
+    unit = "세트" if selected is not None and selected.is_multi_shot else "장"
+    diversity_options = [
+        {
+            "text": {
+                "type": "plain_text",
+                "text": f"{label} · {diversity_counts[preset]}{unit}",
+            },
+            "description": {"type": "plain_text", "text": description},
+            "value": preset,
+        }
+        for preset, label, description in (
+            ("focused", "빠르게 확인", "최소 비용으로 핵심 방향만 봅니다."),
+            ("balanced", "균형 있게", "기본 추천. 비교하기 충분한 수입니다."),
+            ("wide", "넓게 탐색", "서로 다른 seed를 더 넓게 비교합니다."),
+        )
+    ]
+    diversity_element: dict[str, Any] = {
+        "type": "radio_buttons",
+        "action_id": "value",
+        "options": diversity_options,
+        "initial_option": next(
+            option
+            for option in diversity_options
+            if option["value"] == diversity
+        ),
+    }
     blocks.extend(
         [
             {
                 "type": "input",
-                "block_id": "count",
-                "optional": True,
-                "label": {"type": "plain_text", "text": "후보 수"},
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "value",
-                    "initial_value": str(
-                        selected.candidate_count if selected else 4
-                    ),
-                },
+                "block_id": "diversity",
+                "label": {"type": "plain_text", "text": "결과 다양성"},
+                "element": diversity_element,
             },
             _text_input(
                 "notes",
-                "이번 배치 메모",
+                "메모 (프롬프트에는 들어가지 않음)",
                 placeholder="예: 팔은 유지하고 슬링 길이만 짧게",
                 multiline=True,
             ),
         ]
     )
+    if selected is not None and selected.is_multi_shot:
+        blocks.insert(
+            -1,
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": (
+                            f"키프레임 작업은 후보 1세트가 "
+                            f"*{len(selected.shots)}개 샷 전체*입니다. "
+                            "과도한 생성을 막기 위해 최대 2세트로 제한합니다."
+                        ),
+                    }
+                ],
+            },
+        )
     return {
         "type": "modal",
         "callback_id": "art_new_job_modal",
         "title": {"type": "plain_text", "text": "아트 생성"},
         "submit": {"type": "plain_text", "text": "큐에 추가"},
         "close": {"type": "plain_text", "text": "취소"},
+        "private_metadata": json.dumps(
+            {
+                "source_candidate_id": source_candidate_id or "",
+                "advanced": advanced,
+                "diversity": diversity,
+            },
+            separators=(",", ":"),
+        ),
         "blocks": blocks,
     }
 
@@ -1088,6 +1621,11 @@ class SlackReviewService:
             )
         else:
             root_ts = mapping["message_ts"]
+        self.post_candidate_details(
+            client,
+            candidate_id,
+            root_ts=root_ts,
+        )
         raw_path = project_path(candidate["raw_path"])
         raw_step = f"candidate:{candidate_id}:raw"
         if (
@@ -1161,6 +1699,40 @@ class SlackReviewService:
                         candidate_id=candidate_id,
                     )
 
+    def post_candidate_details(
+        self,
+        client: Any,
+        candidate_id: str,
+        *,
+        root_ts: str | None = None,
+    ) -> bool:
+        """후보 스레드 첫 답글에 재현 가능한 실제 실행 스냅샷을 한 번만 남긴다."""
+        if self.store.find_candidate_details_slack_message(candidate_id):
+            return False
+        candidate = self.store.get_candidate(candidate_id)
+        job = self.store.get_job(candidate["job_id"])
+        root = self.store.find_candidate_slack_message(candidate_id)
+        if root is None and root_ts is None:
+            raise ReviewError(
+                f"Candidate {candidate_id} has no Slack root message"
+            )
+        channel_id = root["channel_id"] if root else self.channel_id
+        thread_ts = root_ts or root["message_ts"]
+        response = client.chat_postMessage(
+            channel=channel_id,
+            thread_ts=thread_ts,
+            text=f"실행 상세 · {job['id']} · {candidate_id}",
+            blocks=job_blocks(job, [candidate]),
+        )
+        self.store.map_slack_message(
+            message_ts=response["ts"],
+            channel_id=channel_id,
+            kind="candidate-details",
+            job_id=job["id"],
+            candidate_id=candidate_id,
+        )
+        return True
+
     def update_candidate(self, client: Any, candidate_id: str) -> None:
         mapping = self.store.find_candidate_slack_message(candidate_id)
         if mapping is None:
@@ -1179,6 +1751,7 @@ class SlackReviewService:
                 recipe,
                 candidate,
                 approved=self.store.candidate_is_approved(candidate_id),
+                job_id=job["id"],
             ),
         )
 
@@ -1496,6 +2069,24 @@ class SlackReviewService:
                     f"{detail}\n요청 `{request['id']}`"
                 ),
             )
+        elif kind in {"feedback_progress", "feedback_resolved"}:
+            if kind == "feedback_progress":
+                text = (
+                    "🔎 *Codex Agent가 확인 중입니다.*\n"
+                    f"{payload['detail']}\n"
+                    f"피드백 `#{payload['feedback_id']}`"
+                )
+            else:
+                text = (
+                    "✅ *Codex Agent 검토 완료*\n"
+                    f"{payload['resolution']}\n"
+                    f"피드백 `#{payload['feedback_id']}`"
+                )
+            candidate_id = payload.get("candidate_id")
+            if candidate_id:
+                self.post_thread(client, candidate_id, text)
+            else:
+                client.chat_postMessage(channel=self.channel_id, text=text)
         elif kind in {"action_failed"}:
             candidate_id = payload.get("candidate_id")
             text = (
@@ -1676,6 +2267,53 @@ def register_handlers(
             requested_by=f"slack:{user_id}",
         )
 
+    @app.action("art_candidate_next_stage")
+    def next_stage(
+        ack: Callable[[], None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        ack()
+        user_id = body["user"]["id"]
+        try:
+            require_allowed(user_id)
+            candidate_id = body["actions"][0]["value"]
+            store.approved_candidate_source(candidate_id)
+            candidate = store.get_candidate(candidate_id)
+            source_recipe = recipe_from_job(
+                store.get_job(candidate["job_id"])
+            )
+            composed_from = source_recipe.document.get(
+                "composed_from",
+                {},
+            )
+            subjects = list(composed_from.get("subjects") or [])
+            target_id = (
+                composed_from.get("subject_set")
+                or (subjects[0] if subjects else None)
+            )
+            if (
+                target_id is None
+                and source_recipe.slot
+                in SubjectRegistry().load_all()
+            ):
+                target_id = source_recipe.slot
+            client.views_open(
+                trigger_id=body["trigger_id"],
+                view=modal_view(
+                    registry,
+                    selected_style_id=composed_from.get("style"),
+                    selected_world_id=composed_from.get("world"),
+                    selected_target_id=target_id,
+                    source_candidate_id=candidate_id,
+                ),
+            )
+        except Exception as exc:
+            client.chat_postMessage(
+                channel=user_id,
+                text=f"다음 단계 폼을 열 수 없습니다: {exc}",
+            )
+
     def decide_shot(
         decision: str,
         action: dict[str, Any],
@@ -1790,6 +2428,7 @@ def register_handlers(
     def record_message_feedback(
         event: dict[str, Any],
         body: dict[str, Any],
+        client: Any,
     ) -> None:
         if event.get("bot_id") or event.get("subtype"):
             return
@@ -1818,7 +2457,7 @@ def register_handlers(
                 if tag and f"[{tag}]" in lowered:
                     animation_tag = tag
                     break
-        store.add_feedback(
+        inserted = store.add_feedback(
             event_key=(
                 f"slack-message:{event.get('channel')}:{event.get('ts')}"
             ),
@@ -1841,20 +2480,41 @@ def register_handlers(
             job_id=job_id,
             candidate_id=candidate_id,
         )
+        if inserted:
+            target = (
+                f"샷 `{shot_id}`"
+                if shot_id
+                else f"애니메이션 `{animation_tag}`"
+                if animation_tag
+                else f"후보 `{candidate_id}`"
+            )
+            client.chat_postMessage(
+                channel=event["channel"],
+                thread_ts=root_ts,
+                text=(
+                    "👀 *답변을 확인했습니다.*\n"
+                    f"*상태*  Codex Agent 검토 대기\n"
+                    f"*대상*  {target}\n"
+                    "이미지와 실행 설정을 함께 확인한 뒤 "
+                    "이 스레드에 진행 상태와 답변을 남기겠습니다."
+                ),
+            )
 
     @app.event("message")
     def message_feedback(
         event: dict[str, Any],
         body: dict[str, Any],
+        client: Any,
     ) -> None:
-        record_message_feedback(event, body)
+        record_message_feedback(event, body, client)
 
     @app.event("app_mention")
     def mention_feedback(
         event: dict[str, Any],
         body: dict[str, Any],
+        client: Any,
     ) -> None:
-        record_message_feedback(event, body)
+        record_message_feedback(event, body, client)
 
     @app.command("/art")
     def art_command(
@@ -1905,6 +2565,16 @@ def register_handlers(
                     response_type="ephemeral",
                     text=recipe.name,
                     blocks=recipe_blocks(recipe),
+                )
+            elif verb == "job" and len(words) >= 2:
+                job = store.get_job(words[1])
+                respond(
+                    response_type="ephemeral",
+                    text=f"실행 상세 · {words[1]}",
+                    blocks=job_blocks(
+                        job,
+                        store.list_candidates(words[1]),
+                    ),
                 )
             elif verb == "batches":
                 plans = BatchRegistry(service.batch_dir).load_all().values()
@@ -2179,27 +2849,192 @@ def register_handlers(
                 text=f"처리하지 못했습니다: {exc}",
             )
 
-    @app.action(MODAL_RECIPE_ACTION)
-    def art_new_recipe_select(
+    def modal_selected(
+        body: dict[str, Any],
+        block_id: str,
+        action_id: str,
+    ) -> str | None:
+        block = body["view"]["state"]["values"].get(block_id, {})
+        option = block.get(action_id, {}).get("selected_option")
+        return str(option["value"]) if option else None
+
+    def modal_metadata(body: dict[str, Any]) -> dict[str, Any]:
+        return json.loads(
+            body["view"].get("private_metadata") or "{}"
+        )
+
+    @app.action(MODAL_STYLE_ACTION)
+    def art_new_style_select(
         ack: Callable[..., None],
         body: dict[str, Any],
         client: Any,
     ) -> None:
-        """레시피를 고르는 순간 그 값으로 폼을 다시 그린다.
-
-        빈 칸을 두고 "고치고 싶은 것만 쓰세요"라고 하면 사람은 지금 값이
-        무엇인지 모른 채 쓰게 된다. 채워서 보여주고 고치게 한다.
-        """
         ack()
         try:
             selected = body["actions"][0]["selected_option"]["value"]
+            world_id = modal_selected(
+                body, "world", MODAL_WORLD_ACTION
+            )
+            metadata = modal_metadata(body)
             client.views_update(
                 view_id=body["view"]["id"],
                 hash=body["view"]["hash"],
-                view=modal_view(registry, selected_recipe_id=selected),
+                view=modal_view(
+                    registry,
+                    selected_style_id=selected,
+                    selected_world_id=world_id,
+                    source_candidate_id=metadata.get(
+                        "source_candidate_id"
+                    ) or None,
+                    advanced=bool(metadata.get("advanced")),
+                    diversity=str(
+                        metadata.get("diversity") or "balanced"
+                    ),
+                ),
             )
         except Exception:
-            log_error("modal recipe prefill failed")
+            log_error("modal style selection failed")
+
+    @app.action(MODAL_WORLD_ACTION)
+    def art_new_world_select(
+        ack: Callable[..., None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        ack()
+        try:
+            selected = body["actions"][0]["selected_option"]["value"]
+            style_id = modal_selected(
+                body, "style", MODAL_STYLE_ACTION
+            )
+            metadata = modal_metadata(body)
+            client.views_update(
+                view_id=body["view"]["id"],
+                hash=body["view"]["hash"],
+                view=modal_view(
+                    registry,
+                    selected_style_id=style_id,
+                    selected_world_id=selected,
+                    source_candidate_id=metadata.get(
+                        "source_candidate_id"
+                    ) or None,
+                    advanced=bool(metadata.get("advanced")),
+                    diversity=str(
+                        metadata.get("diversity") or "balanced"
+                    ),
+                ),
+            )
+        except Exception:
+            log_error("modal world selection failed")
+
+    @app.action(MODAL_TARGET_ACTION)
+    def art_new_target_select(
+        ack: Callable[..., None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        ack()
+        try:
+            selected = body["actions"][0]["selected_option"]["value"]
+            style_id = modal_selected(body, "style", MODAL_STYLE_ACTION)
+            world_id = modal_selected(body, "world", MODAL_WORLD_ACTION)
+            metadata = modal_metadata(body)
+            client.views_update(
+                view_id=body["view"]["id"],
+                hash=body["view"]["hash"],
+                view=modal_view(
+                    registry,
+                    selected_style_id=style_id,
+                    selected_world_id=world_id,
+                    selected_target_id=selected,
+                    source_candidate_id=metadata.get(
+                        "source_candidate_id"
+                    ) or None,
+                    advanced=bool(metadata.get("advanced")),
+                    diversity=str(
+                        metadata.get("diversity") or "balanced"
+                    ),
+                ),
+            )
+        except Exception:
+            log_error("modal target selection failed")
+
+    @app.action(MODAL_METHOD_ACTION)
+    def art_new_method_select(
+        ack: Callable[..., None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        ack()
+        try:
+            method_id = body["actions"][0]["selected_option"]["value"]
+            style_id = modal_selected(body, "style", MODAL_STYLE_ACTION)
+            world_id = modal_selected(body, "world", MODAL_WORLD_ACTION)
+            target_id = (
+                body["view"]["state"]["values"]["target"]
+                [MODAL_TARGET_ACTION]["selected_option"]["value"]
+            )
+            metadata = modal_metadata(body)
+            client.views_update(
+                view_id=body["view"]["id"],
+                hash=body["view"]["hash"],
+                view=modal_view(
+                    registry,
+                    selected_style_id=style_id,
+                    selected_world_id=world_id,
+                    selected_target_id=target_id,
+                    selected_method_id=method_id,
+                    source_candidate_id=metadata.get(
+                        "source_candidate_id"
+                    ) or None,
+                    advanced=bool(metadata.get("advanced")),
+                    diversity=str(
+                        metadata.get("diversity") or "balanced"
+                    ),
+                ),
+            )
+        except Exception:
+            log_error("modal method selection failed")
+
+    @app.action(MODAL_ADVANCED_ACTION)
+    def art_new_advanced_toggle(
+        ack: Callable[..., None],
+        body: dict[str, Any],
+        client: Any,
+    ) -> None:
+        ack()
+        try:
+            metadata = modal_metadata(body)
+            client.views_update(
+                view_id=body["view"]["id"],
+                hash=body["view"]["hash"],
+                view=modal_view(
+                    registry,
+                    selected_style_id=modal_selected(
+                        body, "style", MODAL_STYLE_ACTION
+                    ),
+                    selected_world_id=modal_selected(
+                        body, "world", MODAL_WORLD_ACTION
+                    ),
+                    selected_target_id=modal_selected(
+                        body, "target", MODAL_TARGET_ACTION
+                    ),
+                    selected_method_id=modal_selected(
+                        body, "method", MODAL_METHOD_ACTION
+                    ),
+                    source_candidate_id=metadata.get(
+                        "source_candidate_id"
+                    ) or None,
+                    advanced=not bool(metadata.get("advanced")),
+                    diversity=modal_select(
+                        body["view"]["state"]["values"],
+                        "diversity",
+                    )
+                    or str(metadata.get("diversity") or "balanced"),
+                ),
+            )
+        except Exception:
+            log_error("modal advanced toggle failed")
 
     @app.view("art_new_job_modal")
     def art_new_job_modal(
@@ -2212,33 +3047,116 @@ def register_handlers(
         try:
             require_allowed(user_id)
             values = view["state"]["values"]
-            recipe_id = (
-                values["recipe"][MODAL_RECIPE_ACTION]["selected_option"]
+            style_id = (
+                values["style"][MODAL_STYLE_ACTION]["selected_option"]
                 ["value"]
             )
-            count_text = values["count"]["value"].get("value") or ""
-            try:
-                count = int(count_text) if count_text else None
-            except ValueError:
-                ack(
-                    response_action="errors",
-                    errors={"count": "후보 수는 정수여야 합니다."},
+            world_id = (
+                values["world"][MODAL_WORLD_ACTION]["selected_option"]
+                ["value"]
+            )
+            if "target" not in values:
+                raise ReviewError("제작 대상을 먼저 골라주세요.")
+            if "method" not in values:
+                raise ReviewError(
+                    "선택한 대상에서 사용할 수 있는 제작 방식을 확인해주세요."
                 )
-                return
-            if count is not None and not 1 <= count <= 12:
-                ack(
-                    response_action="errors",
-                    errors={"count": "후보 수는 1~12 사이여야 합니다."},
-                )
-                return
+            target_id = (
+                values["target"][MODAL_TARGET_ACTION]["selected_option"]
+                ["value"]
+            )
+            method_id = (
+                values["method"][MODAL_METHOD_ACTION]["selected_option"]
+                ["value"]
+            )
+            diversity = modal_select(values, "diversity") or "balanced"
+            if diversity not in DIVERSITY_PRESETS:
+                raise ReviewError("알 수 없는 결과 다양성 설정입니다.")
             notes = values["notes"]["value"].get("value") or ""
-            recipe = registry.get(recipe_id)
+            target_definition = modal_text(values, "target_definition")
+            brief = modal_text(values, "brief")
+            metadata = json.loads(view.get("private_metadata") or "{}")
+            source_candidate_id = (
+                modal_text(values, "source_candidate")
+                or str(metadata.get("source_candidate_id") or "")
+                or None
+            )
+
+            method = MethodRegistry().get(method_id)
+            if method.requires_source_candidate and not source_candidate_id:
+                raise ReviewError(
+                    "승인본 발전은 후보 카드의 `➡️ 다음 단계 생성`에서 시작하세요."
+                )
+            recipe = resolve_by_id(
+                method_id,
+                target_id,
+                style_id=style_id,
+                world_id=world_id,
+            )
+            count = diversity_candidate_count(recipe, diversity)
+            positive = (
+                modal_text(values, "positive")
+                or str(recipe.prompt.get("positive", ""))
+            )
+            default_definition = _target_definition(target_id)
+            if (
+                target_definition
+                and target_definition != default_definition
+            ):
+                if default_definition and default_definition in (positive or ""):
+                    positive = (positive or "").replace(
+                        default_definition,
+                        target_definition,
+                        1,
+                    )
+                elif target_definition not in (positive or ""):
+                    positive = ", ".join(
+                        part.strip().strip(",")
+                        for part in (positive or "", target_definition)
+                        if part.strip()
+                    )
+                notes = (
+                    f"대상 정의: {target_definition}\n{notes}".strip()
+                )
+            if brief:
+                positive = ", ".join(
+                    part.strip().strip(",")
+                    for part in (positive or "", brief)
+                    if part.strip()
+                )
+                notes = (
+                    f"생성 내용: {brief}\n{notes}".strip()
+                )
+
+            def optional_int(block_id: str) -> int | None:
+                value = modal_text(values, block_id)
+                return int(value) if value is not None else None
+
+            def optional_float(block_id: str) -> float | None:
+                value = modal_text(values, block_id)
+                return float(value) if value is not None else None
+
+            base_seed = optional_int("seed")
+            if base_seed is not None and base_seed < 0:
+                raise ReviewError("Base seed는 0 이상이어야 합니다.")
+            steps = optional_int("steps")
+            cfg = optional_float("cfg")
+            denoise = optional_float("denoise")
+            if source_candidate_id:
+                source = store.approved_candidate_source(
+                    source_candidate_id
+                )
+                recipe = recipe.with_source_image(source)
             recipe = recipe.with_overrides(
                 workflow_type=modal_select(values, "workflow_type"),
                 checkpoint=modal_text(values, "checkpoint"),
-                positive=modal_text(values, "positive"),
+                positive=positive,
                 negative=modal_text(values, "negative"),
+                steps=steps,
+                cfg=cfg,
+                denoise=denoise,
             )
+            recipe.validate_files()
         except Exception as exc:
             ack(
                 response_action="errors",
@@ -2251,7 +3169,9 @@ def register_handlers(
                 recipe,
                 requested_by=f"slack:{user_id}",
                 candidate_count=count,
+                base_seed=base_seed,
                 notes=notes,
+                parent_candidate_id=source_candidate_id,
             )
         except Exception as exc:
             log_error("modal job creation failed")

@@ -1,0 +1,75 @@
+schema_version: 1
+id: environment-loop-concept-sdxl-v1
+name: 환경 루프 컨셉 탐색 v1
+applies_to:
+- animation
+guide_roles: []
+use: concept
+category: environment
+animation_scope: idle-loop-reference
+output:
+  canvas: [128, 128]
+  pivot: [0.5, 0.094]
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+generation:
+  width: 1024
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    one isolated isometric animated-environment master keyframe, stable base
+    silhouette, clearly separable moving light or energy region
+  suffix: >-
+    flat pure magenta background touching every border, one object only,
+    animation design reference rather than a contact sheet
+  negative: >-
+    contact sheet, multiple frames, multiple objects, full room, landscape,
+    camera motion, text, label, watermark
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 하드 픽셀 클러스터와 루프 가능한 실루엣
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  reject_if:
+  - multiple-frames
+  - moving-base
+  - full-scene
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

@@ -298,6 +298,9 @@ class Recipe:
         checkpoint: str | None = None,
         positive: str | None = None,
         negative: str | None = None,
+        steps: int | None = None,
+        cfg: float | None = None,
+        denoise: float | None = None,
         registry: "WorkflowTypeRegistry | None" = None,
     ) -> "Recipe":
         """이번 실행에만 적용할 조정본을 만든다.
@@ -324,6 +327,18 @@ class Recipe:
         if negative is not None and negative != self.prompt.get("negative"):
             document["prompt"]["negative"] = negative
             changed.append("제외 프롬프트")
+        if steps is not None and steps != int(self.generation["steps"]):
+            document["generation"]["steps"] = steps
+            changed.append("Steps")
+        if cfg is not None and cfg != float(self.generation["cfg"]):
+            document["generation"]["cfg"] = cfg
+            changed.append("CFG")
+        if (
+            denoise is not None
+            and denoise != float(self.generation.get("denoise", 1.0))
+        ):
+            document["generation"]["denoise"] = denoise
+            changed.append("Denoise")
 
         if not changed:
             return self
@@ -337,6 +352,56 @@ class Recipe:
         adjusted.validate_workflow_type(registry)
         if "워크플로" in changed:
             adjusted.validate_binding_nodes()
+        return adjusted
+
+    def with_source_image(
+        self,
+        source: Path,
+        *,
+        registry: "WorkflowTypeRegistry | None" = None,
+    ) -> "Recipe":
+        """승인된 앞 단계 이미지를 이 레시피의 주 입력으로 연결한다.
+
+        캐릭터는 ``style_source``, 환경·VFX img2img는 ``source_sheet``를
+        우선한다. 포즈 입력은 별도 계약이므로 승인 원본으로 덮지 않는다.
+        """
+        resolved_source = source.resolve()
+        if not resolved_source.is_file():
+            raise ReviewError(f"Source image is missing: {resolved_source}")
+        workflow_type = (registry or WorkflowTypeRegistry()).get(
+            self.workflow_type
+        )
+        role = next(
+            (
+                candidate
+                for candidate in ("style_source", "source_sheet")
+                if candidate in workflow_type.upload_roles
+            ),
+            None,
+        )
+        if role is None:
+            raise ReviewError(
+                f"Workflow type {workflow_type.id} has no approved-source "
+                "input; choose an img2img production method"
+            )
+        target = workflow_type.node_for_role(role)
+        if target is None:
+            raise ReviewError(
+                f"Workflow type {workflow_type.id} has no node for {role}"
+            )
+
+        document = copy.deepcopy(self.document)
+        uploads = document["pipeline"].setdefault("uploads", {})
+        source_value = relative_project_path(resolved_source)
+        if uploads.get(target) == source_value:
+            return self
+        uploads[target] = source_value
+        document["adjustments"] = [
+            *self.adjustments,
+            *(["승인 소스"] if "승인 소스" not in self.adjustments else []),
+        ]
+        adjusted = Recipe.from_document(document, path=self.path)
+        adjusted.validate_workflow_type(registry)
         return adjusted
 
     @property
@@ -1878,6 +1943,31 @@ class ReviewStore:
         with self.connect() as connection:
             return self._candidate_is_approved(connection, candidate_id)
 
+    def approved_candidate_source(self, candidate_id: str) -> Path:
+        """명시적으로 승인된 후보의 불변 snapshot 원본을 반환한다."""
+        with self.connect() as connection:
+            candidate = connection.execute(
+                "SELECT * FROM candidates WHERE id = ?",
+                (candidate_id,),
+            ).fetchone()
+            if candidate is None:
+                raise ReviewError(f"Unknown candidate {candidate_id}")
+            if not self._candidate_is_approved(connection, candidate_id):
+                raise ReviewError(
+                    f"{candidate_id} has no current explicit approval"
+                )
+            snapshot_value = candidate["approved_snapshot_path"]
+        if not snapshot_value:
+            raise ReviewError(
+                f"{candidate_id} has no approval snapshot"
+            )
+        source = project_path(snapshot_value) / "raw.png"
+        if not source.is_file():
+            raise ReviewError(
+                f"{candidate_id} approval source is missing: {source}"
+            )
+        return source
+
     @staticmethod
     def _candidate_is_approved(
         connection: sqlite3.Connection,
@@ -2384,27 +2474,83 @@ class ReviewStore:
             return connection.execute(
                 """
                 SELECT * FROM feedback
-                WHERE status = 'pending'
+                WHERE status IN ('pending', 'processing')
                 ORDER BY created_at
                 LIMIT ?
                 """,
                 (limit,),
             ).fetchall()
 
+    def start_feedback(
+        self,
+        feedback_id: int,
+        detail: str,
+    ) -> bool:
+        with self.connect() as connection:
+            feedback = connection.execute(
+                "SELECT * FROM feedback WHERE id = ?",
+                (feedback_id,),
+            ).fetchone()
+            if feedback is None:
+                raise ReviewError(f"Feedback {feedback_id} does not exist")
+            if feedback["status"] == "processing":
+                return False
+            if feedback["status"] != "pending":
+                raise ReviewError(
+                    f"Feedback {feedback_id} is already "
+                    f"{feedback['status']}"
+                )
+            connection.execute(
+                """
+                UPDATE feedback
+                SET status = 'processing'
+                WHERE id = ? AND status = 'pending'
+                """,
+                (feedback_id,),
+            )
+            self._enqueue_outbox(
+                connection,
+                "feedback_progress",
+                {
+                    "feedback_id": feedback_id,
+                    "job_id": feedback["job_id"],
+                    "candidate_id": feedback["candidate_id"],
+                    "detail": detail,
+                },
+            )
+            return True
+
     def resolve_feedback(self, feedback_id: int, resolution: str) -> None:
         with self.connect() as connection:
+            feedback = connection.execute(
+                "SELECT * FROM feedback WHERE id = ?",
+                (feedback_id,),
+            ).fetchone()
+            if feedback is None:
+                raise ReviewError(f"Feedback {feedback_id} does not exist")
             cursor = connection.execute(
                 """
                 UPDATE feedback
                 SET status = 'resolved', resolved_at = ?, resolution = ?
-                WHERE id = ? AND status = 'pending'
+                WHERE id = ? AND status IN ('pending', 'processing')
                 """,
                 (utc_now(), resolution, feedback_id),
             )
             if cursor.rowcount == 0:
                 raise ReviewError(
-                    f"Pending feedback {feedback_id} does not exist"
+                    f"Feedback {feedback_id} is already "
+                    f"{feedback['status']}"
                 )
+            self._enqueue_outbox(
+                connection,
+                "feedback_resolved",
+                {
+                    "feedback_id": feedback_id,
+                    "job_id": feedback["job_id"],
+                    "candidate_id": feedback["candidate_id"],
+                    "resolution": resolution,
+                },
+            )
 
     def resolve_feedback_by_event(
         self,
@@ -2655,6 +2801,21 @@ class ReviewStore:
                 """
                 SELECT * FROM slack_messages
                 WHERE candidate_id = ? AND kind = 'candidate-root'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (candidate_id,),
+            ).fetchone()
+
+    def find_candidate_details_slack_message(
+        self,
+        candidate_id: str,
+    ) -> sqlite3.Row | None:
+        with self.connect() as connection:
+            return connection.execute(
+                """
+                SELECT * FROM slack_messages
+                WHERE candidate_id = ? AND kind = 'candidate-details'
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,

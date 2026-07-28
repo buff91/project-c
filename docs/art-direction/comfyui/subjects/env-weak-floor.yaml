@@ -1,0 +1,19 @@
+schema_version: 1
+id: env-weak-floor
+name: 붕괴 직전 약한 바닥
+slot: env-weak-floor
+asset_type: environment
+readability_goal: 아직 걸을 수 있지만 밟으면 무너질 바닥이라는 방사형 균열과 처짐이 읽혀야 한다.
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: strict
+  anchor: center
+prompt:
+  positive: >-
+    exact 2:1 isometric hospital floor tile, intact outer diamond, sagging
+    cracked center slab, exposed narrow dark seams, tiny loose concrete chips,
+    clearly fragile but not yet an open hole
+  negative: >-
+    open pit, complete missing center, magic rune, raised platform, stairs,
+    wall, loose prop pile

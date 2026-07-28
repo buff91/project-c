@@ -6,7 +6,7 @@
 ## 1. 구성
 
 ```text
-recipes/*.yaml
+styles/*.yaml + worlds/*.yaml + subjects/*.yaml + methods/*.yaml
      │
      ▼
 art_runner.py ──────── ComfyUI REST :8188
@@ -28,7 +28,12 @@ art-review.sqlite3
                                   대상 분석 → 에셋 연결 → Unity 검증
 ```
 
-- **레시피 YAML**: 모델·LoRA·워크플로·프롬프트·생성값·용도·승격 규칙의 SSOT.
+- **화풍 YAML**: 어떻게 그리는지(픽셀 클러스터·에지·명도·렌더링 문법)의 SSOT.
+- **세계관 YAML**: 어디에 속하는지(테마·재료·분위기·공통 배제)의 SSOT.
+- **대상 YAML**: 무엇을 만드는지(슬롯·정체성·가이드·대상별 positive/negative)의 SSOT.
+- **방법 YAML**: 어떻게 만드는지(모델·LoRA·워크플로·공통 프롬프트·생성값·승격 규칙)의 SSOT.
+- **job recipe snapshot**: 화풍×세계관×대상×방법과 이번 입력을 합친 실제 실행값. 재현할 때는 원본 YAML이
+  아니라 이 스냅샷을 본다.
 - **배치 YAML**: 여러 용도의 레시피를 한 번에 넣는 수동/예약 실행 단위다.
 - **SQLite**: batch run, job, 후보, 피드백, Spark 반영 요청과 Slack 연결을 영구 기록한다.
 - **Slack**: 사람이 보는 리뷰 UI다. 기록의 SSOT는 아니다.
@@ -134,6 +139,30 @@ python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가
 3. 그다음에 그 슬롯을 겨누는 레시피를 만든다. 순서를 뒤집으면 검증이 막는다 — **의도한 것이다.**
    Unity 가 읽을 자리가 없는데 그림부터 만들면, 승인·마감까지 다 하고 나서야 갈 곳이 없음을 안다.
 
+#### 화풍·세계관·제작 대상을 추가하는 위치
+
+세 축은 서로 섞지 않고 YAML 한 파일씩 추가한다. 기존 파일을 복사해 `id`와 계약만 바꾼 뒤
+`python3 Tools/ArtPipeline/art_runner.py init`으로 모든 조합을 검증한다.
+
+| 추가하려는 것 | 경로 | 그 파일이 소유하는 내용 |
+|---|---|---|
+| 화풍 | `comfyui/styles/<style-id>.yaml` | 픽셀 클러스터, 에지, 명도, 공통 positive/negative |
+| 세계관 | `comfyui/worlds/<world-id>.yaml` | 재료·장소·분위기·세계관상 금지 요소 |
+| 캐릭터/환경/VFX | `comfyui/subjects/<slot-id>.yaml` | Unity 슬롯, 정체성, 캔버스·피벗, 포즈/소스 가이드 |
+| 여러 슬롯 묶음 | `comfyui/subject-sets/<set-id>.yaml` | 멤버 순서와 세트 목적 |
+| 새 제작 단계 | `comfyui/methods/<method-id>.yaml` | ComfyUI 워크플로, 모델·LoRA, 생성값, 승인 소스 요구 |
+
+현재 메인 캐릭터는 `subjects/actor-knight.yaml`이다. 이름은 원정자지만 직업·영웅 선택이
+없으므로 컨셉 단계에서도 검·방패 같은 직업 장비를 정체성에 굽지 않는다. 권장 계보는
+`concept-sdxl-v1 → 승인 → character-idle-v1 → 승인 →
+character-action-keyframes-v5`다. 기본 스프라이트와 액션 키프레임은 모두 같은 승인 후보를
+identity 입력으로 쓰며, 각 샷의 OpenPose만 달라진다.
+
+정적 환경 대상은 mid/deep/boss 기본·raised 바닥, hole, weak-floor, ladder 9종이 등록돼 있다.
+각 대상 YAML이 자신의 정확한 캔버스와 피벗을 소유한다. 환경 루프 대상은 campfire, portal,
+좌·우 상승 벽 횃불 4종이며 `environment-idle-keyframes-v1`이 `pulse-low/rise/high/fall`
+네 샷을 하나의 `idle` 루프로 인계한다.
+
 ### 2-c. 워크플로 타입 (`pipeline.type`)
 
 `docs/art-direction/comfyui/workflow-types.yaml`이 목록과 **계약**을 소유한다. 타입은
@@ -159,6 +188,72 @@ python3 Tools/ArtPipeline/art_runner.py workflow-types sd15-img2img-openpose
 
 새 워크플로 계열을 늘릴 때는 `.api.json`을 두고 이 파일에 타입을 먼저 추가한다. 레지스트리에
 없는 타입을 레시피가 쓰면 `art_recipe_tool.py validate`와 `art_runner.py init`이 막는다.
+
+### 2-d. 화풍 → 세계관 → 제작 대상 → 제작 방법 → 실행 내용
+
+Slack 생성 폼은 고정 레시피 이름부터 고르지 않는다. 기본 화풍·세계관은 처음부터 선택돼
+있으므로, 보통은 **제작 대상 → 이번 생성 내용 → 결과 다양성**만 고르면 된다.
+
+1. **화풍**: `styles/*.yaml`에서 렌더링 문법을 고른다. 현재 기본값은
+   `chunky-isometric-pixel-v1`이다.
+2. **세계관**: `worlds/*.yaml`에서 테마와 재료 어휘를 고른다. 현재 기본값은
+   `collapsed-hospital-v1`이다.
+3. **제작 대상**: `subjects/*.yaml` 또는 `subject-sets/*.yaml`에서 어떤 캐릭터·환경·VFX를
+   만들지 고른다. 캐릭터는 `actor-slinger`(투석 약탈자)·`actor-grave-warden`(감시자)처럼
+   실제 Unity 슬롯과 정체성을 함께 가진다. `컨셉`은 대상이 아니라 다음 단계의 제작 방법이다.
+4. **제작 단계/방법**: `methods/*.yaml`에서 컨셉 탐색, 기본 스프라이트, 액션 키프레임,
+   VFX 컨셉/정제처럼 그 대상에 맞는 방법만 고른다.
+   아직 승인 가이드가 없는 감시자는 `SDXL 컨셉 탐색`만 보이고, 컨셉 승인 후 가이드를
+   등록해야 기본 스프라이트·키프레임 단계가 열린다.
+5. **캐릭터/대상 정의**: 대상 YAML의 기본 정체성과 판독 목표를 불러온다. 이번 job에서
+   외형·역할을 바꾸고 싶으면 여기서 수정하며, 수정값은 positive와 job 메모에 함께 남는다.
+6. **이번 생성 내용**: 이번 시안에서만 필요한 복장·동작·재질·방향을 입력한다. 이 문장은
+   합성된 positive 뒤에 붙는다.
+7. **실행값**: positive/negative 전체, checkpoint, base seed, Steps, CFG, denoise, 후보 수를
+   확인하고 큐에 넣는다.
+
+기본 폼은 처음 만드는 작업과 승인본 발전을 의도적으로 분리한다.
+
+- `/art new`: 승인 소스 없이 바로 실행할 수 있는 **새 컨셉 탐색 방법만** 보여준다.
+- 승인 후보 카드의 `➡️ 다음 단계 생성`: 같은 화풍·세계관·대상과 후보 ID를 자동으로 채우고
+  **승인본 발전 방법만** 보여준다. 후보 ID를 복사해 입력하지 않는다.
+- `고급 설정 열기`: 모델, 전체 positive/negative, seed, Steps, CFG, denoise를 직접 바꿀 때만
+  연다. 기본 폼에서는 이 값들을 숨기되 job snapshot에는 전부 기록한다.
+- `결과 다양성`: `빠르게 확인 / 균형 있게 / 넓게 탐색`으로 고른다. 단일 이미지는 각각
+  2/4/6장이고, 멀티샷 키프레임은 한 후보가 전체 샷 세트이므로 1/1/2세트로 제한한다.
+
+`style × world × subject × method` 합성 결과와 폼 조정값은 job의 `recipe_json`에 통째로 저장된다.
+base seed는 비워도 job 생성 시 난수 하나가 배정되어 고정되고, 후보 `C01..`은 그 seed에서
+순차 파생된다. 같은 그림을 다시 만들 때는 `/art job <job-id>`의 **후보 seed**를 새 폼의
+base seed에 넣고 후보 수를 1로 둔다.
+
+승인 후보 카드의 **다음 단계 생성**은 후보 ID를 폼에 넘긴다. img2img 제작 방법을 고르면
+승인 시 보관한 `approvals/.../raw.png`가 실제 ComfyUI 입력 노드에 연결된다.
+
+- 원정자/캐릭터: `concept-sdxl-v1 → 컨셉 후보 승인 → character-idle-v1 → 기본 스프라이트 승인 →
+  character-action-keyframes-v5 → Aseprite 애니 초안`
+- VFX: `effect-concept-sdxl-v1 → effect-refine-img2img-v1 → Aseprite의 burst/idle-loop`
+- 정적 환경 한 슬롯: `environment-concept-sdxl-v1 → 승인 →
+  environment-static-refine-v1 → Aseprite/Unity`
+- 기존 환경 시트: 소스시트 또는 승인 후보 → `environment-styletransfer-v1`
+- 환경 루프: `environment-loop-concept-sdxl-v1 → 승인 →
+  environment-idle-keyframes-v1 → Aseprite idle → Unity`
+
+프롬프트만 복사하는 것은 계보가 아니다. 다음 단계는 반드시 승인 후보 ID를 가져야 하며,
+`requires_source_candidate: true`인 방법은 승인 스냅샷 없이는 제출 자체가 막힌다.
+
+Slack 없이 같은 작업을 넣는 예:
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py compose-submit \
+  actor-slinger character-idle-v1 \
+  --style chunky-isometric-pixel-v1 \
+  --world collapsed-hospital-v1 \
+  --source-candidate ART-...-C01 \
+  --target-definition "붉은 센서 눈과 짧은 슬링을 지닌 폐병원 약탈자" \
+  --positive-suffix "shorter sling, one compact oxygen tank" \
+  --seed 1667020327 --steps 26 --cfg 6.0 --denoise 0.55 --count 2
+```
 
 경로는 `docs/art-direction/comfyui/recipes/`다. 모든 레시피는 다음 정보를 사람이 읽을 수
 있게 기록한다.
@@ -204,7 +299,8 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 용도 | Slack | 로컬 CLI | 언제 쓰나 |
 |---|---|---|---|
 | 전체 도움말 | `/art help` | `art_runner.py --help` | 지원하는 명령 확인 |
-| 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | 해당 없음 | 레시피를 고르고 프롬프트·모델·워크플로를 이번 실행만 조정 |
+| 빠른 생성 폼 | `/art new` 또는 전역 바로가기 **새 아트 생성** | `art_runner.py compose-submit <target> <method> --style <style> --world <world> ...` | 기본 화풍·세계관에서 대상→내용→다양성만 골라 새 컨셉 생성 |
+| 승인본 다음 단계 | 후보 카드의 **다음 단계 생성** | `compose-submit ... --source-candidate <candidate-id>` | 대상·화풍·세계관·승인 ID를 자동 계승해 스프라이트·정제·키프레임 생성 |
 | 레시피 목록 | `/art recipes` | `art_runner.py recipes [--asset-type <타입>]` | 에셋 타입별로 묶인 recipe ID 확인 |
 | 레시피 상세 | `/art recipe <recipe-id>` | `art_runner.py recipes <recipe-id>` | 모델·LoRA·프롬프트·steps 확인 |
 | 전체 세트 생성 | `/art run <recipe-id> [count]` | `art_runner.py submit <recipe-id> --count <n>` | 확정한 설정으로 후보 또는 멀티샷 세트 생성 |
@@ -215,17 +311,18 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 최근 작업 | `/art status` | `art_runner.py jobs` | 완료 항목을 포함한 최근 job 확인 |
 | 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
 | 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
-| 작업 상세 | 카드와 스레드 | `art_runner.py job <job-id>` | candidate ID, seed, 출력 경로 확인 |
+| 작업 상세 | 후보 카드의 스레드 첫 답글 (`/art job <job-id>`도 지원) | `art_runner.py job <job-id>` | 실제 positive/negative, 모델·LoRA, base/candidate seed, Steps·CFG·denoise 확인 |
 
 #### 생성 폼의 이번 실행 조정
 
-`/art new` 폼에서 레시피를 고르면 그 레시피의 **현재 워크플로·모델(checkpoint)·긍정/제외
-프롬프트가 채워진 채로** 나타나고, 그 자리에서 고칠 수 있다. 빈 칸으로 두면 "레시피 값 그대로"
-라는 뜻이다.
+`/art new` 폼에서 대상과 제작 방법을 고르면 합성된 **현재 워크플로·모델(checkpoint)·긍정/제외
+프롬프트·Steps·CFG·denoise가 채워진 채로** 나타나고, 그 자리에서 이번 실행만 고칠 수 있다.
+`캐릭터/대상 정의`는 기본 subject 정체성 문장을 교체하고, `이번 생성 내용`은 positive 뒤에
+추가된다. `메모`는 프롬프트에 들어가지 않는다. seed를 비우면 job 생성 시 난수로 고정된다.
 
 조정값은 **이번 job 에만** 적용된다 — 레시피 YAML 은 그대로다. 대신 job 이 문서 전체를
 `recipe_json` 으로 스냅샷하므로 조정본도 원본과 똑같이 재현 가능하고, 후보 카드에
-`✏️ 이번 실행 조정  모델 · 긍정 프롬프트` 로 무엇이 달라졌는지 표시된다. 결과가 좋아서
+`✏️ 이번 실행 조정  모델 · 긍정 프롬프트 · Steps · CFG` 로 무엇이 달라졌는지 표시된다. 결과가 좋아서
 계속 쓸 설정이면 `art_recipe_tool.py clone` 으로 `-rN` 레시피를 만든다 — **조정만으로는
 다음 실행에 남지 않는다.**
 
@@ -278,7 +375,9 @@ python3 Tools/ArtPipeline/art_runner.py feedback \
 ```
 
 버튼과 명령의 승인·거절은 즉시 처리되는 결정론적 작업이다. 자연어 요청만 pending feedback으로
-남고 Codex Scheduled가 다음 실행에서 레시피 수정 또는 재생성 여부를 해석한다.
+남고 Codex Scheduled가 다음 실행에서 레시피 수정 또는 재생성 여부를 해석한다. 스레드 답변을
+받으면 봇이 즉시 `검토 대기`를 알리고, Scheduled가 가져갈 때 `확인 중`, 질문 답변이나 처리 판단이
+끝나면 `검토 완료`와 실제 답변을 같은 스레드에 남긴다.
 
 ### 3-d. 권장 운영 순서
 
@@ -437,6 +536,7 @@ Slack 명령:
 /art new
 /art recipes
 /art recipe actor-slinger-idle-v1
+/art job ART-...
 /art shot actor-slinger-animation-v5 idle 1
 /art run actor-slinger-idle-v1 6
 /art status
@@ -462,8 +562,19 @@ Slack 명령:
 
 - **제목**: 상태 아이콘 + `검토 대기/채택됨/준비 완료/반영 완료` + 자산 이름
 - **본문**: 대상 종류·슬롯·후보 ID(묶음이면 `(2/3)`)와 지금 해야 할 한 가지 행동
-- **하단 작은 글씨**: 작업 ID, recipe ID, steps, CFG, denoise 같은 재현 정보
+- **하단 작은 글씨**: 작업 ID, recipe snapshot ID, steps, CFG, denoise 같은 재현 정보.
+  전체 positive/negative와 seed 계보는 후보 스레드의 자동 `실행 상세`
+  답글에서 바로 확인한다. `/art job <job-id>`는 과거 작업 재조회나
+  채널 밖 디버깅용으로 계속 지원한다.
 - **스레드**: 원본 이미지, 샷별 카드, Aseprite 미리보기, GIF, 오류와 후속 작업
+
+자연어 답변의 상태도 같은 스레드에서 이어진다.
+
+```text
+👀 답변 확인 · Codex Agent 검토 대기
+🔎 Codex Agent 확인 중
+✅ Codex Agent 검토 완료 · 실제 답변/처리 결과
+```
 
 후보마다 독립된 채널 카드가 생기며 원본 이미지는 그 카드의 스레드에 업로드된다. **후보 카드가
 곧 생성 완료 알림이다** — 앞에 별도의 요약 메시지를 세우지 않는다. 후보 1개짜리 job에서

@@ -51,6 +51,37 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
 
 이 묶음이 Unity에서 정상적으로 정렬되고 반복된 뒤 Walk/Attack/Hit/Fall 애니메이션을 추가한다.
 
+### 현재 프로젝트의 실제 아트 발주 순서
+
+현재 구현 기준의 우선순위는 `docs/ROADMAP.md`와
+`docs/art-direction/project-c-art-improvement-plan-v2.md`가 소유한다.
+
+1. **메인 원정자**: `actor-knight`의 96×128 컨셉과 기본 스프라이트를 먼저 확정한다.
+   직업 실루엣을 고정하지 않고 장비가 정체성을 지도록 중립적인 생존자 체형·복장만 잠근다.
+2. **적 액터**: `actor-slinger`, `actor-grave-warden`의 96×128 기본 스프라이트를 확정한다.
+   지금은 절차 폴백 크기가 기존 자산 액터보다 작아 플레이 화면에서 바로 결손으로 보인다.
+3. **환경 판독 자산**: mid/deep/boss 바닥 기본·raised 6종, `env-hole`,
+   `env-weak-floor`, `env-ladder`.
+4. **환경 루프**: `prop-campfire`, `prop-portal`, 좌·우 상승 벽 횃불의 `idle`
+   키프레임을 만들고 Aseprite에서 4~8프레임 루프로 마감한다.
+5. **폐병원 소품/낙하 연출**: 들것, 커튼 레일, 수술등, 약품 캐비닛,
+   엘리베이터 통로, 구멍 깊이 표현.
+6. **아이템 12종**: 64×64 포스트아포 리스킨.
+7. **액터 애니메이션**: 기본 스프라이트가 승인된 액터부터
+   `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.
+8. **전투 VFX 6슬롯**: physical/heavy/fire/frost impact와 burn/freeze status.
+   승인 키프레임을 `burst` 또는 `idle-loop`로 마감한다.
+
+각 항목을 생성 큐에 넣기 전에 최소한 다음 여섯 가지가 있어야 한다.
+
+- 대상 계약: Unity 슬롯, 캔버스, 피벗, 게임에서 읽혀야 할 실루엣
+- 화풍 계약: 픽셀 클러스터, 에지, 명도 단계, 최종 해상도에서의 렌더링 문법
+- 세계관 계약: 폐병원·이상 미궁의 재료 어휘, Torchstone 팔레트, 신호색 한 점
+- 생성 입력: style, world, subject, method, 캐릭터/대상 정의, 이번 생성 내용,
+  positive/negative
+- 재현값: checkpoint/LoRA 버전, seed, Steps, CFG, denoise, sampler/scheduler
+- 다음 단계 입력: 승인 후보 ID 또는 기존 소스시트/OpenPose 가이드
+
 ## 4. Aseprite 작업 순서
 
 1. 128×64 다이아몬드를 템플릿 레이어로 만든다.
@@ -191,6 +222,17 @@ ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자
 ### 애니메이션/이펙트 운영 규칙
 
 - ComfyUI는 키프레임 후보 생성에 집중하고, 프레임 연출/루프는 Aseprite에서 마감한다.
+- Slack `/art new`에서는 **화풍(렌더링 문법) → 세계관(테마·재료) → 제작 대상(어떤
+  캐릭터/Unity 슬롯/에셋) → 제작 방법 → 캐릭터/대상 정의 → 이번 생성 내용**을
+  각각 나눠 입력한다.
+  모든 job은 실제 positive/negative, checkpoint/LoRA, seed, Steps, CFG, denoise와 승인 소스
+  후보 ID를 스냅샷한다. 원본 YAML이 아니라 `/art job <job-id>`가 실제 실행 기록이다.
+- 캐릭터는 `컨셉 승인 → 기본 스프라이트 승인 → 액션 키프레임 → Aseprite`, VFX는
+  `VFX 컨셉 승인 → img2img 키프레임 정제 → burst/idle-loop` 순서로 계보를 잇는다.
+- 정적 환경은 `environment-concept-sdxl-v1 → 승인 →
+  environment-static-refine-v1 → Aseprite/Unity 슬롯` 순서로 잇는다.
+- 환경 루프는 `environment-loop-concept-sdxl-v1 → 승인 →
+  environment-idle-keyframes-v1 → Aseprite idle 태그 → Unity` 순서로 잇는다.
 - 캐릭터는 `idle` 중심 + `walk/attack/hit/fall/death` 보조 프레임을 모은 뒤 FrameTag를 붙인다.
 - 이펙트는 `burst`/`idle-loop` 중심으로 먼저 4~8프레임 후보를 만들고, 반복/톤은 Aseprite에서 정제한다.
 - 기본 슬롯(`allow_replace: false`)은 승인 전 교체 금지.

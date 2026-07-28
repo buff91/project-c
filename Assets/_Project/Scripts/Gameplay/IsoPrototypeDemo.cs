@@ -909,10 +909,30 @@ namespace ProjectC.Gameplay
             SpriteRenderer renderer,
             ActorAnimationSet set)
         {
-            if (actor == null || renderer == null || set == null || !set.HasClips)
+            return AttachSpriteAnimator(actor, renderer, set);
+        }
+
+        /// <summary>
+        /// 베이크된 idle 루프가 있는 환경/소품에만 같은 경량 재생기를 붙인다.
+        /// 렌더러 비활성 시 Update가 즉시 반환하므로 FOV 밖과 비활성 층은 정지한다.
+        /// </summary>
+        private static SpriteClipAnimator AttachEnvironmentAnimator(
+            GameObject owner,
+            SpriteRenderer renderer,
+            EnvironmentAnimationSet set)
+        {
+            return AttachSpriteAnimator(owner, renderer, set);
+        }
+
+        private static SpriteClipAnimator AttachSpriteAnimator(
+            GameObject owner,
+            SpriteRenderer renderer,
+            ISpriteClipSet set)
+        {
+            if (owner == null || renderer == null || set == null || !set.HasClips)
                 return null;
 
-            var animator = actor.AddComponent<SpriteClipAnimator>();
+            var animator = owner.AddComponent<SpriteClipAnimator>();
             animator.Configure(renderer, set);
             return animator;
         }

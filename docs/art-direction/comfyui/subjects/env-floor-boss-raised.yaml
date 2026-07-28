@@ -1,0 +1,18 @@
+schema_version: 1
+id: env-floor-boss-raised
+name: 보스 폐병원 단차 바닥
+slot: env-floor-boss-raised
+asset_type: environment
+readability_goal: 보스 경고 재료와 얕은 전면 두께가 함께 읽혀야 한다.
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: strict
+  anchor: center
+prompt:
+  positive: >-
+    exact 2:1 isometric raised boss floor tile, crushed hospital concrete top,
+    chipped hazard stripe fragment, one tiny teal anomaly seam, shallow dark
+    front lip
+  negative: >-
+    tall altar, magic circle, complete hazard frame, floating platform, stairs

@@ -1,0 +1,17 @@
+schema_version: 1
+id: chunky-isometric-pixel-v1
+name: 청키 아이소메트릭 픽셀
+applies_to:
+- concept
+- environment
+- character
+- animation
+- effect
+prompt:
+  positive: >-
+    polished chunky isometric pixel art, deliberate hard-edged pixel clusters,
+    limited value ramps, crisp silhouette, restrained colors, readable at the
+    final game resolution, nearest-neighbor pixel language
+  negative: >-
+    photorealism, painterly concept art, smooth 3d render, vector art,
+    anti-aliasing haze, soft airbrush, high-frequency noisy dithering

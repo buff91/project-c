@@ -156,6 +156,10 @@ namespace ProjectC.Gameplay
         [Header("액터 애니메이션 (Aseprite 베이크 산출물 — 손으로 편집하지 않는다)")]
         public List<ActorAnimationSet> actorAnimations = new List<ActorAnimationSet>();
 
+        [Header("환경 애니메이션 (Aseprite idle 태그 베이크 산출물)")]
+        public List<EnvironmentAnimationSet> environmentAnimations =
+            new List<EnvironmentAnimationSet>();
+
         /// <summary>actorKey = Sprite 슬롯 필드명 계약. 없으면 null(정지 1프레임 유지).</summary>
         public ActorAnimationSet AnimationsFor(string actorKey)
         {
@@ -165,6 +169,25 @@ namespace ProjectC.Gameplay
                 ActorAnimationSet set = actorAnimations[i];
                 if (set != null && set.HasClips &&
                     string.Equals(set.actorKey, actorKey, System.StringComparison.Ordinal))
+                    return set;
+            }
+
+            return null;
+        }
+
+        /// <summary>환경/소품 Catalog 슬롯 필드명으로 idle 루프 세트를 찾는다.</summary>
+        public EnvironmentAnimationSet EnvironmentAnimationsFor(string slotKey)
+        {
+            if (environmentAnimations == null || string.IsNullOrEmpty(slotKey))
+                return null;
+            for (int i = 0; i < environmentAnimations.Count; i++)
+            {
+                EnvironmentAnimationSet set = environmentAnimations[i];
+                if (set != null && set.HasClips &&
+                    string.Equals(
+                        set.slotKey,
+                        slotKey,
+                        System.StringComparison.Ordinal))
                     return set;
             }
 

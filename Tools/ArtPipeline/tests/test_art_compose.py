@@ -10,9 +10,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from art_review import ReviewError, SlotCatalog  # noqa: E402
 from art_compose import (  # noqa: E402
     MethodRegistry,
+    StyleRegistry,
     Subject,
     SubjectRegistry,
     SubjectSetRegistry,
+    WorldRegistry,
     resolve,
     resolve_by_id,
     targets_for_method,
@@ -21,6 +23,8 @@ from art_compose import (  # noqa: E402
 
 class ComposeTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.styles = StyleRegistry()
+        self.worlds = WorldRegistry()
         self.methods = MethodRegistry()
         self.subjects = SubjectRegistry()
         self.sets = SubjectSetRegistry()
@@ -31,6 +35,13 @@ class ComposeTests(unittest.TestCase):
             for target_id, _name in targets_for_method(method):
                 with self.subTest(method=method.id, target=target_id):
                     recipe = resolve_by_id(method.id, target_id)
+                    if method.requires_source_candidate:
+                        recipe = recipe.with_source_image(
+                            Path(
+                                "docs/art-direction/comfyui/guides/"
+                                "actor-slinger-style-source.png"
+                            )
+                        )
                     recipe.validate_files()
                     combinations += 1
         self.assertGreaterEqual(combinations, 10)
@@ -43,19 +54,28 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(
             "투석 약탈자", SlotCatalog().describe("actor-slinger")[0]
         )
+        warden = self.subjects.get("actor-grave-warden")
+        self.assertEqual("감시자", warden.name)
 
-    def test_guide_variants_let_methods_pick_the_identity_anchor(self) -> None:
-        """경로는 대상이 알고, 어느 변형을 쓸지는 방법이 고른다."""
-        idle = resolve_by_id("character-idle-v1", "actor-slinger")
+    def test_approved_source_becomes_the_identity_anchor(self) -> None:
+        """합성 방법은 고정 원화 대신 승인 후보를 style_source로 받는다."""
+        source = (
+            Path(__file__).resolve().parents[3]
+            / "docs/art-direction/comfyui/guides/"
+            "actor-slinger-runtime-source-512-v1.png"
+        )
+        idle = resolve_by_id(
+            "character-idle-v1", "actor-slinger"
+        ).with_source_image(source)
         action = resolve_by_id(
             "character-action-keyframes-v5", "actor-slinger"
-        )
-        self.assertIn(
-            "actor-slinger-style-source.png",
-            idle.pipeline["uploads"]["5.image"],
-        )
+        ).with_source_image(source)
         self.assertIn(
             "actor-slinger-runtime-source-512-v1.png",
+            idle.pipeline["uploads"]["5.image"],
+        )
+        self.assertEqual(
+            idle.pipeline["uploads"]["5.image"],
             action.pipeline["uploads"]["5.image"],
         )
 
@@ -120,6 +140,41 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("fx-impact-fire", effect)
         self.assertNotIn("actor-slinger", effect)
 
+    def test_concept_is_a_method_applied_to_a_real_character(self) -> None:
+        """컨셉은 가짜 제작 대상이 아니라 캐릭터에 적용하는 제작 단계다."""
+        concept_targets = dict(targets_for_method(
+            self.methods.get("concept-sdxl-v1")
+        ))
+        self.assertIn("actor-slinger", concept_targets)
+        self.assertIn("actor-grave-warden", concept_targets)
+        self.assertIn("actor-knight", concept_targets)
+        self.assertNotIn("actor-concept", concept_targets)
+
+        recipe = resolve_by_id(
+            "concept-sdxl-v1",
+            "actor-grave-warden",
+            style_id="chunky-isometric-pixel-v1",
+            world_id="collapsed-hospital-v1",
+        )
+        self.assertEqual("actor-grave-warden", recipe.slot)
+        self.assertEqual("concept-only", recipe.output["promotion"])
+        self.assertIn("sensor mast", recipe.prompt["positive"])
+
+    def test_character_production_requires_pose_and_approved_source(self) -> None:
+        idle_targets = dict(targets_for_method(
+            self.methods.get("character-idle-v1")
+        ))
+        self.assertIn("actor-slinger", idle_targets)
+        self.assertIn("actor-grave-warden", idle_targets)
+        self.assertIn("actor-knight", idle_targets)
+        self.assertTrue(
+            self.methods.get("character-idle-v1").requires_source_candidate
+        )
+
+        recipe = resolve_by_id("character-idle-v1", "actor-knight")
+        self.assertNotIn("5.image", recipe.pipeline.get("uploads", {}))
+        self.assertIn("6.image", recipe.pipeline["uploads"])
+
     def test_composition_records_where_it_came_from(self) -> None:
         recipe = resolve_by_id("character-idle-v1", "actor-slinger")
         self.assertEqual(
@@ -129,6 +184,71 @@ class ComposeTests(unittest.TestCase):
             },
             recipe.document["composed_from"],
         )
+
+    def test_style_world_subject_and_method_are_separate(self) -> None:
+        recipe = resolve_by_id(
+            "character-idle-v1",
+            "actor-slinger",
+            style_id="chunky-isometric-pixel-v1",
+            world_id="collapsed-hospital-v1",
+        )
+        self.assertEqual(
+            "chunky-isometric-pixel-v1",
+            recipe.document["composed_from"]["style"],
+        )
+        self.assertEqual(
+            "collapsed-hospital-v1",
+            recipe.document["composed_from"]["world"],
+        )
+        self.assertEqual(
+            "청키 아이소메트릭 픽셀",
+            recipe.document["art_style"]["name"],
+        )
+        self.assertEqual(
+            "붕괴 폐병원 이상 미궁",
+            recipe.document["world"]["name"],
+        )
+        self.assertIn("deliberate hard-edged", recipe.prompt["positive"])
+        self.assertIn("abandoned concrete", recipe.prompt["positive"])
+        self.assertIn("photorealism", recipe.prompt["negative"])
+        self.assertIn("medieval fantasy", recipe.prompt["negative"])
+
+    def test_environment_subject_owns_its_slot_canvas_and_pivot(self) -> None:
+        ladder = resolve_by_id(
+            "environment-concept-sdxl-v1",
+            "env-ladder",
+            style_id="chunky-isometric-pixel-v1",
+            world_id="collapsed-hospital-v1",
+        )
+        self.assertEqual("env-ladder", ladder.slot)
+        self.assertEqual((64, 112), ladder.canvas)
+        self.assertEqual([0.5, 0.08], ladder.output["pivot"])
+        self.assertEqual("concept-only", ladder.output["promotion"])
+
+        floor = resolve_by_id(
+            "environment-static-refine-v1",
+            "env-floor-mid",
+        )
+        self.assertEqual((128, 64), floor.canvas)
+        self.assertEqual("aseprite", floor.output["promotion"])
+        floor.validate_slot_registration()
+
+    def test_environment_loop_builds_four_idle_keyframes(self) -> None:
+        recipe = resolve_by_id(
+            "environment-idle-keyframes-v1",
+            "prop-campfire",
+            style_id="chunky-isometric-pixel-v1",
+            world_id="collapsed-hospital-v1",
+        )
+        self.assertEqual("environment", recipe.purpose["category"])
+        self.assertEqual((128, 128), recipe.canvas)
+        self.assertEqual(
+            ["pulse-low", "pulse-rise", "pulse-high", "pulse-fall"],
+            [shot.id for shot in recipe.shots],
+        )
+        clip = recipe.animation["draft"]["clips"][0]
+        self.assertEqual("idle", clip["tag"])
+        self.assertTrue(clip["loop"])
 
     def test_composed_recipes_respect_the_slot_registry(self) -> None:
         """합성본도 미등록 슬롯에 승격할 수 없다."""

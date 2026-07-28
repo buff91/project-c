@@ -4,6 +4,13 @@ using UnityEngine;
 
 namespace ProjectC.Gameplay
 {
+    /// <summary>공통 프레임 애니메이터가 액터와 환경 클립을 동일하게 조회하는 계약.</summary>
+    public interface ISpriteClipSet
+    {
+        bool HasClips { get; }
+        SpriteClip Find(string tag);
+    }
+
     /// <summary>
     /// Aseprite 태그 하나를 구운 프레임 시퀀스. 타이밍은 "프레임 시작 시각 + 클립 총 길이"로
     /// 저장한다 — sprite 커브의 ObjectReferenceKeyframe을 무손실로 옮기고(가변 지속시간 보존),
@@ -31,9 +38,36 @@ namespace ProjectC.Gameplay
     /// (<c>CatalogSlots</c>)을 그대로 재사용해 키를 얻는다.
     /// </summary>
     [Serializable]
-    public sealed class ActorAnimationSet
+    public sealed class ActorAnimationSet : ISpriteClipSet
     {
         public string actorKey;
+        public List<SpriteClip> clips = new List<SpriteClip>();
+
+        public bool HasClips => clips != null && clips.Count > 0;
+
+        public SpriteClip Find(string tag)
+        {
+            if (clips == null || string.IsNullOrEmpty(tag)) return null;
+            for (int i = 0; i < clips.Count; i++)
+            {
+                SpriteClip clip = clips[i];
+                if (clip != null &&
+                    string.Equals(clip.tag, tag, StringComparison.OrdinalIgnoreCase))
+                    return clip;
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 환경/소품 슬롯 하나의 Aseprite 태그 클립. 현재 런타임 계약은 <c>idle</c>
+    /// 루프만 사용한다. 슬롯 키는 CatalogSlots의 필드명(hubCampfire 등)이다.
+    /// </summary>
+    [Serializable]
+    public sealed class EnvironmentAnimationSet : ISpriteClipSet
+    {
+        public string slotKey;
         public List<SpriteClip> clips = new List<SpriteClip>();
 
         public bool HasClips => clips != null && clips.Count > 0;

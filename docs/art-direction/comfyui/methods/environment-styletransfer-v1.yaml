@@ -3,6 +3,10 @@ id: environment-styletransfer-v1
 name: 환경 스타일 트랜스퍼 v1
 applies_to:
 - environment
+required_guides:
+- source_sheet
+guide_roles:
+- source_sheet
 use: gameplay-source-sheet
 category: environment
 animation_scope: static-source-sheet

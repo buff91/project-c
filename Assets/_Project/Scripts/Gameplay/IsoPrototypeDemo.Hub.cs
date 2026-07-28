@@ -28,8 +28,16 @@ namespace ProjectC.Gameplay
             CreateHubLightPatch("campfire", HubLayout.Campfire, 2);
             CreateHubLightPatch("portal", HubLayout.Portal, 1);
 
-            CreateHubProp("Campfire", campfire != null ? campfire : ActorSprites.GetHubPropSprite("campfire"), HubLayout.Campfire);
-            CreateHubProp("Portal", portal != null ? portal : ActorSprites.GetHubPropSprite("portal"), HubLayout.Portal);
+            CreateHubProp(
+                "Campfire",
+                campfire != null ? campfire : ActorSprites.GetHubPropSprite("campfire"),
+                HubLayout.Campfire,
+                "hubCampfire");
+            CreateHubProp(
+                "Portal",
+                portal != null ? portal : ActorSprites.GetHubPropSprite("portal"),
+                HubLayout.Portal,
+                "hubPortal");
 
             CreateHubProp(
                 "Merchant",
@@ -87,9 +95,26 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private SpriteRenderer CreateHubProp(string objectName, Sprite sprite, GridPos pos)
+        private SpriteRenderer CreateHubProp(
+            string objectName,
+            Sprite sprite,
+            GridPos pos,
+            string animationKey = null)
         {
-            CreateStandingSprite(objectName, sprite, pos, out SpriteRenderer renderer);
+            GameObject root = CreateStandingSprite(
+                objectName,
+                sprite,
+                pos,
+                out SpriteRenderer renderer);
+            if (!string.IsNullOrEmpty(animationKey))
+            {
+                AttachEnvironmentAnimator(
+                    root,
+                    renderer,
+                    visualCatalog != null
+                        ? visualCatalog.EnvironmentAnimationsFor(animationKey)
+                        : null);
+            }
             _hubPropPositions[renderer] = pos;
             return renderer;
         }

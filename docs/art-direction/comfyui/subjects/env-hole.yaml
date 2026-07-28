@@ -1,0 +1,19 @@
+schema_version: 1
+id: env-hole
+name: 붕괴 개구부
+slot: env-hole
+asset_type: environment
+readability_goal: 128×64 타일 안에서 실제 낙하 가능한 2~3칸 개구부의 일부로 읽히고 장식 균열과 구분되어야 한다.
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: strict
+  anchor: center
+prompt:
+  positive: >-
+    exact 2:1 isometric floor opening tile, broken concrete rim, deep
+    blue-black void center, two exposed rebar ends, one subtle teal depth
+    reflection, open traversable shaft
+  negative: >-
+    painted crack, shallow puddle, magic portal, complete circular pit,
+    standing object, stairs, wall

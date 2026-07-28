@@ -54,16 +54,37 @@ ComfyUI는 **키프레임 생성**에만 쓰고, 최종 애니메이션/이펙�
 기본 슬롯 제안은 `fx-impact-physical`, `fx-impact-fire`, `fx-impact-frost`,
 `fx-impact-heavy`, `fx-status-burn`, `fx-status-freeze`이다.
 
-## 3) ComfyUI → Aseprite 자동 인계
+## 3) 배경·소품 애니메이션
+
+환경 애니메이션은 큰 배경 전체를 흔들지 않고 **독립 SpriteRenderer가 있는 국소 신호 자산**만
+대상으로 한다. 현재 자동 연결 대상은 아래 4종이다.
+
+- `prop-campfire`
+- `prop-portal`
+- `env-wall-torch-rising-right`
+- `env-wall-torch-rising-left`
+
+`environment-loop-concept-sdxl-v1`로 형태와 재료를 고른 뒤 승인 후보를
+`environment-idle-keyframes-v1`에 넘긴다. 이 방법은 같은 seed와 identity 입력으로
+`pulse-low/rise/high/fall` 네 키프레임을 만들고, Aseprite 초안에서는 `idle` 태그 6 FPS
+루프로 조립한다. 불꽃·포탈 중심과 벽면 부착점은 모든 프레임에서 고정한다.
+
+정식 `<slot>.aseprite`에 `idle` FrameTag가 있으면 `ProjectCAsepritePipeline`이 sprite
+커브만 `EnvironmentAnimationSet`으로 굽는다. 런타임은 campfire·portal·좌우 벽 횃불의
+SpriteRenderer에 `SpriteClipAnimator`를 붙여 자동 재생한다. 태그가 없으면 기존 첫 프레임
+정적 스프라이트가 그대로 폴백이므로, 환경 애니메이션 도입이 기존 씬을 깨지 않는다.
+
+## 4) ComfyUI → Aseprite 자동 인계
 
 `art_runner.py`는 멀티샷 레시피를 실제로 해석한다.
 
 - 액터 1후보 = OpenPose로 잠근 상태 기반 키포즈 10샷
+- 환경 루프 1후보 = 동일 identity를 공유하는 `idle` 키프레임 4샷
 - 이펙트 1후보 = physical/fire/frost/heavy/burn/freeze 6샷
 - Slack에는 라벨 리뷰 시트 한 장을 올리고 원본은 샷별로 보존한다.
 - `Aseprite 소스 세트`를 누르면 샷별 캔버스·알파·팔레트를 강제한
   `.aseprite` 파일과 `aseprite-handoff.json`을 만든다.
-- `애니 초안`을 누르면 `aseprite_build_animation.lua`가 액터 상태 태그 또는
+- `애니 초안`을 누르면 `aseprite_build_animation.lua`가 액터 상태 태그, 환경 `idle`,
   이펙트 `burst`/`idle-loop` 태그를 조립하고 1×/8× GIF를 만든다.
 - Slack의 `빠르게/기본 속도/느리게` 버튼은 같은 프레임을 보존하고 duration만 다시 조립한다.
 
@@ -87,7 +108,7 @@ Spark 반영 요청이 실제 참조를 조사해 대상을 하나로 확정한 
 샷별 승인·거절·변형을 포함한 전체 대응표는
 [`ART_REVIEW_AUTOMATION.md`](ART_REVIEW_AUTOMATION.md)의 「트리거·사용 가이드」가 소유한다.
 
-## 4) Aseprite 진행 방식
+## 5) Aseprite 진행 방식
 
 ### 자동 초안 이후 수동 마감
 
@@ -97,20 +118,21 @@ Spark 반영 요청이 실제 참조를 조사해 대상을 하나로 확정한 
 4. GIF와 실제 게임 속도를 비교해 duration을 최종 조절한다.
 5. `project-c-torchstone.gpl` 팔레트와 고정 캔버스를 유지한 채 정식 원본으로 승격한다.
 
-## 5) 레시피 연동
+## 6) 레시피 연동
 
 다음 템플릿을 사용한다.
 
 - 캐릭터: `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
 - 이펙트: `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`
+- 환경 루프: `docs/art-direction/comfyui/methods/environment-idle-keyframes-v1.yaml`
 
 레이블별로 사용 목적이 달라야 한다.
 
-- `animation_scope: static-idle-only`면 `idle` 승인만 Unity 슬롯 업로드 허용.
+- `animation_scope: idle-loop`면 환경의 `idle` 승인만 Unity 슬롯 업로드 허용.
 - `animation_scope: runtime-state-keyframes`면 Slack에서 `[walk]`, `[attack]`처럼
   태그를 붙여 보완 요청을 기록한다.
 
-## 6) Slack 피드백 규칙(애니/이펙트)
+## 7) Slack 피드백 규칙(애니/이펙트)
 
 채널에서 사용할 피드백 규칙을 아래로 둔다.
 
@@ -128,7 +150,7 @@ Thread 답글은 아래 형식으로 쓰면 자동 분류가 쉬워진다.
 - `[attack] release를 1프레임 더 유지`
 - `[fx-impact-fire] burst가 너무 원형이니 오른쪽 위 파편을 늘려줘`
 
-## 7) 산출물 저장 가이드
+## 8) 산출물 저장 가이드
 
 - 검토 출력(채택 전): `docs/art-direction/comfyui/output/`로 고정.
 - 샷 원본: `output/review/<job>/Cxx/shots/<shot-id>/raw.png`.

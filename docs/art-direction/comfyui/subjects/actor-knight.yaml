@@ -1,0 +1,46 @@
+schema_version: 1
+id: actor-knight
+name: 원정자
+slot: actor-knight
+asset_type: character
+
+# 직업/영웅 선택은 없다. 런타임이 기존 씬 연결을 보존하려고 knight 슬롯을
+# 단일 원정자 슬롯으로 우선 사용한다(IsoVisualCatalog.SurvivorSprite).
+
+readability_goal: >-
+  한 손이 장비를 받아도 무너지지 않는 중립적인 원정자 실루엣, 낮은 무게중심,
+  소형 생존 배낭과 마스크가 96×128에서 읽혀야 한다.
+
+prompt:
+  positive: >-
+    single practical post-apocalyptic hospital scavenger survivor, gender
+    neutral adult silhouette, patched charcoal field jacket, concrete-gray
+    work trousers, compact medical utility pack, respirator hanging at the
+    neck, reinforced boots, one small desaturated teal route marker, empty
+    modular belt and free hands ready to show changing equipment
+  signature_pose: >-
+    grounded three-quarter isometric ready stance, knees slightly bent, one
+    empty hand forward and the other near the modular belt
+  negative: >-
+    fantasy knight, royal armor, fixed character class, permanent signature
+    weapon, giant sword, wizard robe, superhero suit, pristine military
+    uniform, cyberpunk neon outfit, oversized backpack
+
+guides:
+  # 컨셉 승인본은 다음 단계의 style_source로 job이 직접 주입한다.
+  # 이 파일은 자세만 소유한다.
+  pose: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+
+# 현재 런타임의 상태 태그 골격은 인간형끼리 공유한다. 최종 손·장비 위치와
+# 실루엣은 승인본을 기준으로 Aseprite에서 고친다.
+pose_guides:
+  idle: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+  walk-contact-a: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-a.png
+  walk-pass: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-pass.png
+  walk-contact-b: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-b.png
+  attack-windup: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
+  attack-release: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
+  attack-recovery: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-recovery.png
+  hit: docs/art-direction/comfyui/guides/openpose/actor-slinger-hit.png
+  fall: docs/art-direction/comfyui/guides/openpose/actor-slinger-fall.png
+  death: docs/art-direction/comfyui/guides/openpose/actor-slinger-death.png

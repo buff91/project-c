@@ -50,6 +50,7 @@ from art_review import (
     row_dict,
     utc_now,
 )
+from art_compose import MethodRegistry, definition_for_target, resolve_by_id
 
 
 DEFAULT_COMFY_URL = os.environ.get(
@@ -189,11 +190,11 @@ def process_job(
     output_root: Path,
     timeout: float,
 ) -> None:
-    recipe = recipe_from_job(job)
-    recipe.validate_files()
-    output_dir = output_root / job["id"]
-    output_dir.mkdir(parents=True, exist_ok=True)
     try:
+        recipe = recipe_from_job(job)
+        recipe.validate_files()
+        output_dir = output_root / job["id"]
+        output_dir.mkdir(parents=True, exist_ok=True)
         comfy_batch.request_json(comfy_url, "/system_stats", timeout=10.0)
         for index in range(job["candidate_count"]):
             ordinal = index + 1
@@ -467,11 +468,12 @@ def build_animation_draft(
     animation_dir = candidate_dir / "animation"
     outputs: list[dict[str, Any]] = []
 
-    if recipe.purpose["category"] == "actor":
+    if recipe.purpose["category"] in ("actor", "environment"):
         declared_clips = recipe.animation.get("draft", {}).get("clips", [])
         if not declared_clips:
             raise ReviewError(
-                f"Actor recipe {recipe.id} has no animation.draft.clips"
+                f"{recipe.purpose['category'].title()} recipe {recipe.id} "
+                "has no animation.draft.clips"
             )
         clips: list[dict[str, Any]] = []
         for clip in declared_clips:
@@ -1285,6 +1287,78 @@ def command_submit(args: argparse.Namespace) -> None:
     print(job_id)
 
 
+def command_compose_submit(args: argparse.Namespace) -> None:
+    """화풍×세계관×대상×방법을 Slack 폼과 같은 계약으로 큐에 넣는다."""
+    store = ReviewStore(args.db)
+    method = MethodRegistry().get(args.method_id)
+    if method.requires_source_candidate and not args.source_candidate:
+        raise ReviewError(
+            f"Method {method.id} requires --source-candidate"
+        )
+    recipe = resolve_by_id(
+        args.method_id,
+        args.target_id,
+        style_id=args.style,
+        world_id=args.world,
+    )
+    if args.source_candidate:
+        recipe = recipe.with_source_image(
+            store.approved_candidate_source(args.source_candidate)
+        )
+    positive = args.positive
+    if positive is None:
+        positive = str(recipe.prompt["positive"])
+    if args.positive_suffix:
+        positive = ", ".join(
+            part.strip().strip(",")
+            for part in (positive, args.positive_suffix)
+            if part.strip()
+        )
+    default_definition = definition_for_target(args.target_id)
+    if (
+        args.target_definition
+        and args.target_definition != default_definition
+    ):
+        if default_definition and default_definition in positive:
+            positive = positive.replace(
+                default_definition,
+                args.target_definition,
+                1,
+            )
+        elif args.target_definition not in positive:
+            positive = f"{positive.strip().strip(',')}, {args.target_definition}"
+    recipe = recipe.with_overrides(
+        checkpoint=args.checkpoint,
+        positive=positive,
+        negative=args.negative,
+        steps=args.steps,
+        cfg=args.cfg,
+        denoise=args.denoise,
+    )
+    recipe.validate_files()
+    notes = args.notes
+    if args.positive_suffix:
+        notes = (
+            f"생성 내용: {args.positive_suffix}\n{notes}".strip()
+        )
+    if (
+        args.target_definition
+        and args.target_definition != default_definition
+    ):
+        notes = (
+            f"대상 정의: {args.target_definition}\n{notes}".strip()
+        )
+    job_id = store.create_job(
+        recipe,
+        requested_by=args.requested_by,
+        candidate_count=args.count,
+        base_seed=args.seed,
+        notes=notes,
+        parent_candidate_id=args.source_candidate,
+    )
+    print(job_id)
+
+
 def command_jobs(args: argparse.Namespace) -> None:
     rows = ReviewStore(args.db).list_jobs(
         status=args.status,
@@ -1570,6 +1644,14 @@ def command_feedback_context(args: argparse.Namespace) -> None:
     json_print(result)
 
 
+def command_feedback_progress(args: argparse.Namespace) -> None:
+    started = ReviewStore(args.db).start_feedback(
+        args.feedback_id,
+        args.detail,
+    )
+    print("started" if started else "already-processing")
+
+
 def command_resolve_feedback(args: argparse.Namespace) -> None:
     ReviewStore(args.db).resolve_feedback(args.feedback_id, args.resolution)
 
@@ -1661,6 +1743,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     submit.add_argument("--requested-by", default="cli")
     submit.set_defaults(handler=command_submit)
+
+    compose_submit = subparsers.add_parser(
+        "compose-submit",
+        help="Queue a style × world × subject × method job",
+    )
+    compose_submit.add_argument("target_id")
+    compose_submit.add_argument("method_id")
+    compose_submit.add_argument("--style", required=True)
+    compose_submit.add_argument("--world", required=True)
+    compose_submit.add_argument("--count", type=candidate_count_arg)
+    compose_submit.add_argument("--seed", type=int)
+    compose_submit.add_argument("--steps", type=int)
+    compose_submit.add_argument("--cfg", type=float)
+    compose_submit.add_argument("--denoise", type=float)
+    compose_submit.add_argument("--checkpoint")
+    compose_submit.add_argument("--positive")
+    compose_submit.add_argument("--positive-suffix")
+    compose_submit.add_argument("--target-definition")
+    compose_submit.add_argument("--negative")
+    compose_submit.add_argument("--source-candidate")
+    compose_submit.add_argument("--notes", default="")
+    compose_submit.add_argument("--requested-by", default="manual")
+    compose_submit.set_defaults(handler=command_compose_submit)
 
     jobs = subparsers.add_parser("jobs")
     jobs.add_argument("--status")
@@ -1810,6 +1915,15 @@ def build_parser() -> argparse.ArgumentParser:
     context = subparsers.add_parser("feedback-context")
     context.add_argument("--limit", type=int, default=100)
     context.set_defaults(handler=command_feedback_context)
+
+    progress = subparsers.add_parser("feedback-progress")
+    progress.add_argument("feedback_id", type=int)
+    progress.add_argument(
+        "detail",
+        nargs="?",
+        default="이미지와 실행 설정을 함께 확인하고 있습니다.",
+    )
+    progress.set_defaults(handler=command_feedback_progress)
 
     resolve = subparsers.add_parser("resolve-feedback")
     resolve.add_argument("feedback_id", type=int)

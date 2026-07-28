@@ -1,0 +1,75 @@
+schema_version: 1
+id: environment-concept-sdxl-v1
+name: 환경 슬롯 컨셉 탐색 v1
+applies_to:
+- environment
+guide_roles: []
+use: concept
+category: environment
+animation_scope: static-reference-only
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: contain
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+generation:
+  width: 1024
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    one isolated modular isometric environment asset, exact gameplay-readable
+    silhouette, centered with generous empty border
+  suffix: >-
+    flat pure magenta background touching every image border, no cast shadow,
+    no neighboring tiles, one object only
+  negative: >-
+    full scene, room interior, landscape, contact sheet, multiple objects,
+    overlapping tiles, perspective mismatch, text, label, watermark
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 2:1 아이소메트릭 외곽과 모듈 비율
+  attribution: Civitai model 149080 / version 166425
+quality_gates:
+  require_transparency_after_prepare: true
+  reject_if:
+  - full-scene
+  - multiple-assets
+  - perspective-mismatch
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

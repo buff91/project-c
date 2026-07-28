@@ -1,0 +1,18 @@
+schema_version: 1
+id: env-floor-deep
+name: 후반 폐병원 바닥
+slot: env-floor-deep
+asset_type: environment
+readability_goal: 기본 외곽을 유지하며 노출 철근·침수 흔적 밀도로 후반 구간이 구분되어야 한다.
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: strict
+  anchor: center
+prompt:
+  positive: >-
+    exact 2:1 isometric diamond floor tile, badly cracked hospital concrete,
+    subtle exposed rebar line, old water tide marks, dense late-run wear,
+    seamless walkable edges, no height lip
+  negative: >-
+    raised platform, wall, stairs, open pit, loose prop, thick border

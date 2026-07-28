@@ -31,6 +31,12 @@ namespace ProjectC.Gameplay
                 position,
                 out SpriteRenderer renderer,
                 microOffset: 1);
+            AttachEnvironmentAnimator(
+                root,
+                renderer,
+                visualCatalog != null
+                    ? visualCatalog.EnvironmentAnimationsFor("hubCampfire")
+                    : null);
             _restSites.Add(new RestSiteAgent
             {
                 FloorIndex = floor.FloorIndex,

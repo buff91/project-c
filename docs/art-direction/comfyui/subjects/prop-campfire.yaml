@@ -1,0 +1,20 @@
+schema_version: 1
+id: prop-campfire
+name: 드럼통 화로 idle
+slot: prop-campfire
+asset_type: animation
+readability_goal: 고정된 드럼통과 4단계 불꽃만 움직여 휴식 지점이 128×128에서 읽혀야 한다.
+output:
+  canvas: [128, 128]
+  pivot: [0.5, 0.094]
+  fit: contain
+  anchor: bottom
+  padding: 2
+prompt:
+  positive: >-
+    one salvaged hospital steel drum brazier, squat oxidized barrel, stable
+    three-quarter isometric base, compact amber flame with pale hot core,
+    two tiny upward embers
+  negative: >-
+    camp tent, stone fantasy campfire, bonfire, moving barrel, smoke cloud
+    covering silhouette, multiple props

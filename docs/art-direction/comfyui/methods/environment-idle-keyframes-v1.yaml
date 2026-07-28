@@ -1,0 +1,116 @@
+schema_version: 1
+id: environment-idle-keyframes-v1
+name: 승인 환경 idle 키프레임 v1
+applies_to:
+- animation
+guide_roles: []
+requires_source_candidate: true
+use: animation-source
+category: environment
+animation_scope: idle-loop
+output:
+  canvas: [128, 128]
+  pivot: [0.5, 0.094]
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: animation-review-only
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 768
+  height: 768
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 24
+  cfg: 5.0
+  denoise: 0.28
+  candidates: 1
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    preserve the exact approved object base, footprint, camera and material
+    identity, change only the small animated light flame energy or signal
+    region, one isometric gameplay prop
+  suffix: >-
+    flat pure magenta background touching every border, isolated cutout,
+    stable outline and stable contact point
+  negative: >-
+    changed base, changed footprint, camera shift, object translation,
+    rotation, scale drift, extra object, contact sheet, full scene, text,
+    watermark, smooth frame interpolation
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.4
+  clip_strength: 0.4
+  purpose: 승인 오브젝트의 픽셀 정체성 유지
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  reject_if:
+  - base-drift
+  - contact-point-drift
+  - multiple-objects
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+poses:
+- id: pulse-low
+  label: idle · low
+  seed_offset: 0
+  prompt_suffix: ', weakest readable emission, contracted moving region'
+- id: pulse-rise
+  label: idle · rise
+  seed_offset: 0
+  prompt_suffix: ', rising emission, moving region shifted one deliberate pixel step upward'
+- id: pulse-high
+  label: idle · high
+  seed_offset: 0
+  prompt_suffix: ', strongest readable emission, expanded moving region, unchanged base'
+- id: pulse-fall
+  label: idle · fall
+  seed_offset: 0
+  prompt_suffix: ', falling emission between high and low, unchanged base'
+animation:
+  draft:
+    clips:
+    - tag: idle
+      loop: true
+      fps: 6
+      frames:
+      - pulse-low
+      - pulse-rise
+      - pulse-high
+      - pulse-fall

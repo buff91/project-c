@@ -57,6 +57,7 @@ namespace ProjectC.EditorTools
                 { "actor-skeleton", ActorGrounded },
                 { "actor-slime", ActorGrounded },
                 { "actor-slinger", ActorGrounded },
+                { "actor-arc-drone", ActorGrounded },
                 { "actor-grave-warden", ActorGrounded },
                 { "actor-merchant", ActorGrounded },
                 { "prop-campfire", new Vector2(0.5f, 12f / 128f) },

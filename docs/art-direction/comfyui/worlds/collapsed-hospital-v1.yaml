@@ -1,0 +1,20 @@
+schema_version: 1
+id: collapsed-hospital-v1
+name: 붕괴 폐병원 이상 미궁
+applies_to:
+- concept
+- environment
+- character
+- animation
+- effect
+prompt:
+  positive: >-
+    Project-C post-apocalyptic anomaly-dungeon world, abandoned concrete
+    hospital, cracked sanitary tile, oxidized dark steel, exposed rebar,
+    practical scavenged survival materials, blue-black charcoal shadows,
+    restrained rust-orange wear, emergency amber and desaturated teal only as
+    small functional signals
+  negative: >-
+    medieval fantasy, royal uniform, pristine modern military, glossy sci-fi
+    armor, gothic cathedral, wood tavern, cyberpunk neon overload, clean modern
+    hospital

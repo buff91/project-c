@@ -1,0 +1,97 @@
+schema_version: 1
+id: effect-refine-img2img-v1
+name: 승인 VFX 키프레임 정제 v1
+applies_to:
+- effect
+use: animation-source
+category: effect
+animation_scope: keyframe-from-approved-concept
+requires_source_candidate: true
+output:
+  canvas:
+  - 24
+  - 24
+  pivot:
+  - 0.5
+  - 0.5
+  fit: contain
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: animation-review-only
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 24
+  cfg: 5.5
+  denoise: 0.35
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    Pixel Art, preserve the approved source event silhouette and direction,
+    convert it into one compact Project-C gameplay VFX keyframe, asymmetric
+    broken motion, three to six deliberate particle clusters, clear empty
+    gaps, flat pure magenta background touching every border, hard pixel edges,
+    restrained torchstone palette, readable after nearest-neighbor reduction
+    to 24 pixels
+  suffix: one event only, isolated cutout
+  negative: >-
+    changed event direction, extra event, multiple copies, repeated symbols,
+    contact sheet, tiled pattern, UI icon, ability icon, badge, complete circle,
+    complete ring, concentric rings, radial symmetry, mandala, opaque disc,
+    smooth gradient, blurry glow haze, text, watermark, logo, photographic,
+    realistic debris, 3d render, anti-aliasing
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.0
+  clip_strength: 0.0
+  purpose: 환경 워크플로의 비활성 자리
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 승인 형태를 하드 픽셀 클러스터로 정리
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 30
+  maximum_visible_pixels: 900
+  reject_if:
+  - identity-drift
+  - repeated-symbols
+  - ui-icon
+  - complete-ring
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

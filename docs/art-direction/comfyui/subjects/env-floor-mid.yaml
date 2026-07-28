@@ -1,0 +1,18 @@
+schema_version: 1
+id: env-floor-mid
+name: 중반 폐병원 바닥
+slot: env-floor-mid
+asset_type: environment
+readability_goal: 기본 바닥과 같은 2:1 외곽을 유지하며 오염과 의료 폐기물 흔적으로 중반 구간이 읽혀야 한다.
+output:
+  canvas: [128, 64]
+  pivot: [0.5, 0.5]
+  fit: strict
+  anchor: center
+prompt:
+  positive: >-
+    exact 2:1 isometric diamond floor tile, cracked sanitary tile over
+    concrete, sparse dried disinfectant stains, restrained mid-run wear,
+    seamless walkable edges, no height lip
+  negative: >-
+    raised platform, wall, stairs, hole, object pile, edge overhang, thick rim

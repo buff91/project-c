@@ -974,6 +974,16 @@ namespace ProjectC.Gameplay
             renderer.color = new Color(
                 wallTint.r * wallLight.r, wallTint.g * wallLight.g, wallTint.b * wallLight.b,
                 VisibilityAlpha(pos));
+            if (torch && mapped != null && visualCatalog != null)
+            {
+                AttachEnvironmentAnimator(
+                    wall,
+                    renderer,
+                    visualCatalog.EnvironmentAnimationsFor(
+                        flip
+                            ? "rearWallTorchRisingRight"
+                            : "rearWallTorchRisingLeft"));
+            }
             _rearWallRenderers.Add(renderer, pos);
         }
 

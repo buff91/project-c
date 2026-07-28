@@ -66,6 +66,7 @@ namespace ProjectC.EditorTools
                 { "actor-skeleton", "skeleton" },
                 { "actor-slime", "slime" },
                 { "actor-slinger", "slinger" },
+                { "actor-arc-drone", "arcDrone" },
                 { "actor-grave-warden", "graveWarden" },
                 { "actor-merchant", "merchant" },
                 { "prop-explosive-barrel", "explosiveBarrel" },
@@ -92,6 +93,15 @@ namespace ProjectC.EditorTools
                 { "fx-impact-heavy", "fxImpactHeavy" },
                 { "fx-status-burn", "fxStatusBurn" },
                 { "fx-status-freeze", "fxStatusFreeze" }
+            };
+
+        private static readonly HashSet<string> EnvironmentAnimationSlots =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "env-wall-torch-rising-right",
+                "env-wall-torch-rising-left",
+                "prop-campfire",
+                "prop-portal"
             };
 
         private static bool _catalogSyncQueued;
@@ -317,6 +327,34 @@ namespace ProjectC.EditorTools
                 changed++;
             }
 
+            // 환경/소품은 idle 태그만 굽는다. 렌더러가 숨겨지면 같은 경량
+            // SpriteClipAnimator가 멈추므로 FOV 밖/비활성 층 비용도 들지 않는다.
+            var environmentAnimations = new List<EnvironmentAnimationSet>();
+            foreach (string path in sources)
+            {
+                string assetName = Path.GetFileNameWithoutExtension(path);
+                if (duplicateNames.Contains(assetName) ||
+                    assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase) ||
+                    !EnvironmentAnimationSlots.Contains(assetName) ||
+                    !TryGetCatalogSlot(path, out string slotKey))
+                    continue;
+
+                EnvironmentAnimationSet set =
+                    ActorAnimationBake.ExtractEnvironmentSet(path, slotKey);
+                if (set != null && set.HasClips)
+                    environmentAnimations.Add(set);
+            }
+
+            environmentAnimations.Sort(
+                (a, b) => string.CompareOrdinal(a.slotKey, b.slotKey));
+            if (!ActorAnimationBake.EnvironmentSetsEqual(
+                    catalog.environmentAnimations,
+                    environmentAnimations))
+            {
+                catalog.environmentAnimations = environmentAnimations;
+                changed++;
+            }
+
             if (changed > 0)
             {
                 EditorUtility.SetDirty(catalog);
@@ -369,7 +407,7 @@ namespace ProjectC.EditorTools
                         AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>()) == null)
                     problems.Add($"Sprite 프레임이 없음: {path}");
 
-                CollectActorClipProblems(path, problems);
+                CollectClipProblems(path, problems);
             }
 
             return problems;
@@ -379,22 +417,30 @@ namespace ProjectC.EditorTools
         /// 액터 소스의 태그 클립 규약 검사 — 베이크에서 조용히 버려지거나 어긋나는 것을
         /// 에디터에서 미리 잡는다 (파일명 계약처럼 "조용한 실패"를 만들지 않는다).
         /// </summary>
-        private static void CollectActorClipProblems(string path, List<string> problems)
+        private static void CollectClipProblems(string path, List<string> problems)
         {
             string assetName = Path.GetFileNameWithoutExtension(path);
-            if (!assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase))
+            bool actor = assetName.StartsWith(
+                "actor-",
+                StringComparison.OrdinalIgnoreCase);
+            if (!actor && !EnvironmentAnimationSlots.Contains(assetName))
                 return;
 
             AnimationClip[] clips =
                 AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().ToArray();
+            if (clips.Length == 0) return;
             bool hasTaggedClip = false;
             bool hasIdle = false;
             foreach (AnimationClip clip in clips)
             {
                 string tag = ActorAnimationBake.TagFromClipName(clip.name);
-                if (tag == null)
+                if (tag == null || (!actor && tag != SpriteClipTags.Idle))
                 {
-                    problems.Add($"태그 규약(idle/walk/attack/hit/fall/death) 밖 클립 '{clip.name}': {path}");
+                    string contract = actor
+                        ? "idle/walk/attack/hit/fall/death"
+                        : "idle";
+                    problems.Add(
+                        $"태그 규약({contract}) 밖 클립 '{clip.name}': {path}");
                     continue;
                 }
 
@@ -404,7 +450,9 @@ namespace ProjectC.EditorTools
                     problems.Add(
                         $"클립 '{clip.name}'에 sprite 외 커브가 있음 — 베이크에서 버려진다" +
                         $"(transform/color는 게임 코드 소유): {path}");
-                if (ActorAnimationBake.IsOneShotTag(tag) && clip.isLooping)
+                if (actor &&
+                    ActorAnimationBake.IsOneShotTag(tag) &&
+                    clip.isLooping)
                     problems.Add($"원샷 태그 '{clip.name}'가 루프로 임포트됨 — Aseprite Tag Repeat=1 확인: {path}");
             }
 

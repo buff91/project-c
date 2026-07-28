@@ -40,6 +40,7 @@ from art_runner import (
     build_parser,
     decide_candidate_shot,
     process_action,
+    process_job,
     publish_candidate,
     reject_candidate,
     resolve_batch_jobs,
@@ -52,6 +53,7 @@ from art_slack_bot import (
     animation_action_value,
     animation_timing_blocks,
     candidate_blocks,
+    diversity_candidate_count,
     find_candidate_from_text,
     find_feedback_target,
     modal_select,
@@ -61,6 +63,7 @@ from art_slack_bot import (
     parse_shot_action,
     recipe_list_text,
     recipes_by_asset_type,
+    SlackReviewService,
     slack_help_text,
     slot_label,
     shot_blocks,
@@ -140,14 +143,35 @@ class RecipeTests(unittest.TestCase):
         self.assertIn("actor-slinger-animation-v5", listed)
 
         element = modal_view(self.registry)["blocks"][0]["element"]
-        self.assertNotIn(
-            "options",
-            element,
-            "드롭다운은 평평한 목록이 아니라 타입별 그룹이어야 한다",
+        self.assertEqual(
+            {"chunky-isometric-pixel-v1"},
+            {option["value"] for option in element["options"]},
+        )
+        world_element = modal_view(self.registry)["blocks"][1]["element"]
+        self.assertEqual(
+            {"collapsed-hospital-v1"},
+            {option["value"] for option in world_element["options"]},
+        )
+        target_element = modal_view(
+            self.registry,
+            selected_style_id="chunky-isometric-pixel-v1",
+            selected_world_id="collapsed-hospital-v1",
+        )["blocks"][2]["element"]
+        self.assertEqual(
+            ["배경", "캐릭터", "애니메이션", "이펙트"],
+            [
+                group["label"]["text"]
+                for group in target_element["option_groups"]
+            ],
+        )
+        character_group = next(
+            group
+            for group in target_element["option_groups"]
+            if group["label"]["text"] == "캐릭터"
         )
         self.assertEqual(
-            ["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"],
-            [group["label"]["text"] for group in element["option_groups"]],
+            {"actor-knight", "actor-slinger", "actor-grave-warden"},
+            {option["value"] for option in character_group["options"]},
         )
 
     def test_every_recipe_satisfies_its_workflow_type_contract(self) -> None:
@@ -213,12 +237,27 @@ class RecipeTests(unittest.TestCase):
         adjusted = recipe.with_overrides(
             positive="짧은 슬링을 든 약탈자",
             checkpoint="dreamshaper_9.safetensors",
+            steps=30,
+            cfg=6.25,
+            denoise=0.7,
         )
         self.assertEqual("짧은 슬링을 든 약탈자", adjusted.prompt["positive"])
         self.assertEqual(
             "dreamshaper_9.safetensors", adjusted.pipeline["checkpoint"]
         )
-        self.assertEqual(("모델", "긍정 프롬프트"), adjusted.adjustments)
+        self.assertEqual(
+            (
+                "모델",
+                "긍정 프롬프트",
+                "Steps",
+                "CFG",
+                "Denoise",
+            ),
+            adjusted.adjustments,
+        )
+        self.assertEqual(30, adjusted.generation["steps"])
+        self.assertEqual(6.25, adjusted.generation["cfg"])
+        self.assertEqual(0.7, adjusted.generation["denoise"])
         self.assertNotEqual(recipe.digest, adjusted.digest)
         # 원본은 건드리지 않는다 — YAML 은 여전히 SSOT다.
         self.assertEqual(
@@ -239,6 +278,37 @@ class RecipeTests(unittest.TestCase):
             ),
         )
         self.assertIs(recipe, recipe.with_overrides())
+
+    def test_approved_source_replaces_identity_input_not_pose(self) -> None:
+        from art_compose import resolve_by_id
+
+        recipe = resolve_by_id("character-idle-v1", "actor-slinger")
+        source = Path(
+            "docs/art-direction/comfyui/guides/"
+            "actor-slinger-runtime-source-512-v1.png"
+        )
+        adjusted = recipe.with_source_image(source)
+        self.assertTrue(
+            adjusted.pipeline["uploads"]["5.image"].endswith(
+                source.name
+            )
+        )
+        self.assertEqual(
+            recipe.pipeline["uploads"]["6.image"],
+            adjusted.pipeline["uploads"]["6.image"],
+        )
+        self.assertIn("승인 소스", adjusted.adjustments)
+
+    def test_txt2img_rejects_an_approved_source(self) -> None:
+        from art_compose import resolve_by_id
+
+        recipe = resolve_by_id("effect-concept-sdxl-v1", "fx-impact-fire")
+        source = Path(
+            "docs/art-direction/comfyui/guides/"
+            "actor-slinger-style-source.png"
+        )
+        with self.assertRaisesRegex(ReviewError, "img2img"):
+            recipe.with_source_image(source)
 
     def test_override_to_incompatible_workflow_is_rejected(self) -> None:
         """타입을 바꾸면 노드 번호 체계가 달라진다 — 폼에서 막아야 한다."""
@@ -642,6 +712,42 @@ class StoreTests(unittest.TestCase):
         self.assertIn("batch_item_id", columns)
         self.assertIn("idx_jobs_batch", indexes)
 
+    def test_job_validation_failure_is_recorded(self) -> None:
+        import copy as copy_module
+
+        from art_review import Recipe
+
+        document = copy_module.deepcopy(
+            RecipeRegistry().get("actor-concept-sdxl-v1").document
+        )
+        document["output"]["promotion"] = "aseprite"
+        invalid = Recipe.from_document(
+            document,
+            path=Path("legacy-concept.yaml"),
+        )
+        job_id = self.store.create_job(
+            invalid,
+            requested_by="test",
+            candidate_count=1,
+            base_seed=123,
+        )
+        job = self.store.claim_job(job_id)
+        with self.assertRaisesRegex(ReviewError, "unregistered slot"):
+            process_job(
+                self.store,
+                job,
+                comfy_url="http://127.0.0.1:1",
+                output_root=self.root / "outputs",
+                timeout=1,
+            )
+        failed = self.store.get_job(job_id)
+        self.assertEqual("failed", failed["status"])
+        self.assertIn("unregistered slot", failed["error"])
+        self.assertEqual(
+            "job_failed",
+            self.store.pending_outbox()[-1]["kind"],
+        )
+
     def test_allowlist_fails_closed_when_unconfigured(self) -> None:
         with unittest.mock.patch.dict(
             "os.environ",
@@ -738,6 +844,49 @@ class StoreTests(unittest.TestCase):
         self.assertFalse(second)
         self.assertEqual(1, len(self.store.pending_feedback()))
 
+    def test_feedback_progress_and_resolution_enqueue_thread_updates(
+        self,
+    ) -> None:
+        candidate_id = self.add_candidate()
+        self.store.add_feedback(
+            event_key="thread-question-1",
+            user_id="U1",
+            source="thread",
+            text="이제 컨셉아트야?",
+            candidate_id=candidate_id,
+        )
+        feedback_id = self.store.pending_feedback()[0]["id"]
+
+        self.assertTrue(
+            self.store.start_feedback(
+                feedback_id,
+                "후보의 제작 단계와 실행 설정을 확인하고 있습니다.",
+            )
+        )
+        self.assertFalse(
+            self.store.start_feedback(
+                feedback_id,
+                "중복 진행 알림",
+            )
+        )
+        processing = self.store.pending_feedback()
+        self.assertEqual("processing", processing[0]["status"])
+        self.assertEqual(
+            "feedback_progress",
+            self.store.pending_outbox()[-1]["kind"],
+        )
+
+        self.store.resolve_feedback(
+            feedback_id,
+            "네. 아직 게임용 스프라이트가 아니라 콘셉트 검토 단계입니다.",
+        )
+        self.assertEqual([], self.store.pending_feedback())
+        outbox = self.store.pending_outbox()
+        self.assertEqual(
+            ["feedback_progress", "feedback_resolved"],
+            [row["kind"] for row in outbox[-2:]],
+        )
+
     def test_approval_records_resolved_feedback(self) -> None:
         candidate_id = self.add_candidate()
         approve_candidate(
@@ -753,6 +902,10 @@ class StoreTests(unittest.TestCase):
         self.assertTrue((snapshot / "raw.png").is_file())
         self.assertTrue((snapshot / "approval.json").is_file())
         self.assertTrue((snapshot / "recipe.json").is_file())
+        self.assertEqual(
+            (snapshot / "raw.png").resolve(),
+            self.store.approved_candidate_source(candidate_id),
+        )
         self.assertEqual([], self.store.pending_feedback())
 
     def test_batch_rotates_expensive_single_shots(self) -> None:
@@ -1000,6 +1153,68 @@ class StoreTests(unittest.TestCase):
         self.assertIn("(2/3)", blocks[1]["text"]["text"])
         context = blocks[2]["elements"][0]["text"]
         self.assertIn(f"작업 `{self.job_id}`", context)
+        self.assertIn("스레드 첫 답글", context)
+        self.assertNotIn("/art job", context)
+
+    def test_candidate_posts_execution_details_once_in_its_thread(self) -> None:
+        class FakeSlackClient:
+            def __init__(self) -> None:
+                self.posts: list[dict[str, object]] = []
+                self.uploads: list[dict[str, object]] = []
+
+            def chat_postMessage(self, **kwargs: object) -> dict[str, str]:
+                self.posts.append(kwargs)
+                return {"ts": f"{len(self.posts)}.000"}
+
+            def files_upload_v2(self, **kwargs: object) -> None:
+                self.uploads.append(kwargs)
+
+        candidate_id = self.add_candidate()
+        outbox_id = self.store.enqueue_outbox(
+            "job_ready",
+            {"job_id": self.job_id},
+        )
+        service = SlackReviewService(
+            store=self.store,
+            registry=RecipeRegistry(),
+            channel_id="C1",
+            comfy_url="http://127.0.0.1:8188",
+            output_root=self.root / "output",
+            work_timeout=1,
+            poll_interval=0.01,
+            run_worker=False,
+        )
+        client = FakeSlackClient()
+
+        service.post_candidate(
+            client,
+            candidate_id,
+            outbox_id=outbox_id,
+        )
+
+        self.assertEqual(2, len(client.posts))
+        root, details = client.posts
+        self.assertNotIn("thread_ts", root)
+        self.assertEqual("1.000", details["thread_ts"])
+        detail_text = "\n".join(
+            block.get("text", {}).get("text", "")
+            for block in details["blocks"]
+            if isinstance(block, dict)
+        )
+        self.assertIn("Positive", detail_text)
+        self.assertIn("Negative", detail_text)
+        self.assertIn("LoRA", detail_text)
+        self.assertIn(str(self.recipe.pipeline["checkpoint"]), detail_text)
+        self.assertEqual(1, len(client.uploads))
+        self.assertEqual("1.000", client.uploads[0]["thread_ts"])
+
+        service.post_candidate(
+            client,
+            candidate_id,
+            outbox_id=outbox_id,
+        )
+        self.assertEqual(2, len(client.posts))
+        self.assertEqual(1, len(client.uploads))
 
     def test_candidate_card_flags_an_adjusted_run(self) -> None:
         candidate_id = self.add_candidate()
@@ -1011,23 +1226,87 @@ class StoreTests(unittest.TestCase):
         plain = candidate_blocks(self.recipe, candidate)
         self.assertNotIn("이번 실행 조정", plain[1]["text"]["text"])
 
-    def test_modal_prefills_the_selected_recipe(self) -> None:
+    def test_modal_defaults_to_a_safe_quick_concept(self) -> None:
         registry = RecipeRegistry()
         empty = modal_view(registry)
+        by_id = {
+            block.get("block_id"): block
+            for block in empty["blocks"]
+            if block.get("block_id")
+        }
         self.assertEqual(
-            ["recipe", None, "count", "notes"],
-            [block.get("block_id") for block in empty["blocks"]],
+            "chunky-isometric-pixel-v1",
+            by_id["style"]["element"]["initial_option"]["value"],
         )
+        self.assertEqual(
+            "collapsed-hospital-v1",
+            by_id["world"]["element"]["initial_option"]["value"],
+        )
+        self.assertIn("target", by_id)
+        self.assertIn("diversity", by_id)
+        self.assertNotIn("method", by_id)
+
+        quick = modal_view(
+            registry,
+            selected_target_id="actor-slinger",
+        )
+        quick_by_id = {
+            block.get("block_id"): block
+            for block in quick["blocks"]
+            if block.get("block_id")
+        }
+        self.assertEqual(
+            "concept-sdxl-v1",
+            quick_by_id["method"]["element"]["initial_option"]["value"],
+        )
+        self.assertIn("brief", quick_by_id)
+        self.assertNotIn("source_candidate", quick_by_id)
+        self.assertNotIn("seed", quick_by_id)
+        self.assertNotIn("workflow_type", quick_by_id)
+        self.assertEqual(
+            "balanced",
+            quick_by_id["diversity"]["element"]["initial_option"]["value"],
+        )
+
+    def test_modal_next_stage_prefills_source_and_advanced_values(self) -> None:
+        registry = RecipeRegistry()
         filled = modal_view(
-            registry, selected_recipe_id="actor-slinger-idle-v1"
+            registry,
+            selected_target_id="actor-slinger",
+            source_candidate_id="ART-EXAMPLE-C01",
+            advanced=True,
         )
         by_id = {
             block.get("block_id"): block
             for block in filled["blocks"]
             if block.get("block_id")
         }
+        self.assertEqual(
+            "character-idle-v1",
+            by_id["method"]["element"]["initial_option"]["value"],
+        )
+        method_ids = {
+            option["value"]
+            for option in by_id["method"]["element"]["options"]
+        }
+        self.assertEqual(
+            {"character-idle-v1", "character-action-keyframes-v5"},
+            method_ids,
+        )
+        self.assertNotIn("source_candidate", by_id)
+        self.assertIn("seed", by_id)
+        self.assertIn("steps", by_id)
+        self.assertIn("cfg", by_id)
+        self.assertIn("denoise", by_id)
         self.assertIn("workflow_type", by_id)
-        recipe = registry.get("actor-slinger-idle-v1")
+        from art_compose import resolve_by_id
+
+        recipe = resolve_by_id(
+            "character-idle-v1",
+            "actor-slinger",
+            style_id="chunky-isometric-pixel-v1",
+            world_id="collapsed-hospital-v1",
+        )
         self.assertEqual(
             recipe.pipeline["checkpoint"],
             by_id["checkpoint"]["element"]["initial_value"],
@@ -1040,6 +1319,18 @@ class StoreTests(unittest.TestCase):
             recipe.workflow_type,
             by_id["workflow_type"]["element"]["initial_option"]["value"],
         )
+
+    def test_diversity_preset_caps_multi_shot_generation(self) -> None:
+        from art_compose import resolve_by_id
+
+        single = resolve_by_id("concept-sdxl-v1", "actor-slinger")
+        multi = resolve_by_id(
+            "character-action-keyframes-v5",
+            "actor-slinger",
+        )
+        self.assertEqual(6, diversity_candidate_count(single, "wide"))
+        self.assertEqual(2, diversity_candidate_count(multi, "wide"))
+        self.assertEqual(1, diversity_candidate_count(multi, "balanced"))
 
     def test_blank_modal_fields_mean_leave_the_recipe_alone(self) -> None:
         values = {

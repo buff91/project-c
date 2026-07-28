@@ -4,9 +4,14 @@ name: 런타임 액션 키프레임 v5 · identity/pose balance
 applies_to:
 - character
 - animation
+required_guides:
+- pose
+guide_roles:
+- pose
 use: animation-source
 animation_scope: runtime-state-keyframes
 category: actor
+requires_source_candidate: true
 output:
   canvas:
   - 96

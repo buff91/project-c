@@ -1,0 +1,20 @@
+schema_version: 1
+id: env-wall-torch-rising-right
+name: 우상향 비상등 벽 idle
+slot: env-wall-torch-rising-right
+asset_type: animation
+readability_goal: 고정 벽면과 배선은 움직이지 않고 호박 비상등의 작은 점멸만 읽혀야 한다.
+output:
+  canvas: [64, 112]
+  pivot: [0.5, 0.143]
+  fit: strict
+  anchor: bottom
+  padding: 0
+prompt:
+  positive: >-
+    one narrow right-rising rear hospital wall module, cracked concrete and
+    sanitary tile, fixed exposed cable, tiny amber emergency work light,
+    compact local halo
+  negative: >-
+    torch flame, medieval sconce, moving wall, full room, window, multiple
+    lights, large bloom

@@ -191,12 +191,20 @@
   `ProjectCAsepritePipeline`이 Point/PPU 128/Canvas Pivot/무압축/AnimationClip을 강제하고
   정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다.
   나아가 임포터가 만든 AnimationClip에서 **sprite 커브만** 뽑아 태그 클립으로 굽고
-  `catalog.actorAnimations`에 싣는다 — transform/color 커브는 의도적으로 버린다(액터 루트의
+  액터는 `catalog.actorAnimations`, 환경 루프는 `catalog.environmentAnimations`에 싣는다 —
+  transform/color 커브는 의도적으로 버린다(액터 루트의
   position·scale·color는 전투 FX가 소유하므로 여기서 건드리면 둘이 싸운다). 원샷 태그
   (attack/hit/fall/death)가 루프로 임포트되거나, 태그 규약 밖 클립이 있거나, 태그 클립이 있는데
-  idle이 없으면 파이프라인 검증에서 걸린다.
+  idle이 없으면 파이프라인 검증에서 걸린다. 환경은 `prop-campfire`, `prop-portal`,
+  좌·우 상승 벽 횃불 4슬롯의 `idle` 태그만 베이크하며, 태그가 없으면 첫 프레임 정적 폴백을
+  유지한다. 허브·휴식 지점·가시 벽 소품은 같은 `SpriteClipAnimator` 계약으로 자동 재생한다.
   로컬 제작 쪽은 ComfyUI `127.0.0.1:8188` REST → YAML 레시피/SQLite 큐 → 샷별
   Aseprite conform → Lua 타임라인·1×/8× GIF 초안 → Slack Socket Mode 리뷰로 연결돼 있다.
+  Slack 생성 폼은 기본 화풍·세계관을 자동 선택하고 새 작업에서는 승인 소스 없는 컨셉 방법만
+  보여준다. 승인 후보 카드의 `다음 단계 생성`은 대상·화풍·세계관·후보 ID와 권장 후속 방법을
+  자동 계승한다. 기본 화면은 대상·이번 내용·결과 다양성만 받고 모델·전체 프롬프트·seed·Steps·
+  CFG·denoise는 `고급 설정`에서만 편집한다. 메인 원정자 `actor-knight`, 정적 환경 9슬롯,
+  환경 idle 루프 4슬롯이 이 합성 레지스트리에 등록돼 있다.
   `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
   실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
   `apply_requests`만 Codex Spark Scheduled가 실제 Unity/Aseprite 참조를 조사해 적용한다.

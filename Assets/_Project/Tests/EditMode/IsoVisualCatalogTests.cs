@@ -387,6 +387,35 @@ namespace ProjectC.Tests
             Assert.IsNull(set.Find(null));
         }
 
+        [Test]
+        public void EnvironmentAnimationsFor_LooksUpIdleSet_IgnoresEmptySets()
+        {
+            var campfire = new EnvironmentAnimationSet
+            {
+                slotKey = "hubCampfire",
+                clips = new List<SpriteClip>
+                {
+                    new SpriteClip
+                    {
+                        tag = "idle",
+                        loop = true,
+                        frames = new[] { MakeSprite(), MakeSprite() },
+                        frameStartTimes = new[] { 0f, 0.1f },
+                        length = 0.2f
+                    }
+                }
+            };
+            _catalog.environmentAnimations.Add(
+                new EnvironmentAnimationSet { slotKey = "hubPortal" });
+            _catalog.environmentAnimations.Add(campfire);
+
+            Assert.AreSame(
+                campfire,
+                _catalog.EnvironmentAnimationsFor("hubCampfire"));
+            Assert.IsNull(_catalog.EnvironmentAnimationsFor("hubPortal"));
+            Assert.IsNull(_catalog.EnvironmentAnimationsFor("missing"));
+        }
+
         private Sprite MakeSprite()
         {
             Sprite sprite = Sprite.Create(

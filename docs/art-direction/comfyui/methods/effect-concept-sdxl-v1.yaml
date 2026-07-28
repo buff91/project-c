@@ -1,0 +1,82 @@
+schema_version: 1
+id: effect-concept-sdxl-v1
+name: VFX 컨셉 탐색 v1
+applies_to:
+- effect
+use: concept
+category: effect
+animation_scope: reference-only
+output:
+  canvas:
+  - 24
+  - 24
+  pivot:
+  - 0.5
+  - 0.5
+  fit: contain
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: false
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 5.5
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    Pixel Art, Project-C gameplay VFX concept, one single asymmetric event at
+    image center, open directional motion, three to six separated chunky
+    particle clusters, flat pure magenta background touching every border,
+    crisp hard pixel edges, restrained torchstone palette, readable at 24 pixels
+  suffix: >-
+    concept exploration only, one event and no sprite sheet
+  negative: >-
+    multiple copies, repeated symbols, contact sheet, sprite sheet, tiled
+    pattern, UI icon, ability icon, badge, button, complete circle, complete
+    ring, concentric rings, radial symmetry, mandala, opaque disc, smooth
+    gradient, blurry glow haze, text, watermark, logo, photographic, 3d render
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 하드 픽셀 에지와 제한된 클러스터
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  reject_if:
+  - repeated-symbols
+  - ui-icon
+  - complete-ring
+  - radial-symmetry
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
