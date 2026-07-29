@@ -135,8 +135,9 @@ namespace ProjectC.Core
         private static readonly ItemDefinition[] Definitions =
         {
             // 칸당 2회분. 6회분이 6칸을 먹던 시절엔 회복을 챙길수록 전리품 자리가 사라져
-            // "몇 회분 챙길까"가 아니라 "포기할까"만 남았다. 화력·탈출 자원은 1로 둔다 —
-            // 인벤토리 산수만 바꾸고 조우 산수는 건드리지 않는다.
+            // "몇 회분 챙길까"가 아니라 "포기할까"만 남았다. 광역 화력(폭탄·냉기·기름)과
+            // 탈출 자원(귀환·송출기)은 1로 둔다 — 폭발은 한 발이 판을 뒤집고, 탈출은
+            // 익스트랙션 판돈 그 자체다.
             Define(ItemKind.Potion, ItemCategory.Consumable, "회복 물약", "POTION",
                 "HP를 회복한다. 마시는 데 행동 1회를 소비한다.", shopPrice: 15,
                 chargesPerItem: 2),
@@ -146,8 +147,13 @@ namespace ProjectC.Core
                 "낮은 피해의 3×3 냉기 폭발 — 맞은 대상을 빙결시킨다. 폭발통은 터뜨리지 않는다.", shopPrice: 15),
             Define(ItemKind.OilFlask, ItemCategory.Consumable, "기름 병", "OIL",
                 "3×3 범위에 기름을 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.", 10, footprint: Tall),
+            // 칸당 3회분. 1×2라 한 자루가 두 칸을 먹었고, 세 자루면 백팩의 1/4이 칼집이었다 —
+            // 단일 대상 한 방짜리 자원에 그 값은 "쓸까"가 아니라 "아예 안 가져간다"로 끝난다.
+            // **이건 순수한 칸 산수가 아니다**: 실질 휴대량이 늘어 원거리 연발 횟수가 오른다.
+            // 그래도 광역·연쇄가 없어 한 발이 판을 뒤집지 않는 단일 대상 자원이라 허용한다.
             Define(ItemKind.ThrowingKnife, ItemCategory.Consumable, "투척 단검", "KNIFE",
-                "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.", 10, footprint: Tall),
+                "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.", 10,
+                footprint: Tall, chargesPerItem: 3),
             Define(ItemKind.RecallScroll, ItemCategory.Consumable, "귀환 두루마리", "SCROLL",
                 "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.", 25, footprint: Tall),
             Define(ItemKind.CoinPouch, ItemCategory.Treasure, "동전 주머니", "COIN",

@@ -55,6 +55,41 @@ namespace ProjectC.Tests
             Assert.AreEqual(expectedCells, layout.UsedCells);
         }
 
+        /// <summary>
+        /// 투척 단검은 <b>충전과 다칸 풋프린트가 동시에 걸리는 유일한 종류</b>다.
+        /// 칸수는 `ceil(충전 / 칸당)`이고 셀 수는 거기에 풋프린트 면적을 곱한 값이라,
+        /// 둘 중 하나만 보면 조용히 틀린다(충전만 보면 3자루가 2셀, 면적만 보면 6셀).
+        /// </summary>
+        [Test]
+        public void Layout_MultipliesChargeUnitsByFootprintArea()
+        {
+            ItemKind knife = ItemKind.ThrowingKnife;
+            int per = ItemCatalog.ChargesPerItem(knife);
+            int area = BackpackRules.Footprint(knife).Area;
+            Assert.Greater(per, 1, "이 테스트는 충전이 있는 다칸 아이템을 전제한다");
+            Assert.Greater(area, 1, "이 테스트는 다칸 풋프린트를 전제한다");
+
+            var inventory = new Inventory(BackpackRules.Columns, BackpackRules.Rows);
+            inventory.Add(knife, per);
+
+            BackpackLayout full = inventory.CreateLayout();
+            Assert.AreEqual(area, full.UsedCells, "만충 한 칸은 풋프린트 하나만 먹는다");
+            Assert.AreEqual(1, CountPlacements(full, knife));
+
+            inventory.Add(knife, 1); // 만충을 하나 넘긴다
+            BackpackLayout spilled = inventory.CreateLayout();
+            Assert.AreEqual(area * 2, spilled.UsedCells, "새 칸은 풋프린트 하나를 통째로 먹는다");
+            Assert.AreEqual(2, CountPlacements(spilled, knife));
+        }
+
+        private static int CountPlacements(BackpackLayout layout, ItemKind kind)
+        {
+            int count = 0;
+            foreach (BackpackPlacement placement in layout.Placements)
+                if (placement.Kind == kind) count++;
+            return count;
+        }
+
         [Test]
         public void BoundedInventory_RejectsItemWhenNoFootprintFits()
         {
