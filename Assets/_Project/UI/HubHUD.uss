@@ -19,9 +19,8 @@
 }
 
 .hub-caption {
-    color: var(--muted);
+    color: var(--pc-dim);
     font-size: var(--pc-fs-1);
-    letter-spacing: 2px;
     margin-right: 8px;
 }
 
@@ -58,13 +57,47 @@
     width: 130px;
 }
 
+/* 던전 메시지 로그와 같은 플레이트 어휘. 캠프도 같은 시스템으로 읽혀야 한다. */
 .hub-status-zone {
     position: absolute;
-    bottom: 16px;
-    left: 0;
-    right: 0;
+    bottom: 8px;
+    left: 8px;
+    right: auto;
     translate: 0 0;
-    align-items: center;
+    align-items: flex-start;
+}
+
+/* 상시 문장이 아니다 — 컨트롤러가 켜고 7초 뒤 닫는다. */
+.hub-status-zone .feedback-chip {
+    display: none;
+    min-height: 0;
+    max-width: 264px;
+    padding: 2px 4px;
+    margin-top: 0;
+    border-radius: 0;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+    border-right-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    background-color: rgba(5, 7, 12, 0.78);
+}
+
+.hub-status-zone .feedback-chip.is-open {
+    display: flex;
+}
+
+.hub-status-zone .chip-dot {
+    display: none;
+}
+
+.hub-status-zone .chip-label {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    white-space: normal;
 }
 
 .hub-dungeon-card {
@@ -101,7 +134,10 @@
     border-color: var(--pc-gold-deep);
 }
 
-.hub-dungeon-option.locked {
+/* 잠금 표현은 `locked` 한 벌이다. 컨트롤러가 `is-locked` 를 토글하던 시절엔 USS 어디에도
+   그 규칙이 없어 붙어도 화면이 변하지 않았다(UI_ARCHITECTURE 의 "알려진 어긋남"). */
+.hub-dungeon-option.locked,
+.hub-bounty-row.locked {
     color: var(--pc-dim);
     opacity: 0.55;
 }

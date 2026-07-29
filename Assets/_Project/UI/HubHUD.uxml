@@ -21,10 +21,12 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- 상시 튜토리얼 문장을 지웠다. 캠프에 들어올 때 한 번 띄우고 7초 뒤 닫는다 —
+             한 번 읽으면 끝인 문장이 화면 한 줄을 영구히 차지할 이유가 없다. -->
         <ui:VisualElement class="status-zone hub-status-zone">
-            <ui:VisualElement class="status-chip feedback-chip">
+            <ui:VisualElement name="hub-status-chip" class="status-chip feedback-chip">
                 <ui:VisualElement class="chip-dot feedback-dot" />
-                <ui:Label name="hub-status" text="상인·대장간·의뢰·기록실·창고를 탭하고, 포탈로 걸어가면 출발" class="chip-label" />
+                <ui:Label name="hub-status" text="" class="chip-label" />
             </ui:VisualElement>
         </ui:VisualElement>
 

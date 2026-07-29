@@ -64,13 +64,20 @@ namespace ProjectC.Gameplay
 
         private readonly VisualElement _panelRoot;
         private readonly VisualElement _contentRoot;
+        /// <summary>
+        /// <c>PrototypePanelSettings.asset</c>에 직렬화된 <c>m_Scale</c>. 에디터에서 나갈 때
+        /// 이 값으로 되돌려 에셋에 유령 diff 가 남지 않게 한다.
+        ///
+        /// <para>
+        /// 들어올 때의 값을 캐시하지 <b>않는</b> 이유: PanelSettings 는 씬 셋이 공유하는
+        /// 에셋이라, 앞 씬이 남긴 런타임 값(예: 4)을 "원본"으로 캐시하면 그 값이 영구히
+        /// 눌러앉는다. 실제로 그렇게 되면 다음 씬에서 배율이 이미 목표값이라 아무도 다시
+        /// 쓰지 않고, 패널은 1배로 그린 채 남는다(메인 메뉴에서 실측).
+        /// </para>
+        /// </summary>
+        public const float SerializedScale = 1f;
+
         private readonly PanelSettings _panelSettings;
-#if UNITY_EDITOR
-        // PanelSettings는 ScriptableObject다. 플레이 중에 scale을 쓰면 에셋이 더티가 되어
-        // PrototypePanelSettings.asset 의 m_Scale 에 유령 diff 가 남는다. 직렬화 값을
-        // 들어올 때 캐시했다가 나갈 때 되돌린다 — 런타임 값은 코드가, 에셋 값은 파일이 소유한다.
-        private readonly float _serializedScale;
-#endif
         private bool _disposed;
 
         public ResponsiveUiLayout(
@@ -81,9 +88,6 @@ namespace ProjectC.Gameplay
             _panelRoot = panelRoot ?? throw new ArgumentNullException(nameof(panelRoot));
             _contentRoot = contentRoot ?? throw new ArgumentNullException(nameof(contentRoot));
             _panelSettings = panelSettings;
-#if UNITY_EDITOR
-            if (_panelSettings != null) _serializedScale = _panelSettings.scale;
-#endif
             _panelRoot.RegisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
             DevelopmentViewportService.Changed += HandlePresentationChanged;
             _panelRoot.schedule.Execute(Refresh);
@@ -153,8 +157,18 @@ namespace ProjectC.Gameplay
             if (surfaceWidth <= 0 || surfaceHeight <= 0) return rect;
 
             int scale = UiPanelScale.Scale(surfaceWidth, surfaceHeight);
-            if (!Mathf.Approximately(_panelSettings.scale, scale))
+
+            // 기준은 에셋에 적힌 값이 아니라 **패널이 실제로 그리고 있는 배율**이다.
+            // 에셋 값으로 비교하면, 앞 씬이 남긴 값이 우연히 목표와 같을 때 아무도 쓰지
+            // 않아 패널이 1배로 남는다 — 메인 메뉴가 정확히 그 상태였다.
+            if (!Mathf.Approximately(pixelsPerPoint, scale))
+            {
+                // PanelSettings.scale 의 setter 는 값이 같으면 조기 반환해 패널 갱신을
+                // 건너뛴다. 패널이 아직 그 배율이 아니라면 값을 한 번 흔들어 적용을 강제한다.
+                if (Mathf.Approximately(_panelSettings.scale, scale))
+                    _panelSettings.scale = scale + 1f;
                 _panelSettings.scale = scale;
+            }
 
             return new Rect(0f, 0f, surfaceWidth / (float)scale, surfaceHeight / (float)scale);
         }
@@ -164,7 +178,7 @@ namespace ProjectC.Gameplay
             if (_disposed) return;
             _disposed = true;
 #if UNITY_EDITOR
-            if (_panelSettings != null) _panelSettings.scale = _serializedScale;
+            if (_panelSettings != null) _panelSettings.scale = SerializedScale;
 #endif
             _panelRoot.UnregisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
             DevelopmentViewportService.Changed -= HandlePresentationChanged;

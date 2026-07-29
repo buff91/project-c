@@ -300,7 +300,7 @@ namespace ProjectC.Gameplay
                 bool open = _meta.IsItemUnlocked(condition.Kind);
                 var row = new VisualElement { name = $"codex-row-{condition.Kind}" };
                 row.AddToClassList("hub-bounty-row");
-                row.EnableInClassList("is-locked", !open);
+                row.EnableInClassList("locked", !open);
 
                 // 해금은 이름을 드러내고, 미해금은 가린다 — 무엇이 남았는지가 궁금함으로 남게.
                 var title = new Label(open ? ItemCatalog.DisplayName(condition.Kind) : "???");
@@ -336,7 +336,7 @@ namespace ProjectC.Gameplay
                 bool joined = _meta.IsNpcRescued(npc.Id);
                 var row = new VisualElement { name = $"codex-npc-{npc.Id}" };
                 row.AddToClassList("hub-bounty-row");
-                row.EnableInClassList("is-locked", !joined);
+                row.EnableInClassList("locked", !joined);
 
                 var title = new Label(joined ? npc.DisplayName : "갇힌 동료");
                 title.AddToClassList("hub-row-title");

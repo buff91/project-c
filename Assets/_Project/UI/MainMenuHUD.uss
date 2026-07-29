@@ -11,11 +11,13 @@
     -unity-background-scale-mode: scale-and-crop;
 }
 
-.main-menu-vignette {
-    width: 620px;
+/* 이름이 vignette 였던 시절엔 이게 비네트가 아니라 카드라는 사실이 가려졌고,
+   Phase 5 의 진짜 화면공간 비네트와 이름이 충돌했다. */
+.main-menu-card {
+    width: 400px;
     max-width: 88%;
     align-items: center;
-    padding: 44px 52px 36px 52px;
+    padding: 16px 24px 12px 24px;
     background-color: rgba(10, 13, 19, 0.78);
     border-left-width: 2px;
     border-right-width: 2px;
@@ -29,13 +31,13 @@
 
 .main-menu-title {
     color: var(--pc-gold);
-    font-size: var(--pc-fs-6);
-    letter-spacing: 8px;
+    font-size: var(--pc-fs-4);
+    letter-spacing: 4px;
     -unity-text-align: middle-center;
 }
 
 .main-menu-subtitle {
-    margin-top: 10px;
+    margin-top: 4px;
     color: var(--pc-stone-lit);
     font-size: var(--pc-fs-2);
     -unity-text-align: middle-center;
@@ -68,23 +70,23 @@
 }
 
 .main-menu-actions {
-    width: 320px;
+    width: 200px;
     max-width: 100%;
-    margin-top: 30px;
+    margin-top: 12px;
     align-items: center;
 }
 
 .main-primary-button,
 .main-secondary-button {
-    width: 260px;
-    height: 58px;
-    margin-top: 8px;
-    font-size: var(--pc-fs-2);
+    width: 176px;
+    height: 32px;
+    margin-top: 4px;
+    font-size: var(--pc-fs-1);
 }
 
 .main-menu-utility {
     flex-direction: row;
-    margin-top: 18px;
+    margin-top: 8px;
 }
 
 .main-utility-button {
@@ -113,7 +115,7 @@
     border-bottom-color: var(--pc-stone);
 }
 
-.main-menu-root.is-narrow .main-menu-vignette {
+.main-menu-root.is-narrow .main-menu-card {
     max-width: 92%;
     padding: 28px 18px 24px 18px;
 }
@@ -136,7 +138,7 @@
     width: 100%;
 }
 
-.main-menu-root.is-short .main-menu-vignette {
+.main-menu-root.is-short .main-menu-card {
     padding-top: 20px;
     padding-bottom: 18px;
 }
@@ -150,16 +152,18 @@
     margin-top: 16px;
 }
 
-/* 가로 모바일/낮은 PC 창은 세로로 쌓지 않고 주요 행동을 한 줄로 배치한다. */
-.main-menu-root.is-short.is-landscape .main-menu-vignette {
-    width: 720px;
+/* ⚠ 640×360 에서는 PC 가 **항상** is-short + is-landscape 다. 예전의 2열 배치는
+   720px 폭에 270px 버튼 둘을 넣는 구성이라 640 캔버스에서 즉시 넘쳤다.
+   단일 컬럼을 유지하고 세로로 빠듯한 만큼 타이틀만 한 단 줄인다. */
+.main-menu-root.is-short.is-landscape .main-menu-card {
+    width: 400px;
     max-width: 92%;
-    padding: 14px 32px 12px 32px;
+    padding: 12px 24px 10px 24px;
 }
 
 .main-menu-root.is-short.is-landscape .main-menu-title {
-    font-size: var(--pc-fs-4);
-    letter-spacing: 6px;
+    font-size: var(--pc-fs-3);
+    letter-spacing: 3px;
 }
 
 .main-menu-root.is-short.is-landscape .main-menu-subtitle {
@@ -181,17 +185,17 @@
 }
 
 .main-menu-root.is-short.is-landscape .main-menu-actions {
-    width: 560px;
+    width: 200px;
     max-width: 100%;
     margin-top: 8px;
-    flex-direction: row;
+    flex-direction: column;
 }
 
 .main-menu-root.is-short.is-landscape .main-primary-button,
 .main-menu-root.is-short.is-landscape .main-secondary-button {
-    width: 270px;
-    flex-grow: 1;
-    margin: 4px;
+    width: 176px;
+    flex-grow: 0;
+    margin: 2px;
 }
 
 .main-menu-root.is-short.is-landscape .main-menu-utility {
@@ -199,8 +203,8 @@
 }
 
 .main-utility-button.icon-label-button .ui-icon {
-    width: 18px;
-    height: 18px;
-    min-width: 18px;
-    min-height: 18px;
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
 }

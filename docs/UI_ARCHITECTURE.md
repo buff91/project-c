@@ -84,9 +84,8 @@ UGUI View로 옮긴다.
 | `ranged` | 현재 전투 행동이 원거리 | `combat-button` |
 | `uncraftable` | 재료 부족 | 조합 행 |
 
-> **알려진 어긋남**: `HubHudController.Vendors.cs`가 의뢰·기록 행에 `is-locked`를 토글하지만
-> USS 어디에도 `is-locked` 규칙이 없다 — 붙어도 화면이 변하지 않는다. 잠금 표현이 `locked`와
-> `is-locked` 두 벌로 갈린 결과다. 고칠 때는 `locked` 쪽으로 통일하는 편이 싸다(그쪽에만 규칙이 있다).
+잠금 표현은 **`locked` 한 벌**이다. `HubHudController.Vendors.cs`가 `is-locked`를 토글하던
+시절엔 USS 어디에도 그 규칙이 없어 붙어도 화면이 변하지 않았다 — 두 벌로 갈린 어휘의 대가였다.
 
 ## Claude 디자인 워크플로
 

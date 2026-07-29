@@ -37,6 +37,8 @@ namespace ProjectC.Gameplay
         private MetaSaveData _meta;
         private Label _goldLabel;
         private Label _statusLabel;
+        private VisualElement _statusChip;
+        private Coroutine _statusRoutine;
         private Button _continueButton;
         private VisualElement _dungeonModal;
         private Label _dungeonName;
@@ -115,6 +117,7 @@ namespace ProjectC.Gameplay
                 root, root.Q<VisualElement>("hub-root"), document.panelSettings);
             _goldLabel = root.Q<Label>("hub-gold");
             _statusLabel = root.Q<Label>("hub-status");
+            _statusChip = root.Q<VisualElement>("hub-status-chip");
             _continueButton = root.Q<Button>("hub-continue");
             _dungeonModal = root.Q<VisualElement>("hub-dungeon-modal");
             _dungeonName = root.Q<Label>("hub-dungeon-name");
@@ -196,10 +199,18 @@ namespace ProjectC.Gameplay
                 _tapInput = demo.GetComponent<IsoTapInput>();
                 if (_tapInput != null) _tapInput.UiBlocker = IsPointerOverHud;
             }
+
+            ShowStatus("상인·대장간·의뢰·기록실·창고를 탭하고, 포탈로 걸어가면 출발");
         }
 
         private void OnDisable()
         {
+            if (_statusRoutine != null)
+            {
+                StopCoroutine(_statusRoutine);
+                _statusRoutine = null;
+            }
+            _statusChip?.RemoveFromClassList("is-open");
             CancelPreparationDrag();
             _stashGrid?.UnregisterCallback<PointerUpEvent>(HandleStashGridPointerUp);
             _loadoutGrid?.UnregisterCallback<PointerUpEvent>(HandleLoadoutGridPointerUp);
@@ -281,10 +292,29 @@ namespace ProjectC.Gameplay
             else if (id == "dungeon-select") OpenDungeonSelect();
         }
 
-        private void HandleFeedback(string message)
+        /// <summary>
+        /// 캠프 피드백 한 줄. 상시 문장이던 시절엔 화면 아래 한 줄이 영구히 튜토리얼에
+        /// 묶여 있었다 — 한 번 읽으면 끝인 문장이었다. 이제 켜고 7초 뒤 닫는다.
+        /// </summary>
+        private void ShowStatus(string message)
         {
-            if (_statusLabel != null) _statusLabel.text = message;
+            if (_statusLabel == null || string.IsNullOrEmpty(message)) return;
+
+            _statusLabel.text = message;
+            _statusChip?.AddToClassList("is-open");
+            if (_statusRoutine != null) StopCoroutine(_statusRoutine);
+            if (isActiveAndEnabled) _statusRoutine = StartCoroutine(HideStatus());
         }
+
+        private System.Collections.IEnumerator HideStatus()
+        {
+            // 던전의 발견 카드와 같은 수명 — 읽을 시간은 주되 자리를 차지하지 않는다.
+            yield return new WaitForSecondsRealtime(7f);
+            _statusChip?.RemoveFromClassList("is-open");
+            _statusRoutine = null;
+        }
+
+        private void HandleFeedback(string message) => ShowStatus(message);
 
         private void CloseModals()
         {
@@ -360,8 +390,8 @@ namespace ProjectC.Gameplay
             if (!dungeon.IsAvailable) return;
             int returned = ExpeditionLoadoutRules.Reconcile(_meta);
             MetaStore.Save(_meta);
-            if (returned > 0 && _statusLabel != null)
-                _statusLabel.text = $"기본 지급품 공간 확보 · {returned}개 창고 복귀";
+            if (returned > 0)
+                ShowStatus($"기본 지급품 공간 확보 · {returned}개 창고 복귀");
             DungeonSelection.SelectedId = dungeon.Id;
             demo?.BeginSelectedDungeon();
         }

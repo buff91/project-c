@@ -5,7 +5,7 @@
     <ui:Style src="PrototypeHUD.uss" />
     <ui:Style src="MainMenuHUD.uss" />
     <ui:VisualElement name="main-menu-root" class="main-menu-root">
-        <ui:VisualElement class="main-menu-vignette">
+        <ui:VisualElement class="main-menu-card">
             <ui:Label text="PROJECT C" class="main-menu-title" />
             <ui:Label text="높이를 읽고, 살아서 돌아와라" class="main-menu-subtitle" />
             <ui:VisualElement class="main-menu-divider" />

@@ -273,6 +273,29 @@ namespace ProjectC.Tests
                 largeItem.style.width.value.value);
         }
 
+        /// <summary>
+        /// 배율은 코드가 소유한다(<see cref="UiPanelScale"/>). 에셋은 모드만 정하고
+        /// <c>m_Scale</c>은 파일에 1로 남아 있어야 한다 — <c>ResponsiveUiLayout</c>이
+        /// 에디터에서 나갈 때 그 값으로 되돌려 유령 diff 를 막기 때문이다.
+        /// 둘이 어긋나면 에셋에 diff 가 쌓이거나 배율이 눌러앉는다.
+        /// </summary>
+        [Test]
+        public void PanelSettings_LetCodeOwnTheScale()
+        {
+            const string path = "Assets/_Project/UI/PrototypePanelSettings.asset";
+            PanelSettings settings = AssetDatabase.LoadAssetAtPath<PanelSettings>(path);
+            Assert.IsNotNull(settings, $"PanelSettings missing: {path}");
+
+            Assert.AreEqual(
+                PanelScaleMode.ConstantPixelSize,
+                settings.scaleMode,
+                "배율을 코드가 정하려면 ConstantPixelSize 여야 한다.");
+            Assert.AreEqual(
+                ResponsiveUiLayout.SerializedScale,
+                settings.scale,
+                "에셋의 m_Scale 은 ResponsiveUiLayout 이 되돌리는 값과 같아야 한다.");
+        }
+
         [Test]
         public void BuildSettings_UseSeparatedFrontEndSceneOrder()
         {
