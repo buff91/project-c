@@ -16,9 +16,10 @@
    - 폰트 크기는 9의 배수만 (9/18/27/36/54). 합성 볼드·소수점 자간 금지.
      (UssTypographyTests가 이 셋을 강제한다)
    - 논리 캔버스는 **640×360**이다(PanelSettings=ConstantPixelSize + UiPanelScale이 정수 배율).
-     여기 px 값 중 .pc-dia/.pc-dbtn/.pc-slot/.pc-heart/.ui-icon 같은 컴포넌트 기본 크기는
-     아직 옛 캔버스 기준이라 화면별 USS가 덮어 쓴다 — 갤러리 전용 컴포넌트를 먼저 옮기면
-     라이브 화면과 어긋나므로, 각 화면을 옮길 때 함께 정리한다.
+     여기 컴포넌트 기본 크기도 **640×360 기준이다**(2026-07-29 이전 완료). 옛 960×540 값이
+     남아 있던 시절엔 화면별 USS가 전부 덮어써서 가려졌고, 오버라이드를 빠뜨린 곳
+     (허브 `.ui-icon`)에서만 24px 아이콘으로 새어 나왔다 — 기본값이 맞아야 그 사고가 없다.
+     공유 기본값(.pc-heart 12×11, .ui-icon 12)은 **라이브 화면이 실제로 쓰는 값**에 맞췄다.
    한 줄 정정(실측): 정수 배율은 픽셀 폰트를 선명하게 만들지 않는다. UI Toolkit이
    글자마다 제 서브픽셀 위상에서 따로 래스터화하기 때문이다. 640×360으로 가는 이유는
    선명도가 아니라 같은 논리 px가 화면에서 커지기 때문이다(2560×1440에서 +29%).
@@ -147,16 +148,16 @@
 
 /* 다이아 층 레일: 현재 층 = 골드 (글로우는 스프라이트 승격 시) */
 .pc-dia {
-    width: 34px;
-    height: 34px;
+    width: 24px;
+    height: 24px;
     rotate: 45deg;
     background-color: rgb(21, 17, 13);
     align-items: center;
     justify-content: center;
-    border-left-width: 3px;
-    border-right-width: 3px;
-    border-top-width: 3px;
-    border-bottom-width: 3px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
     border-left-color: var(--pc-stone-dim);
     border-top-color: var(--pc-stone-dim);
     border-right-color: var(--pc-stone-dim);
@@ -173,8 +174,8 @@
 }
 
 .pc-dia--current {
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
     border-left-color: var(--pc-gold);
     border-top-color: var(--pc-gold);
     border-right-color: var(--pc-gold);
@@ -188,24 +189,24 @@
 /* 레일 연결선 (점선은 스프라이트 승격 시) */
 .pc-rail-link {
     width: 2px;
-    height: 14px;
+    height: 8px;
     background-color: var(--pc-stone-dim);
     align-self: center;
 }
 
 /* 다이아 액션 버튼 — 탭=선택(골드), 재탭=실행 */
 .pc-dbtn {
-    width: 62px;
-    height: 62px;
+    width: 40px;
+    height: 40px;
     rotate: 45deg;
-    margin: 10px;
+    margin: 6px;
     background-color: rgb(20, 16, 12);
     align-items: center;
     justify-content: center;
-    border-left-width: 4px;
-    border-right-width: 4px;
-    border-top-width: 4px;
-    border-bottom-width: 4px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
     border-left-color: var(--pc-stone-lit);
     border-top-color: var(--pc-stone-lit);
     border-right-color: var(--pc-stone-dim);
@@ -229,9 +230,9 @@
 
 /* HP 하트 자리 — 실제 도트는 스프라이트(--unity-image)로 지정 */
 .pc-heart {
-    width: 24px;
-    height: 21px;
-    margin-right: 6px;
+    width: 12px;
+    height: 11px;
+    margin-right: 2px;
 }
 
 /* ============================================================
@@ -242,10 +243,10 @@
     color: var(--pc-text);
     background-color: var(--pc-btn-bg);
     font-size: var(--pc-fs-1);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
     border-left-color: var(--pc-stone-dim);
     border-top-color: var(--pc-stone-dim);
     border-right-color: var(--pc-stone-dim);
@@ -302,14 +303,14 @@
     background-color: var(--pc-inset);
     font-size: var(--pc-fs-1);
     -unity-text-align: middle-center;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
 /* 게이지: track > fill 2겹, fill 너비는 코드에서 % 지정.
    세그먼트 눈금은 오버레이 스프라이트 승격 시. */
 .pc-bar-track {
-    height: 12px;
+    height: 8px;
     background-color: var(--pc-hp-empty);
     border-left-width: 1px;
     border-right-width: 1px;
@@ -327,7 +328,7 @@
 }
 
 .pc-bar-track--xp {
-    height: 6px;
+    height: 4px;
     background-color: rgb(28, 36, 16);
 }
 
@@ -339,10 +340,10 @@
 .pc-chip {
     flex-direction: row;
     align-items: center;
-    padding-left: var(--pc-space-1);
-    padding-right: var(--pc-space-1);
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     background-color: var(--pc-inset);
     border-left-width: 1px;
     border-right-width: 1px;
@@ -356,9 +357,9 @@
 }
 
 .pc-chip-swatch {
-    width: 8px;
-    height: 8px;
-    margin-right: 6px;
+    width: 6px;
+    height: 6px;
+    margin-right: 3px;
 }
 
 .pc-chip--burn { color: var(--pc-torch); }
@@ -370,16 +371,16 @@
 
 /* 아이템 슬롯 — 선택 = 골드 (탭=선택 / 재탭=실행) */
 .pc-slot {
-    width: 60px;
-    height: 60px;
+    width: 40px;
+    height: 40px;
     background-color: var(--pc-inset);
     align-items: center;
     justify-content: center;
-    margin: var(--pc-space-1);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
+    margin: 2px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
     border-left-color: var(--pc-stone-dim);
     border-top-color: var(--pc-stone-dim);
     border-right-color: var(--pc-stone-dim);
@@ -395,8 +396,8 @@
 
 .pc-slot-qty {
     position: absolute;
-    right: 4px;
-    bottom: 2px;
+    right: 2px;
+    bottom: 1px;
     font-size: var(--pc-fs-1);
     color: var(--pc-text);
 }
@@ -404,11 +405,11 @@
 /* 교체 가능한 32px Torchstone UI 스프라이트를 PC HUD에서 24px로 표시한다.
    의미는 UXML의 버튼/레이블 계약이 소유하고 그림만 이 클래스로 교체한다. */
 .ui-icon {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-    margin-right: 6px;
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+    margin-right: 2px;
     flex-shrink: 0;
     -unity-background-scale-mode: scale-to-fit;
 }
