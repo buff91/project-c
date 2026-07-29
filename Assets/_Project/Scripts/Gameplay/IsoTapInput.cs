@@ -24,8 +24,17 @@ namespace ProjectC.Gameplay
         public int minElevation = -3;
         public int maxElevation = 1;
 
+        [Tooltip("포인터가 올라간 칸을 매 프레임 추적할지. 조준처럼 필요한 순간에만 켠다.")]
+        public bool trackHover;
+
         public event System.Action<GridPos, bool> TileTapped;
         public event System.Action<int> ViewRotationRequested;
+
+        /// <summary>
+        /// 포인터가 올라간 격자 칸이 바뀔 때만 발생한다(칸이 없으면 null).
+        /// 마우스가 없는 기기에서는 아예 발생하지 않는다 — 호버가 없는 입력을 흉내내지 않는다.
+        /// </summary>
+        public event System.Action<GridPos?> TileHovered;
 
         /// <summary>방향키/WASD 한 칸 이동 요청 — 격자 델타 (화면 기준 → 회전 보정 완료).</summary>
         public event System.Action<int, int> StepRequested;
@@ -57,6 +66,8 @@ namespace ProjectC.Gameplay
 
         private GridManager _gm;
         private Camera _cam;
+        private GridPos? _hovered;
+        private Vector2 _lastHoverPoint = new Vector2(float.NaN, float.NaN);
 
         private void Awake()
         {
@@ -78,6 +89,8 @@ namespace ProjectC.Gameplay
 
             if (SpacePressed()) InteractRequested?.Invoke();
             if (XPressed()) WaitRequested?.Invoke();
+
+            UpdateHover();
 
             if (TryGetTap(out Vector2 screenPoint))
             {
@@ -195,6 +208,70 @@ namespace ProjectC.Gameplay
             }
 
             return _gm.ScreenToGrid(screenPoint, _cam, targetElevation);
+        }
+
+        /// <summary>
+        /// 포인터가 올라간 칸을 갱신하고, <b>바뀐 프레임에만</b> 알린다.
+        /// 화면 좌표가 그대로면 픽 자체를 건너뛴다 — TilePicker 는 렌더된 타일을 전부 훑으므로
+        /// 조준 중 매 프레임 돌리면 공짜가 아니다. 조준은 턴 사이 정지 상태라 카메라도 멈춰 있다.
+        /// </summary>
+        private void UpdateHover()
+        {
+            if (!trackHover)
+            {
+                _hovered = null;
+                _lastHoverPoint = new Vector2(float.NaN, float.NaN);
+                return;
+            }
+
+            if (!TryGetPointerPosition(out Vector2 screenPoint))
+            {
+                if (_hovered == null) return;
+                _hovered = null;
+                TileHovered?.Invoke(null);
+                return;
+            }
+
+            if (screenPoint == _lastHoverPoint) return;
+            _lastHoverPoint = screenPoint;
+
+            GridPos? hovered = ResolveHover(screenPoint);
+            if (System.Nullable.Equals(hovered, _hovered)) return;
+
+            _hovered = hovered;
+            TileHovered?.Invoke(hovered);
+        }
+
+        /// <summary>탭과 같은 선택자를 쓴다 — 조준선이 가리키는 칸과 탭이 고르는 칸이 갈리면 안 된다.</summary>
+        private GridPos? ResolveHover(Vector2 screenPoint)
+        {
+            if (UiBlocker != null && UiBlocker(screenPoint)) return null;
+
+            GridPos? actor = ActorPicker?.Invoke(screenPoint);
+            if (actor.HasValue) return actor;
+
+            GridPos? tile = TilePicker?.Invoke(screenPoint);
+            if (tile.HasValue) return tile;
+            if (TilePicker != null) return null;
+
+            GridPos picked = PickGrid(screenPoint);
+            return WorldInputRules.IsMapTile(_gm.Map, picked) ? picked : (GridPos?)null;
+        }
+
+        /// <summary>마우스가 있을 때만 화면 좌표를 준다. 터치는 호버가 없다.</summary>
+        private static bool TryGetPointerPosition(out Vector2 screenPoint)
+        {
+            screenPoint = default;
+#if ENABLE_INPUT_SYSTEM
+            var mouse = Mouse.current;
+            if (mouse == null) return false;
+            screenPoint = mouse.position.ReadValue();
+            return true;
+#else
+            if (!Input.mousePresent) return false;
+            screenPoint = Input.mousePosition;
+            return true;
+#endif
         }
 
         /// <summary>이번 프레임에 '눌림'이 있었으면 스크린 좌표 반환.</summary>

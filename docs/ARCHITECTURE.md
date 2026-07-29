@@ -96,6 +96,14 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - **정렬** `SortingOrder = elevation·elevationSortBand + 깊이` — **elevation이 우선**, 같은 층은 (x+y)가
   클수록 앞. 세부 정렬은 `SortingOrder(pos)·MicroResolution + microOffset`(바닥 데칼을 캐릭터 뒤로 등).
   밴드 폭은 `elevationSortBand > 깊이 해상도 × (maxX+maxY)`라는 불변식으로 정해져 인접 층이 안 섞인다.
+  - **micro 슬롯**: 바닥 −2 · 계단/사다리 타일·뒷벽·조준 마커 −1 · 문·아이템·**수직 표지** 0 ·
+    액터 +1 · 보스 봉인 +2. 수직 표지가 액터와 같은 +1 이면 **같은 칸과 같은 깊이(x+y가 같은
+    대각 이웃)에서 정렬이 완전히 동률**이 되고, 층 전환 아치는 타일보다 두 배 넘게 높아 그
+    동률을 이긴다 — 계단에 선 플레이어가 표지 뒤로 사라진다.
+  - 표지가 **플레이어보다 앞칸**이라 정렬상 이기는 경우는 정렬로 못 고친다(앞은 앞이 맞다).
+    이건 벽과 같은 가림 페이드(`SpriteOcclusion` + `fadePlayerOccluders`)가 맡는다.
+  - ⚠️ **알려진 결함**: `SpriteRenderer.sortingOrder`는 int16이라 elevation ≥ 4 인 층에서
+    이 식의 결과가 넘쳐 한 층 안에서 깊이 순서가 뒤집힌다(§ 아래 `docs/STATUS.md` 참고).
 - **시점 회전**: 카메라를 돌리지 않고 `viewQuarterTurns(0..3)`로 (x,y)를 피벗 기준 90° 투영하며,
   위 세 함수가 같은 회전값을 공유한다.
 

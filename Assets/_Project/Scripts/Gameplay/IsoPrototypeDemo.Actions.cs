@@ -81,6 +81,9 @@ namespace ProjectC.Gameplay
         private void SetBombAiming(bool aiming)
         {
             _bombAiming = aiming;
+            // 호버 추적은 조준 중에만 켠다 — 켜 두면 매 프레임 렌더된 타일을 전부 훑는다.
+            if (_input != null) _input.trackHover = aiming;
+            if (!aiming) _aimHoverCell = null;
             RefreshThrowRangePreview();
             // 조준 종류 전환도 HUD 하이라이트에 반영돼야 하므로 상태가 같아도 알린다.
             BombAimingChanged?.Invoke(aiming);

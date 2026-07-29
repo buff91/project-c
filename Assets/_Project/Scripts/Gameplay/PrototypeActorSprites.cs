@@ -97,6 +97,36 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 투척물이 실제로 터지는 칸(3×3). 사거리 칸과 <b>한눈에 갈려야</b> 하므로
+        /// 성긴 점 대신 촘촘한 사선 해칭과 두꺼운 테두리를 쓴다. 색은 tint 로 입힌다.
+        /// </summary>
+        internal Sprite GetBlastPreviewSprite()
+        {
+            const string key = "blast-preview";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond =
+                    Mathf.Abs((px - 31.5f) / 32f) +
+                    Mathf.Abs((py - 15.5f) / 16f);
+                bool edge = diamond > 0.78f && diamond <= 0.98f;
+                // 사선 해칭: 바닥 재질이 비쳐 무엇이 폭발에 휘말리는지 계속 읽힌다.
+                bool hatch = diamond <= 0.74f && ((px + py * 2) & 3) < 2;
+                byte alpha = edge ? (byte)245 : hatch ? (byte)120 : (byte)44;
+                if (!edge && diamond > 0.74f) alpha = 0;
+                texture.SetPixel(px, py, new Color32(255, 255, 255, alpha));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         internal Sprite GetBossExitSealSprite(bool unlocked)
         {
             string key = unlocked ? "boss-exit-unlocked" : "boss-exit-locked";

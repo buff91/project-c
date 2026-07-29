@@ -115,6 +115,9 @@ namespace ProjectC.Gameplay
             public GameObject Root;
             public SpriteRenderer Renderer;
             public TextMesh Label;
+
+            /// <summary>가림 페이드가 깎기 전의 알파(가시성만 반영). 매 프레임 페이드가 이걸 기준으로 민다.</summary>
+            public float BaseAlpha = 1f;
         }
 
         /// <summary>
@@ -193,7 +196,7 @@ namespace ProjectC.Gameplay
                 art.transform.SetParent(root.transform, false);
                 var renderer = art.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                renderer.sortingOrder = _grid.iso.SortingOrder(anchor, 1);
+                renderer.sortingOrder = _grid.iso.SortingOrder(anchor, VerticalLandmarkSortOffset);
 
                 var landmark = new VerticalLandmarkAgent
                 {
@@ -250,8 +253,18 @@ namespace ProjectC.Gameplay
             }
 
             landmark.Root.transform.position = position;
-            landmark.Renderer.sortingOrder = _grid.iso.SortingOrder(landmark.Anchor, 1);
+            landmark.Renderer.sortingOrder =
+                _grid.iso.SortingOrder(landmark.Anchor, VerticalLandmarkSortOffset);
         }
+
+        /// <summary>
+        /// 수직 표지의 micro 정렬 슬롯. 액터(+1)보다 <b>아래</b>여야 한다 —
+        /// 예전엔 표지도 +1이라 같은 칸/같은 깊이(x+y가 같은 대각 이웃)에서 정렬이 완전히 동률이
+        /// 됐고, 층 전환 아치는 타일보다 두 배 넘게 높아서 그 동률을 표지가 이겼다. 계단에 선
+        /// 플레이어와 옆칸 몬스터가 아치 뒤로 사라지는 게 이것이다. 아이템(0)과는 같은 슬롯이지만
+        /// 둘이 같은 칸에 놓이는 배치가 없어 동률이 나지 않는다.
+        /// </summary>
+        private const int VerticalLandmarkSortOffset = 0;
 
         /// <summary>
         /// 엘리베이터 표지를 전원 상태에 맞춰 <b>제자리에서</b> 갱신한다.
@@ -315,6 +328,7 @@ namespace ProjectC.Gameplay
                               anchorVisible || destinationVisible
                     ? 1f
                     : verticalPreviewAlpha;
+                landmark.BaseAlpha = alpha;
                 landmark.Renderer.color = new Color(1f, 1f, 1f, alpha);
                 Color labelColor = LandmarkLabelColor(cue.Role);
                 labelColor.a = alpha;
@@ -1043,6 +1057,24 @@ namespace ProjectC.Gameplay
                                      playerSortingOrder) ||
                                  HigherElevationOverlapsPlayer(pair.Value, renderer.bounds, playerBounds));
                 ApplyOcclusionAlpha(renderer, baseAlpha, occludes, deltaTime, instant);
+            }
+
+            // 수직 표지는 타일 두 장이 넘는 높이의 불투명 기둥이라, 뒤쪽 칸에 선 플레이어를
+            // 통째로 삼킨다. 정렬만으로는 못 고친다(뒤에 있는 건 뒤에 그리는 게 맞다) —
+            // 벽과 같은 페이드 규칙에 넣어 겹칠 때만 비켜 주게 한다.
+            foreach (VerticalLandmarkAgent landmark in _verticalLandmarks)
+            {
+                SpriteRenderer renderer = landmark.Renderer;
+                if (renderer == null || !renderer.gameObject.activeInHierarchy) continue;
+                bool occludes = fadePlayerOccluders &&
+                                (SpriteOcclusion.ShouldFade(
+                                     renderer.bounds,
+                                     playerBounds,
+                                     renderer.sortingOrder,
+                                     playerSortingOrder) ||
+                                 HigherElevationOverlapsPlayer(
+                                     landmark.Anchor, renderer.bounds, playerBounds));
+                ApplyOcclusionAlpha(renderer, landmark.BaseAlpha, occludes, deltaTime, instant);
             }
 
             UpdateContactShadow(

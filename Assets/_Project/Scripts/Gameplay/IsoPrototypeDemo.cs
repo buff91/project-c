@@ -437,6 +437,7 @@ namespace ProjectC.Gameplay
         {
             if (_input == null) _input = GetComponent<IsoTapInput>();
             _input.TileTapped += HandleTileTapped;
+            _input.TileHovered += HandleTileHovered;
             _input.ViewRotationRequested += RotateView;
             _input.StepRequested += HandleStepRequested;
             _input.InteractRequested += InteractAdjacent;
@@ -467,6 +468,8 @@ namespace ProjectC.Gameplay
             if (_input != null)
             {
                 _input.TileTapped -= HandleTileTapped;
+                _input.TileHovered -= HandleTileHovered;
+                _input.trackHover = false;
                 _input.ViewRotationRequested -= RotateView;
                 _input.StepRequested -= HandleStepRequested;
                 _input.InteractRequested -= InteractAdjacent;
@@ -561,6 +564,8 @@ namespace ProjectC.Gameplay
             _enemies.Clear();
             _items.Clear();
             _throwRangeMarkers.Clear();
+            _blastPreviewCells.Clear();
+            _aimHoverCell = null;
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
             ResetRescueForBuild();
@@ -571,6 +576,7 @@ namespace ProjectC.Gameplay
             _bossExitSealRenderer = null;
             _bossDefeated = continueData != null && continueData.bossDefeated;
             _bombAiming = false;
+            if (_input != null) _input.trackHover = false;
             _barrelExploded = false;
             _lastTrickleSpawnTurn = 0;
 
