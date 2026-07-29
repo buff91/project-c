@@ -57,6 +57,24 @@ namespace ProjectC.Core
         public int ShopPrice { get; }
         public ItemFootprint Footprint { get; }
 
+        /// <summary>
+        /// 백팩 한 칸이 담는 사용 횟수. 기본 1(= 한 칸에 한 번 쓸 것 하나).
+        ///
+        /// <para>
+        /// 이 값이 1보다 크면 <c>ItemKind → int</c>가 세는 것이 "개수"가 아니라
+        /// <b>총 충전 횟수</b>가 되고, 점유 칸수는 <c>ceil(충전 / 이 값)</c>으로 파생한다
+        /// (<see cref="BackpackRules.UnitsFor"/>). 소모품 하나가 한 칸을 통째로 먹던 시절엔
+        /// 회복을 챙길수록 전리품 자리가 사라져 "몇 회분 챙길까"가 아니라 "포기할까"만 남았다.
+        /// </para>
+        /// <para>
+        /// <b>1보다 큰 값은 소모품에만 허용한다.</b> 이 불변식이 전리품 정산
+        /// (<c>GoldValue * count</c>)·조합 재료 판정(<c>>= 2</c>)·장비 보유 판정
+        /// (<c>GetCount > 0</c>)을 전부 무변경으로 살린다 — count가 곧 개수라는 가정이
+        /// 그쪽에 그대로 남아 있기 때문이다. 생성자가 정적으로 거부한다.
+        /// </para>
+        /// </summary>
+        public int ChargesPerItem { get; }
+
         public ItemDefinition(
             ItemKind kind,
             ItemCategory category,
@@ -65,7 +83,8 @@ namespace ProjectC.Core
             string description,
             int goldValue,
             int shopPrice,
-            ItemFootprint footprint)
+            ItemFootprint footprint,
+            int chargesPerItem = 1)
         {
             if (string.IsNullOrWhiteSpace(displayName))
                 throw new ArgumentException("아이템 표시 이름이 비어 있다.", nameof(displayName));
@@ -81,6 +100,15 @@ namespace ProjectC.Core
                 throw new ArgumentException("전리품이 아닌 아이템은 생환 가치를 가질 수 없다.", nameof(goldValue));
             if (footprint.Width <= 0 || footprint.Height <= 0)
                 throw new ArgumentException("아이템 백팩 크기는 양수여야 한다.", nameof(footprint));
+            if (chargesPerItem <= 0)
+                throw new ArgumentOutOfRangeException(nameof(chargesPerItem));
+            // 이 가드가 이 설계의 안전 예산 전체다 — 소모품이 아닌 종류에서 count 가 개수를
+            // 뜻한다는 가정이 정산·조합·장비 판정에 그대로 남아 있다. static 초기화 시점에
+            // 터지므로 테스트보다 먼저 잡힌다.
+            if (chargesPerItem != 1 && category != ItemCategory.Consumable)
+                throw new ArgumentException(
+                    "충전은 소모품만 가진다 — 전리품·재료·장비의 개수는 곧 수량이다.",
+                    nameof(chargesPerItem));
 
             Kind = kind;
             Category = category;
@@ -90,6 +118,7 @@ namespace ProjectC.Core
             GoldValue = goldValue;
             ShopPrice = shopPrice;
             Footprint = footprint;
+            ChargesPerItem = chargesPerItem;
         }
     }
 
@@ -164,6 +193,16 @@ namespace ProjectC.Core
         public static int ShopPrice(ItemKind kind) => For(kind).ShopPrice;
 
         /// <summary>
+        /// 백팩 한 칸이 담는 사용 횟수(<see cref="ItemDefinition.ChargesPerItem"/>).
+        /// 칸수 파생은 여기가 아니라 <see cref="BackpackRules.UnitsFor"/>가 한다 —
+        /// 그건 경제가 아니라 패킹 규칙이다.
+        /// </summary>
+        public static int ChargesPerItem(ItemKind kind) => For(kind).ChargesPerItem;
+
+        /// <summary>한 칸이 여러 회분을 담는 종류인가. UI가 배지 표시 규칙을 가를 때 쓴다.</summary>
+        public static bool IsCharged(ItemKind kind) => For(kind).ChargesPerItem > 1;
+
+        /// <summary>
         /// 긴 단위명이나 G 대신 픽셀 HUD에서 즉시 읽히는 달러 기호를 접두사로 사용한다.
         /// HUD·상점·정산 화면이 모두 "$120" 형식을 공유한다.
         /// </summary>
@@ -187,11 +226,12 @@ namespace ProjectC.Core
             string description,
             int shopPrice = 0,
             int goldValue = 0,
-            ItemFootprint? footprint = null)
+            ItemFootprint? footprint = null,
+            int chargesPerItem = 1)
         {
             return new ItemDefinition(
                 kind, category, displayName, shortLabel, description,
-                goldValue, shopPrice, footprint ?? OneCell);
+                goldValue, shopPrice, footprint ?? OneCell, chargesPerItem);
         }
 
         private static ItemDefinition DefineEquipment(

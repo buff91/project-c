@@ -334,5 +334,58 @@ namespace ProjectC.Tests
             Assert.Throws<System.ArgumentOutOfRangeException>(() => ItemCatalog.CategoryOf(unknown));
             Assert.Throws<System.ArgumentOutOfRangeException>(() => BackpackRules.Footprint(unknown));
         }
+
+        /// <summary>
+        /// 충전 설계의 <b>안전 예산</b>. 소모품이 아닌 종류에서 count 가 곧 개수라는 가정이
+        /// 전리품 정산(GoldValue × count) · 조합 재료 판정(>= 2) · 장비 보유 판정(> 0)에
+        /// 그대로 남아 있다. 여기가 무너지면 그 셋이 조용히 틀린다.
+        /// </summary>
+        [Test]
+        public void ChargesPerItem_IsOneForEveryNonConsumable()
+        {
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            {
+                if (ItemCatalog.CategoryOf(kind) == ItemCategory.Consumable) continue;
+                Assert.AreEqual(
+                    1, ItemCatalog.ChargesPerItem(kind),
+                    $"{kind}({ItemCatalog.CategoryOf(kind)}) 는 충전을 가질 수 없다.");
+            }
+        }
+
+        /// <summary>
+        /// 탈출 자원에는 충전을 주지 않는다. 2충전 송출기는 공짜 탈출 2회가 되어
+        /// 익스트랙션 판돈(생환해야 내 것)을 직접 무너뜨린다 — 기둥 보호를 테스트가 소유한다.
+        /// </summary>
+        [Test]
+        public void ChargesPerItem_IsOneForEscapeResources()
+        {
+            Assert.AreEqual(1, ItemCatalog.ChargesPerItem(ItemKind.ExtractionBeacon));
+            Assert.AreEqual(1, ItemCatalog.ChargesPerItem(ItemKind.RecallScroll));
+        }
+
+        [Test]
+        public void ChargesPerItem_IsAlwaysPositive()
+        {
+            foreach (ItemKind kind in ItemCatalog.AllKinds)
+                Assert.Greater(ItemCatalog.ChargesPerItem(kind), 0, kind.ToString());
+        }
+
+        [Test]
+        public void ItemDefinition_RejectsChargesOnNonConsumable()
+        {
+            Assert.Throws<System.ArgumentException>(() => new ItemDefinition(
+                ItemKind.Relic, ItemCategory.Treasure, "유물", "RELIC", "설명",
+                goldValue: 10, shopPrice: 0, footprint: new ItemFootprint(1, 1),
+                chargesPerItem: 2));
+        }
+
+        [Test]
+        public void ItemDefinition_RejectsNonPositiveCharges()
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => new ItemDefinition(
+                ItemKind.Potion, ItemCategory.Consumable, "물약", "POTION", "설명",
+                goldValue: 0, shopPrice: 10, footprint: new ItemFootprint(1, 1),
+                chargesPerItem: 0));
+        }
     }
 }

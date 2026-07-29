@@ -25,7 +25,7 @@ namespace ProjectC.Core
         public override string ToString() => $"{Width}×{Height}";
     }
 
-    /// <summary>자동 정리가 결정한 아이템 인스턴스 하나의 백팩 위치.</summary>
+    /// <summary>자동 정리가 결정한 백팩 칸 하나의 위치.</summary>
     public readonly struct BackpackPlacement
     {
         public readonly ItemKind Kind;
@@ -34,18 +34,28 @@ namespace ProjectC.Core
         public readonly int Y;
         public readonly ItemFootprint Footprint;
 
+        /// <summary>
+        /// 이 칸에 남은 사용 횟수. 충전이 없는 종류(<c>ChargesPerItem == 1</c>)는 항상 1이다.
+        /// <b>UI가 잔여를 다시 계산하지 않게</b> 여기 실어 보낸다 — 판정이 둘로 갈리면
+        /// 숫자와 그림이 다른 말을 하는 상태가 조용히 생긴다
+        /// (<see cref="BackpackPressure"/>가 세운 것과 같은 원칙).
+        /// </summary>
+        public readonly int Charges;
+
         public BackpackPlacement(
             ItemKind kind,
             int instanceIndex,
             int x,
             int y,
-            ItemFootprint footprint)
+            ItemFootprint footprint,
+            int charges = 1)
         {
             Kind = kind;
             InstanceIndex = instanceIndex;
             X = x;
             Y = y;
             Footprint = footprint;
+            Charges = charges;
         }
     }
 
@@ -109,6 +119,43 @@ namespace ProjectC.Core
     }
 
     /// <summary>
+    /// 충전을 칸수로 옮기는 파생 규칙. <b>경제가 아니라 패킹</b>이라 여기 산다.
+    ///
+    /// <para>
+    /// 충전이 도입되면서 <c>Inventory.Count(kind)</c>가 세는 것은 개수가 아니라
+    /// <b>총 사용 횟수</b>가 됐다. 백팩이 알아야 하는 것은 그게 몇 칸을 먹느냐이고,
+    /// 답은 <c>ceil(충전 / 칸당 충전)</c>이다. 마지막 칸만 덜 찰 수 있다.
+    /// </para>
+    /// </summary>
+    public static class ChargeUnits
+    {
+        /// <summary>충전 <paramref name="charges"/>가 차지하는 칸 수. 0 이하면 0칸.</summary>
+        public static int UnitsFor(ItemKind kind, int charges)
+        {
+            if (charges <= 0) return 0;
+            int per = ItemCatalog.ChargesPerItem(kind);
+            return (charges + per - 1) / per;
+        }
+
+        /// <summary>
+        /// <paramref name="unitIndex"/>번째 칸에 남은 충전. 마지막 칸만 덜 찰 수 있고
+        /// 나머지는 전부 만충이다. 범위를 벗어나면 0.
+        /// </summary>
+        public static int ChargesInUnit(ItemKind kind, int charges, int unitIndex)
+        {
+            int units = UnitsFor(kind, charges);
+            if (unitIndex < 0 || unitIndex >= units) return 0;
+
+            int per = ItemCatalog.ChargesPerItem(kind);
+            bool last = unitIndex == units - 1;
+            if (!last) return per;
+
+            int remainder = charges - (units - 1) * per;
+            return remainder <= 0 ? per : remainder;
+        }
+    }
+
+    /// <summary>
     /// 디아블로식 멀티슬롯 백팩 규칙.
     /// 큰 아이템부터 행 우선으로 다시 정리해 모바일에서도 드래그 없이 항상 같은 배치를 만든다.
     /// </summary>
@@ -139,11 +186,18 @@ namespace ProjectC.Core
             for (int kindOrder = 0; kindOrder < ItemCatalog.AllKinds.Length; kindOrder++)
             {
                 ItemKind kind = ItemCatalog.AllKinds[kindOrder];
-                int count = inventory.Count(kind);
+                // Count 는 이제 개수가 아니라 총 충전이다. 칸수는 거기서 파생한다.
+                int charges = inventory.Count(kind);
+                int units = ChargeUnits.UnitsFor(kind, charges);
                 ItemFootprint footprint = Footprint(kind);
-                for (int instanceIndex = 0; instanceIndex < count; instanceIndex++)
-                    entries.Add(new PackingEntry(kind, instanceIndex, kindOrder, footprint));
-                usedCells += count * footprint.Area;
+                for (int unitIndex = 0; unitIndex < units; unitIndex++)
+                    entries.Add(new PackingEntry(
+                        kind,
+                        unitIndex,
+                        kindOrder,
+                        footprint,
+                        ChargeUnits.ChargesInUnit(kind, charges, unitIndex)));
+                usedCells += units * footprint.Area;
             }
 
             if (usedCells > columns * rows)
@@ -169,7 +223,8 @@ namespace ProjectC.Core
                     entry.InstanceIndex,
                     x,
                     y,
-                    entry.Footprint));
+                    entry.Footprint,
+                    entry.Charges));
             }
 
             layout = new BackpackLayout(columns, rows, usedCells, placements);
@@ -236,17 +291,20 @@ namespace ProjectC.Core
             public readonly int InstanceIndex;
             public readonly int KindOrder;
             public readonly ItemFootprint Footprint;
+            public readonly int Charges;
 
             public PackingEntry(
                 ItemKind kind,
                 int instanceIndex,
                 int kindOrder,
-                ItemFootprint footprint)
+                ItemFootprint footprint,
+                int charges = 1)
             {
                 Kind = kind;
                 InstanceIndex = instanceIndex;
                 KindOrder = kindOrder;
                 Footprint = footprint;
+                Charges = charges;
             }
         }
     }
