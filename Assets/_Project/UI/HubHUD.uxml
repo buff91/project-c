@@ -33,7 +33,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-dungeon-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card hub-dungeon-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card hub-dungeon-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="원정지 선택" class="settings-title" />
@@ -62,7 +62,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-menu-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card gameover-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card gameover-card">
                 <ui:Label text="캠프 메뉴" class="gameover-title" />
                 <ui:Label text="진행 상황은 자동으로 저장된다" class="gameover-detail" />
                 <ui:VisualElement class="settings-actions hub-menu-actions">
@@ -75,7 +75,7 @@
         <ui:Instance template="DisplaySettings" class="settings-template-host" picking-mode="Ignore" />
 
         <ui:VisualElement name="hub-shop-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="상점" class="settings-title" />
@@ -99,7 +99,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-smith-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="대장간" class="settings-title" />
@@ -118,7 +118,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-bounty-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="의뢰 게시판" class="settings-title" />
@@ -134,7 +134,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="hub-codex-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="기록실" class="settings-title" />
@@ -151,7 +151,7 @@
 
 
         <ui:VisualElement name="hub-stash-modal" class="settings-modal">
-            <ui:VisualElement class="artifact-panel settings-card inventory-card diablo-inventory-card stash-card expedition-card">
+            <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card diablo-inventory-card stash-card expedition-card">
                 <ui:VisualElement class="settings-header">
                     <ui:VisualElement>
                         <ui:Label text="EXPEDITION LOADOUT" class="settings-title" />

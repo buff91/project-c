@@ -1,8 +1,8 @@
 .hub-topbar {
     position: absolute;
-    top: 10px;
-    left: 12px;
-    right: 12px;
+    top: 8px;
+    left: 8px;
+    right: 8px;
     flex-direction: row;
     justify-content: space-between;
 }
@@ -10,7 +10,7 @@
 .hub-pill {
     flex-direction: row;
     align-items: center;
-    padding: 6px 14px;
+    padding: 2px 6px;
 }
 
 .hub-top-actions {
@@ -40,11 +40,20 @@
 }
 
 .hub-icon-button {
-    width: 44px;
-    height: 44px;
-    margin-left: 6px;
+    width: 20px;
+    height: 20px;
+    margin-left: 4px;
     color: var(--pc-gold);
-    font-size: var(--pc-fs-2);
+    font-size: var(--pc-fs-1);
+}
+
+/* DesignSystem 의 .ui-icon 기본값은 24px(옛 960×540 캔버스)이고 허브엔 오버라이드가
+   없었다 — "갤러리 전용"이라던 옛 기본값이 라이브 화면으로 새던 유일한 경로다. */
+.hub-icon-button .ui-icon {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
 }
 
 .hub-menu-actions {
@@ -54,7 +63,7 @@
 
 .hub-menu-actions > .settings-reset,
 .hub-menu-actions > .settings-done {
-    width: 130px;
+    width: 80px;
 }
 
 /* 던전 메시지 로그와 같은 플레이트 어휘. 캠프도 같은 시스템으로 읽혀야 한다. */
@@ -101,25 +110,25 @@
 }
 
 .hub-dungeon-card {
-    width: 820px;
+    width: 528px;
     max-width: 92%;
 }
 
 .hub-dungeon-layout {
     flex-direction: row;
-    margin-top: 18px;
-    margin-bottom: 16px;
+    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 .hub-dungeon-list {
     width: 42%;
-    margin-right: 18px;
+    margin-right: 8px;
 }
 
 .hub-dungeon-option {
-    min-height: 64px;
-    margin-bottom: 8px;
-    padding: 10px 14px;
+    min-height: 32px;
+    margin-bottom: 4px;
+    padding: 4px 6px;
     color: var(--pc-text);
     background-color: var(--pc-btn-bg);
     border-width: 1px;
@@ -144,8 +153,8 @@
 
 .hub-dungeon-detail {
     flex-grow: 1;
-    min-height: 210px;
-    padding: 18px;
+    min-height: 104px;
+    padding: 8px;
     background-color: rgba(10, 12, 16, 0.72);
     border-left-width: 2px;
     border-left-color: var(--pc-gold-deep);
@@ -153,7 +162,7 @@
 
 .hub-dungeon-name {
     color: var(--pc-gold);
-    font-size: var(--pc-fs-3);
+    font-size: var(--pc-fs-2);
 }
 
 .hub-dungeon-route {
@@ -164,20 +173,20 @@
 
 .hub-dungeon-desc {
     color: var(--pc-text);
-    font-size: var(--pc-fs-2);
-    margin-top: 18px;
+    font-size: var(--pc-fs-1);
+    margin-top: 6px;
     white-space: normal;
 }
 
 .hub-dungeon-legend {
     color: var(--pc-dim);
     font-size: var(--pc-fs-1);
-    margin-top: 24px;
+    margin-top: 8px;
     white-space: normal;
 }
 
 .hub-dungeon-enter {
-    min-width: 240px;
+    min-width: 120px;
 }
 
 .hub-shop-list {
@@ -189,7 +198,7 @@
 .hub-shop-item {
     width: 31%;
     margin: 1%;
-    padding: 8px 4px;
+    padding: 4px 2px;
     font-size: var(--pc-fs-1);
     background-color: rgb(34, 28, 18);
     color: rgb(233, 220, 192);
@@ -336,9 +345,13 @@
 .expedition-card,
 .hud-root.is-expanded .expedition-card,
 .hud-root.is-landscape .expedition-card {
-    width: 960px;
+    width: 600px;
     max-width: 96%;
-    height: 88%;
+    /* 높이는 내용이 정하고 뷰포트가 상한을 준다. 88% 로 못박으면 창고가 비었을 때도
+       카드가 화면을 채우며 페인이 늘어나고 하단 안내가 카드 밖으로 잘린다
+       (인벤토리 카드에서 배운 것과 같다). */
+    height: auto;
+    max-height: 100%;
 }
 
 .expedition-layout {
@@ -357,12 +370,12 @@
 }
 
 .expedition-pane {
-    padding: 10px;
+    padding: 6px;
     background-color: rgb(8, 10, 14);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
     border-left-color: var(--pc-stone-dim);
     border-top-color: var(--pc-stone-dim);
     border-right-color: rgb(30, 27, 25);
@@ -370,24 +383,24 @@
 }
 
 .expedition-stash-pane {
-    width: 420px;
+    width: 272px;
 }
 
 .expedition-loadout-pane {
-    width: 364px;
-    min-height: 250px;
+    width: 256px;
+    min-height: 148px;
 }
 
 .expedition-transfer-rail {
-    width: 60px;
-    min-height: 176px;
+    width: 48px;
+    min-height: 96px;
     align-items: center;
     justify-content: center;
 }
 
 .expedition-transfer-symbol {
     color: var(--pc-gold);
-    font-size: var(--pc-fs-3);
+    font-size: var(--pc-fs-2);
 }
 
 .expedition-transfer-hint,
@@ -409,8 +422,8 @@
 }
 
 .expedition-locked-hint {
-    width: 336px;
-    margin-top: 8px;
+    width: 100%;
+    margin-top: 6px;
 }
 
 .expedition-backpack-grid {
@@ -419,33 +432,33 @@
 
 .hud-root.is-expanded .expedition-loadout-pane .inventory-section-header,
 .hud-root.is-landscape .expedition-loadout-pane .inventory-section-header {
-    width: 336px;
-    height: 36px;
+    width: 100%;
+    height: auto;
 }
 
 .hud-root.is-expanded .expedition-loadout-pane .backpack-grid,
 .hud-root.is-landscape .expedition-loadout-pane .backpack-grid {
-    width: 336px;
-    min-width: 336px;
+    width: 240px;
+    min-width: 240px;
 }
 
 .hud-root.is-expanded .expedition-card .unity-scroll-view__content-container,
 .hud-root.is-landscape .expedition-card .unity-scroll-view__content-container {
-    padding-right: 18px;
+    padding-right: 8px;
 }
 
 .expedition-detail {
     width: 100%;
-    min-height: 132px;
-    margin-top: 12px;
-    padding: 12px;
+    min-height: 64px;
+    margin-top: 6px;
+    padding: 6px;
     flex-direction: row;
     align-items: center;
 }
 
 .expedition-detail-copy {
     flex-grow: 1;
-    min-width: 220px;
+    min-width: 140px;
 }
 
 .expedition-feedback {
@@ -453,14 +466,14 @@
 }
 
 .expedition-actions {
-    min-width: 172px;
-    margin-left: 12px;
+    min-width: 96px;
+    margin-left: 6px;
 }
 
 .expedition-transfer-button {
-    width: 172px;
-    min-height: 42px;
-    margin: 3px 0;
+    width: 96px;
+    min-height: 20px;
+    margin: 2px 0;
 }
 
 .backpack-item.loadout-starter {
@@ -511,7 +524,7 @@
 
 .hud-root.is-narrow .expedition-stash-pane,
 .hud-root.is-narrow .expedition-loadout-pane {
-    width: 364px;
+    width: 100%;
     max-width: 100%;
 }
 
@@ -588,8 +601,8 @@
 }
 
 .hub-smith-buy {
-    min-width: 92px;
-    margin-left: 10px;
+    min-width: 56px;
+    margin-left: 6px;
 }
 
 .hub-smith-buy:disabled {
@@ -610,8 +623,8 @@
    눌렀을 때 어떤 숫자가 움직이는지가 시선 이동 없이 읽혀야 한다. */
 .hub-codex-invest {
     align-self: flex-start;
-    min-width: 108px;
-    margin-top: 6px;
+    min-width: 64px;
+    margin-top: 4px;
 }
 
 .hub-codex-invest:disabled {
@@ -622,4 +635,16 @@
     color: var(--pc-dim);
     font-size: var(--pc-fs-1);
     white-space: normal;
+}
+
+/* 던전 모달과 같은 창 어휘. DesignSystem 의 .pc-window 는 화면별 USS 보다 먼저 로드돼
+   같은 특정성에서 밀리므로, .settings-card 의 솔리드 패널과 보더를 여기서 걷어내야
+   9-slice 프레임이 보인다(PrototypeHUD.Desktop.uss 와 같은 처리). */
+.hud-root .settings-card.pc-window {
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    padding: 12px;
 }

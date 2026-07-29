@@ -1543,7 +1543,16 @@
     border-radius: 0;
 }
 
-.settings-reset,
+/* ⚠ 이 둘을 한 셀렉터로 묶지 않는다. 예전에 묶여 있던 것을 닫기 버튼만 고치려다
+   그룹 전체의 본문을 갈아 끼워, .settings-reset 이 width:16px 을 물려받아 접혔다
+   ("게임 포기하기"·"출정 백팩 준비" 같은 버튼이 전부 16px 이 됐다). */
+.settings-reset {
+    color: var(--pc-text);
+    background-color: var(--pc-btn-bg);
+    border-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
 /* 닫기는 두 번째로 중요한 동작이 아니다 — 40px 박스가 아니라 아이콘 크기로 둔다. */
 .settings-close {
     width: 16px;
