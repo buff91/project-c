@@ -17,6 +17,7 @@ namespace ProjectC.Gameplay
 
         public static void Save(RunSaveData data)
         {
+            SaveMigration.Stamp(data);
             AtomicJsonStore.Save(SavePath, data);
         }
 
@@ -30,6 +31,8 @@ namespace ProjectC.Gameplay
             {
                 if (recoveredFromBackup)
                     Debug.LogWarning("[Save] 손상된 체크포인트를 백업에서 복구했다.");
+                if (SaveMigration.Migrate(data, ItemCatalog.ChargesPerItem))
+                    Debug.Log("[Save] 체크포인트 스키마를 v" + SaveMigration.CurrentVersion + "로 변환했다.");
                 return true;
             }
 

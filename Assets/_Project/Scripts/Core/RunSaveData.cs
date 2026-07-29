@@ -11,6 +11,17 @@ namespace ProjectC.Core
     [Serializable]
     public class RunSaveData
     {
+        /// <summary>
+        /// 세이브 스키마 버전. <b>이니셜라이저를 붙이지 않는다</b> —
+        /// <c>JsonUtility.FromJson</c>은 JSON에 <b>있는</b> 필드만 덮어쓰므로,
+        /// <c>= 1</c>로 두면 이 필드가 없는 구세이브가 <b>자기를 최신이라고 선언</b>하고
+        /// 마이그레이션이 통째로 건너뛰어진다. 기본값 0이 곧 "변환 전"이다.
+        /// (<c>RunTelemetry.schemaVersion</c>은 이니셜라이저를 쓰지만 그건 쓰기 전용이라
+        /// 무해하다 — 그 패턴을 여기 복사하면 안 된다.)
+        /// 스탬프는 저장 직전에 <see cref="SaveMigration.Stamp"/>가 찍는다.
+        /// </summary>
+        public int schemaVersion;
+
         public string dungeonId;
         public int seed;
         public int roomSize;
