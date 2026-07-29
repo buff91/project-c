@@ -98,6 +98,8 @@ namespace ProjectC.Gameplay
             new Dictionary<ItemKind, List<Button>>();
         private DragSource _dragSource;
         private ItemKind _dragKind;
+        /// <summary>끌고 있는 출정 백팩 칸의 잔여 충전. 창고 쪽 드래그에는 쓰이지 않는다.</summary>
+        private int _dragCharges = 1;
         private Button _dragElement;
         private int _dragPointerId = -1;
         private Vector2 _dragStart;

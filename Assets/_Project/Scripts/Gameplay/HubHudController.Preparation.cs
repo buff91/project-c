@@ -94,14 +94,18 @@ namespace ProjectC.Gameplay
                     ? PreparationSelectionSource.Starter
                     : PreparationSelectionSource.Loadout;
 
+                // 이 칸의 잔여 충전은 레이아웃이 실어 보낸 값을 그대로 쓴다 — UI가 다시
+                // 계산하면 숫자와 되돌리는 양이 갈린다. 되돌리기·드래그가 이 값을 옮긴다.
+                int cellCharges = placement.Charges;
                 Button slot = InventoryPanelController.CreateItemSlot(
-                    kind, 1, null, $"loadout-{kind}-{placement.InstanceIndex}");
+                    kind, cellCharges, null, $"loadout-{kind}-{placement.InstanceIndex}",
+                    ItemCatalog.ChargesPerItem(kind));
                 slot.AddToClassList("backpack-item");
                 slot.AddToClassList(
                     $"backpack-size-{placement.Footprint.Width}x{placement.Footprint.Height}");
                 slot.tooltip = starter
                     ? $"{ItemCatalog.DisplayName(kind)} · 영웅 기본 지급품"
-                    : $"{ItemCatalog.DisplayName(kind)} · 원정 반입";
+                    : $"{ItemCatalog.DisplayName(kind)} · 원정 반입{ChargeSuffix(kind, cellCharges)}";
                 slot.clicked += () => HandlePreparationSlotClicked(captured, source, slot);
                 if (starter)
                 {
@@ -113,7 +117,8 @@ namespace ProjectC.Gameplay
                 }
                 else
                 {
-                    RegisterPreparationDrag(slot, DragSource.Loadout, kind);
+                    slot.userData = cellCharges;
+                    RegisterPreparationDrag(slot, DragSource.Loadout, kind, cellCharges);
                     AddPreparationSlot(_loadoutSlots, kind, slot);
                 }
 
@@ -216,14 +221,37 @@ namespace ProjectC.Gameplay
                 : _preparationSource == PreparationSelectionSource.Loadout
                     ? "출정 백팩"
                     : "영웅 기본 지급";
+            // 충전이 있는 종류에서 `×N`은 개수가 아니라 회분이다 — 같은 기호로 두면
+            // "물약 ×6"이 여섯 칸으로 읽힌다. 칸수를 함께 내서 둘을 붙여 놓는다.
+            string amountLabel = ItemCatalog.IsCharged(kind)
+                ? $"{count}회분 · {ChargeUnits.UnitsFor(kind, count)}칸({footprint})"
+                : $"×{count} · {footprint}칸";
             if (_stashName != null)
                 _stashName.text =
-                    $"{ItemCatalog.DisplayName(kind)} ×{count} · {footprint}칸 · {sourceLabel}";
+                    $"{ItemCatalog.DisplayName(kind)} {amountLabel} · {sourceLabel}";
             if (_stashDesc != null) _stashDesc.text = ItemCatalog.Description(kind);
+
+            bool fromStash = _preparationSource == PreparationSelectionSource.Stash;
+            bool fromLoadout = _preparationSource == PreparationSelectionSource.Loadout;
             if (_toLoadout != null)
-                _toLoadout.SetEnabled(_preparationSource == PreparationSelectionSource.Stash);
+            {
+                _toLoadout.SetEnabled(fromStash);
+                // 버튼이 옮길 양을 스스로 말한다 — 이동 단위가 칸이라는 사실은
+                // 격자만 봐서는 안 읽히고, 안 읽히면 여섯 번 누르던 습관이 남는다.
+                int unit = fromStash
+                    ? ExpeditionLoadoutRules.UnitChargesInStash(_meta, kind)
+                    : 0;
+                _toLoadout.text = fromStash && ItemCatalog.IsCharged(kind)
+                    ? $"백팩에 넣기 ({unit}회분) →"
+                    : "백팩에 넣기 →";
+            }
             if (_toStash != null)
-                _toStash.SetEnabled(_preparationSource == PreparationSelectionSource.Loadout);
+            {
+                _toStash.SetEnabled(fromLoadout);
+                _toStash.text = fromLoadout && ItemCatalog.IsCharged(kind)
+                    ? $"← 창고로 ({SelectedCellCharges()}회분)"
+                    : "← 창고로";
+            }
         }
 
         private static void RemoveSelectedClass(Dictionary<ItemKind, List<Button>> slots)
@@ -245,6 +273,10 @@ namespace ProjectC.Gameplay
                     "모바일은 선택 후 반대쪽 빈 공간을 탭하고, PC는 드래그할 수 있습니다.";
             _toLoadout?.SetEnabled(false);
             _toStash?.SetEnabled(false);
+            // 선택이 풀리면 수량 꼬리표도 함께 지운다 — 안 지우면 지난 선택의 회분이
+            // 비활성 버튼에 남아 다음 아이템의 값처럼 읽힌다.
+            if (_toLoadout != null) _toLoadout.text = "백팩에 넣기 →";
+            if (_toStash != null) _toStash.text = "← 창고로";
         }
 
         private void MoveSelectedToLoadout()
@@ -260,13 +292,31 @@ namespace ProjectC.Gameplay
             if (!_stashSelected.HasValue ||
                 _preparationSource != PreparationSelectionSource.Loadout)
                 return;
-            MoveKindToStash(_stashSelected.Value);
+            MoveKindToStash(_stashSelected.Value, SelectedCellCharges());
         }
 
+        /// <summary>
+        /// 선택된 출정 백팩 <b>칸</b>의 잔여 충전. 슬롯을 만들 때 실어 둔 값이라
+        /// 화면에 보이는 숫자와 되돌아가는 양이 같다. 값이 없으면 1회분으로 본다.
+        /// </summary>
+        private int SelectedCellCharges() =>
+            _selectedPreparationSlot?.userData is int charges && charges > 0 ? charges : 1;
+
+        /// <summary>
+        /// 창고 → 백팩은 <b>한 칸 분량</b>을 옮긴다. 덜 찬 칸도 셀은 만충과 똑같이 먹으므로
+        /// 1회분씩 옮기면 클릭만 늘고 얻는 것이 없다(물약 6회분에 여섯 번).
+        /// </summary>
         private void MoveKindToLoadout(ItemKind kind)
         {
+            int charges = ExpeditionLoadoutRules.UnitChargesInStash(_meta, kind);
+            if (charges <= 0)
+            {
+                ShowTransferFailure(LoadoutTransferResult.MissingFromStash, kind, _loadoutPane);
+                return;
+            }
+
             LoadoutTransferResult result =
-                ExpeditionLoadoutRules.TryMoveToLoadout(_meta, kind);
+                ExpeditionLoadoutRules.TryMoveToLoadout(_meta, kind, charges);
             if (result != LoadoutTransferResult.Success)
             {
                 ShowTransferFailure(result, kind, _loadoutPane);
@@ -277,13 +327,14 @@ namespace ProjectC.Gameplay
             _stashSelected = kind;
             _preparationSource = PreparationSelectionSource.Loadout;
             _selectedPreparationSlot = null;
-            RefreshPreparation($"{ItemCatalog.DisplayName(kind)} → 출정 백팩");
+            RefreshPreparation(
+                $"{ItemCatalog.DisplayName(kind)}{ChargeSuffix(kind, charges)} → 출정 백팩");
         }
 
-        private void MoveKindToStash(ItemKind kind)
+        private void MoveKindToStash(ItemKind kind, int charges)
         {
             LoadoutTransferResult result =
-                ExpeditionLoadoutRules.TryMoveToStash(_meta, kind);
+                ExpeditionLoadoutRules.TryMoveToStash(_meta, kind, charges);
             if (result != LoadoutTransferResult.Success)
             {
                 ShowTransferFailure(result, kind, _stashPane);
@@ -294,8 +345,16 @@ namespace ProjectC.Gameplay
             _stashSelected = kind;
             _preparationSource = PreparationSelectionSource.Stash;
             _selectedPreparationSlot = null;
-            RefreshPreparation($"{ItemCatalog.DisplayName(kind)} → 창고");
+            RefreshPreparation(
+                $"{ItemCatalog.DisplayName(kind)}{ChargeSuffix(kind, charges)} → 창고");
         }
+
+        /// <summary>
+        /// 충전이 있는 종류에만 " N회분"을 덧붙인다. 1회분짜리에 붙이면 모든 문구가
+        /// "폭탄 1회분"이 되어 없는 규칙을 있는 것처럼 읽히게 한다.
+        /// </summary>
+        private static string ChargeSuffix(ItemKind kind, int charges) =>
+            ItemCatalog.IsCharged(kind) ? $" {charges}회분" : "";
 
         private void ShowTransferFailure(
             LoadoutTransferResult result,
@@ -332,7 +391,7 @@ namespace ProjectC.Gameplay
             if (_preparationSource != PreparationSelectionSource.Loadout ||
                 !_stashSelected.HasValue)
                 return;
-            MoveKindToStash(_stashSelected.Value);
+            MoveKindToStash(_stashSelected.Value, SelectedCellCharges());
             evt.StopPropagation();
         }
 
@@ -343,10 +402,11 @@ namespace ProjectC.Gameplay
             return false;
         }
 
-        private void RegisterPreparationDrag(Button slot, DragSource source, ItemKind kind)
+        private void RegisterPreparationDrag(
+            Button slot, DragSource source, ItemKind kind, int charges = 1)
         {
             slot.RegisterCallback<PointerDownEvent>(
-                evt => BeginPreparationDrag(evt, slot, source, kind));
+                evt => BeginPreparationDrag(evt, slot, source, kind, charges));
             slot.RegisterCallback<PointerMoveEvent>(UpdatePreparationDrag);
             slot.RegisterCallback<PointerUpEvent>(CompletePreparationDrag);
         }
@@ -355,11 +415,13 @@ namespace ProjectC.Gameplay
             PointerDownEvent evt,
             Button slot,
             DragSource source,
-            ItemKind kind)
+            ItemKind kind,
+            int charges)
         {
             if (evt.button != 0 || _dragSource != DragSource.None) return;
             _dragSource = source;
             _dragKind = kind;
+            _dragCharges = charges;
             _dragElement = slot;
             _dragPointerId = evt.pointerId;
             _dragStart = new Vector2(evt.position.x, evt.position.y);
@@ -382,8 +444,11 @@ namespace ProjectC.Gameplay
 
             if (_dragSource == DragSource.Stash && overLoadout)
             {
-                bool valid = ExpeditionLoadoutRules.CanMoveToLoadout(
-                    _meta, _dragKind);
+                // 드롭 미리보기는 실제로 옮길 양(한 칸 분량)으로 판정한다 —
+                // 1회분으로 물어보면 "들어간다"고 초록을 켜 놓고 드롭에서 거절한다.
+                int charges = ExpeditionLoadoutRules.UnitChargesInStash(_meta, _dragKind);
+                bool valid = charges > 0 &&
+                    ExpeditionLoadoutRules.CanMoveToLoadout(_meta, _dragKind, charges);
                 _loadoutPane?.AddToClassList(valid ? "drop-valid" : "drop-invalid");
             }
             else if (_dragSource == DragSource.Loadout && overStash)
@@ -397,6 +462,7 @@ namespace ProjectC.Gameplay
             if (_dragSource == DragSource.None || evt.pointerId != _dragPointerId) return;
             DragSource source = _dragSource;
             ItemKind kind = _dragKind;
+            int charges = _dragCharges;
             bool moved = _dragMoved;
             Vector2 current = new Vector2(evt.position.x, evt.position.y);
             VisualElement picked = _dragElement?.panel?.Pick(current);
@@ -411,7 +477,7 @@ namespace ProjectC.Gameplay
             if (droppedToLoadout)
                 MoveKindToLoadout(kind);
             else
-                MoveKindToStash(kind);
+                MoveKindToStash(kind, charges);
             evt.StopPropagation();
         }
 
@@ -424,6 +490,7 @@ namespace ProjectC.Gameplay
             ClearDropCues();
             _dragSource = DragSource.None;
             _dragElement = null;
+            _dragCharges = 1;
             _dragPointerId = -1;
             _dragMoved = false;
         }

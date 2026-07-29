@@ -15,6 +15,13 @@ namespace ProjectC.Core
     /// 허브 창고와 출정 백팩 사이의 이동 규칙.
     /// 기본 지급품(<see cref="SurvivorProfile"/>)도 같은 6×4 용량에 포함해
     /// 실제 던전 백팩과 결과를 맞춘다.
+    ///
+    /// <para>
+    /// <b>이동량은 충전(회분) 단위로 받고, 화면은 그것을 「칸」으로 부른다.</b>
+    /// 규칙은 1회분까지 옮길 수 있지만(기본값 1) 출정 준비 화면은 한 칸 분량
+    /// (<see cref="UnitChargesInStash"/> / 선택한 칸의 잔여)을 넘긴다 — 덜 찬 칸도
+    /// 백팩 셀은 만충과 똑같이 먹으므로 1회분씩 옮기면 클릭만 늘고 얻는 것이 없다.
+    /// </para>
     /// </summary>
     public static class ExpeditionLoadoutRules
     {
@@ -37,41 +44,79 @@ namespace ProjectC.Core
 
         public static int StarterCount(ItemKind kind) => SurvivorProfile.StarterCount(kind);
 
-        public static bool CanMoveToLoadout(
-            MetaSaveData meta,
-            ItemKind kind)
+        /// <summary>
+        /// 창고에서 한 번에 반입하는 <b>한 칸</b> 분량 — 만충이거나, 창고에 그보다 적게
+        /// 남았으면 그 전부다. 0이면 옮길 것이 없다.
+        ///
+        /// <para>
+        /// 이동 단위가 칸인 이유: <b>덜 찬 칸도 백팩 셀은 만충과 똑같이 먹는다</b>
+        /// (<c>ceil(충전 / 칸당)</c>). 1회분씩 옮기면 같은 셀을 쓰면서 회분만 적게
+        /// 들고 가는 셈이라 클릭 수만 늘고 얻는 것이 없다.
+        /// </para>
+        /// </summary>
+        public static int UnitChargesInStash(MetaSaveData meta, ItemKind kind)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
-            if (ItemCatalog.IsTreasure(kind) || meta.GetCount(kind) <= 0) return false;
-            Inventory inventory = CreateInventory(meta);
-            return inventory.TryAdd(kind, out _);
+            int available = meta.GetCount(kind);
+            if (available <= 0) return 0;
+            int per = ItemCatalog.ChargesPerItem(kind);
+            return available < per ? available : per;
         }
 
-        public static LoadoutTransferResult TryMoveToLoadout(
+        public static bool CanMoveToLoadout(
             MetaSaveData meta,
-            ItemKind kind)
+            ItemKind kind,
+            int charges = 1)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
+            if (charges <= 0) throw new ArgumentOutOfRangeException(nameof(charges));
+            if (ItemCatalog.IsTreasure(kind) || meta.GetCount(kind) < charges) return false;
+            Inventory inventory = CreateInventory(meta);
+            return inventory.TryAdd(kind, charges, out _);
+        }
+
+        /// <summary>
+        /// 창고 → 출정 백팩. <b>전부 아니면 전무</b>다 — 부분 성공을 허용하면 화면이
+        /// "옮겼다"고 말하는데 창고와 백팩의 합이 요청과 다른 상태가 조용히 생긴다.
+        /// 한 칸 분량(<see cref="UnitChargesInStash"/>)은 언제나 셀 하나만 더 먹으므로
+        /// 실패는 "칸이 없다" 하나뿐이다.
+        /// </summary>
+        public static LoadoutTransferResult TryMoveToLoadout(
+            MetaSaveData meta,
+            ItemKind kind,
+            int charges = 1)
+        {
+            if (meta == null) throw new ArgumentNullException(nameof(meta));
+            if (charges <= 0) throw new ArgumentOutOfRangeException(nameof(charges));
             if (ItemCatalog.IsTreasure(kind)) return LoadoutTransferResult.UnsupportedItem;
-            if (meta.GetCount(kind) <= 0) return LoadoutTransferResult.MissingFromStash;
+            if (meta.GetCount(kind) < charges) return LoadoutTransferResult.MissingFromStash;
 
             Inventory inventory = CreateInventory(meta);
-            if (!inventory.TryAdd(kind, out _))
+            if (!inventory.TryAdd(kind, charges, out _))
                 return LoadoutTransferResult.NoBackpackSpace;
 
-            meta.RemoveCount(kind, 1);
-            meta.AddLoadoutCount(kind, 1);
+            meta.RemoveCount(kind, charges);
+            meta.AddLoadoutCount(kind, charges);
             return LoadoutTransferResult.Success;
         }
 
-        public static LoadoutTransferResult TryMoveToStash(MetaSaveData meta, ItemKind kind)
+        /// <summary>
+        /// 출정 백팩 → 창고. 창고에는 <b>실제로 뺀 만큼만</b> 넣는다 — UI가 들고 있던
+        /// 칸 잔여가 낡았을 때(그 사이 재배치) 요청량을 그대로 더하면 회분이 불어난다.
+        /// </summary>
+        public static LoadoutTransferResult TryMoveToStash(
+            MetaSaveData meta,
+            ItemKind kind,
+            int charges = 1)
         {
             if (meta == null) throw new ArgumentNullException(nameof(meta));
+            if (charges <= 0) throw new ArgumentOutOfRangeException(nameof(charges));
             if (ItemCatalog.IsTreasure(kind)) return LoadoutTransferResult.UnsupportedItem;
-            if (meta.RemoveLoadoutCount(kind, 1) <= 0)
-                return LoadoutTransferResult.MissingFromLoadout;
 
-            meta.AddCount(kind, 1);
+            int removed = meta.RemoveLoadoutCount(kind, charges);
+            if (removed <= 0) return LoadoutTransferResult.MissingFromLoadout;
+
+            meta.AddCount(kind, removed);
             return LoadoutTransferResult.Success;
         }
 

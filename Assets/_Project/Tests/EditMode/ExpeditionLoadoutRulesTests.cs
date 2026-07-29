@@ -106,7 +106,10 @@ namespace ProjectC.Tests
             }
         }
 
-        /// <summary>창고 ↔ 로드아웃 이동은 1회분 단위다 — "몇 회분 챙길까"가 이 기능의 요점이다.</summary>
+        /// <summary>
+        /// Core는 여전히 1회분까지 옮길 수 있다 — 화면이 칸 단위로 부르는 것이지
+        /// 규칙이 칸 아래를 못 다루는 것이 아니다(기본값이 1인 이유).
+        /// </summary>
         [Test]
         public void MoveToLoadout_MovesASingleCharge()
         {
@@ -150,5 +153,118 @@ namespace ProjectC.Tests
                 "부분 칸이 남아 있으면 칸이 꽉 차도 받아들여야 한다");
         }
 
+        /// <summary>
+        /// 한 칸 분량 = 만충이거나, 창고에 그보다 적게 남았으면 그 전부.
+        /// UI가 이 값을 그대로 옮기므로 여기가 곧 클릭 한 번의 뜻이다.
+        /// </summary>
+        [Test]
+        public void UnitChargesInStash_IsAFullUnitOrWhateverIsLeft()
+        {
+            int per = ItemCatalog.ChargesPerItem(ItemKind.Potion);
+            if (per <= 1) Assert.Ignore("충전 아이템이 없으면 검증할 것이 없다.");
+
+            var meta = new MetaSaveData();
+            Assert.AreEqual(
+                0, ExpeditionLoadoutRules.UnitChargesInStash(meta, ItemKind.Potion),
+                "창고가 비면 옮길 것이 없다");
+
+            meta.AddCount(ItemKind.Potion, per - 1);
+            Assert.AreEqual(
+                per - 1, ExpeditionLoadoutRules.UnitChargesInStash(meta, ItemKind.Potion),
+                "만충보다 적게 남았으면 남은 전부");
+
+            meta.AddCount(ItemKind.Potion, per + 5);
+            Assert.AreEqual(
+                per, ExpeditionLoadoutRules.UnitChargesInStash(meta, ItemKind.Potion),
+                "넉넉하면 딱 한 칸 분량");
+        }
+
+        /// <summary>
+        /// 한 칸 분량을 옮기면 셀은 <b>정확히 하나</b>만 늘어난다 — 덜 찬 칸도 만충과 같은
+        /// 셀을 먹으므로 1회분씩 옮기는 것은 클릭만 늘고 얻는 것이 없다.
+        /// </summary>
+        [Test]
+        public void MoveToLoadout_MovesAWholeUnitForOneExtraFootprint()
+        {
+            ItemKind kind = ItemKind.Potion;
+            int per = ItemCatalog.ChargesPerItem(kind);
+            if (per <= 1) Assert.Ignore("충전 아이템이 없으면 검증할 것이 없다.");
+
+            var meta = new MetaSaveData();
+            meta.AddCount(kind, per * 3);
+            int before = ExpeditionLoadoutRules.CreateLayout(meta).UsedCells;
+
+            int unit = ExpeditionLoadoutRules.UnitChargesInStash(meta, kind);
+            Assert.AreEqual(
+                LoadoutTransferResult.Success,
+                ExpeditionLoadoutRules.TryMoveToLoadout(meta, kind, unit));
+
+            Assert.AreEqual(per, unit, "한 번에 만충 한 칸");
+            Assert.AreEqual(per * 2, meta.GetCount(kind), "창고에서 한 칸 분량이 빠진다");
+            Assert.AreEqual(per, meta.GetLoadoutCount(kind));
+            Assert.AreEqual(
+                before + BackpackRules.Footprint(kind).Area,
+                ExpeditionLoadoutRules.CreateLayout(meta).UsedCells,
+                "셀은 풋프린트 하나만 늘어난다");
+        }
+
+        /// <summary>
+        /// <b>전부 아니면 전무.</b> 창고 잔량보다 많이 요청하면 아무것도 옮기지 않는다 —
+        /// 부분 성공을 허용하면 화면은 "옮겼다"고 말하는데 합이 요청과 다른 상태가 생긴다.
+        /// </summary>
+        [Test]
+        public void MoveToLoadout_RejectsWithoutMovingWhenStashHasTooFew()
+        {
+            var meta = new MetaSaveData();
+            meta.AddCount(ItemKind.Potion, 2);
+
+            Assert.AreEqual(
+                LoadoutTransferResult.MissingFromStash,
+                ExpeditionLoadoutRules.TryMoveToLoadout(meta, ItemKind.Potion, 3));
+            Assert.AreEqual(2, meta.GetCount(ItemKind.Potion), "창고는 그대로다");
+            Assert.AreEqual(0, meta.GetLoadoutCount(ItemKind.Potion));
+            Assert.IsFalse(
+                ExpeditionLoadoutRules.CanMoveToLoadout(meta, ItemKind.Potion, 3));
+        }
+
+        /// <summary>
+        /// 되돌리기는 칸 하나의 잔여 충전을 옮긴다. UI가 들고 있던 값이 낡았어도
+        /// <b>실제로 뺀 만큼만</b> 창고에 들어가야 한다 — 아니면 회분이 불어난다.
+        /// </summary>
+        [Test]
+        public void MoveToStash_MovesTheWholeCellAndNeverInflatesCharges()
+        {
+            var meta = new MetaSaveData();
+            meta.AddLoadoutCount(ItemKind.Potion, 5);
+
+            Assert.AreEqual(
+                LoadoutTransferResult.Success,
+                ExpeditionLoadoutRules.TryMoveToStash(meta, ItemKind.Potion, 2));
+            Assert.AreEqual(3, meta.GetLoadoutCount(ItemKind.Potion));
+            Assert.AreEqual(2, meta.GetCount(ItemKind.Potion));
+
+            // 낡은 값으로 과하게 요청해도 있는 만큼만 옮긴다.
+            Assert.AreEqual(
+                LoadoutTransferResult.Success,
+                ExpeditionLoadoutRules.TryMoveToStash(meta, ItemKind.Potion, 99));
+            Assert.AreEqual(0, meta.GetLoadoutCount(ItemKind.Potion));
+            Assert.AreEqual(5, meta.GetCount(ItemKind.Potion), "총 회분은 보존된다");
+
+            Assert.AreEqual(
+                LoadoutTransferResult.MissingFromLoadout,
+                ExpeditionLoadoutRules.TryMoveToStash(meta, ItemKind.Potion, 1));
+        }
+
+        [Test]
+        public void Transfers_RejectNonPositiveCharges()
+        {
+            var meta = new MetaSaveData();
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => ExpeditionLoadoutRules.TryMoveToLoadout(meta, ItemKind.Potion, 0));
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => ExpeditionLoadoutRules.TryMoveToStash(meta, ItemKind.Potion, -1));
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => ExpeditionLoadoutRules.CanMoveToLoadout(meta, ItemKind.Potion, 0));
+        }
     }
 }
