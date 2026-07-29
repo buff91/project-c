@@ -20,20 +20,19 @@
 
 .hub-caption {
     color: var(--muted);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     letter-spacing: 2px;
     margin-right: 8px;
 }
 
 .hub-gold {
     color: rgb(255, 213, 84);
-    font-size: 14px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-2);
 }
 
 .hub-continue {
     color: rgb(238, 244, 230);
-    font-size: 12px;
+    font-size: var(--pc-fs-1);
     display: none;
 }
 
@@ -46,7 +45,7 @@
     height: 44px;
     margin-left: 6px;
     color: var(--pc-gold);
-    font-size: 18px;
+    font-size: var(--pc-fs-2);
 }
 
 .hub-menu-actions {
@@ -119,7 +118,6 @@
 .hub-dungeon-name {
     color: var(--pc-gold);
     font-size: var(--pc-fs-3);
-    -unity-font-style: bold;
 }
 
 .hub-dungeon-route {
@@ -156,7 +154,7 @@
     width: 31%;
     margin: 1%;
     padding: 8px 4px;
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     background-color: rgb(34, 28, 18);
     color: rgb(233, 220, 192);
     border-radius: 6px;
@@ -171,7 +169,7 @@
 
 .hub-feedback {
     color: rgb(255, 213, 84);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     min-height: 12px;
 }
 
@@ -188,8 +186,7 @@
 
 .hub-modal-gold {
     color: rgb(255, 213, 84);
-    font-size: 14px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-2);
     margin-right: 10px;
 }
 
@@ -200,7 +197,7 @@
 
 .slot-price {
     color: rgb(255, 213, 84);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
 }
 
 /* 허브도 던전과 동일한 Torchstone 팔레트/모서리/강조 규칙을 사용한다. */
@@ -288,7 +285,7 @@
     min-height: 58px;
     margin-right: 4px;
     padding: 6px;
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     -unity-text-align: middle-center;
 }
 
@@ -354,14 +351,14 @@
 
 .expedition-transfer-symbol {
     color: var(--pc-gold);
-    font-size: 28px;
+    font-size: var(--pc-fs-3);
 }
 
 .expedition-transfer-hint,
 .expedition-hero-label,
 .expedition-locked-hint {
     color: var(--pc-dim);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     -unity-text-align: middle-center;
 }
@@ -441,7 +438,7 @@
     left: 2px;
     top: 2px;
     color: var(--pc-ice);
-    font-size: 8px;
+    font-size: var(--pc-fs-1);
     background-color: rgb(6, 15, 19);
 }
 
@@ -544,13 +541,12 @@
 
 .hub-row-title {
     color: var(--pc-text);
-    font-size: 13px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .hub-row-desc {
     color: var(--pc-dim);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     margin-top: 2px;
 }
@@ -570,8 +566,7 @@
 
 .hub-bounty-reward {
     color: var(--pc-gold);
-    font-size: 11px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-top: 3px;
 }
 
@@ -589,6 +584,6 @@
 
 .hub-bounty-empty {
     color: var(--pc-dim);
-    font-size: 11px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
 }

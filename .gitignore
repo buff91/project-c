@@ -67,6 +67,7 @@ __pycache__/
 # ComfyUI REST로 받은 검토용 생성물. 채택한 소스 시트만 정식 이름으로 이동한다.
 /docs/art-direction/comfyui/output/
 /Tools/ArtPipeline/.art-review/
+/Tools/ArtPipeline/.venv/
 /.venv-art-review/
 
 # dotnet 테스트 shim 산출물 (Tools/CoreTests — Unity 없이 Core 테스트)

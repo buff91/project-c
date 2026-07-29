@@ -40,9 +40,7 @@
 
 .micro-caption {
     color: var(--muted);
-    font-size: 8px;
-    -unity-font-style: bold;
-    letter-spacing: 1.4px;
+    font-size: var(--pc-fs-1);
 }
 
 .centered {
@@ -126,14 +124,11 @@
 
 .orb-caption {
     color: var(--muted);
-    font-size: 9px;
-    -unity-font-style: bold;
-    letter-spacing: 1.5px;
+    font-size: var(--pc-fs-1);
 }
 
 .orb-value {
-    font-size: 14px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-2);
     margin-top: 1px;
 }
 
@@ -145,8 +140,7 @@
    경고 단계부터 색이 붙는다 — 포만은 알림이 아니라 배경 정보다. */
 .hunger-label {
     color: var(--muted);
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-top: 3px;
 }
 
@@ -188,14 +182,13 @@
     border-right-color: rgb(42, 29, 17);
     border-bottom-color: rgb(42, 29, 17);
     border-radius: 3px;
-    font-size: 7px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .icon-button {
     min-width: 30px;
     padding: 0;
-    font-size: 16px;
+    font-size: var(--pc-fs-2);
     -unity-text-align: middle-center;
 }
 
@@ -290,7 +283,7 @@
     border-right-color: rgb(42, 29, 17);
     border-bottom-color: rgb(42, 29, 17);
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
 }
 
 .rotate-button:hover {
@@ -300,8 +293,7 @@
 
 .view-label {
     color: var(--parchment);
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     letter-spacing: 1px;
 }
 
@@ -316,8 +308,7 @@
 
 .depth-value {
     color: var(--torch);
-    font-size: 24px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-3);
     -unity-text-align: middle-right;
 }
 
@@ -327,16 +318,14 @@
 
 .elevation-label {
     color: rgb(159, 214, 224);
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-top: 5px;
     -unity-text-align: middle-right;
 }
 
 .floor-label {
     color: var(--muted);
-    font-size: 8px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-top: 4px;
     -unity-text-align: middle-right;
 }
@@ -368,13 +357,12 @@
 .route-discovery-title {
     color: var(--pc-ice);
     font-size: var(--pc-fs-2);
-    -unity-font-style: bold;
     margin-top: 3px;
 }
 
 .route-discovery-detail {
     color: var(--pc-text);
-    font-size: 12px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     margin-top: 5px;
 }
@@ -427,14 +415,13 @@
 
 .boss-kicker {
     color: var(--pc-warning);
-    font-size: 8px;
+    font-size: var(--pc-fs-1);
     letter-spacing: 1px;
 }
 
 .boss-name {
     color: rgb(255, 218, 143);
-    font-size: 17px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-2);
     margin-top: 1px;
 }
 
@@ -461,13 +448,13 @@
 
 .boss-health-value {
     color: rgb(242, 211, 180);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     margin-top: 2px;
 }
 
 .boss-objective {
     color: rgb(190, 161, 132);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     -unity-text-align: middle-center;
 }
@@ -522,9 +509,7 @@
 
 .chip-label {
     color: var(--ink);
-    font-size: 9px;
-    -unity-font-style: bold;
-    letter-spacing: 0.5px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
 }
 
@@ -575,7 +560,6 @@
     padding-bottom: 6px;
     padding-left: 9px;
     padding-right: 9px;
-    -unity-font-style: bold;
 }
 
 .item-button:hover {
@@ -632,8 +616,7 @@
 
 .resource-value {
     color: var(--parchment);
-    font-size: 12px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .action-cluster {
@@ -652,9 +635,7 @@
     margin-right: 5px;
     margin-bottom: 3px;
     border-radius: 4px;
-    font-size: 9px;
-    -unity-font-style: bold;
-    letter-spacing: 0.5px;
+    font-size: var(--pc-fs-1);
 }
 
 .mode-button {
@@ -735,8 +716,7 @@
 
 .turn-label {
     color: var(--torch);
-    font-size: 11px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .settings-modal {
@@ -814,14 +794,12 @@
 
 .settings-title {
     color: var(--torch);
-    font-size: 15px;
-    -unity-font-style: bold;
-    letter-spacing: 1.4px;
+    font-size: var(--pc-fs-2);
 }
 
 .settings-subtitle {
     color: var(--muted);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     margin-top: 3px;
 }
 
@@ -836,14 +814,13 @@
     border-top-color: var(--bronze);
     border-bottom-color: var(--bronze);
     border-radius: 4px;
-    font-size: 18px;
+    font-size: var(--pc-fs-2);
 }
 
 .settings-toggle {
     height: 34px;
     color: var(--parchment);
-    font-size: 11px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-top: 5px;
     margin-bottom: 5px;
 }
@@ -865,13 +842,12 @@
 
 .setting-label {
     color: var(--parchment);
-    font-size: 11px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .setting-help {
     color: var(--muted);
-    font-size: 8px;
+    font-size: var(--pc-fs-1);
     margin-top: 3px;
     white-space: normal;
 }
@@ -947,15 +923,14 @@
 
 .development-title {
     color: var(--pc-gold);
-    font-size: 9px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     letter-spacing: 1px;
 }
 
 .development-help,
 .viewport-status {
     color: var(--pc-dim);
-    font-size: 8px;
+    font-size: var(--pc-fs-1);
     margin-top: 2px;
 }
 
@@ -975,7 +950,7 @@
 .development-field-label {
     height: 11px;
     color: var(--pc-dim);
-    font-size: 8px;
+    font-size: var(--pc-fs-1);
 }
 
 .development-dropdown {
@@ -1026,16 +1001,14 @@
     border-top-color: var(--pc-stone-lit);
     border-right-color: var(--pc-gold-deep);
     border-bottom-color: var(--pc-gold-deep);
-    font-size: 9px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .settings-reset,
 .settings-done {
     height: 38px;
     border-radius: 4px;
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
 }
 
 .settings-reset {
@@ -1068,8 +1041,7 @@
 
 .gameover-title {
     color: rgb(236, 210, 170);
-    font-size: 26px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-3);
     letter-spacing: 2px;
     margin-bottom: 12px;
 }
@@ -1080,7 +1052,7 @@
 
 .gameover-detail {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--pc-fs-1);
     margin-bottom: 4px;
 }
 
@@ -1114,15 +1086,14 @@
 
 .debug-title {
     color: rgb(130, 200, 255);
-    font-size: 11px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     letter-spacing: 1px;
     margin-bottom: 6px;
 }
 
 .debug-status {
     color: rgb(200, 210, 220);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     margin-bottom: 8px;
 }
@@ -1137,7 +1108,7 @@
     width: 31%;
     margin: 1%;
     padding: 5px 2px;
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     background-color: rgb(24, 34, 46);
     color: rgb(200, 216, 230);
     border-width: 1px;
@@ -1159,7 +1130,7 @@
 
 .debug-log-line {
     color: rgb(150, 165, 180);
-    font-size: 9px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     margin-bottom: 1px;
 }
@@ -1212,7 +1183,7 @@
 
 .inventory-slot-count {
     color: var(--parchment);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
 }
 
 .inventory-detail {
@@ -1225,19 +1196,17 @@
 
 .inventory-detail-name {
     color: var(--parchment);
-    font-size: 13px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     margin-bottom: 4px;
 }
 
 .inventory-detail-desc {
     color: var(--muted);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
 }
 
 .bag-button {
-    -unity-font-style: bold;
 }
 
 /* ── 신규 아이템 아이콘 (M6: 기름/단검/두루마리) ──────── */
@@ -1315,7 +1284,7 @@
 
 .craft-caption {
     color: var(--muted);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     letter-spacing: 1px;
     margin-bottom: 4px;
 }
@@ -1338,7 +1307,7 @@
 
 .craft-row-label {
     color: var(--parchment);
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
     white-space: normal;
     flex-shrink: 1;
 }
@@ -1349,8 +1318,7 @@
 
 .craft-button {
     padding: 4px 12px;
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     color: var(--pc-void);
     background-color: var(--pc-gold);
     border-radius: 4px;
@@ -1409,8 +1377,7 @@
     height: 40px;
     margin-left: -43px;
     margin-top: -20px;
-    font-size: 10px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     color: var(--parchment);
     background-color: rgba(28, 22, 15, 0.96);
     border-width: 1px;
@@ -1775,7 +1742,7 @@
 }
 
 .hud-root.is-narrow .boss-name {
-    font-size: 14px;
+    font-size: var(--pc-fs-2);
 }
 
 .hud-root.is-short .boss-panel {
@@ -1799,11 +1766,11 @@
 }
 
 .hud-root.is-narrow .route-discovery-title {
-    font-size: 16px;
+    font-size: var(--pc-fs-2);
 }
 
 .hud-root.is-narrow .route-discovery-detail {
-    font-size: 10px;
+    font-size: var(--pc-fs-1);
 }
 
 .hud-root.is-narrow .status-chip,
@@ -2077,7 +2044,6 @@
 .inventory-section-title {
     color: var(--pc-text);
     font-size: var(--pc-fs-1);
-    -unity-font-style: bold;
     letter-spacing: 1px;
 }
 
@@ -2158,7 +2124,6 @@
     bottom: 0;
     color: white;
     font-size: var(--pc-fs-1);
-    -unity-font-style: bold;
     -unity-text-outline-width: 1px;
     -unity-text-outline-color: black;
 }
@@ -2477,8 +2442,7 @@
    도구는 아이콘만, 상태/동사는 아이콘+텍스트, 설명/경고는 텍스트만 사용한다. */
 
 .minimap-header .micro-caption {
-    font-size: 7px;
-    letter-spacing: 0.8px;
+    font-size: var(--pc-fs-1);
 }
 
 .minimap-header-buttons > .settings-button {
@@ -2495,8 +2459,7 @@
 
 .hud-mode-label {
     color: var(--pc-ice);
-    font-size: 7px;
-    -unity-font-style: bold;
+    font-size: var(--pc-fs-1);
     -unity-text-align: middle-center;
 }
 
@@ -2532,7 +2495,6 @@
 .action-button-label {
     color: var(--pc-text);
     font-size: var(--pc-fs-1);
-    -unity-font-style: bold;
     white-space: nowrap;
 }
 
