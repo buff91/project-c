@@ -166,8 +166,14 @@ namespace ProjectC.Core
             DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
             DefineEquipment(ItemKind.PaddedBoots, "BOOTS", OneCell),
+            // 칸당 3회분. 배고픔은 판 전체를 관통하는 상시 압박이라(가득 찬 배 100턴)
+            // 통조림은 "한 번 챙기고 잊는 것"이 아니라 계속 다시 채우는 소모품이고,
+            // 1회분 = 1칸이던 시절엔 그 리듬이 백팩 상시 점유로 나타났다.
+            // 물약(2)보다 큰 이유는 회복이 아니라 유지 비용이기 때문이다 —
+            // 회복은 판돈이지만 배고픔은 세금이고, 세금을 칸으로 받으면 파밍이 줄어든다.
             Define(ItemKind.CannedFood, ItemCategory.Consumable, "통조림", "FOOD",
-                "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.", shopPrice: 12),
+                "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.", shopPrice: 12,
+                chargesPerItem: 3),
             Define(ItemKind.ExtractionBeacon, ItemCategory.Consumable, "비상 송출기", "BEACON",
                 "어디서든 즉시 생환한다. 들고 있는 것을 지키고 판을 끝낸다.", shopPrice: 70)
         };

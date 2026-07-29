@@ -96,6 +96,52 @@ namespace ProjectC.Tests
             Assert.Greater(ItemCatalog.ShopPrice(ItemKind.CannedFood), 0, "상점에서 살 수 있어야 한다");
         }
 
+        /// <summary>
+        /// 통조림 한 칸은 여러 회분을 담는다. 배고픔이 판 전체를 관통하는 상시 압박이라
+        /// 1회분 = 1칸이면 식량이 백팩을 <b>상시 점유</b>하고, 그 자리는 전부 파밍(기둥 ④)에서
+        /// 빠져나간다. 세금은 판돈(회복)보다 촘촘히 쌓이므로 물약보다 작을 이유가 없다.
+        /// </summary>
+        [Test]
+        public void CannedFood_StacksCharges_SoUpkeepDoesNotEatTheBackpack()
+        {
+            Assert.IsTrue(ItemCatalog.IsCharged(ItemKind.CannedFood),
+                "통조림은 칸당 여러 회분을 담는다");
+            Assert.GreaterOrEqual(
+                ItemCatalog.ChargesPerItem(ItemKind.CannedFood),
+                ItemCatalog.ChargesPerItem(ItemKind.Potion),
+                "상시 세금인 식량이 판돈인 회복보다 촘촘할 이유는 없다");
+
+            int per = ItemCatalog.ChargesPerItem(ItemKind.CannedFood);
+            Assert.AreEqual(1, ChargeUnits.UnitsFor(ItemKind.CannedFood, per));
+            Assert.AreEqual(2, ChargeUnits.UnitsFor(ItemKind.CannedFood, per + 1),
+                "만충을 넘기면 새 칸이 열린다");
+        }
+
+        /// <summary>
+        /// <b>칸 압박 완화이지 배부름 버프가 아니다.</b> 획득도 소비도 여전히 1회분 단위라
+        /// 골드당·습득당 배부름이 정확히 보존된다 — 바뀌는 것은 회분이 차지하는 칸 수뿐이다.
+        /// 만충 습득으로 바꾸면 층당 식량 공급이 칸당 충전만큼 배가 된다.
+        /// </summary>
+        [Test]
+        public void CannedFood_IsAcquiredAndEatenOneRationAtATime()
+        {
+            var meta = new MetaSaveData();
+            meta.AddCount(ItemKind.CannedFood, 1); // 상점 1회 구매
+            Assert.AreEqual(1, meta.GetCount(ItemKind.CannedFood), "구매 한 번 = 1회분");
+
+            var inventory = new Inventory(BackpackRules.Columns, BackpackRules.Rows);
+            Assert.IsTrue(inventory.TryAdd(ItemKind.CannedFood, out _)); // 바닥 습득
+            Assert.AreEqual(1, inventory.Count(ItemKind.CannedFood), "습득 한 번 = 1회분");
+
+            int per = ItemCatalog.ChargesPerItem(ItemKind.CannedFood);
+            inventory.Add(ItemKind.CannedFood, per - 1); // 한 칸을 만충으로
+            for (int eaten = 0; eaten < per; eaten++)
+                Assert.IsTrue(inventory.TryUse(ItemKind.CannedFood), $"{eaten + 1}번째 식사");
+
+            Assert.AreEqual(0, inventory.Count(ItemKind.CannedFood));
+            Assert.IsFalse(inventory.TryUse(ItemKind.CannedFood), "빈 칸에서는 못 먹는다");
+        }
+
         [Test]
         public void Generator_SpawnsFood_AcrossTheFirstDungeon()
         {

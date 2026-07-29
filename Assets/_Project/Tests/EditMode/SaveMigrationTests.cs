@@ -93,6 +93,28 @@ namespace ProjectC.Tests
             Assert.AreEqual(2, meta.GetCount(ItemKind.Potion), "이미 최신이면 안 곱한다");
         }
 
+        /// <summary>
+        /// <b>칸당 충전 값을 바꾸는 것은 스키마 변경이 아니다.</b> v0 는 단위가 달라서(개수)
+        /// 변환이 필요했지만 v1 이후의 `count`는 이미 충전이고, 칸당 값이 바뀌어도 충전은
+        /// 같은 뜻이다 — 달라지는 것은 파생되는 칸수뿐이며 그게 이 기능의 목적이다.
+        /// 여기서 배수를 한 번 더 곱하면 보존이 아니라 소지량 증정이 된다.
+        /// </summary>
+        [Test]
+        public void Migrate_DoesNotRescaleWhenAChargeValueChanges()
+        {
+            var meta = new MetaSaveData();
+            meta.AddCount(ItemKind.CannedFood, 5);
+            SaveMigration.Stamp(meta); // 이미 충전 단위로 기록된 세이브
+
+            Assert.IsFalse(SaveMigration.Migrate(meta, ItemCatalog.ChargesPerItem));
+
+            Assert.AreEqual(5, meta.GetCount(ItemKind.CannedFood),
+                "회분은 그대로다 — 줄어드는 것은 칸수뿐이다");
+            Assert.AreEqual(
+                ChargeUnits.UnitsFor(ItemKind.CannedFood, 5),
+                ChargeUnits.UnitsFor(ItemKind.CannedFood, meta.GetCount(ItemKind.CannedFood)));
+        }
+
         [Test]
         public void Migrate_HandlesEmptySaves()
         {
