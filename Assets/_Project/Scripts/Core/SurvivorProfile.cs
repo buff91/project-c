@@ -28,8 +28,17 @@ namespace ProjectC.Core
         /// <summary>맨몸으로 나가도 쥐어 주는 것. 첫 판이 즉사로 끝나지 않게 하는 최소한이다.</summary>
         public const int StartPotions = 1;
 
-        /// <summary>기본 지급품 수량. 지급하지 않는 종류는 0.</summary>
+        /// <summary>
+        /// 기본 지급품 수량 — <b>충전 단위</b>다. 지급하지 않는 종류는 0.
+        ///
+        /// <para>
+        /// 만충 단위(개수 × 칸당 충전)로 주는 것이 중요하다. 부분 칸으로 지급하면
+        /// 그 칸에 플레이어가 나중에 넣은 회분이 섞이고, 출정 준비 화면의 "기본 지급품"
+        /// 잠금 배지가 <b>칸</b> 단위라 그 칸 전체가 잠겨 플레이어 소유분을 창고로
+        /// 되돌릴 수 없게 된다.
+        /// </para>
+        /// </summary>
         public static int StarterCount(ItemKind kind) =>
-            kind == ItemKind.Potion ? StartPotions : 0;
+            kind == ItemKind.Potion ? StartPotions * ItemCatalog.ChargesPerItem(kind) : 0;
     }
 }

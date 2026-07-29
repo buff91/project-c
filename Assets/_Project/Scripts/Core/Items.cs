@@ -134,8 +134,12 @@ namespace ProjectC.Core
 
         private static readonly ItemDefinition[] Definitions =
         {
+            // 칸당 2회분. 6회분이 6칸을 먹던 시절엔 회복을 챙길수록 전리품 자리가 사라져
+            // "몇 회분 챙길까"가 아니라 "포기할까"만 남았다. 화력·탈출 자원은 1로 둔다 —
+            // 인벤토리 산수만 바꾸고 조우 산수는 건드리지 않는다.
             Define(ItemKind.Potion, ItemCategory.Consumable, "회복 물약", "POTION",
-                "HP를 회복한다. 마시는 데 행동 1회를 소비한다.", shopPrice: 15),
+                "HP를 회복한다. 마시는 데 행동 1회를 소비한다.", shopPrice: 15,
+                chargesPerItem: 2),
             Define(ItemKind.Bomb, ItemCategory.Consumable, "폭탄", "BOMB",
                 "3×3 폭발 — 화상·넉백, 약한 바닥 붕괴와 폭발통 유폭. 본인도 피해를 입는다.", shopPrice: 20),
             Define(ItemKind.FrostBomb, ItemCategory.Consumable, "냉기 폭탄", "FROST",
@@ -355,6 +359,11 @@ namespace ProjectC.Core
                 _counts[kind] = next;
                 return amount;
             }
+
+            // 전량을 한 번에 시도한다. 충전이 도입되면서 amount 가 배로 늘었는데
+            // TryAdd 는 호출마다 격자를 통째로 다시 팩하므로, 성공하는 경우(대부분)에
+            // 팩 횟수가 amount 배가 되는 것을 막는다. 실패할 때만 아래 루프로 폴백한다.
+            if (TryAdd(kind, amount, out _)) return amount;
 
             int added = 0;
             while (added < amount && TryAdd(kind, out _))

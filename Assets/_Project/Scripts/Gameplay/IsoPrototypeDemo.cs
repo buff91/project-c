@@ -1336,8 +1336,12 @@ namespace ProjectC.Gameplay
 
                 if (TryAutoEquipPickedUp(item.Spawn.Kind)) return;
 
+                // 충전 아이템은 개수가 아니라 회분을 세므로 "×3"이 아니라 "3회분"이다.
+                string held = ItemCatalog.IsCharged(item.Spawn.Kind)
+                    ? $"{count}회분"
+                    : $"×{count}";
                 InteractionFeedback?.Invoke(
-                    $"{ItemCatalog.ShortLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 ×{count}");
+                    $"{ItemCatalog.ShortLabel(item.Spawn.Kind)} 획득 · {footprint}칸 · 보유 {held}");
                 Debug.Log($"[Item] {item.Spawn.Kind} 획득 {pos} (보유 {count})");
                 return;
             }

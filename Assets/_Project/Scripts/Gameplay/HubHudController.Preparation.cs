@@ -84,8 +84,11 @@ namespace ProjectC.Gameplay
             foreach (BackpackPlacement placement in layout.Placements)
             {
                 ItemKind kind = placement.Kind;
-                bool starter =
-                    placement.InstanceIndex < ExpeditionLoadoutRules.StarterCount(kind);
+                // InstanceIndex 는 **칸** 인덱스이고 StarterCount 는 **충전**을 반환한다.
+                // 둘을 직접 비교하면 지급품과 플레이어 물건이 한 칸에 섞였을 때 그 칸이
+                // 통째로 잠겨 플레이어 소유분을 창고로 되돌릴 수 없게 된다.
+                bool starter = placement.InstanceIndex < ChargeUnits.UnitsFor(
+                    kind, ExpeditionLoadoutRules.StarterCount(kind));
                 ItemKind captured = kind;
                 PreparationSelectionSource source = starter
                     ? PreparationSelectionSource.Starter

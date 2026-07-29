@@ -46,7 +46,13 @@ namespace ProjectC.Tests
             }
 
             Assert.AreEqual(measuredCells, layout.UsedCells);
-            Assert.AreEqual(18, layout.UsedCells);
+
+            // 칸수는 충전에서 파생된다. 숫자를 박아 두면 칸당 충전을 조정할 때마다 썩는다.
+            int expectedCells =
+                ChargeUnits.UnitsFor(ItemKind.Relic, 2) * BackpackRules.Footprint(ItemKind.Relic).Area +
+                ChargeUnits.UnitsFor(ItemKind.OilFlask, 3) * BackpackRules.Footprint(ItemKind.OilFlask).Area +
+                ChargeUnits.UnitsFor(ItemKind.Potion, 4) * BackpackRules.Footprint(ItemKind.Potion).Area;
+            Assert.AreEqual(expectedCells, layout.UsedCells);
         }
 
         [Test]
@@ -70,18 +76,26 @@ namespace ProjectC.Tests
             Assert.IsTrue(inventory.TryUse(ItemKind.Relic));
             Assert.IsTrue(inventory.TryAdd(ItemKind.Potion, 4, out int potionCount));
             Assert.AreEqual(4, potionCount);
-            Assert.AreEqual(BackpackRules.Capacity, inventory.CreateLayout().UsedCells);
+
+            int expectedCells =
+                ChargeUnits.UnitsFor(ItemKind.Relic, 5) * BackpackRules.Footprint(ItemKind.Relic).Area +
+                ChargeUnits.UnitsFor(ItemKind.Potion, 4) * BackpackRules.Footprint(ItemKind.Potion).Area;
+            Assert.AreEqual(expectedCells, inventory.CreateLayout().UsedCells);
         }
 
         [Test]
         public void FailedLargeCraft_RestoresConsumedIngredients()
         {
             var inventory = new Inventory(BackpackRules.Columns, BackpackRules.Rows);
-            inventory.Add(ItemKind.Potion, BackpackRules.Capacity);
+            // 백팩을 **칸으로** 꽉 채운다. 회분 단위로 Capacity 만큼 넣으면 칸당 충전이
+            // 1보다 클 때 절반만 차서 이 테스트가 거부 경로를 아예 안 밟는다.
+            int fullPotionCharges =
+                BackpackRules.Capacity * ItemCatalog.ChargesPerItem(ItemKind.Potion);
+            inventory.Add(ItemKind.Potion, fullPotionCharges);
             var oversizedRecipe = new Recipe(ItemKind.Potion, ItemKind.Potion, ItemKind.Relic);
 
             Assert.IsFalse(CraftingRules.TryCraft(inventory, oversizedRecipe));
-            Assert.AreEqual(BackpackRules.Capacity, inventory.Count(ItemKind.Potion));
+            Assert.AreEqual(fullPotionCharges, inventory.Count(ItemKind.Potion));
             Assert.AreEqual(0, inventory.Count(ItemKind.Relic));
         }
 

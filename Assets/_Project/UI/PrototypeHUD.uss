@@ -2135,6 +2135,13 @@
     flex-shrink: 0;
 }
 
+/* 덜 찬 칸은 아이콘을 흐리게 해 숫자를 안 읽어도 구분되게 한다. 셀 안에 막대를 넣지
+   않는 이유: 인벤토리 모달에 이미 .inventory-capacity-bar 가 같은 클래스로 있어서
+   막대 두 종류가 서로 다른 것을 재게 된다("칸 점유율" vs "칸 충전율"). */
+.item-grid-slot.is-partial .resource-icon {
+    opacity: 0.55;
+}
+
 /* 백팩 점유율 게이지. 트랙/채움은 DesignSystem 의 .pc-bar-track/.pc-bar-fill 을 쓰고
    여기서는 이 자리에 맞는 치수만 준다. 기본색은 HP 빨강이 아니라 중립 stone 이다 —
    백팩은 활력이 아니다. 경고 구간에서만 --pc-hazard 로 바뀐다. */

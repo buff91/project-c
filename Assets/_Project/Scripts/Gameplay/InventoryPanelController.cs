@@ -170,9 +170,10 @@ namespace ProjectC.Gameplay
                 int capturedInstanceIndex = placement.InstanceIndex;
                 Button slot = CreateItemSlot(
                     kind,
-                    1,
+                    placement.Charges,
                     () => Select(captured, capturedInstanceIndex),
-                    $"slot-{kind}-{placement.InstanceIndex}");
+                    $"slot-{kind}-{placement.InstanceIndex}",
+                    ItemCatalog.ChargesPerItem(kind));
                 slot.userData = placement.InstanceIndex;
                 slot.AddToClassList("backpack-item");
                 slot.AddToClassList(
@@ -204,9 +205,15 @@ namespace ProjectC.Gameplay
             UpdateCapacityBar(layout);
 
             if (_selected.HasValue && CountOf(_selected.Value) > 0)
+                // CountOf 는 충전이고 _selectedInstanceIndex 는 칸이다. 충전으로 칸을
+                // 클램프하면 물약 2회분(1칸)에서 인덱스 1이 유효하다고 판정돼 선택
+                // 하이라이트가 조용히 사라진다.
                 Select(
                     _selected.Value,
-                    Mathf.Clamp(_selectedInstanceIndex, 0, CountOf(_selected.Value) - 1));
+                    Mathf.Clamp(
+                        _selectedInstanceIndex,
+                        0,
+                        ChargeUnits.UnitsFor(_selected.Value, CountOf(_selected.Value)) - 1));
             else if (firstOwned.HasValue)
                 Select(firstOwned.Value, firstOwnedInstanceIndex);
             else
@@ -272,7 +279,20 @@ namespace ProjectC.Gameplay
             ItemKind kind,
             int count,
             Action onClick,
-            string elementName)
+            string elementName) =>
+            CreateItemSlot(kind, count, onClick, elementName, chargeCapacity: 1);
+
+        /// <summary>
+        /// 백팩과 창고가 같은 슬롯 모양과 스택 표기를 사용하도록 공용 생성한다.
+        /// <paramref name="chargeCapacity"/>가 1보다 크면 이 칸은 회분을 담는 칸이라
+        /// <b>수량 1도 표시한다</b> — "1회분 남음"은 숨기면 안 되는 정보다.
+        /// </summary>
+        public static Button CreateItemSlot(
+            ItemKind kind,
+            int count,
+            Action onClick,
+            string elementName,
+            int chargeCapacity)
         {
             var slot = new Button(onClick) { name = elementName };
             slot.AddToClassList("inventory-slot");
@@ -283,9 +303,12 @@ namespace ProjectC.Gameplay
             icon.AddToClassList(IconClass(kind));
             slot.Add(icon);
 
-            var countLabel = new Label(count > 1 ? count.ToString() : "");
+            bool charged = chargeCapacity > 1;
+            var countLabel = new Label(count > 1 || charged ? count.ToString() : "");
             countLabel.AddToClassList("inventory-slot-count");
             slot.Add(countLabel);
+            // 덜 찬 칸은 아이콘을 흐리게 해서 숫자를 안 읽어도 구분되게 한다.
+            slot.EnableInClassList("is-partial", charged && count < chargeCapacity);
             return slot;
         }
 
@@ -335,8 +358,9 @@ namespace ProjectC.Gameplay
             ItemFootprint footprint = BackpackRules.Footprint(kind);
             ApplyDetailIcon(_detailIcon, kind);
             if (_detailName != null)
-                _detailName.text =
-                    $"{ItemCatalog.DisplayName(kind)} ×{count} · {footprint}칸";
+                _detailName.text = ItemCatalog.IsCharged(kind)
+                    ? $"{ItemCatalog.DisplayName(kind)} {count}회분 · {footprint}칸"
+                    : $"{ItemCatalog.DisplayName(kind)} ×{count} · {footprint}칸";
             if (_detailDesc != null)
                 _detailDesc.text = ItemCatalog.Description(kind);
             FillDetailStats(kind, footprint);
@@ -358,9 +382,7 @@ namespace ProjectC.Gameplay
 
         /// <summary>
         /// 상세 페인의 오른쪽이 비어 있던 자리를 채운다. 값은 전부
-        /// <see cref="ItemDefinition"/>에 이미 있는 것들이다 — 분류·백팩 크기·경제.
-        /// 내구도/충전 게이지는 넣지 않았다: 그런 시스템이 아직 없어서 눈금을 그리면
-        /// 화면이 없는 규칙을 약속하게 된다(GDD/SYSTEMS 가 먼저 정할 일이다).
+        /// <see cref="ItemDefinition"/>에 이미 있는 것들이다 — 분류·백팩 크기·경제·충전.
         /// </summary>
         private void FillDetailStats(ItemKind kind, ItemFootprint footprint)
         {
@@ -369,6 +391,10 @@ namespace ProjectC.Gameplay
 
             AddDetailStat("분류", CategoryLabel(ItemCatalog.CategoryOf(kind)));
             AddDetailStat("크기", $"{footprint.Width}×{footprint.Height}칸");
+            if (ItemCatalog.IsCharged(kind))
+                AddDetailStat(
+                    "충전",
+                    $"{CountOf(kind)}회분 · 칸당 {ItemCatalog.ChargesPerItem(kind)}");
 
             if (ItemCatalog.IsTreasure(kind))
                 AddDetailStat("생환 가치", $"{ItemCatalog.GoldValue(kind)}G");
