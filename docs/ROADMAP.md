@@ -70,7 +70,6 @@
   - 크롬 어휘를 여섯에서 **둘**(플레이트/창)로 줄였다. 이건 `docs/UI_DESIGN_SYSTEM.md`의
     "인게임에 창 금지" 규칙을 사용자가 완화한 결과다 — 몰입보다 시인성이 앞선다.
   - **남은 부채**: ① 모바일은 재설계하지 않았다(깨지지 않을 정도만 유지 — CLAUDE.md 우선순위).
-    ② `sconceLightIntensity`/`WallSconceRarity` 재조정이 남았다(커플링 뒤 단계).
     ③ `DesignSystem.uss`의 갤러리 전용 컴포넌트 기본 크기는 아직 옛 캔버스 기준이다.
   - 캡처: `docs/captures/ui-redesign-*.png`
 - [x] **임시 통합 아트 패스** — 환경→UI→액터 단계 게이트로 기존 포스트아포 소스시트를

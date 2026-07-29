@@ -62,6 +62,33 @@ namespace ProjectC.Tests
                     "등잔 자리는 시점에 의존하면 안 된다.");
         }
 
+        /// <summary>
+        /// 격자를 쓰는 이유 자체를 지킨다: 한 방에 보이는 뒷벽(10칸 남짓)에서 등잔이
+        /// **한 개도 안 걸리는 일이 없어야** 한다. 흩뿌리는 해시는 평균이 맞아도 이 성질이
+        /// 없었고, 그래서 시작 방이 비었다.
+        /// </summary>
+        [TestCase(4)]
+        [TestCase(5)]
+        [TestCase(6)]
+        public void IsSconce_LeavesNoLongEmptyRunAlongAWall(int rarity)
+        {
+            // 벽 한 줄을 따라가며(축 하나 고정) 연속으로 비는 구간의 최대 길이를 잰다.
+            for (int seed = 1; seed <= 40; seed++)
+            for (int fixedX = 0; fixedX < 8; fixedX++)
+            {
+                int gap = 0, worst = 0;
+                for (int y = 0; y < 24; y++)
+                {
+                    if (SconcePlacement.IsSconce(fixedX, y, seed, rarity)) gap = 0;
+                    else if (++gap > worst) worst = gap;
+                }
+
+                Assert.Less(
+                    worst, rarity,
+                    $"seed {seed}, x {fixedX}: 빈 구간 {worst}칸 — 간격이 보장되지 않는다.");
+            }
+        }
+
         [Test]
         public void IsSconce_RarityOneLightsEveryEdgeTile()
         {

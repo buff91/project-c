@@ -29,8 +29,18 @@ namespace ProjectC.Core
         public static bool IsSconce(int x, int y, int seed, int rarity)
         {
             if (rarity <= 0) return false;
-            int hash = (x * 73856093) ^ (y * 19349663) ^ (seed * 83492791);
-            return (hash & 0x7fffffff) % rarity == 0;
+
+            // 흩뿌리는 해시가 아니라 **격자**다. 이유는 분산이다: 한 방에 보이는 뒷벽은
+            // 10칸 남짓이라, 확률 1/rarity 로 흩뿌리면 평균은 맞아도 "한 개도 안 걸리는 방"이
+            // 꾸준히 나온다(rarity 5, 벽 11칸 → 0개일 확률 약 9%). 실제로 시작 방 B2가
+            // 그렇게 비었다. 격자는 같은 밀도에서 **간격을 보장**한다 — 긴 빈 구간이 없다.
+            //
+            // x*3 + y 는 원래 아트가 쓰던 격자다(그 시절 벽면의 등잔 간격이 고르게 보인 이유).
+            // 거기 섞여 있던 viewQuarterTurns 만 seed 기반 오프셋으로 갈아 끼웠다 —
+            // 시점 의존은 램프를 순간이동시키던 버그였고, seed 는 던전마다 위상을 바꿔 준다.
+            int offset = (int)((uint)(seed * 2654435761u) % (uint)rarity);
+            int lattice = x * 3 + y + offset;
+            return ((lattice % rarity) + rarity) % rarity == 0;
         }
     }
 }
