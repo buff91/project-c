@@ -102,6 +102,8 @@ namespace ProjectC.Gameplay
             RebuildElevationEdgeMarkers();
             RefreshVerticalLandmarks();
             DetectNewVerticalRoute();
+            if (_bombAiming)
+                RefreshThrowRangePreview();
             VerticalContextChanged?.Invoke();
         }
 
@@ -658,16 +660,13 @@ namespace ProjectC.Gameplay
 
         private string BuildVerticalHintLabel()
         {
-            if (_dungeon == null) return "EXPLORE TO FIND VERTICAL ROUTES";
-            if (viewMode == DungeonViewMode.DebugAll) return "DEBUG: ALL FLOORS VISIBLE";
-            if (!_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor))
-                return "EXPLORE TO FIND VERTICAL ROUTES";
+            if (_dungeon == null) return null;
+            if (viewMode == DungeonViewMode.DebugAll) return "DEBUG · ALL FLOORS";
 
-            var hints = new List<string>(4);
             TileKind? playerTile = _grid.Map.Get(_playerPos)?.kind;
             if (playerTile == TileKind.Ladder)
-                return "사다리 위 · 캐릭터 탭 또는 SPACE로 오르내리기";
-            else if (playerTile == TileKind.StairsUp || playerTile == TileKind.StairsDown)
+                return "사다리 부착 · 한 번 더 클릭 또는 SPACE";
+            if (playerTile == TileKind.StairsUp || playerTile == TileKind.StairsDown)
             {
                 // 진출인지 귀환인지는 방향이 정한다 — 종류로 단정하면 상승 던전에서 뒤바뀐다.
                 string destination = playerTile == TileKind.StairsUp
@@ -685,60 +684,9 @@ namespace ProjectC.Gameplay
                     : $"{destination} 되돌아가기 · 캐릭터 탭 또는 SPACE";
             }
 
-            bool localStairsVisible = false;
-            bool ladderVisible = false;
-            foreach (var pair in _grid.Map.All())
-            {
-                if (_dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex ||
-                    !_visibleTiles.Contains(pair.Key))
-                    continue;
-                localStairsVisible |= pair.Value.kind == TileKind.Stairs;
-                ladderVisible |= pair.Value.kind == TileKind.Ladder;
-            }
-            if (localStairsVisible)
-                hints.Add("발판 계단은 그대로 걸어서 통과");
-            if (ladderVisible && playerTile != TileKind.Ladder)
-                hints.Add("세워진 사다리 앞에 서면 오르기 가능");
-
-            if (floor.UpStairs.HasValue && _visibleTiles.Contains(floor.UpStairs.Value))
-                hints.Add($"{AboveFloorLabel} 상층 계단 · 밟으면 즉시 이동");
-            if (floor.DownStairs.HasValue && _visibleTiles.Contains(floor.DownStairs.Value))
-                hints.Add($"{BelowFloorLabel} 하층 계단 · 밟으면 즉시 이동");
-
-            bool downwardOpeningAdded = false;
-            bool upwardOpeningAdded = false;
-            foreach (var pair in _grid.Map.All())
-            {
-                if (pair.Value.kind != TileKind.Hole) continue;
-                VerticalOpeningView openingView = SightRules.ViewFromFloor(
-                    _grid.Map,
-                    _dungeon.Height,
-                    _activeFloorIndex,
-                    pair.Key,
-                    BottomElevation,
-                    _visibleTiles.Contains,
-                    out GridPos landing);
-                if (openingView == VerticalOpeningView.Downward && !downwardOpeningAdded)
-                {
-                    // 같은 행동이 지름길인지 후퇴인지는 던전 방향이 정한다 — 문구는 Core 소유.
-                    hints.Add(
-                        $"바닥 구멍 탭: 아래로 뛰어내리기 → " +
-                        $"{FloorLabel(_dungeon.Height.FloorIndex(landing.elevation))} · " +
-                        DungeonDirectionRules.FallMeaningHint(_dungeon.Direction));
-                    downwardOpeningAdded = true;
-                }
-                else if (openingView == VerticalOpeningView.Upward && !upwardOpeningAdded)
-                {
-                    hints.Add(
-                        $"천장 개구부: 위층 올려다보기 → " +
-                        $"{FloorLabel(_dungeon.Height.FloorIndex(pair.Key.elevation))}");
-                    upwardOpeningAdded = true;
-                }
-            }
-
-            return hints.Count > 0
-                ? string.Join("\n", hints)
-                : "EXPLORE TO FIND VERTICAL ROUTES";
+            // 수직 수단의 학습은 1회성 발견 카드가 담당한다. 상시 HUD는 지금 즉시 실행할
+            // 행동이 있을 때만 나타나야 월드와 투척 범위를 가리지 않는다.
+            return null;
         }
 
         /// <summary>

@@ -71,13 +71,13 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="status-zone">
-            <ui:VisualElement class="status-chip feedback-chip">
+            <ui:VisualElement name="feedback-chip" class="status-chip feedback-chip">
                 <ui:VisualElement class="chip-dot feedback-dot" />
-                <ui:Label name="status-label" text="READY" class="chip-label" />
+                <ui:Label name="status-label" text="" class="chip-label" />
             </ui:VisualElement>
-            <ui:VisualElement class="status-chip route-chip">
+            <ui:VisualElement name="vertical-hint-chip" class="status-chip route-chip">
                 <ui:VisualElement class="chip-dot route-dot" />
-                <ui:Label name="vertical-hint-label" text="EXPLORE TO FIND VERTICAL ROUTES" class="chip-label" />
+                <ui:Label name="vertical-hint-label" text="" class="chip-label" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -85,15 +85,15 @@
             <ui:VisualElement class="resources">
                 <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="물약 사용 — HP 회복, 행동 1회 소비">
                     <ui:VisualElement class="resource-icon potion-icon" />
-                    <ui:Label name="potion-count" text="물약 ×0" class="resource-value" />
+                    <ui:Label name="potion-count" text="×0" class="resource-value" />
                 </ui:Button>
                 <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발+화상+넉백">
                     <ui:VisualElement class="resource-icon bomb-icon" />
-                    <ui:Label name="bomb-count" text="폭탄 ×0" class="resource-value" />
+                    <ui:Label name="bomb-count" text="×0" class="resource-value" />
                 </ui:Button>
                 <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉기 폭탄 투척 — 낮은 피해 + 빙결">
                     <ui:VisualElement class="resource-icon frost-icon" />
-                    <ui:Label name="frost-count" text="냉기 ×0" class="resource-value" />
+                    <ui:Label name="frost-count" text="×0" class="resource-value" />
                 </ui:Button>
                 <ui:Button name="bag-button" class="artifact-panel resource-pill item-button bag-button" tooltip="백팩 열기 (I)">
                     <ui:VisualElement class="ui-icon ui-backpack-icon" picking-mode="Ignore" />

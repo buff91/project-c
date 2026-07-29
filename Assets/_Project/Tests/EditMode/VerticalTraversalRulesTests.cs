@@ -38,7 +38,10 @@ namespace ProjectC.Tests
             map.Connect(entrance, destination);
 
             Assert.IsFalse(VerticalTraversalRules.TryGetAutomaticFloorDestination(
-                map, entrance, out _));
+                map, entrance, out _),
+                kind == TileKind.Ladder
+                    ? "사다리 첫 입력은 발판 부착에서 끝나고, 그 위에서 두 번째 상호작용으로 올라야 한다"
+                    : "같은 층의 발판 계단은 링크 자동 이동 대상이 아니다");
         }
 
         [Test]

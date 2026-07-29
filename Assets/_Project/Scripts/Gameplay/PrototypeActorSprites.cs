@@ -69,6 +69,34 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
+        /// <summary>
+        /// 투척 조준 가능 칸. 흰 픽셀/알파만 굽고 아이템별 색은 SpriteRenderer tint로 입힌다.
+        /// 얇은 외곽선과 성긴 내부 점만 써서 바닥 재질과 액터를 가리지 않는다.
+        /// </summary>
+        internal Sprite GetThrowRangeSprite()
+        {
+            const string key = "throw-range";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond =
+                    Mathf.Abs((px - 31.5f) / 32f) +
+                    Mathf.Abs((py - 15.5f) / 16f);
+                bool edge = diamond > 0.82f && diamond <= 0.94f;
+                bool stipple = diamond <= 0.76f && ((px + py * 3) & 7) == 0;
+                byte alpha = edge ? (byte)210 : stipple ? (byte)48 : (byte)0;
+                texture.SetPixel(px, py, new Color32(255, 255, 255, alpha));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
         internal Sprite GetBossExitSealSprite(bool unlocked)
         {
             string key = unlocked ? "boss-exit-unlocked" : "boss-exit-locked";

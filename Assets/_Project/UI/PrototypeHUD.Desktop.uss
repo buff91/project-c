@@ -7,20 +7,20 @@
 }
 
 .hud-root.hud-desktop {
-    padding: 12px;
+    padding: 8px;
 }
 
 /* ── Upper rail ─────────────────────────────────────────── */
 
 .hud-root.hud-desktop .vitals {
-    left: 12px;
-    top: 12px;
+    left: 8px;
+    top: 8px;
 }
 
 .hud-root.hud-desktop .pc-heart {
-    width: 20px;
-    height: 18px;
-    margin-right: 3px;
+    width: 17px;
+    height: 15px;
+    margin-right: 2px;
 }
 
 .hud-root.hud-desktop .hp-value {
@@ -34,11 +34,11 @@
    미니맵 왼쪽 끝은 right:196px 이므로 여기 오른쪽 끝(204)과 8px 간격을 유지한다. */
 .hud-root.hud-desktop .depth-panel {
     left: auto;
-    right: 204px;
-    top: 12px;
-    width: 148px;
-    height: 106px;
-    padding: 6px 8px;
+    right: 156px;
+    top: 8px;
+    width: 108px;
+    height: 78px;
+    padding: 4px 6px;
     align-items: flex-start;
     justify-content: center;
     overflow: hidden;
@@ -58,7 +58,7 @@
    겹침은 정보가 두 개 다 안 읽히지만 말줄임은 하나는 읽힌다. */
 .hud-root.hud-desktop .elevation-label {
     font-size: var(--pc-fs-1);
-    margin-top: 4px;
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -66,14 +66,14 @@
 
 .hud-root.hud-desktop .floor-label {
     font-size: var(--pc-fs-1);
-    margin-top: 3px;
+    margin-top: 2px;
 }
 
 .hud-root.hud-desktop .minimap-panel {
-    right: 12px;
-    top: 12px;
-    width: 184px;
-    padding: 5px;
+    right: 8px;
+    top: 8px;
+    width: 140px;
+    padding: 4px;
     border-left-width: 1px;
     border-right-width: 1px;
     border-top-width: 1px;
@@ -81,58 +81,58 @@
 }
 
 .hud-root.hud-desktop .minimap-header {
-    height: 20px;
+    height: 18px;
 }
 
 .hud-root.hud-desktop .minimap-header-buttons > .settings-button {
-    width: 26px;
-    min-width: 26px;
-    height: 20px;
+    width: 23px;
+    min-width: 23px;
+    height: 18px;
 }
 
 .hud-root.hud-desktop .minimap-header-buttons > .hud-mode-button {
-    width: 34px;
-    min-width: 34px;
+    width: 30px;
+    min-width: 30px;
 }
 
 .hud-root.hud-desktop .minimap-grid {
-    height: 44px;
-    margin-top: 4px;
+    height: 34px;
+    margin-top: 3px;
 }
 
 .hud-root.hud-desktop .view-controls {
-    height: 24px;
-    margin-top: 4px;
+    height: 20px;
+    margin-top: 3px;
 }
 
 .hud-root.hud-desktop .rotate-button.icon-button {
-    width: 32px;
-    min-width: 32px;
-    height: 24px;
+    width: 28px;
+    min-width: 28px;
+    height: 20px;
 }
 
 .hud-root.hud-desktop .icon-button .ui-icon,
 .hud-root.hud-desktop .rotate-button .ui-icon {
-    width: 16px;
-    height: 16px;
-    min-width: 16px;
-    min-height: 16px;
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    min-height: 14px;
 }
 
 /* ── Transient information ──────────────────────────────── */
 
 .hud-root.hud-desktop .status-zone {
-    left: 12px;
-    bottom: 52px;
+    left: 8px;
+    bottom: 42px;
     translate: 0 0;
     align-items: flex-start;
 }
 
 .hud-root.hud-desktop .status-chip {
-    min-height: 20px;
-    max-width: 280px;
-    padding: 3px 7px;
-    margin-top: 3px;
+    min-height: 18px;
+    max-width: 230px;
+    padding: 2px 6px;
+    margin-top: 2px;
 }
 
 .hud-root.hud-desktop .feedback-chip,
@@ -142,6 +142,14 @@
     border-top-width: 0;
     border-bottom-width: 0;
     background-color: rgba(8, 12, 16, 0.88);
+}
+
+.hud-root.hud-desktop .feedback-chip {
+    display: none;
+}
+
+.hud-root.hud-desktop .feedback-chip.is-open {
+    display: flex;
 }
 
 .hud-root.hud-desktop .feedback-chip {
@@ -167,16 +175,16 @@
 /* ── Bottom quick/action rails ───────────────────────────── */
 
 .hud-root.hud-desktop .hud-bottom {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    height: 32px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    height: 28px;
     align-items: stretch;
 }
 
 .hud-root.hud-desktop .resources,
 .hud-root.hud-desktop .action-cluster {
-    height: 32px;
+    height: 28px;
     flex-wrap: nowrap;
     align-items: stretch;
     background-color: rgba(8, 12, 16, 0.9);
@@ -195,10 +203,10 @@
 }
 
 .hud-root.hud-desktop .resource-pill {
-    height: 30px;
-    min-width: 78px;
+    height: 26px;
+    min-width: 48px;
     margin: 0;
-    padding: 4px 7px;
+    padding: 3px 5px;
     background-color: rgba(0, 0, 0, 0);
     border-left-width: 0;
     border-right-width: 1px;
@@ -209,11 +217,11 @@
 
 .hud-root.hud-desktop .resource-icon,
 .hud-root.hud-desktop .bag-button .ui-icon {
-    width: 18px;
-    height: 18px;
-    min-width: 18px;
-    min-height: 18px;
-    margin-right: 5px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    margin-right: 3px;
 }
 
 .hud-root.hud-desktop .resource-value {
@@ -221,7 +229,7 @@
 }
 
 .hud-root.hud-desktop .bag-button {
-    min-width: 68px;
+    min-width: 58px;
 }
 
 .hud-root.hud-desktop .action-cluster {
@@ -232,10 +240,10 @@
 .hud-root.hud-desktop .action-cluster > .mode-button,
 .hud-root.hud-desktop .action-cluster > .combat-button,
 .hud-root.hud-desktop .action-cluster > .interact-button {
-    height: 30px;
+    height: 26px;
     margin: 0;
-    padding-left: 7px;
-    padding-right: 7px;
+    padding-left: 5px;
+    padding-right: 5px;
     border-left-width: 0;
     border-right-width: 1px;
     border-top-width: 0;
@@ -243,30 +251,30 @@
 }
 
 .hud-root.hud-desktop .action-cluster .ui-icon {
-    width: 18px;
-    height: 18px;
-    min-width: 18px;
-    min-height: 18px;
-    margin-right: 5px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    margin-right: 3px;
 }
 
 .hud-root.hud-desktop .combat-button {
-    width: 96px;
+    width: 84px;
 }
 
 .hud-root.hud-desktop .wait-button {
-    width: 74px;
+    width: 64px;
 }
 
 .hud-root.hud-desktop .interact-button {
-    min-width: 96px;
-    max-width: 144px;
+    min-width: 88px;
+    max-width: 128px;
 }
 
 .hud-root.hud-desktop .turn-pill {
-    height: 30px;
-    min-width: 56px;
-    padding: 5px 8px;
+    height: 26px;
+    min-width: 50px;
+    padding: 4px 6px;
     background-color: rgba(0, 0, 0, 0);
     border-left-width: 0;
     border-right-width: 0;
@@ -342,7 +350,7 @@
 }
 
 .hud-root.hud-desktop.is-ultrawide .depth-panel {
-    right: 216px;
+    right: 168px;
 }
 
 .hud-root.hud-desktop.is-ultrawide .hud-bottom {

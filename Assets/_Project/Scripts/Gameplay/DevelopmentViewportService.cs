@@ -32,6 +32,7 @@ namespace ProjectC.Gameplay
         private const string ModeKey = "project-c.development.viewport-mode";
         private const string PresetKey = "project-c.development.viewport-preset";
         private const string FreePresetId = "free";
+        public const string DefaultPresetId = "pc-2560x1440";
 
         private static readonly DevelopmentViewportPreset[] PresetValues =
         {
@@ -40,7 +41,8 @@ namespace ProjectC.Gameplay
             new DevelopmentViewportPreset("phone-430x932", "모바일 세로 · 430×932", 430, 932),
             new DevelopmentViewportPreset("phone-844x390", "모바일 가로 · 844×390", 844, 390),
             new DevelopmentViewportPreset("pc-1280x720", "PC · 1280×720", 1280, 720),
-            new DevelopmentViewportPreset("pc-1920x1080", "PC · 1920×1080", 1920, 1080)
+            new DevelopmentViewportPreset("pc-1920x1080", "PC · 1920×1080", 1920, 1080),
+            new DevelopmentViewportPreset(DefaultPresetId, "PC 고해상도 · 2560×1440", 2560, 1440)
         };
 
         public static event Action Changed;
@@ -60,7 +62,7 @@ namespace ProjectC.Gameplay
         }
 
         public static string SelectedPresetId =>
-            FindPreset(PlayerPrefs.GetString(PresetKey, FreePresetId)).Id;
+            FindPreset(PlayerPrefs.GetString(PresetKey, DefaultPresetId)).Id;
 
         public static HudPresentationMode ResolvePresentation(HudPresentationMode fallback)
         {

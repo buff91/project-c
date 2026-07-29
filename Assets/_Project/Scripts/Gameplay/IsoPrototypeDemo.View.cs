@@ -103,6 +103,7 @@ namespace ProjectC.Gameplay
             }
             if (_selection != null)
                 PositionSelection(_selectionPos);
+            ApplyThrowRangePreviewView();
 
             foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubPropPositions)
             {

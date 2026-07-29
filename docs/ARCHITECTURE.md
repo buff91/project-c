@@ -160,6 +160,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - **사다리는 계단과 다르다**: 계단은 ±1단을 걸어서(A\*), 사다리는 여러 단을 **링크로만**·오를 수 있는
   종만. 캐치워크 층에서 `PlaceCatwalk`이 바닥↔캐치워크를 잇고 중간 발판 링크를 끊는 것
   (`Disconnect` 후 `Connect`)이 이 대비를 "높은 곳은 사다리로만"으로 굳힌다.
+- Gameplay의 목적지 탭도 `TryGetAutomaticFloorDestination`을 그대로 물어본다. 따라서 층 전환 계단만
+  입구 도착과 링크 이동을 합치고, 사다리는 입구에서 멈춘 뒤 두 번째 자기 탭/Space로 링크를 탄다.
 
 ### 6.4 StairTopology — 계단 착지 지점
 - `TryGetHigherLanding`: `Stairs` 타일의 4방향 중 한 단 위이며 walkable인 첫 칸(방향 배열 순서가 타이브레이크 — 같은 seed가 같은 결과를 내야 한다).
@@ -362,7 +364,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   여러 조건문에 흩어져 하나만 빠뜨려도 아이템이 조용히 사라졌다.
   `AllKinds` 순서가 **정본 반복/타이브레이크 순서**(백팩 팩킹·세이브·텔레메트리 공용)다.
 - **BombRules**(`Interactions.cs`, `BombResult`와 동거) — 3×3 순회는 `ForEachBlastCell`(§9.2),
-  `Detonate`는 **본인 포함** 피해 + 빈 WeakFloor→Hole 붕괴.
+  투척 가능 칸 순회는 `ForEachThrowTarget`이 `CanThrow`를 재사용한다. `Detonate`는
+  **본인 포함** 피해 + 빈 WeakFloor→Hole 붕괴.
 
 ### 10.2 백팩 자동 배치 (BackpackRules) — 빈 패킹
 - 격자 **6×4=24셀**, 회전 없음. **면적의 SSOT는 `ItemCatalog.For(kind).Footprint`**이고
@@ -448,6 +451,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 
 - 내부 에이전트(경량 뷰 홀더) `EnemyAgent`/`ItemAgent`/`RestSiteAgent`/`VerticalLandmarkAgent`와
   이벤트(`PlayerHpChanged`·`ActiveFloorChanged`·`ExitChoiceRequested`…)로 HUD와 느슨 결합한다.
+- `IsoPrototypeDemo.Targeting`은 투척 조준 상태를 실제 유효 칸의 낮은 알파 월드 데칼로 번역한다.
+  Core의 투척/사선 판정을 재사용하고 FOV로 한 번 더 잘라 Unknown 정보를 노출하지 않는다.
 
 ### 11.2 씬 얇은 진입점 & 서비스
 - **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력→`GridPos`/액션(장치 추상화).
@@ -466,11 +471,15 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   `InventoryPanelController`(6×4 백팩+조합) · `DisplaySettingsPanelController` · `DebugPanelController`.
 - **ResponsiveUiLayout** — UI Toolkit엔 런타임 미디어쿼리가 없어 패널 논리 크기를 USS 클래스로 바꾸고
   `Screen.safeArea`를 패널 좌표로 환산해 노치에 대응한다. 임계값은 `UI_ARCHITECTURE.md`가 소유.
+- 개발 PC 기본 프리셋은 16:9 QHD(2560×1440)다. 같은 비율 해상도는 같은 논리 레이아웃으로
+  정규화되므로 픽셀 해상도를 올리는 것과 HUD 밀도를 줄이는 것은 별도로 다룬다.
 - **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶는다.
   **허브/던전 플레이 배율은 `playCameraSize` 하나**이며 허브도 맵 경계 auto-fit 없이 플레이어를
   추종한다. 전체 맵을 보이는 `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는
   `OrthographicCameraFramingTests`가 고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
-- 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI (상세 `UI_ARCHITECTURE.md`).
+- 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI. 단, 투척 가능 칸처럼 **타일 바닥 자체를
+  칠하고 FOV·아이소 정렬을 따르는 범위 데칼**은 월드 SpriteRenderer 표현이다
+  (상세 `UI_ARCHITECTURE.md`).
   **인터랙션 트위닝은 UGUI/월드 UI에만 DOTween**(`DOTweenBootstrap`)이고, UI Toolkit
   `VisualElement`엔 DOTween이 직접 붙지 않아 `experimental.animation`/USS transition을 쓴다.
 

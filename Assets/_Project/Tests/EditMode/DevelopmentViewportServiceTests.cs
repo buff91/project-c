@@ -27,6 +27,17 @@ namespace ProjectC.Tests
             Assert.AreEqual("free", preset.Id);
         }
 
+        [Test]
+        public void DefaultPreset_IsQhdAndKeepsSixteenByNine()
+        {
+            DevelopmentViewportPreset preset = DevelopmentViewportService.FindPreset(
+                DevelopmentViewportService.DefaultPresetId);
+
+            Assert.AreEqual(2560, preset.Width);
+            Assert.AreEqual(1440, preset.Height);
+            Assert.AreEqual(16f / 9f, preset.Width / (float)preset.Height, 0.0001f);
+        }
+
         [TestCase(HudPresentationMode.Auto, "AUTO UI")]
         [TestCase(HudPresentationMode.Mobile, "MOBILE UI")]
         [TestCase(HudPresentationMode.Desktop, "PC UI")]

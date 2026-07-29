@@ -25,7 +25,9 @@ namespace ProjectC.Tests
             "location-label",
             "hunger-label",
             "floor-label",
+            "feedback-chip",
             "status-label",
+            "vertical-hint-chip",
             "vertical-hint-label",
             "vertical-route-discovery",
             "route-discovery-title",
@@ -133,6 +135,8 @@ namespace ProjectC.Tests
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-rotate-right-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-backpack-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-wait-icon"));
+            Assert.IsFalse(tree.Q("feedback-chip").ClassListContains("is-open"));
+            Assert.IsFalse(tree.Q("vertical-hint-chip").ClassListContains("is-open"));
 
             // 판이 끝난 뒤 착지점은 캠프 하나다. 던전 씬을 그대로 리로드하는 "다시 도전"을
             // 되살리면 방금 번 골드·해금을 못 쓰고 같은 조건으로 돌아가는 길이 다시 생긴다.

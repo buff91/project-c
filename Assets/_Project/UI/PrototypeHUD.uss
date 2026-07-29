@@ -487,6 +487,7 @@
 }
 
 .route-chip {
+    display: none;
     max-width: 420px;
     background-color: rgba(30, 66, 70, 0.96);
     border-left-width: 1px;
@@ -497,6 +498,10 @@
     border-right-color: rgb(24, 47, 49);
     border-top-color: rgb(64, 126, 132);
     border-bottom-color: rgb(24, 47, 49);
+}
+
+.route-chip.is-open {
+    display: flex;
 }
 
 .chip-dot {

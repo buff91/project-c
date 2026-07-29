@@ -29,11 +29,11 @@ namespace ProjectC.Gameplay
         private void UpdateItemLabels()
         {
             if (_potionCountLabel != null)
-                _potionCountLabel.text = $"물약 ×{(demo != null ? demo.PotionCount : 0)}";
+                _potionCountLabel.text = $"×{(demo != null ? demo.PotionCount : 0)}";
             if (_bombCountLabel != null)
-                _bombCountLabel.text = $"폭탄 ×{(demo != null ? demo.BombCount : 0)}";
+                _bombCountLabel.text = $"×{(demo != null ? demo.BombCount : 0)}";
             if (_frostCountLabel != null)
-                _frostCountLabel.text = $"냉기 ×{(demo != null ? demo.FrostBombCount : 0)}";
+                _frostCountLabel.text = $"×{(demo != null ? demo.FrostBombCount : 0)}";
             UpdateAimHighlights();
         }
 
@@ -95,7 +95,7 @@ namespace ProjectC.Gameplay
         private void UpdateLocationLabel()
         {
             if (_locationLabel != null)
-                _locationLabel.text = demo != null ? demo.LocationLabel : "--";
+                _locationLabel.text = demo != null ? demo.HudHeightLabel : "--";
 
             // 배고픔은 위치가 아니라 활력이라 vitals 에 있지만, 갱신 시점은 같다
             // (둘 다 플레이어가 한 행동 할 때마다 바뀐다).
@@ -108,10 +108,12 @@ namespace ProjectC.Gameplay
 
         private void UpdateVerticalHintLabel()
         {
-            if (_verticalHintLabel != null)
-                _verticalHintLabel.text = demo != null
-                    ? demo.VerticalHintLabel
-                    : "EXPLORE TO FIND VERTICAL ROUTES";
+            if (_verticalHintLabel == null) return;
+
+            string hint = demo != null ? demo.VerticalHintLabel : null;
+            _verticalHintLabel.text = hint ?? "";
+            _verticalHintLabel.parent?.EnableInClassList(
+                "is-open", !string.IsNullOrEmpty(hint));
         }
     }
 }

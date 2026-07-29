@@ -36,7 +36,20 @@ namespace ProjectC.Gameplay
 
         private void HandleInteractionFeedback(string message)
         {
-            if (_statusLabel != null) _statusLabel.text = message;
+            if (_statusLabel == null) return;
+
+            _statusLabel.text = message;
+            _statusLabel.parent?.AddToClassList("is-open");
+            if (_feedbackRoutine != null)
+                StopCoroutine(_feedbackRoutine);
+            _feedbackRoutine = StartCoroutine(HideInteractionFeedback());
+        }
+
+        private System.Collections.IEnumerator HideInteractionFeedback()
+        {
+            yield return new WaitForSecondsRealtime(3f);
+            _statusLabel?.parent?.RemoveFromClassList("is-open");
+            _feedbackRoutine = null;
         }
 
         private void HandleVerticalRouteDiscovered(VerticalRouteCue cue)

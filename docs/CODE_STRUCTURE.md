@@ -24,7 +24,7 @@
 
 ---
 
-## `IsoPrototypeDemo` — 관심사별 18개 파셜
+## `IsoPrototypeDemo` — 관심사별 19개 파셜
 
 한 `partial class IsoPrototypeDemo`(MonoBehaviour)를 다음 파일들이 나눠 소유한다.
 상태(필드·프로퍼티·이벤트)와 방 빌드·수명주기는 본체에, 나머지는 관심사별 파셜에 있다.
@@ -41,6 +41,7 @@
 | `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브/던전 고정 `playCameraSize` + 플레이어 추종) |
 | `IsoPrototypeDemo.Interaction.cs` | 탭/스텝/인접 상호작용·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
+| `IsoPrototypeDemo.Targeting.cs` | 투척 가능 칸/FOV 기반 월드 조준 범위 마커의 생성·정리·시점 회전 추종 |
 | `IsoPrototypeDemo.Movement.cs` | 경로 이동·문/비밀문/낙하 접근·auto-travel·플로어 전환 |
 | `IsoPrototypeDemo.RunLifecycle.cs` | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
 | `IsoPrototypeDemo.Hub.cs` | 허브 프롭/포탈 (영웅 프롭·잠금은 제거됨) |
@@ -90,7 +91,7 @@
 
 ## Gameplay — 그 밖의 씬 서비스·패널·스토어
 
-위 세 표(파셜 18 + 절차 아트 6 + HUD 8 = 31개)에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
+위 세 표(파셜 19 + 절차 아트 6 + HUD 8 = 33개)에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
 예전에는 이 표가 없어서 Gameplay 절반이 문서 어디에도 없었다 —
 `InventoryPanelController` 같은 큰 파일을 이름으로 찾을 방법이 없었다.
 
@@ -252,6 +253,7 @@
 | 아이템 짧은 라벨(HUD) | `ItemCatalog.ShortLabel` |
 | 아이템 분류·표시·경제·백팩 크기 | `ItemCatalog`의 `ItemDefinition` 표 |
 | 블라스트 3×3 순회 | `BombRules.ForEachBlastCell(center, visit)` (`Interactions.cs`). `OilRules`·`ShockRules`·`WaterRules`·`SecretRoomRules`가 전부 이걸 부른다 — 예전에는 같은 이중 루프가 여러 파일에 손으로 적혀 있어 한 곳만 반경이 달라져도 조용히 갈렸다 |
+| 투척 가능 칸 순회 | `BombRules.ForEachThrowTarget(map, from, maxRange, visit)` — 실제 `CanThrow`와 조준 월드 마커가 공유한다 |
 | 젖은 웅덩이 4방향 확산 | `WetPoolFlood.Collect(map, center, onVisit)` — **파일은 `Core/WaterRules.cs` 안에 있다.** `WaterRules.ChainFreeze`(결빙)와 `ShockRules.DischargeDetailed`(감전)가 공유한다. 두 벌로 두면 같은 웅덩이가 얼 때와 통전될 때 다른 모양이 된다 |
 | 북쪽 방 입구 칸·방 rect 순회 | `FloorPlan.UpperRoomEntrance` / `IsUpperRoomEntrance(pos)` / `UpperRoomCells()` / `BranchCells()`. 생성기의 하드코딩 방 기하가 전부 여기로 모였다 — 예전에는 `(VerticalX, UpperMinY)` 비교가 손으로 적혀 있어 방 형상을 바꿀 때 하나만 빠뜨리면 입구가 막힌 층이 나왔다. **순회 순서(`x` 외곽 → `y` 내곽)가 곧 RNG 소비 순서**라 바꾸면 생성기 지문이 깨진다 |
 | 생성기 파셜 경계 | **타일을 바꾸면 `Carving`, 좌표만 고르면 `Placement`.** `PlaceRestSite`가 `map.Set`을 한 번도 하지 않는데 Carving에 있어서 이 기준으로 옮겼다 |

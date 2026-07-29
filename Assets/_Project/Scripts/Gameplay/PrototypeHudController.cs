@@ -53,6 +53,7 @@ namespace ProjectC.Gameplay
         private Label _routeDiscoveryTitle;
         private Label _routeDiscoveryDetail;
         private Coroutine _routeDiscoveryRoutine;
+        private Coroutine _feedbackRoutine;
         private Label _hpValueLabel;
         private VisualElement _hpHearts;
         private VisualElement _gameoverOverlay;
@@ -178,6 +179,12 @@ namespace ProjectC.Gameplay
                 StopCoroutine(_routeDiscoveryRoutine);
                 _routeDiscoveryRoutine = null;
             }
+            if (_feedbackRoutine != null)
+            {
+                StopCoroutine(_feedbackRoutine);
+                _feedbackRoutine = null;
+            }
+            _statusLabel?.parent?.RemoveFromClassList("is-open");
         }
 
         /// <summary>

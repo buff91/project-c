@@ -411,12 +411,12 @@ namespace ProjectC.Gameplay
             if (allowedSteps < path.Count - 1)
                 path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
 
-            // 사다리/층 전환 링크는 경로가 실제로 입구까지 닿을 때만 잇는다(절단되면 생략).
-            // 링크를 타고 반대편 끝을 목적지로 탭한 경로에는 되돌아가는 링크를 덧붙이지 않는다.
-            bool usesExplicitConnector =
-                targetTile.kind == TileKind.Ladder ||
-                targetTile.kind == TileKind.StairsUp ||
-                targetTile.kind == TileKind.StairsDown;
+            // 층 전환 계단만 입구 도착과 링크 이동을 한 행동으로 묶는다.
+            // 사다리는 첫 입력에 발판까지 이동해 부착하고, 그 위에서 다시 탭/Space 해야 오른다.
+            // 자동 발동 종류를 여기서 다시 열거하지 않고 VerticalTraversalRules를 그대로 쓴다.
+            bool automaticallyTraversesLink =
+                VerticalTraversalRules.TryGetAutomaticFloorDestination(
+                    _grid.Map, target, out GridPos automaticDestination);
             bool arrivedThroughSameLink = false;
             if (path.Count >= 2)
             {
@@ -428,23 +428,20 @@ namespace ProjectC.Gameplay
                     break;
                 }
             }
-            if (usesExplicitConnector &&
+            if (automaticallyTraversesLink &&
                 !arrivedThroughSameLink &&
                 path[path.Count - 1] == target)
             {
-                IReadOnlyList<GridPos> links = _grid.Map.LinksFrom(target);
-                if (links.Count > 0)
-                {
-                    path.Add(links[0]);
-                }
-                else if ((targetTile.kind == TileKind.StairsUp ||
-                          targetTile.kind == TileKind.StairsDown) &&
-                         IsBottomExit(target))
-                {
-                    // 링크 없는 진출 계단 = 보스 봉인 출구. 상승 던전에서는 이것이 상행이다.
-                    StartPlayerAction(target, MoveAndAdvanceStage(path, target));
-                    return;
-                }
+                path.Add(automaticDestination);
+            }
+            else if (!automaticallyTraversesLink &&
+                     (targetTile.kind == TileKind.StairsUp ||
+                      targetTile.kind == TileKind.StairsDown) &&
+                     IsBottomExit(target))
+            {
+                // 링크 없는 진출 계단 = 보스 봉인 출구. 상승 던전에서는 이것이 상행이다.
+                StartPlayerAction(target, MoveAndAdvanceStage(path, target));
+                return;
             }
 
             StartPlayerAction(target, MovePlayerPath(path));

@@ -218,6 +218,9 @@ namespace ProjectC.Gameplay
         public CombatActionMode CombatMode => combatMode;
         public int RangedAttackRange => rangedAttackRange;
         public string VerticalHintLabel => BuildVerticalHintLabel();
+        public string HudHeightLabel => _dungeon == null
+            ? "--"
+            : $"HEIGHT {_dungeon.Height.LocalHeight(_playerPos.elevation)}";
         /// <summary>
         /// 지금 <b>어디</b>에 서 있는가. 상태는 넣지 않는다 — 배고픔이 여기 섞여 있던 시절엔
         /// 이 한 줄이 담긴 패널을 넘쳐 미니맵 위에 겹쳐 찍혔고, 애초에 배고픔은 위치가 아니다.
@@ -372,6 +375,8 @@ namespace ProjectC.Gameplay
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
             new Dictionary<GridPos, SpriteRenderer>();
+        private readonly Dictionary<SpriteRenderer, GridPos> _throwRangeMarkers =
+            new Dictionary<SpriteRenderer, GridPos>();
         private readonly Dictionary<SpriteRenderer, GridPos> _rearWallRenderers =
             new Dictionary<SpriteRenderer, GridPos>();
         // 절차 생성 임시 아트는 이 클래스가 그리지 않는다 — 캐시를 공유하는 두 팩토리가 소유한다.
@@ -450,6 +455,7 @@ namespace ProjectC.Gameplay
                 if (_input.TilePicker == PickVisibleTileAt)
                     _input.TilePicker = null;
             }
+            ClearThrowRangePreview();
         }
 
         public void BuildPrototype()
@@ -533,6 +539,7 @@ namespace ProjectC.Gameplay
             _discoveredVerticalRoutes.Clear();
             _enemies.Clear();
             _items.Clear();
+            _throwRangeMarkers.Clear();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
             ResetRescueForBuild();

@@ -81,6 +81,7 @@ namespace ProjectC.Gameplay
         private void SetBombAiming(bool aiming)
         {
             _bombAiming = aiming;
+            RefreshThrowRangePreview();
             // 조준 종류 전환도 HUD 하이라이트에 반영돼야 하므로 상태가 같아도 알린다.
             BombAimingChanged?.Invoke(aiming);
         }

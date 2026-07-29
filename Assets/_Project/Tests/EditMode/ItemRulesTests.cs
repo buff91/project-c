@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using ProjectC.Core;
 
@@ -78,6 +80,27 @@ namespace ProjectC.Tests
 
             map.Set(new GridPos(1, 3, 0), TileKind.Hole);
             Assert.IsFalse(BombRules.CanThrow(map, from, new GridPos(1, 3, 0), maxRange: 4), "구멍에는 못 던진다");
+        }
+
+        [Test]
+        public void ForEachThrowTarget_VisitsOnlyValidCellsInRangeDiamond()
+        {
+            GridMap map = FlatMap(9);
+            var from = new GridPos(4, 4, 0);
+            var targets = new List<GridPos>();
+
+            BombRules.ForEachThrowTarget(map, from, maxRange: 2, targets.Add);
+
+            Assert.AreEqual(13, targets.Count, "반경 2 맨해튼 다이아몬드는 중심 포함 13칸이다");
+            Assert.AreEqual(13, targets.Distinct().Count(), "조준 미리보기에 같은 칸이 중복되면 안 된다");
+            Assert.IsTrue(targets.All(target => BombRules.CanThrow(map, from, target, 2)));
+
+            map.Set(new GridPos(5, 4, 0), TileKind.Wall);
+            targets.Clear();
+            BombRules.ForEachThrowTarget(map, from, maxRange: 2, targets.Add);
+
+            CollectionAssert.DoesNotContain(targets, new GridPos(5, 4, 0), "벽은 투척 목표가 아니다");
+            CollectionAssert.DoesNotContain(targets, new GridPos(6, 4, 0), "벽 뒤 칸은 사선이 막힌다");
         }
 
         [Test]

@@ -84,6 +84,32 @@ namespace ProjectC.Core
                 visit(center.Offset(dx, dy));
         }
 
+        /// <summary>
+        /// 실제로 던질 수 있는 목표 칸을 맨해튼 사거리 다이아몬드 안에서 결정적 순서로 훑는다.
+        /// Gameplay의 조준 미리보기와 실제 투척 판정이 <see cref="CanThrow"/> 하나를 공유하게 한다.
+        /// </summary>
+        public static void ForEachThrowTarget(
+            GridMap map,
+            GridPos from,
+            int maxRange,
+            Action<GridPos> visit)
+        {
+            if (map == null) throw new ArgumentNullException(nameof(map));
+            if (maxRange < 0) throw new ArgumentOutOfRangeException(nameof(maxRange));
+            if (visit == null) throw new ArgumentNullException(nameof(visit));
+
+            for (int dx = -maxRange; dx <= maxRange; dx++)
+            {
+                int yRange = maxRange - Math.Abs(dx);
+                for (int dy = -yRange; dy <= yRange; dy++)
+                {
+                    GridPos target = from.Offset(dx, dy);
+                    if (CanThrow(map, from, target, maxRange))
+                        visit(target);
+                }
+            }
+        }
+
         public static bool CanThrow(GridMap map, GridPos from, GridPos target, int maxRange)
         {
             return map != null &&
