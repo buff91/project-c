@@ -21,7 +21,12 @@ namespace ProjectC.Gameplay
         public const int BackpackRows = BackpackRules.Rows;
         public const int BackpackSlotCount = BackpackRules.Capacity;
         public const int StashSlotCount = 48;
-        public const int BackpackCellPitch = 56;
+        /// <summary>
+        /// 백팩 한 칸의 논리 피치. 640×360 캔버스 기준이다 — 옛 960×540 시절의 56 을 그대로
+        /// 두면 6×4 격자가 336×224 로 카드 밖으로 나간다. 40 이면 240×160 이라 상세 페인까지
+        /// 한 화면에 든다. 화면에서 차지하는 비율은 오히려 커졌다(56/540 = 10.4% → 40/360 = 11.1%).
+        /// </summary>
+        public const int BackpackCellPitch = 40;
         public const int BackpackCellInset = 2;
 
         public IsoPrototypeDemo demo;
@@ -34,6 +39,7 @@ namespace ProjectC.Gameplay
         private Label _capacityLabel;
         private Label _detailName;
         private Label _detailDesc;
+        private VisualElement _detailStats;
         private Button _useButton;
         private Button _bagButton;
         private Button _closeButton;
@@ -64,6 +70,7 @@ namespace ProjectC.Gameplay
             _capacityLabel = root.Q<Label>("inventory-capacity");
             _detailName = root.Q<Label>("inventory-detail-name");
             _detailDesc = root.Q<Label>("inventory-detail-desc");
+            _detailStats = root.Q<VisualElement>("inventory-detail-stats");
             _useButton = root.Q<Button>("inventory-use");
             _bagButton = root.Q<Button>("bag-button");
             _closeButton = root.Q<Button>("inventory-close");
@@ -106,6 +113,7 @@ namespace ProjectC.Gameplay
             _capacityLabel = null;
             _detailName = null;
             _detailDesc = null;
+            _detailStats = null;
             _useButton = null;
             _bagButton = null;
             _closeButton = null;
@@ -324,6 +332,7 @@ namespace ProjectC.Gameplay
                     $"{ItemCatalog.DisplayName(kind)} ×{count} · {footprint}칸";
             if (_detailDesc != null)
                 _detailDesc.text = ItemCatalog.Description(kind);
+            FillDetailStats(kind, footprint);
             if (_useButton != null)
             {
                 bool treasure = ItemCatalog.IsTreasure(kind);
@@ -340,6 +349,54 @@ namespace ProjectC.Gameplay
             }
         }
 
+        /// <summary>
+        /// 상세 페인의 오른쪽이 비어 있던 자리를 채운다. 값은 전부
+        /// <see cref="ItemDefinition"/>에 이미 있는 것들이다 — 분류·백팩 크기·경제.
+        /// 내구도/충전 게이지는 넣지 않았다: 그런 시스템이 아직 없어서 눈금을 그리면
+        /// 화면이 없는 규칙을 약속하게 된다(GDD/SYSTEMS 가 먼저 정할 일이다).
+        /// </summary>
+        private void FillDetailStats(ItemKind kind, ItemFootprint footprint)
+        {
+            if (_detailStats == null) return;
+            _detailStats.Clear();
+
+            AddDetailStat("분류", CategoryLabel(ItemCatalog.CategoryOf(kind)));
+            AddDetailStat("크기", $"{footprint.Width}×{footprint.Height}칸");
+
+            if (ItemCatalog.IsTreasure(kind))
+                AddDetailStat("생환 가치", $"{ItemCatalog.GoldValue(kind)}G");
+
+            int price = ItemCatalog.ShopPrice(kind);
+            if (price > 0) AddDetailStat("상점가", $"{price}G");
+        }
+
+        private void AddDetailStat(string label, string value)
+        {
+            var row = new VisualElement { pickingMode = PickingMode.Ignore };
+            row.AddToClassList("inventory-stat-row");
+
+            var name = new Label(label) { pickingMode = PickingMode.Ignore };
+            name.AddToClassList("inventory-stat-name");
+            var readout = new Label(value) { pickingMode = PickingMode.Ignore };
+            readout.AddToClassList("inventory-stat-value");
+
+            row.Add(name);
+            row.Add(readout);
+            _detailStats.Add(row);
+        }
+
+        private static string CategoryLabel(ItemCategory category)
+        {
+            switch (category)
+            {
+                case ItemCategory.Consumable: return "소모품";
+                case ItemCategory.Treasure: return "전리품";
+                case ItemCategory.Material: return "재료";
+                case ItemCategory.Equipment: return "장비";
+                default: return "--";
+            }
+        }
+
         private void ClearSelection()
         {
             _selected = null;
@@ -352,6 +409,7 @@ namespace ProjectC.Gameplay
             if (_detailName != null) _detailName.text = "빈 백팩";
             if (_detailDesc != null)
                 _detailDesc.text = "던전에서 얻은 아이템이 이곳에 쌓입니다.";
+            _detailStats?.Clear();
             if (_useButton != null)
             {
                 _useButton.text = "사용";

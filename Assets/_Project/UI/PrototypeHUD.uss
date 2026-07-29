@@ -1544,11 +1544,25 @@
 }
 
 .settings-reset,
+/* 닫기는 두 번째로 중요한 동작이 아니다 — 40px 박스가 아니라 아이콘 크기로 둔다. */
 .settings-close {
-    color: var(--pc-text);
-    background-color: var(--pc-btn-bg);
-    border-color: var(--pc-stone-dim);
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0;
+    font-size: var(--pc-fs-1);
+    color: var(--pc-dim);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
     border-radius: 0;
+}
+
+.settings-close:hover {
+    color: var(--pc-text);
+    background-color: rgba(0, 0, 0, 0);
 }
 
 .settings-done,
@@ -1866,8 +1880,9 @@
    나머지는 빈 고정 슬롯으로 보여준다. 다칸 배치/드래그는 데이터 모델 확장 후 적용한다. */
 
 .diablo-inventory-card {
-    width: 470px;
-    height: 640px;
+    width: 320px;
+    height: auto;
+    max-height: 100%;
     overflow: hidden;
 }
 
@@ -1965,8 +1980,10 @@
     border-bottom-color: rgb(35, 30, 26);
 }
 
+/* 폭은 페인이 소유한다. 336px 하드코딩이 320px 페인(콘텐츠 304px)을 양쪽으로 16px씩
+   넘쳐 왼쪽이 카드 경계에 잘리고 "소지품"이 "지품"으로 보이던 자리다. */
 .inventory-section-header {
-    width: 336px;
+    width: 100%;
     height: 24px;
     flex-direction: row;
     align-items: center;
@@ -1985,7 +2002,7 @@
 }
 
 .item-slot-grid {
-    width: 336px;
+    width: 100%;
     flex-direction: row;
     flex-wrap: wrap;
     align-content: flex-start;
@@ -2061,10 +2078,10 @@
 }
 
 .inventory-detail-pane {
-    min-height: 112px;
+    min-height: 80px;
     margin-top: 8px;
     margin-bottom: 8px;
-    padding: 12px;
+    padding: 8px;
     flex-direction: row;
     align-items: center;
     flex-shrink: 0;
@@ -2073,11 +2090,11 @@
 }
 
 .inventory-detail-icon {
-    width: 72px;
-    height: 72px;
-    min-width: 72px;
-    min-height: 72px;
-    margin: 0 12px 0 0;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    margin: 0 8px 0 0;
     background-color: rgb(8, 10, 14);
     border-left-width: 1px;
     border-right-width: 1px;
@@ -2103,10 +2120,34 @@
 }
 
 .inventory-detail-action {
-    width: 104px;
-    height: 36px;
-    margin-left: 10px;
+    width: 88px;
+    height: 24px;
+    margin-left: 8px;
     flex-shrink: 0;
+}
+
+/* 상세 페인 스탯 행 — ItemDefinition 에 실제로 있는 값만 그린다. */
+.inventory-detail-stats {
+    margin-top: 4px;
+}
+
+.inventory-stat-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 12px;
+}
+
+.inventory-stat-name {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-left;
+}
+
+.inventory-stat-value {
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-right;
 }
 
 .craft-section {
@@ -2131,7 +2172,7 @@
 .shard-icon { background-image: url("../Art/Runtime/item-frost-shard.png"); }
 
 .hud-root.is-landscape .diablo-inventory-card {
-    width: 760px;
+    width: 528px;
 }
 
 .hud-root.is-landscape .inventory-layout {
@@ -2140,7 +2181,7 @@
 }
 
 .hud-root.is-landscape .inventory-grid-pane {
-    width: 320px;
+    width: 264px;
 }
 
 .hud-root.is-landscape .inventory-detail-pane {
@@ -2163,7 +2204,7 @@
 }
 
 .hud-root.is-expanded .diablo-inventory-card {
-    width: 760px;
+    width: 560px;
 }
 
 .hud-root.is-expanded .inventory-layout {
@@ -2172,12 +2213,13 @@
 }
 
 .hud-root.is-expanded .inventory-grid-pane {
-    width: 440px;
+    width: 280px;
 }
 
+/* 폭은 페인이 소유한다(위 .inventory-section-header 주석 참조). */
 .hud-root.is-expanded .inventory-section-header,
 .hud-root.is-expanded .item-slot-grid {
-    width: 416px;
+    width: 100%;
 }
 
 .hud-root.is-expanded .item-grid-slot {
@@ -2202,11 +2244,11 @@
 }
 
 .hud-root.is-expanded .inventory-detail-icon {
-    width: 104px;
-    height: 104px;
-    min-width: 104px;
-    min-height: 104px;
-    margin: 8px 0 18px 0;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
+    margin: 4px 0 8px 0;
     align-self: center;
 }
 
@@ -2215,8 +2257,11 @@
     margin: 18px 0 0 0;
 }
 
+/* PC 16:9 는 논리 높이 360 이라 항상 is-short 다 — 고정 높이를 주면 내용이 적어도
+   카드가 화면을 가득 채운다. 상한만 준다. */
 .hud-root.is-short .diablo-inventory-card {
-    height: 96%;
+    height: auto;
+    max-height: 100%;
 }
 
 .hud-root.is-short .item-grid-slot {
@@ -2230,10 +2275,10 @@
 .backpack-grid,
 .hud-root.is-expanded .backpack-grid {
     position: relative;
-    width: 336px;
-    height: 224px;
-    min-width: 336px;
-    min-height: 224px;
+    width: 240px;
+    height: 160px;
+    min-width: 240px;
+    min-height: 160px;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow: hidden;
@@ -2263,13 +2308,13 @@
 }
 
 .backpack-item.backpack-size-1x2 .resource-icon {
-    width: 46px;
-    height: 92px;
+    width: 32px;
+    height: 72px;
 }
 
 .backpack-item.backpack-size-2x2 .resource-icon {
-    width: 92px;
-    height: 92px;
+    width: 72px;
+    height: 72px;
 }
 
 /* ── Interaction profiles ───────────────────────────────────

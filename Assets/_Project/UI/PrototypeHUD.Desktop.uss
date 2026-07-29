@@ -303,7 +303,9 @@
     border-radius: 0;
 }
 
-.hud-root.hud-desktop .resource-icon,
+/* ⚠ .resource-icon 은 퀵바뿐 아니라 인벤토리 격자 슬롯과 상세 아이콘에도 붙는다.
+   범위를 좁히지 않으면 상세 아이콘(48px)까지 12px 로 줄어든다 — 실제로 그렇게 됐었다. */
+.hud-root.hud-desktop .resource-pill .resource-icon,
 .hud-root.hud-desktop .bag-button .ui-icon {
     width: 12px;
     height: 12px;
@@ -424,8 +426,15 @@
     width: 400px;
 }
 
+/* 인벤토리는 .diablo-inventory-card 쪽 규칙(is-landscape/is-expanded)이 폭을 정한다.
+   여기서는 백팩이 아닌 단순 인벤토리 카드(허브 창고 등과 같은 클래스)만 맞춘다. */
 .hud-root.hud-desktop .inventory-card {
     width: 528px;
+}
+
+/* 조합 목록은 이제 뷰포트에 실제로 들어가는 목록을 스크롤한다. */
+.hud-root.hud-desktop .inventory-content-scroll {
+    max-height: 280px;
 }
 
 .hud-root.hud-desktop .gameover-card {

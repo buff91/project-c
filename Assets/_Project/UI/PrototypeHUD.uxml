@@ -166,8 +166,13 @@
                             <ui:VisualElement class="inventory-detail-copy">
                                 <ui:Label name="inventory-detail-name" text="빈 백팩" class="inventory-detail-name" />
                                 <ui:Label name="inventory-detail-desc" text="던전에서 얻은 아이템이 이곳에 쌓입니다." class="inventory-detail-desc" />
+                                <!-- 분류·크기·가치. 전부 ItemDefinition 에 이미 있는 값이다 —
+                                     내구도/충전 게이지는 그런 시스템이 아직 없어 넣지 않았다. -->
+                                <ui:VisualElement name="inventory-detail-stats" class="inventory-detail-stats" />
                             </ui:VisualElement>
-                            <ui:Button name="inventory-use" text="사용" class="settings-done inventory-detail-action" />
+                            <!-- 골드 슬래브(.settings-done)를 뺀다. "화면당 골드 글로우 하나" 규칙에서
+                                 인벤토리의 골드는 선택 슬롯 테두리가 이미 쓰고 있다. -->
+                            <ui:Button name="inventory-use" text="사용" class="pc-btn pc-btn--action inventory-detail-action" />
                         </ui:VisualElement>
                     </ui:VisualElement>
                     <ui:VisualElement class="craft-section">

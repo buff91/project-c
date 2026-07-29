@@ -251,10 +251,19 @@ namespace ProjectC.Tests
         [Test]
         public void BackpackPlacement_UsesTouchReadableCellBounds()
         {
+            // 44px 은 논리 높이가 **540** 이던 시절의 터치 최소치다. 캔버스가 360 으로
+            // 줄었으므로 같은 물리 크기는 44 × 360/540 ≈ 29px 이다. 셀은 36px 이라
+            // 터치 영역은 줄어든 게 아니라 오히려 넓어졌다 — 상수를 캔버스에서 파생시켜야
+            // 다음에 캔버스가 움직여도 이 테스트가 거짓말을 하지 않는다.
+            const float LegacyCanvasMinorAxis = 540f;
+            const float LegacyTouchMinimum = 44f;
+            float touchMinimum =
+                LegacyTouchMinimum * UiPanelScale.DesignMinorAxis / LegacyCanvasMinorAxis;
+
             var cell = new VisualElement();
             InventoryPanelController.PlaceBackpackElement(cell, 0, 0, 1, 1);
-            Assert.GreaterOrEqual(cell.style.width.value.value, 44f);
-            Assert.GreaterOrEqual(cell.style.height.value.value, 44f);
+            Assert.GreaterOrEqual(cell.style.width.value.value, touchMinimum);
+            Assert.GreaterOrEqual(cell.style.height.value.value, touchMinimum);
 
             var largeItem = new VisualElement();
             InventoryPanelController.PlaceBackpackElement(largeItem, 1, 1, 2, 2);
