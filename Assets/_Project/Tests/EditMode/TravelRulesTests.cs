@@ -197,11 +197,32 @@ namespace ProjectC.Tests
         [TestCase("Fall", "낙하")]
         [TestCase("Crush", "낙하 충돌")]
         [TestCase("Bomb", "폭발")]
+        // 결과 모달 렌더 검증에서 잡힌 셋. 표에 없으면 영문 토큰이 그대로 화면에 뜬다
+        // ("사인: Starving") — 예외가 안 나서 테스트로도 캡처 없이는 안 보이던 종류다.
+        [TestCase("Starving", "굶주림")]
+        [TestCase("Poison", "중독")]
+        [TestCase("ArcShock", "감전")]
         [TestCase("", "알 수 없음")]
         [TestCase("Something", "Something")]
         public void FormatCause_TranslatesKnownSources(string source, string expected)
         {
             Assert.AreEqual(expected, RunSummary.FormatCause(source));
+        }
+
+        /// <summary>
+        /// 플레이어에게 피해를 주는 <b>모든</b> 사인 소스가 한글로 번역돼야 한다.
+        /// 소스 문자열은 Gameplay(`ShowPlayerHit(damage, source)`)가 만들므로 여기서
+        /// 열거해 고정한다 — 새 사인을 넣고 표를 안 늘리면 이 테스트가 잡는다.
+        /// (`Debug`는 디버그 훅 전용이라 화면 사인으로 뜨지 않는다.)
+        /// </summary>
+        [Test]
+        public void FormatCause_LeavesNoEnglishTokenOnTheResultScreen()
+        {
+            string[] sources = { "Burn", "Fall", "Crush", "Bomb", "Starving", "Poison", "ArcShock" };
+            foreach (string source in sources)
+                Assert.AreNotEqual(
+                    source, RunSummary.FormatCause(source),
+                    $"{source} 가 번역되지 않아 결과 화면에 영문으로 뜬다");
         }
     }
 }

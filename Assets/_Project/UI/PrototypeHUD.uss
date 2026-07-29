@@ -995,10 +995,15 @@
     color: rgb(140, 220, 170);
 }
 
+/* 카드가 `align-items: center`라 한 줄짜리 라벨은 상자가 글자에 딱 붙어 저절로
+   가운데로 보인다. 그래서 여러 줄이 붙는 순간(처치 + 기록 + 다음 해금)만 그 줄들이
+   왼쪽 정렬로 남아 카드 안에서 혼자 어긋난다 — 결과 모달을 처음 캡처해서 드러났다.
+   상자가 아니라 글자를 가운데로 둔다. */
 .gameover-detail {
     color: var(--muted);
     font-size: var(--pc-fs-1);
     margin-bottom: 4px;
+    -unity-text-align: middle-center;
 }
 
 /* ── 실데이터 미니맵 ─────────────────────────────────── */

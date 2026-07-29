@@ -79,12 +79,18 @@ namespace ProjectC.Core
             MonsterArchetype monster = MonsterRoster.MatchSource(source);
             if (monster != null) return monster.DisplayName;
 
+            // 여기 없는 소스는 영문 토큰이 그대로 결과 화면에 뜬다("사인: Starving").
+            // 몬스터가 아닌 사인은 전부 `ShowPlayerHit(damage, source)` 호출부에서 오므로,
+            // 새 사인을 만들 때는 그 자리에서 이 표도 함께 늘린다.
             switch (source)
             {
                 case "Burn": return "화상";
                 case "Fall": return "낙하";
                 case "Crush": return "낙하 충돌";
                 case "Bomb": return "폭발";
+                case "Starving": return "굶주림";
+                case "Poison": return "중독";
+                case "ArcShock": return "감전";
                 default: return source;
             }
         }
