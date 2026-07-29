@@ -109,9 +109,10 @@ namespace ProjectC.Gameplay
         {
             _meta = MetaStore.LoadOrNew();
 
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            UIDocument document = GetComponent<UIDocument>();
+            VisualElement root = document.rootVisualElement;
             _responsiveLayout = new ResponsiveUiLayout(
-                root, root.Q<VisualElement>("hub-root"));
+                root, root.Q<VisualElement>("hub-root"), document.panelSettings);
             _goldLabel = root.Q<Label>("hub-gold");
             _statusLabel = root.Q<Label>("hub-status");
             _continueButton = root.Q<Button>("hub-continue");

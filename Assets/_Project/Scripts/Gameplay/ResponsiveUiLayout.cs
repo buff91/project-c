@@ -1,4 +1,5 @@
 using System;
+using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -7,6 +8,14 @@ namespace ProjectC.Gameplay
     /// <summary>
     /// UI Toolkit에는 런타임 미디어 쿼리가 없으므로 패널의 논리 크기를 USS 클래스로 변환한다.
     /// 실제 기기의 Safe Area도 같은 논리 좌표로 환산해 HUD 전체에 적용한다.
+    ///
+    /// <para>
+    /// 패널 배율도 여기가 소유한다. <see cref="PanelSettings"/>는 ConstantPixelSize 모드로
+    /// 두고 배율은 <see cref="UiPanelScale"/>가 화면마다 정한다 — 에셋에 박힌 기준 해상도가
+    /// 아니라 코드가 논리 캔버스를 정하는 쪽이 SSOT다. 이 클래스가 맡는 이유는 이미
+    /// <c>GeometryChangedEvent</c>와 <c>DevelopmentViewportService.Changed</c>를 둘 다
+    /// 구독하고 있어서, 배율을 다시 계산해야 하는 순간과 정확히 같은 순간에 깨어나기 때문이다.
+    /// </para>
     /// </summary>
     public sealed class ResponsiveUiLayout : IDisposable
     {
@@ -36,19 +45,45 @@ namespace ProjectC.Gameplay
             }
         }
 
+        // 임계값은 전부 640×360 논리 캔버스 기준이다(UiPanelScale). 옛 960×540 시절 숫자를
+        // 그대로 두면 PC가 통째로 is-short 밖으로 나가거나 통째로 is-expanded 안으로 들어온다.
         public const float NarrowWidth = 520f;
-        public const float ShortHeight = 700f;
-        public const float ExpandedMinAxis = 590f;
+
+        /// <summary>
+        /// PC 논리 높이는 이제 360이라 세로 공간이 실제로 빠듯하다 — 여기 걸려야 맞다.
+        /// 세로폰(640·844)은 안 걸린다.
+        /// </summary>
+        public const float ShortHeight = 420f;
+
+        /// <summary>
+        /// 여유 있는 창(5:4·4:3)만 골라낸다. 1280×1024 → 논리 640×512 → expanded,
+        /// 16:9는 짧은 축이 항상 360이라 아니다.
+        /// </summary>
+        public const float ExpandedMinAxis = 480f;
         public const float ExtremeAspectRatio = 2f;
 
         private readonly VisualElement _panelRoot;
         private readonly VisualElement _contentRoot;
+        private readonly PanelSettings _panelSettings;
+#if UNITY_EDITOR
+        // PanelSettings는 ScriptableObject다. 플레이 중에 scale을 쓰면 에셋이 더티가 되어
+        // PrototypePanelSettings.asset 의 m_Scale 에 유령 diff 가 남는다. 직렬화 값을
+        // 들어올 때 캐시했다가 나갈 때 되돌린다 — 런타임 값은 코드가, 에셋 값은 파일이 소유한다.
+        private readonly float _serializedScale;
+#endif
         private bool _disposed;
 
-        public ResponsiveUiLayout(VisualElement panelRoot, VisualElement contentRoot)
+        public ResponsiveUiLayout(
+            VisualElement panelRoot,
+            VisualElement contentRoot,
+            PanelSettings panelSettings = null)
         {
             _panelRoot = panelRoot ?? throw new ArgumentNullException(nameof(panelRoot));
             _contentRoot = contentRoot ?? throw new ArgumentNullException(nameof(contentRoot));
+            _panelSettings = panelSettings;
+#if UNITY_EDITOR
+            if (_panelSettings != null) _serializedScale = _panelSettings.scale;
+#endif
             _panelRoot.RegisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
             DevelopmentViewportService.Changed += HandlePresentationChanged;
             _panelRoot.schedule.Execute(Refresh);
@@ -80,6 +115,8 @@ namespace ProjectC.Gameplay
                 float.IsNaN(rect.width) || float.IsNaN(rect.height))
                 return;
 
+            rect = ApplyPanelScale(rect);
+
             ViewportProfile profile = Classify(rect.width, rect.height);
             _contentRoot.EnableInClassList("is-narrow", profile.Narrow);
             _contentRoot.EnableInClassList("is-short", profile.Short);
@@ -90,10 +127,45 @@ namespace ProjectC.Gameplay
             ApplySafeArea(rect.width, rect.height);
         }
 
+        /// <summary>
+        /// 실제 렌더 표면에서 배율을 정해 패널에 적용하고, 그 배율이 적용된 뒤의 논리 크기를
+        /// 돌려준다.
+        ///
+        /// <para>
+        /// <c>Screen.width/height</c>를 쓰지 않는 이유: 에디터 Game View 에서 그 값은 창에
+        /// 맞춰 축소된 크기라 패널이 실제로 해석하는 표면과 다르다(실측 1859×1160 vs
+        /// 2560×1440). 패널이 쓰는 표면은 <c>contentRect × scaledPixelsPerPoint</c>다.
+        /// </para>
+        /// <para>
+        /// 반환값을 <c>contentRect</c> 재조회로 갈음하지 않는 이유: 방금 쓴 배율은 다음 레이아웃
+        /// 패스에서야 반영되므로, 지금 다시 읽으면 한 프레임 낡은 크기로 분기가 정해진다.
+        /// </para>
+        /// </summary>
+        private Rect ApplyPanelScale(Rect rect)
+        {
+            if (_panelSettings == null) return rect;
+
+            float pixelsPerPoint = _panelRoot.panel?.scaledPixelsPerPoint ?? 1f;
+            if (pixelsPerPoint <= 0f || float.IsNaN(pixelsPerPoint)) pixelsPerPoint = 1f;
+
+            int surfaceWidth = Mathf.RoundToInt(rect.width * pixelsPerPoint);
+            int surfaceHeight = Mathf.RoundToInt(rect.height * pixelsPerPoint);
+            if (surfaceWidth <= 0 || surfaceHeight <= 0) return rect;
+
+            int scale = UiPanelScale.Scale(surfaceWidth, surfaceHeight);
+            if (!Mathf.Approximately(_panelSettings.scale, scale))
+                _panelSettings.scale = scale;
+
+            return new Rect(0f, 0f, surfaceWidth / (float)scale, surfaceHeight / (float)scale);
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
+#if UNITY_EDITOR
+            if (_panelSettings != null) _panelSettings.scale = _serializedScale;
+#endif
             _panelRoot.UnregisterCallback<GeometryChangedEvent>(HandleGeometryChanged);
             DevelopmentViewportService.Changed -= HandlePresentationChanged;
         }

@@ -209,7 +209,6 @@ namespace ProjectC.Gameplay
                     element.ClassListContains("settings-modal") ||
                     element.ClassListContains("gameover-overlay") ||
                     element.ClassListContains("status-chip") ||
-                    element.ClassListContains("orb-row") ||
                     element.ClassListContains("debug-panel"))
                     return true;
             }
@@ -278,6 +277,7 @@ namespace ProjectC.Gameplay
             _bossHealthFill = root.Q<VisualElement>("boss-health-fill");
             _bossHealthValue = root.Q<Label>("boss-health-value");
             _bossObjective = root.Q<Label>("boss-objective");
+            BindReadouts(root);
             UpdateMinimap();
             UpdateHpDisplay();
             UpdateViewLabel();
@@ -288,6 +288,9 @@ namespace ProjectC.Gameplay
             UpdateVerticalHintLabel();
             UpdateItemLabels();
             UpdateBossPanel();
+            UpdateStatusChips();
+            // 로그는 컨트롤러가 들고 있으므로 해상도 전환으로 문서를 다시 지어도 살아남는다.
+            RebuildMessageLog();
         }
 
         private void ApplyPresentation()
@@ -324,7 +327,8 @@ namespace ProjectC.Gameplay
             contentRoot.EnableInClassList(
                 "hud-desktop", ActivePresentation == HudPresentationMode.Desktop);
             _responsiveLayout?.Dispose();
-            _responsiveLayout = new ResponsiveUiLayout(documentRoot, contentRoot);
+            _responsiveLayout = new ResponsiveUiLayout(
+                documentRoot, contentRoot, document.panelSettings);
         }
 
         /// <summary>요소가 바뀐 경우에만 이전 구독을 풀고 새 요소에 다시 구독한다.</summary>
@@ -389,6 +393,9 @@ namespace ProjectC.Gameplay
 
             // 상호작용 대상은 이동/턴 어디서든 바뀔 수 있어 이벤트 대신 프레임 폴링한다.
             UpdateInteractButton();
+            // 상태이상도 마찬가지다(빙결은 피해가 없어 HP 이벤트로도 안 잡힌다).
+            // 조합이 그대로면 UpdateStatusChips 가 즉시 빠진다.
+            UpdateStatusChips();
 
             if (EscapePressed())
             {

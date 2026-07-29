@@ -34,12 +34,18 @@ namespace ProjectC.Gameplay
             UpdateCombatLabel();
         }
 
+        /// <summary>
+        /// 턴 피드백은 이제 버려지지 않고 로그에 쌓인다. 3초 뒤 사라지는 것은 줄이 아니라
+        /// <b>강조</b>다 — 최신 줄은 밝게, 지난 줄은 어둡게 남는다. 예전엔 이 이벤트가
+        /// 유일한 기록이라 3초를 놓치면 직전 턴에 무슨 일이 있었는지 알 방법이 없었다.
+        /// </summary>
         private void HandleInteractionFeedback(string message)
         {
-            if (_statusLabel == null) return;
+            if (string.IsNullOrEmpty(message)) return;
 
-            _statusLabel.text = message;
-            _statusLabel.parent?.AddToClassList("is-open");
+            _messages.Add(message);
+            RebuildMessageLog();
+            _statusLabel?.parent?.AddToClassList("is-open");
             if (_feedbackRoutine != null)
                 StopCoroutine(_feedbackRoutine);
             _feedbackRoutine = StartCoroutine(HideInteractionFeedback());

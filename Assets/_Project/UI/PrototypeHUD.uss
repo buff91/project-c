@@ -54,84 +54,6 @@
     width: 180px;
 }
 
-.orb-row {
-    height: 50px;
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 7px;
-}
-
-.orb-frame {
-    position: relative;
-    width: 46px;
-    height: 46px;
-    min-width: 46px;
-    border-radius: 23px;
-    padding: 4px;
-    background-color: rgb(18, 11, 8);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: var(--bronze-lit);
-    border-top-color: rgb(139, 97, 53);
-    border-right-color: rgb(52, 35, 21);
-    border-bottom-color: rgb(52, 35, 21);
-    justify-content: flex-end;
-    overflow: hidden;
-}
-
-.hp-orb {
-    background-color: rgb(58, 21, 18);
-}
-
-.mana-orb {
-    background-color: rgb(22, 32, 63);
-}
-
-.orb-liquid {
-    position: absolute;
-    left: 4px;
-    right: 4px;
-    bottom: 4px;
-    border-radius: 18px;
-}
-
-.hp-liquid {
-    height: 62%;
-    background-color: var(--blood);
-}
-
-.mana-liquid {
-    height: 48%;
-    background-color: var(--mana);
-}
-
-.orb-shine {
-    position: absolute;
-    left: 11px;
-    top: 9px;
-    width: 7px;
-    height: 7px;
-    border-radius: 4px;
-    background-color: rgba(255, 235, 217, 0.78);
-}
-
-.orb-copy {
-    margin-left: 9px;
-    justify-content: center;
-}
-
-.orb-caption {
-    color: var(--muted);
-    font-size: var(--pc-fs-1);
-}
-
-.orb-value {
-    font-size: var(--pc-fs-2);
-    margin-top: 1px;
-}
-
 .hp-value {
     color: rgb(255, 176, 164);
 }
@@ -208,58 +130,6 @@
     border-radius: 2px;
 }
 
-.map-room {
-    position: absolute;
-    background-color: var(--pc-stone-dim);
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-color: var(--pc-stone);
-    border-right-color: var(--pc-stone);
-    border-top-color: var(--pc-stone);
-    border-bottom-color: var(--pc-stone);
-}
-
-.map-room-a {
-    left: 18px;
-    top: 11px;
-    width: 39px;
-    height: 22px;
-}
-
-.map-room-b {
-    left: 58px;
-    top: 18px;
-    width: 38px;
-    height: 9px;
-}
-
-.map-room-c {
-    right: 15px;
-    top: 8px;
-    width: 31px;
-    height: 29px;
-}
-
-.map-player {
-    position: absolute;
-    left: 81px;
-    top: 20px;
-    width: 7px;
-    height: 7px;
-    border-radius: 4px;
-    background-color: var(--torch);
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-color: rgb(255, 220, 139);
-    border-right-color: rgb(255, 220, 139);
-    border-top-color: rgb(255, 220, 139);
-    border-bottom-color: rgb(255, 220, 139);
-}
-
 .view-controls {
     height: 28px;
     flex-direction: row;
@@ -297,19 +167,63 @@
     letter-spacing: 1px;
 }
 
-.depth-panel {
+/* ── 층 스택 (D) ─────────────────────────────────────────
+   "▲ B1 · ▼ B3" 한 줄을 대체하는 공간적 수직성 지표. 눈금 하나가 층 하나고
+   세로 위치가 실제 높이다 — 기둥 ①은 읽는 게 아니라 보이는 것이어야 한다.
+   눈금/캡은 컨트롤러가 만든다(PrototypeHudController.Readouts.cs). */
+
+.floor-stack {
     position: absolute;
     right: 198px;
     top: 12px;
-    width: 190px;
-    padding: 9px 11px;
-    align-items: flex-end;
+    width: 56px;
+    display: none;
+    align-items: flex-start;
 }
 
+.floor-stack.is-open {
+    display: flex;
+}
+
+.floor-ticks {
+    align-items: flex-start;
+}
+
+.floor-tick-row {
+    flex-direction: row;
+    align-items: center;
+    height: 5px;
+}
+
+.floor-tick {
+    width: 6px;
+    height: 3px;
+    background-color: var(--pc-inset);
+}
+
+/* 탐색한 층과 아직 안 가 본 층을 가른다 — 전부 밝으면 지도가 아니라 장식이다. */
+.floor-tick.is-explored {
+    background-color: var(--pc-stone-dim);
+}
+
+.floor-tick.is-current {
+    background-color: var(--pc-gold);
+}
+
+/* 위/아래 경로 캡. 실제로 갈 수 있는 층이 있을 때만 텍스트가 채워진다. */
+.floor-cap {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+}
+
+/* 현재 층 이름. 던전 HUD에서 골드는 여기 하나뿐이다. */
 .depth-value {
-    color: var(--torch);
-    font-size: var(--pc-fs-3);
-    -unity-text-align: middle-right;
+    position: absolute;
+    left: 10px;
+    top: -2px;
+    color: var(--pc-gold);
+    font-size: var(--pc-fs-1);
+    white-space: nowrap;
 }
 
 .depth-caption {
@@ -317,17 +231,48 @@
 }
 
 .elevation-label {
-    color: rgb(159, 214, 224);
+    color: var(--pc-ice);
     font-size: var(--pc-fs-1);
-    margin-top: 5px;
-    -unity-text-align: middle-right;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .floor-label {
-    color: var(--muted);
+    color: var(--pc-dim);
     font-size: var(--pc-fs-1);
-    margin-top: 4px;
-    -unity-text-align: middle-right;
+}
+
+/* ── 상태이상 칩 (A) ─────────────────────────────────────
+   .pc-chip--burn/--freeze/--poison 은 DesignSystem.uss 에 진작 있었는데
+   라이브 HUD 에 한 번도 안 나왔다. 기둥 ②가 드디어 화면에 나온다. */
+
+.status-chips {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.status-chips > .pc-chip {
+    margin-right: 2px;
+}
+
+/* ── 메시지 로그 (E) ─────────────────────────────────────
+   플레이트 하나에 최대 네 줄. 최신 줄은 #feedback-chip 이 맡는다. */
+
+.message-log {
+    display: none;
+}
+
+.message-log.is-open {
+    display: flex;
+}
+
+.message-line {
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .vertical-route-discovery {
@@ -715,7 +660,7 @@
 }
 
 .turn-label {
-    color: var(--torch);
+    color: var(--pc-text);
     font-size: var(--pc-fs-1);
 }
 
@@ -1452,7 +1397,6 @@
 }
 
 .micro-caption,
-.orb-caption,
 .settings-subtitle,
 .setting-help,
 .floor-label,
@@ -1487,19 +1431,7 @@
     border-bottom-color: var(--pc-teal-bg);
 }
 
-.depth-panel {
-    right: 184px;
-    width: 150px;
-    padding: 4px 6px;
-    background-color: rgba(5, 7, 12, 0.72);
-    border-left-width: 0;
-    border-right-width: 0;
-    border-top-width: 0;
-    border-bottom-width: 0;
-}
-
 .depth-value,
-.turn-label,
 .settings-title,
 .hub-gold {
     color: var(--pc-gold);
@@ -1529,7 +1461,7 @@
 }
 
 .feedback-chip .chip-label {
-    color: var(--pc-gold);
+    color: var(--pc-text);
 }
 
 .route-chip {
@@ -1721,10 +1653,10 @@
     display: none;
 }
 
-.hud-root.is-narrow .depth-panel {
+.hud-root.is-narrow .floor-stack {
     right: 8px;
     top: 112px;
-    width: 128px;
+    width: 56px;
 }
 
 .hud-root.is-narrow .status-zone {
@@ -2498,8 +2430,10 @@
     white-space: nowrap;
 }
 
+/* 골드 규율: 던전 HUD의 골드는 현재 층 하나다. 근접/원거리는 아이콘과
+   --pc-ice 분기가 이미 구분하므로 여기까지 금색일 이유가 없다. */
 .combat-button .action-button-label {
-    color: var(--pc-gold);
+    color: var(--pc-text);
 }
 
 .combat-button.ranged .action-button-label,

@@ -55,7 +55,9 @@ UGUI View로 옮긴다.
 | 클래스 | 의미 | 붙는 요소 | USS 계약 |
 |--------|------|-----------|----------|
 | `is-open` | 모달·오버레이·패널 열림 | 모든 모달(허브 7종 / 인벤토리 / 게임메뉴 / 종료 / 결과 / 공용 설정)과 `action-wheel`·`boss-panel`·`vertical-route-discovery`·`debug-panel` | 기본형이 `display: none`, `.X.is-open`이 `display: flex`. **닫힘이 기본값** |
-| `is-open` | 짧은 문맥 정보 노출 | 던전 `feedback-chip`·`vertical-hint-chip` | 행동 피드백은 3초, 수직 힌트는 실제 장치 위에 서 있는 동안만 열림 |
+| `is-open` | 짧은 문맥 정보 노출 | 던전 `feedback-chip`·`vertical-hint-chip` | 피드백은 3초간 **강조**(줄 자체는 로그에 남는다), 수직 힌트는 실제 장치 위에 서 있는 동안만 열림 |
+| `is-open` | 내용이 있어 그릴 값이 있음 | `message-log`(줄 ≥1), `floor-stack`(층 ≥2) | 비면 `display: none` — 빈 플레이트를 띄우지 않는다 |
+| `is-current` / `is-explored` | 층 눈금의 진행 상태 | `floor-tick` | 현재=`--pc-gold` / 탐색함=`--pc-stone-dim` / 미도달=`--pc-inset` |
 | `is-available` | 지금 실행 가능 | `hub-continue`(세이브 있음), `interact-button`(문맥 행동 있음) | 없으면 숨김/비활성 표현 |
 | `is-empty` | 채워지지 않은 칸 | `pc-heart`(HP 빈칸), `inventory-detail-icon` | 빈 칸 표현 |
 | `is-warning` | 경고 임계 | `hunger-label` | 경고색 |
@@ -128,12 +130,12 @@ UGUI View로 옮긴다.
   실제 장치 위에 섰을 때만 한 줄 조작 힌트를 다시 보여준다.
 - **개발 화면 테스트**: 에디터/개발 빌드의 공용 설정 하단에서 `AUTO/MOBILE/PC` UI와 Game View 해상도 프리셋을 즉시 바꾼다. 릴리스 빌드에서는 이 섹션과 개발 오버라이드를 숨기고 무시한다.
 - **개발 저장 테스트**: 같은 공용 설정에서 실제 창고·체크포인트와 격리된 임시 프로필을 선택하고 초기화한다. 프로필 전환은 타이틀/허브에서만 허용하고, 던전 진행 중에는 잠근다.
-- **해상도**: PC 기본 창/개발 프리셋은 **2560×1440(16:9)**이다. UI Toolkit `PanelSettings`는 540×960 `Scale With Screen Size`를 기준으로 한다. View 선택 뒤 `ResponsiveUiLayout`이 패널 논리 크기에 따라 `is-narrow`(<520), `is-short`(<700), `is-landscape`, `is-expanded`(짧은 축 ≥590), `is-tall`(세로 비율 ≥2:1), `is-ultrawide`(가로 비율 ≥2:1) 클래스를 HUD 루트에 적용한다. 모바일/PC 전용 USS가 같은 프로필도 입력 방식에 맞게 다르게 재배치한다. 실제 기기의 노치·홈 인디케이터는 `Screen.safeArea`를 패널 좌표로 환산해 루트 inset으로 처리한다.
+- **해상도**: PC 기본 창/개발 프리셋은 **2560×1440(16:9)**, **최소 지원 창은 1280×720**이다. UI Toolkit `PanelSettings`는 `ConstantPixelSize`이고 **배율은 에셋이 아니라 코드가 소유한다** — `ResponsiveUiLayout`이 `UiPanelScale.Scale(표면 크기)`로 정수 배율을 정해 논리 캔버스를 **640×360으로 파생시킨다**(표는 `docs/UI_DESIGN_SYSTEM.md`). 표면 크기는 `Screen.width/height`가 아니라 `panelRoot.contentRect × panel.scaledPixelsPerPoint`로 읽는다 — 에디터 Game View에서 `Screen.*`는 창에 맞춰 축소된 값이라 패널 표면과 다르다(실측 1859×1160 vs 2560×1440). 배율을 쓰면 `PanelSettings` 에셋이 더티해지므로 직렬화 값을 캐시했다가 `Dispose()`에서 되돌린다. View 선택 뒤 `ResponsiveUiLayout`이 논리 크기에 따라 `is-narrow`(<520), `is-short`(<420), `is-landscape`, `is-expanded`(짧은 축 ≥480), `is-tall`(세로 비율 ≥2:1), `is-ultrawide`(가로 비율 ≥2:1) 클래스를 HUD 루트에 적용한다. **PC 16:9는 논리 높이가 360이라 항상 `is-short`다** — 그 분기의 압축 규칙들이 이제 PC의 기본값이다. 모바일/PC 전용 USS가 같은 프로필도 입력 방식에 맞게 다르게 재배치한다. 실제 기기의 노치·홈 인디케이터는 `Screen.safeArea`를 패널 좌표로 환산해 루트 inset으로 처리한다.
 - **씬 간 월드 배율**: 메인·허브·던전은 같은 `PrototypePanelSettings`와 현재 Screen/Game View 해상도를 공유한다. PC 허브와 던전 플레이는 직교 카메라 `playCameraSize` 2.3을 그대로 쓰고 플레이어를 추종한다. 허브 전체 맵을 담기 위한 auto-fit은 금지한다 — 로비의 크기가 씬 전환 전후 타일·액터 배율을 바꾸면 안 된다.
 - **입력 프로필**: `ResponsiveUiLayout`은 타이틀·허브·던전 모든 루트에 `ui-touch` 또는 `ui-pointer`를 부여한다. 터치 표준 컨트롤(버튼·토글·드롭다운·슬라이더)은 논리 56px, 밀집 아이템 슬롯은 최소 44px, 6×4 백팩 셀의 실제 누름 영역은 52px을 보존한다. 아이콘 그림은 작아도 picking 영역은 줄이지 않는다.
 - **짧은 화면**: 세로 공간이 부족하면 컨트롤을 축소하지 않고 본문만 ScrollView로 전환한다. 설정·인벤토리는 헤더/주요 완료 버튼을 고정하고, 모바일 가로 타이틀은 주 행동을 2열로 배치한다.
-- **해상도 정규화**: 1280×720, 1920×1080, 2560×1440처럼 종횡비가 같은 화면은 거의 같은 논리 크기로 환산되므로 같은 배치를 공유한다. 픽셀 해상도별 하드코딩 대신 종횡비와 사용 가능한 논리 공간이 달라지는 지점에서만 프로필을 전환한다.
-- **회귀 기준**: 모바일은 360×640, 390×844, 768×1024, 844×390을, PC는 960×540, 1366×768, 1920×1080, 1280×1024, 2560×1080, 2560×1440을 대표값으로 삼아 타이틀·허브·인게임 HUD·설정·인벤토리 모달의 잘림/겹침을 렌더 검증한다.
+- **해상도 정규화**: 1280×720, 1920×1080, 2560×1440은 **정확히 같은** 640×360 논리 캔버스로 환산되므로 같은 배치를 공유한다(`ResponsiveUiLayoutTests.Classify_IsIdenticalAcrossEveryPcTarget`이 단언). 픽셀 해상도별 하드코딩 대신 종횡비와 사용 가능한 논리 공간이 달라지는 지점에서만 프로필을 전환한다.
+- **회귀 기준**: `DevelopmentViewportService.PresetValues`와 동기화한다 — PC는 **1280×720 · 1920×1080 · 2560×1440**, 모바일은 **390×844 · 430×932 · 844×390**. (예전 목록은 프리셋에 없는 해상도를 여럿 적어 두어 드리프트 상태였다. 960×540은 최소 지원 창 아래라 목록에서 뺐다.) PC 3종은 전부 같은 640×360 캔버스라 같은 배치를 공유하므로 대표 1종 렌더 검증으로 충분하다.
 - **호버 부재**: 탭=선택 / 재탭=실행 2단계, 롱프레스=정보. 모든 시스템 공통.
 - **조준**: 타일 단위 스냅 + 확인 단계. 투척 아이템 선택 즉시 실제 유효 칸 범위를 월드에 표시하고,
   FOV 밖/사선 차단 칸은 표시하지 않는다.

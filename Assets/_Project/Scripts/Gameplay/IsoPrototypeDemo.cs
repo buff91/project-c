@@ -252,6 +252,27 @@ namespace ProjectC.Gameplay
         public string BelowFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex - 1, out _)
             ? FloorLabel(_activeFloorIndex - 1)
             : "--";
+
+        /// <summary>
+        /// HUD 층 스택이 그리는 층 목록. <b>진행 순서</b>다(0 = 최초 층) — 공간 인덱스가
+        /// 아니라 이 순서가 "얼마나 왔나"의 유일한 키이기 때문이다(<see cref="DungeonFloorInfo"/>).
+        /// 던전이 없으면(허브 모드) 빈 목록이라 스택 자체가 안 그려진다.
+        /// </summary>
+        public IReadOnlyList<DungeonFloorInfo> FloorProgression =>
+            _dungeon != null ? _dungeon.Floors : System.Array.Empty<DungeonFloorInfo>();
+
+        /// <summary>현재 층의 진행 인덱스. 레이아웃이 모르는 층이면 0.</summary>
+        public int ActiveProgressIndex =>
+            _dungeon != null && _dungeon.TryGetProgressIndex(_activeFloorIndex, out int progress)
+                ? progress
+                : 0;
+
+        /// <summary>
+        /// 이번 판에 도달한 가장 먼 진행 인덱스. 스택이 "탐색함 / 미도달"을 가르는 기준이다 —
+        /// 아직 안 가 본 층까지 밝게 그리면 스택이 지도가 아니라 장식이 된다.
+        /// </summary>
+        public int FurthestProgressIndex =>
+            _runSummary != null ? _runSummary.FurthestProgressIndex : ActiveProgressIndex;
         public int PotionCount => _inventory.Count(ItemKind.Potion);
         public int BombCount => _inventory.Count(ItemKind.Bomb);
         public int FrostBombCount => _inventory.Count(ItemKind.FrostBomb);

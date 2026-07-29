@@ -21,9 +21,10 @@ namespace ProjectC.Gameplay
 
         private void OnEnable()
         {
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            UIDocument document = GetComponent<UIDocument>();
+            VisualElement root = document.rootVisualElement;
             _responsiveLayout = new ResponsiveUiLayout(
-                root, root.Q<VisualElement>("main-menu-root"));
+                root, root.Q<VisualElement>("main-menu-root"), document.panelSettings);
             _startButton = root.Q<Button>("main-start-button");
             _resumeButton = root.Q<Button>("main-continue-button");
             _quitButton = root.Q<Button>("main-quit-button");

@@ -50,16 +50,20 @@ namespace ProjectC.Gameplay
                 _viewLabel.text = $"VIEW {(demo != null ? demo.ViewQuarterTurns + 1 : 1)}/4";
         }
 
+        /// <summary>
+        /// 층 계기 갱신. 이름은 그대로지만 역할이 바뀌었다 — <c>#floor-label</c>은 이제
+        /// "▲ B1 · ▼ B3" 한 줄이 아니라 스택 위쪽 끝의 <b>경로 캡</b>이다.
+        /// 캡 텍스트와 눈금은 스택 전체를 알아야 정할 수 있어 <see cref="RebuildFloorStack"/>이
+        /// 함께 소유한다 — 여기서 따로 쓰면 둘이 어긋난다.
+        /// </summary>
         private void UpdateFloorLabel()
         {
             if (_depthLabel != null)
                 _depthLabel.text = demo != null ? demo.ActiveFloorLabel : "B1";
             if (_depthCaption != null)
                 _depthCaption.text = demo != null ? demo.StageLabel : "던전 1/3";
-            if (_floorLabel != null)
-                _floorLabel.text = demo == null
-                    ? "▲ --  ·  ▼ B2"
-                    : $"▲ {demo.AboveFloorLabel}  ·  ▼ {demo.BelowFloorLabel}";
+
+            RebuildFloorStack();
         }
 
         private void UpdateModeLabel()

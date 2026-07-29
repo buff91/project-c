@@ -25,6 +25,10 @@ namespace ProjectC.Tests
             "location-label",
             "hunger-label",
             "floor-label",
+            // 640×360 재편에서 생긴 셋. 기존 name= 리네임은 없다 — 역할만 재배정했다.
+            "status-chips",
+            "floor-stack",
+            "message-log",
             "feedback-chip",
             "status-label",
             "vertical-hint-chip",
