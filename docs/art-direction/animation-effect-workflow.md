@@ -10,13 +10,22 @@ ComfyUI는 **키프레임 생성**에만 쓰고, 최종 애니메이션/이펙�
 ## 1) 캐릭터 애니메이션 (권장)
 
 - 현재 런타임은 방향별 클립이 아니라 `idle/walk/attack/hit/fall/death` 상태 태그를 사용한다.
+- 기존 게임에 이미 정적 스프라이트가 있는 액터는 그 96×128 컷을 512 정수배로 확대한
+  identity guide에서 시작한다. `character-runtime-base-v2`가 저 denoise(0.38)로 기본 자세를
+  만들고, 승인본만 `character-action-keyframes-v6`의 img2img 입력이 된다. 이 경로는 현재
+  Game View에서 검증된 머리·어깨·발 비율을 보존하기 위한 production bootstrap이다.
 - 액터는 한 방향 기준으로 `idle`, walk contact/pass/contact, attack windup/release/recovery,
   `hit`, `fall`, `death` 키포즈만 ComfyUI에서 생성한다.
 - 방향별 애니메이션은 런타임 계약이 확장될 때 별도 레시피 버전으로 추가한다.
-- 실생성에서 denoise 0.42는 identity를 보존하지만 포즈를 거의 바꾸지 못했고,
-  0.60은 포즈를 바꾸지만 의상·비율이 흔들렸다. 따라서 생성 컷은 pose/실루엣 참고이며
-  정식 `actor-slinger.aseprite` 위에 그대로 합성하거나 자동 승격하지 않는다.
+- 원정자 vertical slice에서 처음 쓴 임의 색 스틱 가이드는 denoise 0.50에서 포즈를 거의
+  바꾸지 못했고, 0.62부터는 포즈보다 의상·소품이 먼저 흔들렸다. 원인은 수치보다 ControlNet이
+  입력을 BODY_18로 읽지 못한 데 있었다. 생성기는 표준 OpenPose 관절 순서·색을 사용하고,
+  v6 기본값은 identity를 유지하면서 동작 폭을 확보한 0.56으로 둔다. 그래도 생성 컷은 pose/실루엣
+  참고이며 검수 없이 정식 `.aseprite`로 자동 승격하지 않는다.
 - 포즈 세트는 같은 base seed를 공유한다. shot별 seed 변경은 캐릭터 정체성 드리프트를 키운다.
+- 공용 방법은 성별·직업·고정 무기를 말하지 않는다. 마스크·배낭·신호점처럼 캐릭터를
+  구분하는 검수 항목은 `subjects/<actor>.yaml`의 `quality_gates`가 소유하고, 합성 시 공용
+  방법의 해부/피벗 검사와 병합된다.
 - Aseprite에서 프레임은 `동일 캔버스(96×128)` `고정 피벗`을 유지해야 한다.
 - 추천 FPS
   - `idle` 4~6 FPS, `walk` 8~12 FPS, `attack` 8~12 FPS
@@ -29,7 +38,7 @@ ComfyUI는 **키프레임 생성**에만 쓰고, 최종 애니메이션/이펙�
 
 ### ComfyUI에서 뽑아야 할 최소 키프레임
 
-1. `idle` 1컷
+1. `idle`, `idle-breathe` 2컷
 2. `walk-contact-a`, `walk-pass`, `walk-contact-b` 3컷
 3. `attack-windup`, `attack-release`, `attack-recovery` 3컷
 4. `hit` 1컷
@@ -78,7 +87,7 @@ SpriteRenderer에 `SpriteClipAnimator`를 붙여 자동 재생한다. 태그가 
 
 `art_runner.py`는 멀티샷 레시피를 실제로 해석한다.
 
-- 액터 1후보 = OpenPose로 잠근 상태 기반 키포즈 10샷
+- 액터 1후보 = OpenPose로 잠근 상태 기반 키포즈 11샷
 - 환경 루프 1후보 = 동일 identity를 공유하는 `idle` 키프레임 4샷
 - 이펙트 1후보 = physical/fire/frost/heavy/burn/freeze 6샷
 - Slack에는 라벨 리뷰 시트 한 장을 올리고 원본은 샷별로 보존한다.
@@ -122,7 +131,10 @@ Spark 반영 요청이 실제 참조를 조사해 대상을 하나로 확정한 
 
 다음 템플릿을 사용한다.
 
-- 캐릭터: `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
+- 메인 원정자:
+  `character-runtime-base-v2 → character-action-keyframes-v6`
+- 기존 투석 약탈자 샘플:
+  `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
 - 이펙트: `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`
 - 환경 루프: `docs/art-direction/comfyui/methods/environment-idle-keyframes-v1.yaml`
 

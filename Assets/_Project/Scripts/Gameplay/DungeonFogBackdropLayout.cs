@@ -22,6 +22,12 @@ namespace ProjectC.Gameplay
     public static class DungeonFogBackdropLayout
     {
         /// <summary>
+        /// 아이소 월드는 넓은 elevation 정렬값을 쓰므로 sortingOrder 최솟값만으로는 후면을 보장할 수 없다.
+        /// 전용 레이어가 모든 Default 월드 스프라이트보다 먼저 렌더링되게 한다.
+        /// </summary>
+        public const string SortingLayerName = "Dungeon Backdrop";
+
+        /// <summary>
         /// x/y 격자의 전체 가능 영역을 아이소 투영한 다이아몬드 경계를 계산한다.
         /// 방·복도처럼 실제로 타일이 존재하는 위치는 사용하지 않으므로 미탐색 구조가 드러나지 않는다.
         /// </summary>

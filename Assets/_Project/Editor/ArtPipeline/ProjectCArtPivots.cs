@@ -20,6 +20,7 @@ namespace ProjectC.EditorTools
         private static readonly Dictionary<string, Vector2> Pivots =
             new Dictionary<string, Vector2>(StringComparer.OrdinalIgnoreCase)
             {
+                { "env-dungeon-backdrop", Centered },
                 { "env-floor", Centered },
                 { "env-floor-raised", Centered },
                 { "env-floor-lower", Centered },
@@ -29,6 +30,9 @@ namespace ProjectC.EditorTools
                 { "env-floor-deep-raised", Centered },
                 { "env-floor-boss", Centered },
                 { "env-floor-boss-raised", Centered },
+                { "env-floor-grate", Centered },
+                { "env-floor-cracked", Centered },
+                { "env-floor-service", Centered },
                 // hole/weak-floor는 바닥 다이아 경로(GetMappedTileSprite)가 피벗을 재지정하지만,
                 // 임포트 규격과 스펙 시트 표기가 어긋나지 않게 중앙으로 명시 등록한다.
                 { "env-hole", Centered },
@@ -49,6 +53,12 @@ namespace ProjectC.EditorTools
                 { "env-wall-rising-left", new Vector2(0.5f, 16f / 112f) },
                 { "env-wall-torch-rising-right", new Vector2(0.5f, 16f / 112f) },
                 { "env-wall-torch-rising-left", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-pipes-rising-right", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-pipes-rising-left", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-window-rising-right", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-window-rising-left", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-cabinet-rising-right", new Vector2(0.5f, 16f / 112f) },
+                { "env-wall-cabinet-rising-left", new Vector2(0.5f, 16f / 112f) },
                 { "actor-player", ActorGrounded },
                 { "actor-knight", ActorGrounded },
                 { "actor-ranger", ActorGrounded },

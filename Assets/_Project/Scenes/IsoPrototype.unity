@@ -154,10 +154,9 @@ MonoBehaviour:
   secondsPerStep: 0.09
   buildOnStart: 1
   configureMainCamera: 1
-  playCameraSize: 5.2
+  playCameraSize: 2.3
   debugCameraSize: 8.8
-  hubCameraHorizontalPadding: 0.6
-  hubCameraVerticalPadding: 1.2
+  actorVisualScale: 0.72
   playerMaxHp: 8
   playerAttack: 2
   rangedAttackDamage: 1
@@ -187,28 +186,28 @@ MonoBehaviour:
   showDungeonFogBackdrop: 1
   unknownFogColor:
     serializedVersion: 2
-    rgba: 3524135175
+    rgba: 4279438602
   unknownFogEdge:
     serializedVersion: 2
-    rgba: 3826453770
+    rgba: 3826982687
   dungeonDarkness: 1
-  surfaceLightLevel: 0.9
-  deepLightLevel: 0.14
-  carriedLightRadius: 4
-  carriedLightIntensity: 0.95
-  darknessFloor: 0.12
+  surfaceLightLevel: 0.5
+  deepLightLevel: 0.12
+  carriedLightRadius: 2
+  carriedLightIntensity: 1
+  darknessFloor: 0.08
   staticLights: 1
   restLightRadius: 5
   restLightIntensity: 0.9
-  sconceLightRadius: 4
-  sconceLightIntensity: 0.5
+  sconceLightRadius: 3
+  sconceLightIntensity: 0.8
   holeLightRadius: 3
   holeLightIntensity: 0.6
   contactShadows: 1
   contactShadowStrength: 0.55
   coloredLight: 1
-  lightHueStrength: 0.6
-  carriedWarmth: 0.45
+  lightHueStrength: 0.7
+  carriedWarmth: 0.28
   warmLightColor:
     serializedVersion: 2
     rgba: 4286107135
@@ -216,7 +215,7 @@ MonoBehaviour:
     serializedVersion: 2
     rgba: 4294954142
   directionalShadows: 1
-  directionalShadowStrength: 0.78
+  directionalShadowStrength: 0.65
   hubSurfaceFog: 1
   hubFogInnerRadius: 3
   hubFogFalloff: 5
@@ -229,10 +228,10 @@ MonoBehaviour:
   visualCatalog: {fileID: 11400000, guid: e80f08e8904cc4a17834530b29b7cb3e, type: 2}
   floorTop:
     serializedVersion: 2
-    rgba: 4283584072
+    rgba: 4282271826
   raisedTop:
     serializedVersion: 2
-    rgba: 4282800230
+    rgba: 4283457905
   lowerTop:
     serializedVersion: 2
     rgba: 4282070827
@@ -350,7 +349,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5.2
+  orthographic size: 2.3
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2

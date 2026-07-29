@@ -29,6 +29,14 @@ OUTPUT = ROOT / "Assets/_Project/Art/Environment"
 CELL_SIZE = (512, 512)
 STAIRS_CELL_SIZE = 627
 ALPHA_CUTOFF = 80
+BACKDROP_SIZE = (128, 64)
+
+# 배경은 미탐색 구조를 드러내지 않는 한 장짜리 다이아몬드다. 모든 색은
+# project-c-torchstone.gpl의 공용 토큰이며 최종 저장 전에 다시 팔레트 잠금한다.
+BACKDROP_PANEL = (31, 31, 27, 255)
+BACKDROP_SHADOW = (43, 39, 34, 255)
+BACKDROP_SEAM = (10, 13, 19, 255)
+BACKDROP_EDGE = (74, 64, 56, 255)
 
 
 @dataclass(frozen=True)
@@ -144,6 +152,35 @@ def build_sprite(source: Image.Image, size: tuple[int, int]) -> Image.Image:
     return reduce_colors(resized)
 
 
+def build_dungeon_backdrop() -> Image.Image:
+    """Build a low-contrast full-floor backing plate for the FOV void.
+
+    The tiny deterministic texture is stretched to the current dungeon's
+    generated bounds. It contains no room/corridor information, so it improves
+    tone separation without leaking unexplored layout.
+    """
+    width, height = BACKDROP_SIZE
+    image = Image.new("RGBA", BACKDROP_SIZE, (0, 0, 0, 0))
+    pixels = image.load()
+    for py in range(height):
+        for px in range(width):
+            diamond = abs((px - 63.5) / 64) + abs((py - 31.5) / 32)
+            if diamond > 1:
+                continue
+
+            if diamond > 0.975:
+                color = BACKDROP_EDGE
+            elif (px * 13 + py * 7) % 47 == 0:
+                color = BACKDROP_SHADOW
+            elif (px * 5 + py * 11) % 71 == 0:
+                color = BACKDROP_SEAM
+            else:
+                color = BACKDROP_PANEL
+            pixels[px, py] = color
+
+    return reduce_colors(image)
+
+
 def build_fitted_sprite(
     source: Image.Image,
     canvas_size: tuple[int, int],
@@ -209,6 +246,9 @@ def main() -> None:
         "env-stairs-down-rising-left",
     )
     written += 2
+
+    save(build_dungeon_backdrop(), "env-dungeon-backdrop")
+    written += 1
 
     print(f"wrote {written} Collapsed Transit environment sprites to {OUTPUT}")
 

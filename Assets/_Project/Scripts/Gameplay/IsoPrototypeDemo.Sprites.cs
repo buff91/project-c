@@ -79,7 +79,10 @@ namespace ProjectC.Gameplay
                 context.IsRaised || IsFrontEdge(pos),
                 stair ? StairPlaneRisesRight(pos) : door && DoorPlaneRisesRight(pos),
                 kind == TileKind.SecretDoor && IsSecretDoorHinted(pos),
-                hubMode);
+                hubMode,
+                !hubMode &&
+                (_dungeon?.Region ?? DungeonRegionProfile.Facility) ==
+                    DungeonRegionProfile.Facility);
         }
 
         // 진행 지수는 레이아웃이 소유한다 — elevation 으로 역산하지 않는다(GDD §5.1).

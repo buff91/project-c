@@ -7,6 +7,7 @@ applies_to:
 - character
 - animation
 - effect
+- prop
 prompt:
   positive: >-
     Project-C post-apocalyptic anomaly-dungeon world, abandoned concrete

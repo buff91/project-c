@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using ProjectC.Core;
 using ProjectC.Gameplay;
+using UnityEngine;
 
 namespace ProjectC.Tests
 {
@@ -62,6 +63,18 @@ namespace ProjectC.Tests
         {
             Assert.Throws<System.ArgumentOutOfRangeException>(() =>
                 DungeonFogBackdropLayout.Calculate(new IsoGrid(), width, height, 0));
+        }
+
+        [Test]
+        public void SortingLayer_IsConfiguredBehindDefaultWorldLayer()
+        {
+            int backdrop = SortingLayer.NameToID(DungeonFogBackdropLayout.SortingLayerName);
+
+            Assert.AreNotEqual(0, backdrop, "안개 전용 Sorting Layer가 ProjectSettings에 있어야 한다.");
+            Assert.Less(
+                SortingLayer.GetLayerValueFromID(backdrop),
+                SortingLayer.GetLayerValueFromName("Default"),
+                "안개 레이어는 Default 월드 레이어보다 뒤에 있어야 한다.");
         }
     }
 }

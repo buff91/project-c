@@ -33,6 +33,9 @@ namespace ProjectC.Gameplay
 
         internal Sprite GetDungeonFogBackdropSprite()
         {
+            if (_palette.Catalog != null && _palette.Catalog.dungeonBackdrop != null)
+                return _palette.Catalog.dungeonBackdrop;
+
             Color32 fog = _palette.Fog;
             Color32 fogEdge = _palette.FogEdge;
             string key = $"fog-backdrop-{fog}-{fogEdge}";
@@ -113,12 +116,19 @@ namespace ProjectC.Gameplay
 
             DungeonVisualContext context = facts.Context;
             bool extruded = facts.Extruded;
-            int variant = Mathf.Abs(pos.x * 17 + pos.y * 31 + context.ProgressIndex * 13) % 4;
+            int variation =
+                Mathf.Abs(pos.x * 17 + pos.y * 31 + context.ProgressIndex * 13) % 8;
+            int variant = variation % 4;
             Color32 baseColor = _palette.SurfaceFor(context);
 
             if (_palette.Catalog != null)
             {
-                Sprite mapped = _palette.Catalog.TileFor(kind, context);
+                Sprite mapped =
+                    facts.HospitalDressing && kind == TileKind.Floor
+                        ? _palette.Catalog.HospitalFloorFor(variation)
+                        : null;
+                if (mapped == null)
+                    mapped = _palette.Catalog.TileFor(kind, context);
                 if (mapped != null)
                 {
                     // 밴드 전용 바닥 아트가 없는 동안만 절차 오버레이가 슬롯을 임시 대행한다

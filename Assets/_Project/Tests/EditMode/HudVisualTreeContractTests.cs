@@ -182,7 +182,7 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void TorchstoneActionIcons_AreCrispTwentyFourPixelSprites()
+        public void TorchstoneActionIcons_AreCrispThirtyTwoPixelSourceSprites()
         {
             string[] names =
             {
@@ -202,8 +202,8 @@ namespace ProjectC.Tests
                 string path = $"Assets/_Project/Art/Runtime/ui-{name}.png";
                 Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                 Assert.IsNotNull(icon, $"UI icon missing: {path}");
-                Assert.AreEqual(24, icon.width, $"{path} width");
-                Assert.AreEqual(24, icon.height, $"{path} height");
+                Assert.AreEqual(32, icon.width, $"{path} width");
+                Assert.AreEqual(32, icon.height, $"{path} height");
             }
         }
 

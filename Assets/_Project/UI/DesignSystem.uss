@@ -390,13 +390,13 @@
     color: var(--pc-text);
 }
 
-/* 교체 가능한 24px Torchstone UI 스프라이트.
+/* 교체 가능한 32px Torchstone UI 스프라이트를 PC HUD에서 24px로 표시한다.
    의미는 UXML의 버튼/레이블 계약이 소유하고 그림만 이 클래스로 교체한다. */
 .ui-icon {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    min-height: 20px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
     margin-right: 6px;
     flex-shrink: 0;
     -unity-background-scale-mode: scale-to-fit;

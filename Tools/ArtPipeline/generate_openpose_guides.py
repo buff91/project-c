@@ -22,6 +22,13 @@ POSES: dict[str, dict[str, tuple[float, float]]] = {
         "lh": (0.46, 0.51), "lk": (0.43, 0.69), "la": (0.41, 0.88),
         "rh": (0.54, 0.51), "rk": (0.57, 0.69), "ra": (0.59, 0.88),
     },
+    "idle-breathe": {
+        "head": (0.50, 0.18), "neck": (0.50, 0.28), "hip": (0.50, 0.52),
+        "ls": (0.43, 0.30), "le": (0.39, 0.44), "lw": (0.37, 0.58),
+        "rs": (0.57, 0.30), "re": (0.61, 0.44), "rw": (0.63, 0.58),
+        "lh": (0.46, 0.52), "lk": (0.43, 0.70), "la": (0.41, 0.88),
+        "rh": (0.54, 0.52), "rk": (0.57, 0.70), "ra": (0.59, 0.88),
+    },
     "walk-contact-a": {
         "head": (0.50, 0.17), "neck": (0.50, 0.27), "hip": (0.50, 0.51),
         "ls": (0.43, 0.29), "le": (0.37, 0.42), "lw": (0.34, 0.55),
@@ -121,22 +128,67 @@ POSES: dict[str, dict[str, tuple[float, float]]] = {
         "rh": (0.56, 0.74), "rk": (0.69, 0.78), "ra": (0.82, 0.76),
     },
 }
+OUTPUT_PROFILES = {
+    "actor-slinger": tuple(
+        name for name in POSES if name != "idle-breathe"
+    ),
+    "actor-survivor": (
+        "idle",
+        "idle-breathe",
+        "walk-contact-a",
+        "walk-pass",
+        "walk-contact-b",
+        "attack-windup",
+        "attack-impact",
+        "attack-recovery",
+        "hit",
+        "fall",
+        "death",
+    ),
+}
 
-BONES = (
-    ("neck", "hip", (255, 0, 0)),
-    ("head", "neck", (0, 0, 255)),
-    ("neck", "ls", (255, 85, 0)),
-    ("ls", "le", (255, 170, 0)),
-    ("le", "lw", (255, 255, 0)),
-    ("neck", "rs", (170, 255, 0)),
-    ("rs", "re", (85, 255, 0)),
-    ("re", "rw", (0, 255, 0)),
-    ("hip", "lh", (0, 255, 85)),
-    ("lh", "lk", (0, 255, 170)),
-    ("lk", "la", (0, 255, 255)),
-    ("hip", "rh", (0, 170, 255)),
-    ("rh", "rk", (0, 85, 255)),
-    ("rk", "ra", (0, 0, 255)),
+BODY_18_COLORS = (
+    (255, 0, 0),
+    (255, 85, 0),
+    (255, 170, 0),
+    (255, 255, 0),
+    (170, 255, 0),
+    (85, 255, 0),
+    (0, 255, 0),
+    (0, 255, 85),
+    (0, 255, 170),
+    (0, 255, 255),
+    (0, 170, 255),
+    (0, 85, 255),
+    (0, 0, 255),
+    (85, 0, 255),
+    (170, 0, 255),
+    (255, 0, 255),
+    (255, 0, 170),
+    (255, 0, 85),
+)
+
+# OpenPose BODY_18 limb order and colors must match the map used to train the
+# SD1.5 ControlNet. A merely colorful stick figure is not interchangeable:
+# the model uses both topology and color to identify left/right joints.
+BODY_18_BONES = (
+    ("neck", "rs", 0),
+    ("neck", "ls", 1),
+    ("rs", "re", 2),
+    ("re", "rw", 3),
+    ("ls", "le", 4),
+    ("le", "lw", 5),
+    ("neck", "rh", 6),
+    ("rh", "rk", 7),
+    ("rk", "ra", 8),
+    ("neck", "lh", 9),
+    ("lh", "lk", 10),
+    ("lk", "la", 11),
+    ("neck", "head", 12),
+    ("head", "reye", 13),
+    ("reye", "rear", 14),
+    ("head", "leye", 15),
+    ("leye", "lear", 16),
 )
 
 
@@ -147,31 +199,60 @@ def point(value: tuple[float, float]) -> tuple[int, int]:
 def render_pose(points: dict[str, tuple[float, float]]) -> Image.Image:
     image = Image.new("RGB", (SIZE, SIZE), (0, 0, 0))
     draw = ImageDraw.Draw(image)
-    for start, end, color in BONES:
-        draw.line((point(points[start]), point(points[end])), fill=color, width=10)
-        for joint in (start, end):
-            x, y = point(points[joint])
-            draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill=color)
-    head_x, head_y = point(points["head"])
-    for offset in (-24, -12, 0, 12, 24):
+    body = dict(points)
+    head_x, head_y = points["head"]
+    body.update(
+        {
+            "reye": (head_x + 0.018, head_y - 0.006),
+            "rear": (head_x + 0.038, head_y),
+            "leye": (head_x - 0.018, head_y - 0.006),
+            "lear": (head_x - 0.038, head_y),
+        }
+    )
+    for start, end, color_index in BODY_18_BONES:
+        draw.line(
+            (point(body[start]), point(body[end])),
+            fill=BODY_18_COLORS[color_index],
+            width=10,
+        )
+
+    joint_order = (
+        "head",
+        "neck",
+        "rs",
+        "re",
+        "rw",
+        "ls",
+        "le",
+        "lw",
+        "rh",
+        "rk",
+        "ra",
+        "lh",
+        "lk",
+        "la",
+        "reye",
+        "leye",
+        "rear",
+        "lear",
+    )
+    for color_index, joint in enumerate(joint_order):
+        x, y = point(body[joint])
         draw.ellipse(
-            (
-                head_x + offset - 6,
-                head_y - 6,
-                head_x + offset + 6,
-                head_y + 6,
-            ),
-            fill=(255, 0, 170),
+            (x - 7, y - 7, x + 7, y + 7),
+            fill=BODY_18_COLORS[color_index],
         )
     return image
 
 
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for name, pose in POSES.items():
-        destination = OUTPUT_DIR / f"actor-slinger-{name}.png"
-        render_pose(pose).save(destination)
-        print(destination)
+    for prefix, names in OUTPUT_PROFILES.items():
+        for name in names:
+            pose = POSES[name]
+            destination = OUTPUT_DIR / f"{prefix}-{name}.png"
+            render_pose(pose).save(destination)
+            print(destination)
     return 0
 
 

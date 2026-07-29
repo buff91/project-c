@@ -38,7 +38,7 @@
 |------|------|
 | `IsoPrototypeDemo.cs` | 상태·필드·이벤트·수명주기(Awake/Start/Update/LateUpdate)·방 빌드(BuildPrototype/CreateActorsAndProps)·카메라·공용 헬퍼·`OverlaySorting` 상수 |
 | `IsoPrototypeDemo.Debug.cs` | 디버그 창 전용 치트 API (`DebugGodMode`·`DebugJumpFloor` 등) |
-| `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브 auto-fit 최소값 = `playCameraSize`) |
+| `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브/던전 고정 `playCameraSize` + 플레이어 추종) |
 | `IsoPrototypeDemo.Interaction.cs` | 탭/스텝/인접 상호작용·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
 | `IsoPrototypeDemo.Movement.cs` | 경로 이동·문/비밀문/낙하 접근·auto-travel·플로어 전환 |
@@ -120,8 +120,8 @@
 | `RunSaveStore.cs` | 층 체크포인트(`RunSaveData`) 입출력 + `ContinueRequested` 플래그. 판 종료 시 삭제 |
 | `RunTelemetryStore.cs` | 플레이테스트 리포트를 `development-profile/telemetry` 아래 사람이 읽을 JSON으로. 에디터/개발 빌드에서만 동작 |
 | `DevelopmentSaveProfile.cs` | 개발 저장 루트를 실제 플레이 저장과 분리한다. 선택값만 `PlayerPrefs`, 데이터는 별도 디렉터리 |
-| `OrthographicCameraFraming.cs` | 월드 경계를 주어진 화면비의 직교 카메라에 맞추는 순수 계산(`Fit`의 `minimumSize`로 허브 배율이 들어온다) |
-| `DungeonFogBackdropLayout.cs` | 층 전체 안개 배경의 월드 영역. **실제 타일 위치를 쓰지 않고** x/y 전체 가능 영역의 다이아몬드를 계산해 미탐색 구조가 드러나지 않게 한다 |
+| `OrthographicCameraFraming.cs` | 허브/던전 플레이의 동일 직교 배율과 던전 DebugAll 예외를 고정하는 순수 계산 |
+| `DungeonFogBackdropLayout.cs` | 층 전체 안개 배경의 월드 영역. **실제 타일 위치를 쓰지 않고** x/y 전체 가능 영역의 다이아몬드를 계산해 미탐색 구조가 드러나지 않게 한다. `Dungeon Backdrop` Sorting Layer 이름도 소유해 넓은 elevation 정렬값과 분리한다 |
 | `SpriteOcclusion.cs` | 정렬 순서 + 화면 겹침으로 플레이어 가림 후보를 판정하는 순수 함수 |
 | `AssemblyInfo.cs` | `InternalsVisibleTo("ProjectC.Tests.EditMode")` — 절차 생성 스프라이트의 내부 규격 계약을 EditMode 테스트가 직접 고정할 수 있게 연다 |
 
@@ -202,6 +202,7 @@
 | `DungeonBossRules.cs` | 보스 스폰 칸 선택과 최심층 출구 봉인. 보스가 없는 던전은 출구가 상시 개방 |
 | `DungeonBossArenaRules.cs` | 아레나 층 판정(상대 깊이 = 마지막 층)과 접근 전조(SSOT 표 참조). 시각용 `DungeonDepthBand.Boss`와는 **다른 축** |
 | `DungeonRestRules.cs` | 던전 내부 제한 휴식처의 배치 간격과 회복량 |
+| `DungeonPropPlacementRules.cs` | 위험 프롭이 입구·필수 점유 좌표를 덮지 않도록 안전한 일반 바닥 후보를 고른다 |
 | `SecretRoomRules.cs` | 비밀문 개수와 발견 판정. 공개 전에는 벽처럼 막고 공개되면 열린 문이 된다 |
 | `ExtractionRules.cs` | 중간 생환 층. 잦으면 판돈이 사라지고 없으면 최심층까지 한 번의 결정이라 **정해진 층에만** 둔다 — 배고픔과 짝을 이룬다 |
 | `ElevatorShaftRules.cs` | 보스를 잡아 전원이 들어온 뒤에야 움직이는 복귀 수단. GDD의 "통로로 뛰어내려 하강"을 **수치가 막아서**(낙뎀 곡선 vs HP) 낙하가 아니라 탑승이 됐다 |
@@ -275,7 +276,7 @@
 | 개구부 칸 집합 | `DungeonFloorInfo.HoleTiles` (대표 칸은 `Hole`; 성장·약한 바닥은 `DungeonGenerator.Carving`의 같은 판정 함수) |
 | 기록 적립 공식 | `RunRecordRules.Award` |
 | 해금 조건 판정·기록 투입 | `ItemUnlockRules.InvestRecords`/`RemainingFor` (UI는 자체 판정을 들지 않는다). 기록실이 보여주는 "가장 가까운 조건"도 `ClosestPending(meta)`가 같은 `RemainingFor`로 잰다 — 예전에는 이번 판 계측을 따로 읽어 기록실과 축이 갈렸다 |
-| 허브/던전 카메라 배율 | `playCameraSize` 하나 (허브 `OrthographicCameraFraming.Fit`의 minimumSize로 전달) |
+| 허브/던전 카메라 배율 | `playCameraSize` 하나 (`OrthographicCameraFraming.Follow`, 양쪽 모두 플레이어 추종) |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 에디터 검증 필요)
 

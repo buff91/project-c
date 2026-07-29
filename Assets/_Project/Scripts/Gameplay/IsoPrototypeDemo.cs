@@ -47,7 +47,6 @@ namespace ProjectC.Gameplay
         /// </summary>
         private static class OverlaySorting
         {
-            public const int FogBackdrop     = -100000; // 안개 배경: 항상 최후면
             public const int ShaftEndpoint   = 29979;   // 수직 샤프트 끝점
             public const int Shaft           = 29980;   // 수직 샤프트 본체
             public const int PlayerFootprint = 29990;   // 플레이어 발자국 데칼
@@ -70,13 +69,14 @@ namespace ProjectC.Gameplay
         public bool configureMainCamera = true;
 
         [Header("카메라 구도")]
-        // 허브도 이 값을 최소 크기로 쓴다 — 모든 플로우의 배율이 같아야 "같은 세계"로 읽힌다.
-        // 허브 전용 최소 크기 필드는 제거했다: 값이 두 벌이면 한쪽이 흘러내려도 아무도 모른다
-        // (실제로 2.55 로 흘러내려 허브가 던전보다 1.4배 확대돼 있었다).
-        [Range(4f, 7f)] public float playCameraSize = 5.2f;
+        // 허브와 던전이 이 값 하나를 그대로 쓴다 — 허브도 전체 맵 auto-fit 없이 플레이어를
+        // 추종하므로 플로우를 오갈 때 같은 타일과 액터가 같은 크기로 보인다.
+        [Range(2f, 7f)] public float playCameraSize = 2.3f;
         [Range(7f, 16f)] public float debugCameraSize = 8.8f;
-        [Min(0f)] public float hubCameraHorizontalPadding = 0.6f;
-        [Min(0f)] public float hubCameraVerticalPadding = 1.2f;
+
+        [Header("월드 아트 배율")]
+        [Tooltip("96×128 액터 아트만 축소한다. HP·위치 마커·발판은 격자 크기를 유지한다.")]
+        [Range(0.5f, 1f)] public float actorVisualScale = 0.72f;
 
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
@@ -128,22 +128,22 @@ namespace ProjectC.Gameplay
         [Header("안개 / 맵 경계")]
         [Tooltip("실제 방 구조는 숨기고, 현재 층이 놓이는 전체 영역만 어두운 안개로 구분한다.")]
         public bool showDungeonFogBackdrop = true;
-        public Color32 unknownFogColor = new Color32(7, 9, 14, 210);
-        public Color32 unknownFogEdge = new Color32(10, 13, 19, 228);
+        public Color32 unknownFogColor = new Color32(10, 13, 19, 255);
+        public Color32 unknownFogEdge = new Color32(31, 31, 27, 228);
 
         [Header("지하 어둠 / 광원")]
         [Tooltip("깊이에 따라 어두워지고 플레이어 광원 주변만 밝히는 동적 조명. 허브·디버그에는 적용하지 않는다.")]
         public bool dungeonDarkness = true;
         [Tooltip("가장 얕은 층의 앰비언트 밝기(지상에 가까움). 1이면 어둠 없음.")]
-        [Range(0.3f, 1f)] public float surfaceLightLevel = 0.9f;
+        [Range(0.3f, 1f)] public float surfaceLightLevel = 0.5f;
         [Tooltip("최심층의 앰비언트 밝기. 낮을수록 광원 밖이 짙은 어둠에 잠긴다.")]
         [Range(0.02f, 0.6f)] public float deepLightLevel = 0.14f;
         [Tooltip("플레이어가 든 광원의 반경(타일). 이 안이 빛 웅덩이가 된다.")]
-        [Range(2, 8)] public int carriedLightRadius = 4;
+        [Range(2, 8)] public int carriedLightRadius = 2;
         [Tooltip("플레이어 광원의 세기 — 웅덩이 중심 밝기.")]
         [Range(0.3f, 1f)] public float carriedLightIntensity = 0.95f;
         [Tooltip("완전한 어둠에서도 실루엣이 읽히도록 남기는 최소 밝기(순검정 방지).")]
-        [Range(0.03f, 0.4f)] public float darknessFloor = 0.12f;
+        [Range(0.03f, 0.4f)] public float darknessFloor = 0.08f;
 
         [Header("정적 광원 (모닥불 / 벽 등잔 / 개구부)")]
         [Tooltip("모닥불·벽 등잔·Hole이 주변을 밝히고 벽 뒤에 그림자를 드리운다(차폐 계산, 층당 캐시).")]
@@ -152,8 +152,8 @@ namespace ProjectC.Gameplay
         [Range(2, 8)] public int restLightRadius = 5;
         [Range(0.3f, 1f)] public float restLightIntensity = 0.9f;
         [Tooltip("벽 등잔(방 가장자리 seed 타일)의 반경/세기. 은은한 토치 앰비언스.")]
-        [Range(2, 6)] public int sconceLightRadius = 4;
-        [Range(0.1f, 0.8f)] public float sconceLightIntensity = 0.5f;
+        [Range(2, 6)] public int sconceLightRadius = 3;
+        [Range(0.1f, 0.8f)] public float sconceLightIntensity = 0.8f;
         [Tooltip("Hole로 위·아래 층의 빛이 새어드는 개구부 광원의 반경/세기.")]
         [Range(2, 6)] public int holeLightRadius = 3;
         [Range(0.1f, 0.9f)] public float holeLightIntensity = 0.6f;
@@ -168,15 +168,15 @@ namespace ProjectC.Gameplay
         [Tooltip("광원에 색을 입힌다: 불·등잔은 따뜻한 앰버, 개구부에서 새어드는 빛은 차가운 블루.")]
         public bool coloredLight = true;
         [Tooltip("색조의 세기(0이면 흑백 밝기만).")]
-        [Range(0f, 1f)] public float lightHueStrength = 0.6f;
+        [Range(0f, 1f)] public float lightHueStrength = 0.7f;
         [Tooltip("플레이어가 든 광원의 따뜻함(등불 색).")]
-        [Range(0f, 1f)] public float carriedWarmth = 0.45f;
+        [Range(0f, 1f)] public float carriedWarmth = 0.28f;
         public Color32 warmLightColor = new Color32(255, 205, 120, 255);
         public Color32 coolLightColor = new Color32(158, 204, 255, 255);
         [Tooltip("벽·융기 지형 발치에 고정 키라이트 방향으로 지는 캐스트 그림자 띠.")]
         public bool directionalShadows = true;
         [Tooltip("방향성 그림자 띠의 밝기(1이면 그림자 없음).")]
-        [Range(0.4f, 1f)] public float directionalShadowStrength = 0.78f;
+        [Range(0.4f, 1f)] public float directionalShadowStrength = 0.65f;
 
         [Header("지상 캠프 안개")]
         [Tooltip("허브 캠프의 가장자리를 옅은 안개로 가라앉혀 중심(모닥불)만 밝게 남긴다. 시야는 건드리지 않는다.")]
@@ -203,9 +203,9 @@ namespace ProjectC.Gameplay
 
         [Header("팔레트")]
         [Tooltip("카탈로그가 없는 편집 미리보기용 던전 석재 기준색")]
-        public Color32 floorTop = new Color32(74, 64, 56, 255);
+        public Color32 floorTop = new Color32(82, 72, 62, 255);
         [Tooltip("카탈로그가 없는 편집 미리보기용 단차 명도색")]
-        public Color32 raisedTop = new Color32(152, 134, 111, 255);
+        public Color32 raisedTop = new Color32(113, 97, 80, 255);
         public Color32 lowerTop = new Color32(10, 13, 19, 255);
         public Color32 tileSeam = new Color32(10, 13, 19, 255);
         public Color32 outline = new Color32(5, 7, 12, 255);
@@ -732,7 +732,7 @@ namespace ProjectC.Gameplay
                 : null;
             if (playerSprite == null)
                 playerSprite = ActorSprites.GetCharacterSprite(false);
-            _player = CreateStandingSprite("Player", playerSprite, _playerPos, out _playerRenderer);
+            _player = CreateActorSprite("Player", playerSprite, _playerPos, out _playerRenderer);
             _playerAnimator = AttachActorAnimator(
                 _player, _playerRenderer,
                 visualCatalog != null ? visualCatalog.SurvivorAnimations : null);
@@ -842,8 +842,20 @@ namespace ProjectC.Gameplay
             }
             CreateBossExitSeal();
 
-            _barrelPos = FindPreviewPropPosition();
-            _barrel = CreateStandingSprite("Explosive Barrel", barrelSprite, _barrelPos, out _barrelRenderer);
+            GridPos? barrelPosition = FindPreviewPropPosition();
+            if (barrelPosition.HasValue)
+            {
+                _barrelPos = barrelPosition.Value;
+                _barrel = CreateStandingSprite(
+                    "Explosive Barrel",
+                    barrelSprite,
+                    _barrelPos,
+                    out _barrelRenderer);
+            }
+            else
+            {
+                _barrelExploded = true;
+            }
 
             _playerHpFill = CreateHealthBar(_player, "Player HP");
             UpdateHealthBar(_playerHpFill, _playerState);
@@ -895,6 +907,30 @@ namespace ProjectC.Gameplay
             instance.transform.SetParent(_visualRoot, false);
             instance.transform.position = VisualPosition(pos);
             renderer = instance.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = _grid.iso.SortingOrder(pos, microOffset);
+            return instance;
+        }
+
+        /// <summary>
+        /// 액터 그림만 별도 자식으로 축소한다. 루트는 격자 한 칸 크기를 유지하므로 HP 바,
+        /// 플레이어 위치 마커, 접촉 그림자와 입력 기준이 카메라 확대에 따라 함께 줄지 않는다.
+        /// </summary>
+        private GameObject CreateActorSprite(
+            string objectName,
+            Sprite sprite,
+            GridPos pos,
+            out SpriteRenderer renderer,
+            int microOffset = 1)
+        {
+            var instance = new GameObject(objectName);
+            instance.transform.SetParent(_visualRoot, false);
+            instance.transform.position = VisualPosition(pos);
+
+            var art = new GameObject("Art");
+            art.transform.SetParent(instance.transform, false);
+            art.transform.localScale = Vector3.one * actorVisualScale;
+            renderer = art.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, microOffset);
             return instance;

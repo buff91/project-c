@@ -126,65 +126,25 @@ namespace ProjectC.Gameplay
 
             _configuredCamera = camera;
             camera.orthographic = true;
-            if (hubMode && TryGetHubCameraFrame(camera.aspect, out OrthographicCameraFrame hubFrame))
+            Vector2 center = new Vector2(0f, -1.65f);
+            if (_playerState != null && (hubMode || viewMode == DungeonViewMode.Play))
             {
-                camera.orthographicSize = hubFrame.Size;
-                camera.transform.position = new Vector3(hubFrame.Center.x, hubFrame.Center.y, -10f);
+                Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
+                center = new Vector2(playerWorld.x, playerWorld.y);
             }
-            else
-            {
-                camera.orthographicSize = viewMode == DungeonViewMode.DebugAll
-                    ? debugCameraSize
-                    : playCameraSize;
-                if (viewMode == DungeonViewMode.Play && _playerState != null)
-                {
-                    Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
-                    camera.transform.position = new Vector3(playerWorld.x, playerWorld.y, -10f);
-                }
-                else
-                {
-                    camera.transform.position = new Vector3(0f, -1.65f, -10f);
-                }
-            }
+            OrthographicCameraFrame frame = OrthographicCameraFraming.Follow(
+                center,
+                hubMode,
+                viewMode,
+                playCameraSize,
+                debugCameraSize);
+            camera.orthographicSize = frame.Size;
+            camera.transform.position = new Vector3(frame.Center.x, frame.Center.y, -10f);
             _lastCameraAspect = camera.aspect;
             camera.backgroundColor = hubMode
                 ? new Color32(9, 7, 14, 255)
                 : Palette.Void;
             camera.clearFlags = CameraClearFlags.SolidColor;
-        }
-
-        private bool TryGetHubCameraFrame(float aspect, out OrthographicCameraFrame frame)
-        {
-            frame = default;
-            if (_grid == null || _grid.Map.Count == 0 || aspect <= 0f) return false;
-
-            float minX = float.PositiveInfinity;
-            float maxX = float.NegativeInfinity;
-            float minY = float.PositiveInfinity;
-            float maxY = float.NegativeInfinity;
-            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
-            {
-                Vector2 world = _grid.iso.GridToWorld(pair.Key);
-                minX = Mathf.Min(minX, world.x);
-                maxX = Mathf.Max(maxX, world.x);
-                minY = Mathf.Min(minY, world.y);
-                maxY = Mathf.Max(maxY, world.y);
-            }
-
-            // 최소 크기는 **던전 카메라 크기**다 — 값을 따로 들면 또 흘러내린다.
-            // 예전엔 전용 필드(2.55)를 썼고, 그래서 허브가 던전보다 1.4배 확대돼 보였다.
-            // 플로우를 오갈 때마다 배율이 바뀌면 "같은 세계"로 안 읽힌다.
-            //
-            // Fit 이 max(minimumSize, halfHeight, halfWidth/aspect) 이므로 결과는 자동으로
-            // "던전과 같은 크기, 다만 캠프가 화면 밖으로 나갈 때만 그만큼 물러남"이 된다.
-            // PC 가로(13×9 캠프)에서는 최소값이 지배하므로 던전과 정확히 같다.
-            frame = OrthographicCameraFraming.Fit(
-                minX, maxX, minY, maxY,
-                aspect,
-                playCameraSize,
-                hubCameraHorizontalPadding,
-                hubCameraVerticalPadding);
-            return true;
         }
     }
 }

@@ -19,6 +19,7 @@ PNG export를 카탈로그에 다시 꽂지 않는다.
 
 ## 핵심 파일명
 
+- 배경: `env-dungeon-backdrop` (미탐색 구조 없는 전체 생성 영역)
 - 타일: `env-floor`, `env-floor-raised`, `env-floor-lower`, `env-hole`, `env-weak-floor`
 - 수직 이동: `env-stairs`, `env-ladder`, `env-stairs-up`, `env-stairs-down`
 - 방향형: 기존 `env-*-rising-right/left`

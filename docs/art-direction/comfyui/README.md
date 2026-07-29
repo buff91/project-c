@@ -176,8 +176,11 @@ Aseprite에서 발 기준선과 피벗을 고정해 마감한다.
 - `actor-idle.api.json` — 1024² 단일 액터 idle 베이스
 - `actor-slinger-openpose.api.json` — SD1.5 OpenPose로 치켜든 팔을 고정한 투석 약탈자
 - `environment-styletransfer.api.json` — 기존 6셀 시트 저 denoise img2img
+- `item-static.api.json` — SDXL IsoPixel+Junkworld+PixelArtRedmond 정적 아이템 단일 소스.
+  생성 모델이 지정 크로마키 대신 균일한 중성 플레이트를 낼 때는
+  `process_items_v3.py`가 테두리 연결 영역만 허용 오차 28로 제거한다.
 
-둘 다 이 머신에 설치된 `zavychromaxl_v100.safetensors`와 manifest의 정식 LoRA 파일명을
+API 워크플로들은 이 머신에 설치된 `zavychromaxl_v100.safetensors`와 manifest의 정식 LoRA 파일명을
 참조한다. ComfyUI Desktop을 켠 뒤 `models` 명령으로 인식 여부를 확인하고 실행한다.
 
 ## 11. 애니메이션/이펙트 키프레임 워크플로 (권장)
@@ -222,17 +225,41 @@ python3 Tools/ArtPipeline/art_runner.py animation <candidate-id> \
 python3 Tools/ArtPipeline/art_runner.py work --once
 ```
 
-처음 파라미터를 검증할 때는 전체 10샷을 만들지 말고
+처음 파라미터를 검증할 때는 전체 액터 포즈 세트를 만들지 말고
 `--shot idle` 또는 `--shot walk-contact-a`로 한 장만 실행한다.
 같은 작업은 Slack에서
 `/art shot actor-slinger-animation-v5 idle 1`로 실행할 수 있다. 백그라운드 서비스가
 실행 중이면 CLI 예제의 `work --once`는 생략한다.
-`--count 1`의 전체 실행은 액터 10개 포즈 샷, 이펙트 6개 슬롯 샷을 생성한다. 후보 수는
-서로 다른 전체 세트의 개수다. OpenPose 가이드를 바꾼 뒤에는
+`--count 1`의 전체 실행은 레시피에 선언된 액터 10~11개 포즈 샷, 이펙트 6개 슬롯 샷을
+생성한다. 후보 수는 서로 다른 전체 세트의 개수다. OpenPose 가이드를 바꾼 뒤에는
 `python3 Tools/ArtPipeline/generate_openpose_guides.py`로 포즈 가이드를 다시 만든다.
+가이드의 색과 연결 순서는 장식이 아니라 SD1.5 OpenPose ControlNet의 BODY_18 입력 계약이다.
+임의 색 스틱 그림으로 바꾸면 denoise를 올려도 포즈보다 캐릭터 정체성이 먼저 흔들린다.
 정식 액터 identity 가이드는
-`python3 Tools/ArtPipeline/generate_actor_identity_guide.py`가 현재
-`actor-slinger.aseprite` 첫 프레임에서 버전 고정 512 입력을 생성한다.
+`python3 Tools/ArtPipeline/generate_actor_identity_guide.py`가 기본적으로
+`actor-slinger.aseprite` 첫 프레임에서 버전 고정 512 입력을 생성한다. 이미 런타임에서
+검증된 PNG를 production anchor로 쓸 때는 입력과 출력을 명시한다.
+
+```bash
+python3 Tools/ArtPipeline/generate_actor_identity_guide.py \
+  --source Assets/_Project/Art/Runtime/actor-knight.png \
+  --output docs/art-direction/comfyui/guides/actor-survivor-runtime-source-512-v1.png
+```
+
+정적 폴백에 이미 구 직업 장비가 구워져 있으면 final PNG를 지우지 않고 guide에서만 그
+영역을 비운다. 원정자 vertical slice는 왼손 봉과 오른손 방패 영역을 아래처럼 비워
+OpenPose가 양손을 다시 만들게 한다.
+
+```bash
+python3 Tools/ArtPipeline/generate_actor_identity_guide.py \
+  --source Assets/_Project/Art/Runtime/actor-knight.png \
+  --output docs/art-direction/comfyui/guides/actor-survivor-neutral-source-512-v1.png \
+  --clear-box 70,225,105,220 \
+  --clear-box 285,205,160,285
+```
+
+`--clear-box`는 production bootstrap 입력에만 쓴다. 최종 Aseprite 프레임을 지우는 도구가
+아니며, 승인된 base 후보가 생기면 다음 단계는 그 후보 원본을 identity로 사용한다.
 
 ### 샘플 레시피
 

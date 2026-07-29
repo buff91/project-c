@@ -27,6 +27,7 @@ from art_review import (
     SlotCatalog,
     WorkflowTypeRegistry,
     derive_asset_type,
+    enforce_color_area_limits,
     image_metrics,
 )
 from art_asset import (
@@ -68,6 +69,75 @@ from art_slack_bot import (
     slot_label,
     shot_blocks,
 )
+
+
+class ColorAreaGateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.path = Path(self.temp.name) / "candidate.png"
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def write_candidate(self, colors: list[tuple[int, int, int, int]]) -> None:
+        image = Image.new("RGBA", (len(colors), 1))
+        image.putdata(colors)
+        image.save(self.path)
+
+    def test_signal_color_below_budget_passes(self) -> None:
+        self.write_candidate(
+            [(55, 55, 55, 255)] * 9 + [(79, 167, 160, 255)]
+        )
+        measured = enforce_color_area_limits(
+            self.path,
+            {
+                "color_area_limits": {
+                    "teal-signal": {
+                        "colors": ["#4FA7A0"],
+                        "maximum_fraction": 0.1,
+                    }
+                }
+            },
+        )
+        self.assertEqual(0.1, measured["teal-signal"])
+
+    def test_signal_color_over_budget_is_rejected(self) -> None:
+        self.write_candidate(
+            [(55, 55, 55, 255)] * 7 +
+            [(79, 167, 160, 255)] * 3
+        )
+        with self.assertRaisesRegex(
+            ReviewError,
+            "teal-signal color area 30.0% exceeds 10.0%",
+        ):
+            enforce_color_area_limits(
+                self.path,
+                {
+                    "color_area_limits": {
+                        "teal-signal": {
+                            "colors": ["#4FA7A0"],
+                            "maximum_fraction": 0.1,
+                        }
+                    }
+                },
+            )
+
+    def test_transparent_signal_pixels_do_not_spend_budget(self) -> None:
+        self.write_candidate(
+            [(55, 55, 55, 255), (79, 167, 160, 0)]
+        )
+        measured = enforce_color_area_limits(
+            self.path,
+            {
+                "color_area_limits": {
+                    "teal-signal": {
+                        "colors": ["#4FA7A0"],
+                        "maximum_fraction": 0,
+                    }
+                }
+            },
+        )
+        self.assertEqual(0, measured["teal-signal"])
 
 
 class RecipeTests(unittest.TestCase):
@@ -158,7 +228,7 @@ class RecipeTests(unittest.TestCase):
             selected_world_id="collapsed-hospital-v1",
         )["blocks"][2]["element"]
         self.assertEqual(
-            ["배경", "캐릭터", "애니메이션", "이펙트"],
+            ["배경", "캐릭터", "애니메이션", "이펙트", "소품·아이템"],
             [
                 group["label"]["text"]
                 for group in target_element["option_groups"]
@@ -172,6 +242,15 @@ class RecipeTests(unittest.TestCase):
         self.assertEqual(
             {"actor-knight", "actor-slinger", "actor-grave-warden"},
             {option["value"] for option in character_group["options"]},
+        )
+        prop_group = next(
+            group
+            for group in target_element["option_groups"]
+            if group["label"]["text"] == "소품·아이템"
+        )
+        self.assertIn(
+            "item-potion",
+            {option["value"] for option in prop_group["options"]},
         )
 
     def test_every_recipe_satisfies_its_workflow_type_contract(self) -> None:
@@ -1290,7 +1369,11 @@ class StoreTests(unittest.TestCase):
             for option in by_id["method"]["element"]["options"]
         }
         self.assertEqual(
-            {"character-idle-v1", "character-action-keyframes-v5"},
+            {
+                "character-idle-v1",
+                "character-action-keyframes-v5",
+                "character-action-keyframes-v6",
+            },
             method_ids,
         )
         self.assertNotIn("source_candidate", by_id)

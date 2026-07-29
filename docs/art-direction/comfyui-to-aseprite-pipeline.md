@@ -20,7 +20,7 @@
 레퍼런스(ref-01~05·target-v2)
   └─(개념)→ [ImageGen 스타일 트랜스퍼] → 고해상 시트(#ff00ff 배경, 고정 3×2 셀)
               └→ [Tools/ArtPipeline/process_postapoc_*_v2.py] → PNG(Art/Environment 등)
-                    └→ Unity 자동 임포트(Point/PPU64/무압축)
+                    └→ Unity 자동 임포트(Point/PPU128, ui-*만 64/무압축)
 ```
 
 이 문서는 **생성 단계 하나만** 교체한다:
@@ -46,7 +46,7 @@
 - **정적(환경 타일·소품·아이템·디오라마·UI 아이콘 베이스)** → ComfyUI로 대량 생산 OK.
 - **애니 액터(idle/walk/attack/hit/fall/death)** → ComfyUI는 **idle 베이스 포즈까지만**.
   프레임 간 발 고정·실루엣·팔레트 일관은 AI가 못 지킨다 → **Aseprite 손 애니**(§4).
-- AI 모델은 48×64 저해상 도트를 native로 못 뽑는다. 항상 **고해상 생성 → 다운스케일 → 팔레트 잠금**.
+- AI 모델은 96×128 저해상 도트를 native로 못 뽑는다. 항상 **고해상 생성 → 다운스케일 → 팔레트 잠금**.
 
 ## 2. ComfyUI 그래프 (환경 시트 스타일 트랜스퍼 예)
 
@@ -141,7 +141,7 @@ locked = rgb.quantize(palette=palette_image(load_gpl(GPL_PATH)),
 
 1. 생성 베이스를 배경 레이어로 깔고 **Indexed 모드 → `.gpl` 로드 → Remap**(팔레트 이탈 차단).
 2. **AA 제거·오프그리드 정렬**(반픽셀 어긋남), 밴딩 정리.
-3. **캔버스·피벗을 `asset-spec-sheet.md` 규격으로** (액터 48×64, 피벗 (0.5,0.04) 등).
+3. **캔버스·피벗을 `asset-spec-sheet.md` 규격으로** (액터 96×128, 피벗 (0.5,0.04) 등).
 4. **애니**: 온니언스킨 + 발 기준선 고정, 태그 `idle/walk/attack/hit/fall/death`,
    비반복 태그 Repeat=1, Layer UUID 켜기. ComfyUI 출력은 **idle 디자인 참고만**, 프레임은 손으로.
 5. **정식 파일명**으로 `Art/Source/Aseprite/<파일명>.aseprite` 저장 → 자동 임포트·카탈로그 연결.
@@ -151,8 +151,8 @@ locked = rgb.quantize(palette=palette_image(load_gpl(GPL_PATH)),
 - `Project-C > Art > Aseprite > Validate Sources` — 파일명·규격·프레임 경고 0.
 - **Unity MCP Play 캡처(현 우선순위: PC 가로만)** — FOV 3상태(Unknown/Explored/Visible)에서
   톤 유지, 발/피벗이 타일에 정확히 앉는지.
-- 회귀: EditMode `ProjectC.Tests.EditMode` / PlayMode `ProjectC.Tests.PlayMode` **둘 다 재실행**
-  (스냅샷 673/1 — 숫자 맹신 금지).
+- 회귀: EditMode `ProjectC.Tests.EditMode` / PlayMode `ProjectC.Tests.PlayMode` **둘 다 재실행**.
+  테스트 개수는 기준 커밋 없이 복제하지 않는다.
 
 ## 6. 흔한 실패 (ComfyUI 특화 — 상위 문서 표에 추가)
 

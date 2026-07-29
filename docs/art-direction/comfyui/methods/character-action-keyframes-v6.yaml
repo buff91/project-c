@@ -1,0 +1,196 @@
+schema_version: 1
+id: character-action-keyframes-v6
+name: 런타임 액션 키프레임 v6 · survivor-neutral
+applies_to:
+- character
+- animation
+required_guides:
+- pose
+guide_roles:
+- pose
+use: animation-source
+animation_scope: runtime-state-keyframes
+category: actor
+requires_source_candidate: true
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 40
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: animation-review-only
+  allow_replace: false
+pipeline:
+  type: sd15-img2img-openpose
+  workflow: docs/art-direction/comfyui/actor-slinger-openpose.api.json
+  checkpoint: dreamshaper_8.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 26
+  cfg: 6.0
+  denoise: 0.56
+  candidates: 1
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    pixelart, exact same single survivor as the approved source image,
+    preserve identical mask, jacket, medical utility pack, boots, body
+    proportions, facing and palette
+  use_signature_pose: false
+  suffix: >-
+    change body pose only according to OpenPose, practical neutral survivor
+    motion with free modular hands, feet visible on one baseline, flat pure
+    magenta background touching every border, isolated cutout, chunky hard
+    pixel clusters, restrained dark values
+  negative: >-
+    different character, changed costume, gendered redesign, fixed class,
+    permanent signature weapon, sword, shield, sling, firearm, bright modern
+    hiking gear, scenery, buildings, props, floor, ground shadow, text,
+    watermark, label, smooth anti-alias, blurry, photorealistic, 3d render,
+    fantasy armor, extra limbs, missing limbs, cropped feet, changed facing,
+    multiple characters
+loras:
+- name: pixelartV3.safetensors
+  node: 2
+  base_model: SD 1.5
+  model_strength: 0.25
+  clip_strength: 0.2
+  purpose: identity를 보존하면서 포즈 경계를 하드 픽셀로 유지
+controlnets:
+- model: control_v11p_sd15_openpose_fp16.safetensors
+  loader_node: 7
+  apply_node: 8
+  strength: 1.0
+  purpose: 상태별 팔·다리 방향 고정
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 1500
+  maximum_visible_pixels: 4400
+  silhouette_tags:
+  - grounded-feet
+  - readable-pose
+  - stable-identity
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - malformed-anatomy
+  - perspective-bend
+  - identity-drift
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation
+animation:
+  draft:
+    clips:
+    - tag: idle
+      loop: true
+      fps: 5
+      frames:
+      - idle
+      - idle-breathe
+      - idle
+    - tag: walk
+      loop: true
+      fps: 10
+      frames:
+      - walk-contact-a
+      - walk-pass
+      - walk-contact-b
+      - walk-pass
+    - tag: attack
+      loop: false
+      fps: 10
+      frames:
+      - attack-windup
+      - attack-release
+      - attack-recovery
+    - tag: hit
+      loop: false
+      fps: 12
+      frames:
+      - hit
+    - tag: fall
+      loop: false
+      fps: 8
+      frames:
+      - fall
+    - tag: death
+      loop: false
+      fps: 8
+      frames:
+      - death
+poses:
+- id: idle
+  label: idle · grounded
+  seed_offset: 0
+  prompt_suffix: ', balanced ready idle, both boots locked to one baseline'
+- id: idle-breathe
+  label: idle · breathe
+  seed_offset: 0
+  prompt_suffix: ', subtle breathing settle, shoulders one pixel lower, feet locked'
+- id: walk-contact-a
+  label: walk · contact A
+  seed_offset: 0
+  prompt_suffix: ', first compact walk contact, left stride, low center of gravity'
+- id: walk-pass
+  label: walk · passing
+  seed_offset: 0
+  prompt_suffix: ', compact walk passing pose, body slightly raised'
+- id: walk-contact-b
+  label: walk · contact B
+  seed_offset: 0
+  prompt_suffix: ', opposite compact walk contact, right stride'
+- id: attack-windup
+  label: attack · windup
+  seed_offset: 0
+  prompt_suffix: ', neutral two-handed utility strike windup, hands close, no weapon'
+- id: attack-release
+  label: attack · release
+  seed_offset: 0
+  prompt_suffix: ', forceful forward modular-hand strike, no weapon or projectile'
+- id: attack-recovery
+  label: attack · recovery
+  seed_offset: 0
+  prompt_suffix: ', strike recovery, weight returning to grounded ready stance'
+- id: hit
+  label: hit reaction
+  seed_offset: 0
+  prompt_suffix: ', compact recoil from a hit, readable backward shoulder bend'
+- id: fall
+  label: fall transition
+  seed_offset: 0
+  prompt_suffix: ', falling sideways, arms braced, full body readable'
+- id: death
+  label: death key pose
+  seed_offset: 0
+  prompt_suffix: ', collapsed final pose, full body on a low baseline'

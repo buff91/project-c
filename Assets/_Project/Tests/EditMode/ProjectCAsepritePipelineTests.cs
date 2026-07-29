@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using ProjectC.EditorTools;
 using ProjectC.Gameplay;
@@ -38,6 +39,11 @@ namespace ProjectC.Tests
                 "Assets/_Project/Art/Source/Aseprite/env-floor.aseprite",
                 out string floorSlot));
             Assert.AreEqual("floor", floorSlot);
+
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(
+                "Assets/_Project/Art/Source/Aseprite/env-dungeon-backdrop.aseprite",
+                out string backdropSlot));
+            Assert.AreEqual("dungeonBackdrop", backdropSlot);
 
             Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(
                 "Assets/_Project/Art/Source/Aseprite/Actors/actor-merchant.aseprite",
@@ -81,8 +87,46 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void CatalogSlot_MapsHospitalDressing_WithStablePivots()
+        {
+            var expected = new (string fileName, string slot, Vector2 pivot)[]
+            {
+                ("env-floor-grate", "hospitalFloorGrate", new Vector2(0.5f, 0.5f)),
+                ("env-floor-cracked", "hospitalFloorCracked", new Vector2(0.5f, 0.5f)),
+                ("env-floor-service", "hospitalFloorService", new Vector2(0.5f, 0.5f)),
+                (
+                    "env-wall-pipes-rising-right",
+                    "hospitalWallPipesRisingRight",
+                    new Vector2(0.5f, 16f / 112f)
+                ),
+                (
+                    "env-wall-window-rising-left",
+                    "hospitalWallWindowRisingLeft",
+                    new Vector2(0.5f, 16f / 112f)
+                ),
+                (
+                    "env-wall-cabinet-rising-right",
+                    "hospitalWallCabinetRisingRight",
+                    new Vector2(0.5f, 16f / 112f)
+                ),
+            };
+
+            foreach ((string fileName, string slot, Vector2 pivot) in expected)
+            {
+                string path = $"Assets/_Project/Art/Source/Aseprite/{fileName}.aseprite";
+                Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(path, out string actual));
+                Assert.AreEqual(slot, actual);
+                Assert.AreEqual(pivot, ProjectCAsepritePipeline.ResolvePivotNormalized(path));
+            }
+        }
+
+        [Test]
         public void ResolvePivot_UsesStableCanvasAnchors()
         {
+            Assert.AreEqual(
+                new Vector2(0.5f, 0.5f),
+                ProjectCAsepritePipeline.ResolvePivotNormalized(
+                    "env-dungeon-backdrop.aseprite"));
             Assert.AreEqual(
                 new Vector2(0.5f, 0.5f),
                 ProjectCAsepritePipeline.ResolvePivotNormalized("env-floor.aseprite"));
@@ -165,6 +209,33 @@ namespace ProjectC.Tests
 
             Object.DestroyImmediate(untagged);
             Object.DestroyImmediate(noCurve);
+        }
+
+        [Test]
+        public void KnightSource_BakesSixTagsWithoutSwallowingLaterRanges()
+        {
+            const string source =
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
+            ActorAnimationSet set = ActorAnimationBake.ExtractSet(source, "knight");
+
+            Assert.AreEqual(6, set.clips.Count);
+            AssertClip("idle", true, 3);
+            AssertClip("walk", true, 4);
+            AssertClip("attack", false, 3);
+            AssertClip("hit", false, 1);
+            AssertClip("fall", false, 1);
+            AssertClip("death", false, 1);
+
+            void AssertClip(string tag, bool loop, int distinctFrames)
+            {
+                SpriteClip clip = set.Find(tag);
+                Assert.IsNotNull(clip, tag);
+                Assert.AreEqual(loop, clip.loop, tag);
+                Assert.AreEqual(
+                    distinctFrames,
+                    clip.frames.Where(frame => frame != null).Distinct().Count(),
+                    tag);
+            }
         }
 
         [Test]

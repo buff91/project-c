@@ -466,9 +466,9 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   `InventoryPanelController`(6×4 백팩+조합) · `DisplaySettingsPanelController` · `DebugPanelController`.
 - **ResponsiveUiLayout** — UI Toolkit엔 런타임 미디어쿼리가 없어 패널 논리 크기를 USS 클래스로 바꾸고
   `Screen.safeArea`를 패널 좌표로 환산해 노치에 대응한다. 임계값은 `UI_ARCHITECTURE.md`가 소유.
-- **OrthographicCameraFraming** — 월드 경계를 화면비에 맞춰 직교 카메라 중심/크기를 계산한다(허브 고정
-  구도). **허브/던전 배율의 값은 `playCameraSize` 하나**이며 허브 전용 필드를 두지 않는다 — 두 벌이 되면
-  한쪽이 흘러내려도 아무도 모른다(허브가 확대돼 보이던 버그의 원인). 패리티는
+- **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶는다.
+  **허브/던전 플레이 배율은 `playCameraSize` 하나**이며 허브도 맵 경계 auto-fit 없이 플레이어를
+  추종한다. 전체 맵을 보이는 `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는
   `OrthographicCameraFramingTests`가 고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
 - 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI (상세 `UI_ARCHITECTURE.md`).
   **인터랙션 트위닝은 UGUI/월드 UI에만 DOTween**(`DOTweenBootstrap`)이고, UI Toolkit

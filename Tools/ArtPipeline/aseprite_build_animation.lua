@@ -61,6 +61,7 @@ end
 sprite:setPalette(palette)
 
 local frameNumber = 0
+local pendingTags = {}
 for clipIndex = 1, #manifest.clips do
   local clip = manifest.clips[clipIndex]
   if type(clip.tag) ~= "string" or clip.tag == "" then
@@ -107,13 +108,27 @@ for clipIndex = 1, #manifest.clips do
     sprite.frames[frameNumber].duration = durationMs / 1000.0
   end
 
-  local tag = sprite:newTag(fromFrame, frameNumber)
-  tag.name = clip.tag
+  table.insert(pendingTags, {
+    name=clip.tag,
+    fromFrame=fromFrame,
+    toFrame=frameNumber,
+    loop=clip.loop and true or false
+  })
+end
+
+-- Aseprite extends a tag that currently ends on the last frame when new
+-- frames are appended. Creating tags inside the frame-building loop therefore
+-- made idle/walk/attack swallow every later clip. Freeze all frame ranges only
+-- after the complete timeline exists.
+for tagIndex = 1, #pendingTags do
+  local spec = pendingTags[tagIndex]
+  local tag = sprite:newTag(spec.fromFrame, spec.toFrame)
+  tag.name = spec.name
   tag.aniDir = AniDir.FORWARD
-  tag.repeats = clip.loop and 0 or 1
+  tag.repeats = spec.loop and 0 or 1
   tag.data = json.encode{
     project_c=true,
-    loop=clip.loop and true or false,
+    loop=spec.loop,
     source_manifest=manifestPath
   }
 end

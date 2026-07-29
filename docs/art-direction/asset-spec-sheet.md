@@ -20,6 +20,7 @@
 
 | 종류 | 캔버스(W×H) | 발/기준선 |
 |------|------------|-----------|
+| 던전 배경 다이아 | 128×64 | 중앙 |
 | 바닥 다이아 | 128×64 | 중앙 |
 | 후면 벽 | 64×112 | 아래에서 16px |
 | 계단(같은층/상행) | 128×112 | 아래에서 32px |
@@ -29,6 +30,18 @@
 | 소품 | 128×128 (포탈만 128×160) | 개별 |
 | 아이템 | 64×64 | 개별(4~12px) |
 | 마커 | 128×64 | 중앙 |
+
+---
+
+## 0. 던전 배경
+
+| 파일명 | 슬롯 | 캔버스 | 피벗 | 상태 |
+|--------|------|--------|------|------|
+| `env-dungeon-backdrop` | dungeonBackdrop | 128×64 | (0.5, 0.5) 중앙 | ✅ 팔레트 잠금 PNG 폴백 |
+
+실제 방/복도 모양을 담지 않고 전체 생성 가능 영역 한 장만 그린다. Runtime에서는 25% 알파로
+`Dungeon Backdrop` Sorting Layer에 놓는다. 정식 Aseprite 원본이 도착하면 같은 파일명으로
+저장해 임시 PNG 슬롯을 교체한다.
 
 ---
 
@@ -70,6 +83,15 @@
 | `env-floor-deep` / `env-floor-deep-raised` | deepFloor / deepRaisedFloor | 128×64 | (0.5, 0.5) |
 | `env-floor-boss` / `env-floor-boss-raised` | bossFloor / bossRaisedFloor | 128×64 | (0.5, 0.5) |
 
+**폐병원 Facility 드레싱** — 공용 바닥을 대체하는 새 지형이 아니라 seed 고정 희소 변주다.
+바닥 PNG는 `process_hospital_dressing_v1.py`가 `env-floor` 위에 합성한다.
+
+| 파일명 | 슬롯 | 캔버스 | 피벗 | 상태 |
+|--------|------|--------|------|------|
+| `env-floor-grate` | hospitalFloorGrate | 128×64 | (0.5, 0.5) | ✅ PNG 폴백 |
+| `env-floor-cracked` | hospitalFloorCracked | 128×64 | (0.5, 0.5) | ✅ PNG 폴백 |
+| `env-floor-service` | hospitalFloorService | 128×64 | (0.5, 0.5) | ✅ PNG 폴백 |
+
 ## 2. 방향형 타일 (정적 · 1프레임) — 화면 기준 좌/우 상승
 
 | 파일명 | 슬롯 | 캔버스 | 피벗 (발 px) | 상태 |
@@ -93,6 +115,9 @@
 | `env-wall-rising-left` | rearWallRisingLeft | 64×112 | (0.5, 0.143) 16px | 정적 |
 | `env-wall-torch-rising-right` | rearWallTorchRisingRight | 64×112 | (0.5, 0.143) 16px | ★ 비상등/작업등 `idle` 루프 권장 |
 | `env-wall-torch-rising-left` | rearWallTorchRisingLeft | 64×112 | (0.5, 0.143) 16px | ★ 비상등/작업등 `idle` 루프 권장 |
+| `env-wall-pipes-rising-right/left` | hospitalWallPipesRisingRight/Left | 64×112 | (0.5, 0.143) 16px | ✅ PNG 폴백 |
+| `env-wall-window-rising-right/left` | hospitalWallWindowRisingRight/Left | 64×112 | (0.5, 0.143) 16px | ✅ PNG 폴백 |
+| `env-wall-cabinet-rising-right/left` | hospitalWallCabinetRisingRight/Left | 64×112 | (0.5, 0.143) 16px | ✅ PNG 폴백 |
 
 ## 4. 액터 (애니메이션) — 캔버스 96×128, 피벗 (0.5, 0.04)
 
@@ -145,22 +170,24 @@
 | `item-blast-powder` | blastPowder | (0.5, 0.156) 10px |
 | `item-frost-shard` | frostShard | (0.5, 0.125) 8px |
 
-## 8. UI 아이콘 (별도 · UI Toolkit) — **64-레짐 유지**
+## 8. UI 아이콘 (별도 · UI Toolkit) — **32px 소스 / 24px PC 표시**
 
 카탈로그 슬롯이 아니라 `Art/Runtime`에서 직접 참조. 도트 스프라이트.
-UI Toolkit이 픽셀 크기로 소비하므로 **해상도 상향 대상이 아니다** (`ui-*`는 임포터가 PPU 64 유지).
+UI Toolkit이 픽셀 크기로 소비하므로 `ui-*` 액션 아이콘은 **32×32로 마감한 뒤 PC HUD에서 24×24로 표시**한다.
+임포터는 PPU 64를 유지한다.
 
 | 파일명 | 캔버스 | 용도 |
 |--------|--------|------|
 | `ui-heart-full` | 24×21 | HP 하트(채움) |
 | `ui-heart-empty` | 24×21 | HP 하트(빈) |
-| `ui-settings` / `ui-menu` | 24×24 | 아이콘 전용 전역 도구 |
-| `ui-rotate-left` / `ui-rotate-right` | 24×24 | 아이콘 전용 시점 회전 |
-| `ui-backpack` / `ui-wait` | 24×24 | 아이콘+텍스트 행동 |
-| `ui-melee` / `ui-ranged` | 24×24 | 전투 자세 토글 |
-| `ui-interact` | 24×24 | 문맥 행동의 공용 손 아이콘 |
+| `ui-settings` / `ui-menu` | 32×32 | 아이콘 전용 전역 도구 |
+| `ui-rotate-left` / `ui-rotate-right` | 32×32 | 아이콘 전용 시점 회전 |
+| `ui-backpack` / `ui-wait` | 32×32 | 아이콘+텍스트 행동 |
+| `ui-melee` / `ui-ranged` | 32×32 | 전투 자세 토글 |
+| `ui-interact` | 32×32 | 문맥 행동의 공용 손 아이콘 |
 | `ui-action-hex` / `ui-action-hex-hover` | 72×64 | 방사형 문맥 메뉴의 기본/호버 육각 프레임 |
-| *(확장 예정)* | 24×24 계열 | 행동별 문맥 아이콘, 9-slice 창 모서리, 다이아 글로우 |
+| `ui-main-menu-backdrop` | 960×540 | PC 메인 메뉴 16:9 배경 (`process_ui_backdrops_v1.py`) |
+| *(확장 예정)* | 32×32 계열 | 행동별 문맥 아이콘, 9-slice 창 모서리, 다이아 글로우 |
 
 UI 아이콘은 의미를 파일명/UXML이 소유하고 `DesignSystem.uss`가 Sprite만 연결한다.
 설명·경고·층/높이 같은 정보까지 아이콘화하지 않는다.

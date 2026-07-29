@@ -9,6 +9,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from torchstone_palette import lock_rgba_to_palette
+
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime"
@@ -52,7 +54,7 @@ def draw_frame(path: Path, *, hover: bool) -> None:
     draw.point((53, 60), fill=VOID)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path)
+    lock_rgba_to_palette(image).save(path)
 
 
 def main() -> None:

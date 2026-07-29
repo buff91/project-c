@@ -19,15 +19,37 @@
   에디터/개발 빌드 설정창에서 `AUTO/MOBILE/PC`와 대표 해상도를 즉시 바꿀 수 있다. 모든 화면 루트는
   `ui-touch/ui-pointer` 입력 프로필을 받는다. 터치 표준 컨트롤은 논리 56px, 밀집 슬롯은 최소 44px,
   백팩 셀은 52px을 유지하고 짧은 화면에서는 본문을 스크롤한다.
-  **허브와 던전의 배율은 같다** — 허브 auto-fit의 최소 크기가 `playCameraSize`(5.2)다.
-  전용 필드(`hubCameraMinimumSize` 2.55)를 **제거했다**: 값이 두 벌이면 한쪽이 흘러내려도
-  아무도 모르고, 실제로 그래서 같은 타일이 허브에서 1.4배 크게 보였다.
-  `OrthographicCameraFraming.Fit`이 `max(minimumSize, halfHeight, halfWidth/aspect)`라
-  PC 가로에서는 최소값이 지배해 던전과 정확히 같고, 세로로 긴 창에서만 캠프를 담을 만큼
-  물러난다. 패리티는 계약 테스트(`OrthographicCameraFramingTests`)로 고정했다.
+  메인 메뉴는 팔레트 잠금된 `ui-main-menu-backdrop.png`를 화면 비율에 맞춰 crop하고,
+  중앙 저정보 영역 위에 기존 패널을 놓는다. 배경 소스·프롬프트·프로세서는 각각
+  `docs/art-direction/project-c-main-menu-backdrop-source-v1*`와
+  `Tools/ArtPipeline/process_ui_backdrops_v1.py`에 있다.
+  메인·허브·던전은 같은 `PrototypePanelSettings`와 현재 Screen/Game View 해상도를 이어받는다.
+  **PC 월드 카메라는 허브·던전 모두 `playCameraSize` 2.3을 그대로 쓴다.** 허브는 13×9 캠프를
+  한 화면에 넣으려고 물러나는 auto-fit을 제거하고 던전처럼 플레이어를 추종한다. 따라서 같은 타일과
+  액터는 씬을 바꿔도 같은 화면 크기로 보인다. 전체 조감 배율 `debugCameraSize`는 던전 DebugAll에서만
+  허용한다. 이 분기는 `OrthographicCameraFramingTests`가 고정하며, 동일 1280×720 비교본은
+  `docs/captures/lobby-game-scale-{hub,dungeon}-1280x720.png`다.
+- **던전 화면 톤 / 메인 원정자**: PC Game View는 청흑 void·불투명 panel 안개 위에
+  웜 그레이 콘크리트를 놓고, 호박색 물리광과 청록 신호색은 국소 표식에만 쓴다. 안개 다이아몬드는
+  `Dungeon Backdrop` Sorting Layer에서 `Default` 월드보다 항상 뒤에 그린다. 교체 가능한
+  `dungeonBackdrop` 슬롯에는 팔레트 잠금 128×64 배경판을 연결하고 런타임 알파를 25%로 제한해,
+  미탐색 구조를 노출하지 않으면서 순흑색과 바닥 사이에 낮은 대비의 재질층만 만든다. 예전의 큰 음수
+  `sortingOrder`는 SpriteRenderer 범위에서 양수로 되감겨 바닥 앞에 겹쳤다.
+  Facility 지역은 `hospitalFloor{Grate,Cracked,Service}`와
+  `hospitalWall{Pipes,Window,Cabinet}Rising*` 9개 교체 슬롯을 seed 고정으로 희소 배치한다.
+  바닥 드레싱은 공용 바닥 위에 합성한 완전한 타일이라 장식의 투명 여백이 void 구멍으로 뚫리지 않는다.
+  얕은 층 앰비언트 0.5·플레이어 광원 반경 2·벽 등잔 세기 0.8로 중앙 광원 웅덩이와 어두운 벽을
+  분리하며, `actorVisualScale` 0.72는 액터 그림만 줄이고 HP·마커·접촉 그림자는 격자 크기에 남긴다.
+  메인 원정자는 정식 `actor-knight.aseprite`의 호흡기·폐허 방호구 실루엣이며
+  `idle/walk/attack/hit/fall/death` 태그가 카탈로그에 연결돼 있다. 액터 레시피는 conform 뒤
+  불투명 픽셀 기준 teal 4%·warning 2% 상한을 자동 검사한다.
 - **다층 월드 입력**: `IsoTapInput.TilePicker`가 실제 렌더된 아이소 다이아몬드를
   `VisualPosition` 기준으로 고른다. 겹치면 **현재 활성 층 → Hole 미리보기 층 →
   같은 레이어의 렌더 정렬 순서**다. 전체 elevation 역산 방식으로 되돌리지 말 것.
+- **위험 프롭 시작 배치**: 폭발통은 `DungeonPropPlacementRules`가 시작점에서 최소 2칸 떨어진
+  일반 바닥 중 적·아이템·계단·시설 좌표가 아닌 곳을 고른다. 격자상 다른 칸이어도 90도 회전
+  시 입구와 같은 화면 세로축에 포개지는 대각선 좌표는 제외하며, 안전 좌표가 없으면 생성하지
+  않는다. PC 시작 화면 근거는 `docs/captures/barrel-safe-start-v2.png`다.
 - **수직 이동 의미**:
   - `Stairs`: 같은 던전 층의 elevation을 **걸어서** 이동. **±1 단만** 담당한다.
   - `Ladder`: **계단과 다른 것이다** — 한 번에 여러 단을 오르고, **명시적 링크로만** 통과한다
@@ -162,14 +184,13 @@
   **128×64 타일 / PPU 128 레짐으로 상향**했다(`ui-*`만 64 유지, 절차 생성 폴백은 64-레짐인 채
   스프라이트별 PPU로 공존). 가독성 규칙·발주 순서는
   `docs/art-direction/project-c-art-improvement-plan-v2.md` 참조.
-  - ⚠ **공존의 대가: 절차 폴백 액터가 자산 액터보다 작게 렌더된다**(2026-07-26 `59c5f80` 실측).
-    아트가 있는 3종(약탈자·슬러지·낡은 경비 드론)은 월드 **0.75×1.00**인데, 절차 폴백인
-    **투석 약탈자는 0.50×0.75**, **합선 드론은 0.59×0.66**이다. 128-레짐 상향이 자산만 1.5배로
-    키우고 폴백은 옛 규격에 남겨 둔 결과다. 스케일 자체는 `fa6ac29`의 PPU 디커플링대로 정상
-    동작하지만, **투석 약탈자는 약탈자와 같은 인간형인데 키가 25% 작아** 설정이 아니라 결손으로
-    읽힌다. 해소는 전용 아트 발주(플랜 v2 배치 ②)이며 코드 수정이 아니다.
-  - ⚠ **적에 `Animator`가 붙어 있지 않다** — `SpriteClipAnimator`(`6841f0c`)가 배선됐는데
-    스폰된 적 전원의 `Animator`가 `null`이다. 클립 베이크·재생기는 있고 **적 쪽 연결만 비어 있다.** 허브 웜 디오라마 패스는 유지 — 허브는
+  - ⚠ **공존의 대가: 남은 절차 폴백 액터가 자산 액터보다 작다.** `actor-slinger.aseprite`가
+    인간형 투석 약탈자 슬롯을 채워 이쪽 배율 결손은 해소됐다. 남은 명시적 결손은
+    **합선 드론(월드 0.59×0.66)**과 전용 원본이 없는 **감시자**다. 해소는
+    `actor-arc-drone`/`actor-grave-warden` 전용 아트 발주(플랜 v2 배치 ②)이며 코드 스케일 보정이 아니다.
+  - 적도 생성 시 `SpriteClipAnimator`를 붙인다. Unity `Animator`가 `null`인 것은 의도된 구조이며,
+    클립 없는 PNG/절차 폴백은 같은 재생기에서 정지 1프레임 no-op으로 동작한다.
+    허브 웜 디오라마 패스는 유지 — 허브는
   `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
   기준으로 횃불에 데워진 석재 + 토치 골드 모닥불/횃불 + 틸 포탈을 사용한다.
   `IsoPrototypeDemo`의 허브 바닥/전면 두께/장식 벽/로컬 광원만 분기하며, 던전 카탈로그와
@@ -205,12 +226,35 @@
   자동 계승한다. 기본 화면은 대상·이번 내용·결과 다양성만 받고 모델·전체 프롬프트·seed·Steps·
   CFG·denoise는 `고급 설정`에서만 편집한다. 메인 원정자 `actor-knight`, 정적 환경 9슬롯,
   환경 idle 루프 4슬롯이 이 합성 레지스트리에 등록돼 있다.
+  **메인 원정자 vertical slice는 2026-07-28 Unity 반영까지 완료했다.**
+  `character-runtime-base-v2`로 현재 Game View 비율을 보존한 기본형을 승인하고,
+  표준 OpenPose BODY_18 가이드의 `character-action-keyframes-v6`로 11개 키포즈를 만든 뒤
+  정식 `actor-knight.aseprite` 13프레임/6태그로 승격했다. `knight` 카탈로그 슬롯과
+  `actorAnimations`가 같은 원본을 보며, 전후 화면과 생성 판정 기록은
+  `docs/art-direction/player-character-vertical-slice.md`가 소유한다.
   `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
   실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
   `apply_requests`만 Codex Spark Scheduled가 실제 Unity/Aseprite 참조를 조사해 적용한다.
   봇은 `com.project-c.art-review` launchd 서비스로 상시 실행하며, 최종 보간·발 기준선·실루엣과
   정식 슬롯 승격은 여전히 사람의 명시적 채택과 게임 반영 요청 뒤에만 수행한다.
   `Art/Runtime` PNG는 원본이 없는 슬롯의 폴백이며 최종본으로 직접 수정하지 않는다.
+  2026-07-28 임시 통합 패스에서는 환경→UI→액터 순서로 각 단계를 Unity 캡처 승인한 뒤 다음
+  프로세서를 실행했다. 메인 메뉴 배경, UI 아이콘/9-slice/행동 프레임, 환경·액터·소품·아이템
+  폴백을 모두 공용 `.gpl`에 다시 잠갔고, 결과는
+  `docs/captures/integrated-art-pass-{main-menu,hub,dungeon}.png`에 보관한다.
+  후속 hero-room 패스는 기준 이미지+기존 환경 시트를 참조한 built-in ImageGen 소스
+  `project-c-hospital-dressing-source-v1.png`를 `process_hospital_dressing_v1.py`로 conform하고,
+  `docs/captures/hospital-hero-room-art-quality-v1.png`에서 카메라·조명·드레싱을 함께 승인했다.
+  아이템 fallback도 같은 단계 게이트를 따른다. 현재 `docs/art-direction/item-sources-v3/`의
+  단일 오브젝트 소스 12장은 built-in ImageGen provenance이며 이를 ComfyUI로 소급 표기하지 않는다.
+  `item-static-v1 + item-potion` ComfyUI 레시피를 추가해 포션 1종을 먼저 재생성했고, 두 번째 조합
+  후보는 64×64/하드 알파/가시 픽셀 게이트를 통과했다. 비교본은
+  `docs/captures/item-potion-comfy-gate-v2.png`이며 다음 아이템 일괄 생성은 이 한 종의 승격 판단
+  뒤에 진행한다. `process_items_v3.py`는 두 소스 계열을 64×64/하드 알파/공용 팔레트/아이템별
+  피벗 여백으로 마감하며,
+  `IsoVisualCatalog`와 인벤토리 USS의 기존 12슬롯 파일명을 그대로 교체한다. 액션 UI 9종은
+  32×32로 마감해 PC HUD에서 24×24로 표시한다. Unity 실화면 근거는
+  `docs/captures/item-ui-integrated-{hud,inventory}-v3.png`다.
 - **액터 애니메이션**: 공식 태그 6종(idle/walk/attack/hit/fall/death)은 Core `SpriteClipTags`
   하나가 소유한다 — 베이크(에디터)와 재생 트리거(게임플레이)가 같은 상수를 봐야 문자열이 갈라져
   클립이 조용히 무시되는 일이 없다. 시간 → 프레임 선택 수학은 `SpriteClipRules.FrameAt`이며
@@ -316,9 +360,13 @@
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준** — **숫자에는 반드시 기준 커밋 해시를 함께 적는다.** 해시 없는 개수는
   언제 잰 것인지 알 수 없어 검증이 아니라 소문이 되고, 실제로 낡은 채 여러 세션을 살아남았다.
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **904/904 통과** (`37dd78a`, 2026-07-26 실측).
-  - Unity EditMode `ProjectC.Tests.EditMode` **1052/1052 통과** (`59c5f80`, 2026-07-26 에디터 실측, 25.9s).
-  - Unity PlayMode `ProjectC.Tests.PlayMode` **2/2 통과** (`59c5f80`, 같은 세션, 4.0s) —
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **904/904 통과** (`fa6c90e` + 미커밋 작업 트리,
+    2026-07-29 실측).
+  - ArtPipeline Python 회귀 **106/106 통과** (`fa6c90e` + 미커밋 작업 트리, 2026-07-28 실측).
+  - Unity EditMode `ProjectC.Tests.EditMode` **1056/1056 통과** (`fa6c90e` + 미커밋 작업 트리,
+    2026-07-29 에디터 실측, 20.2s).
+  - Unity PlayMode `ProjectC.Tests.PlayMode` **2/2 통과** (`fa6c90e` + 미커밋 작업 트리,
+    같은 세션, 2.2s) —
     ① 폐병원 B2 → 8F 보스 → 출구(치트 훅과 SPACE 경로 양쪽) ② 침수된 금고 구역 1 → 보스 없는 최심부 출구.
   - **128-레짐 전환(`4ab4438`) 이후 첫 에디터 회귀다.** 임포터 PPU를 64→128로 바꾸고 자산을 전량
     ×2 재생성한 뒤 에디터가 처음 열린 것이라 여기가 가장 큰 미지수였는데, 재임포트·컴파일

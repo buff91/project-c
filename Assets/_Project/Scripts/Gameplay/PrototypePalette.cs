@@ -77,7 +77,7 @@ namespace ProjectC.Gameplay
         internal Color32 StoneShadow =>
             _catalog != null
                 ? _catalog.dungeonStoneShadow
-                : new Color32(10, 13, 19, 255);
+                : new Color32(31, 31, 27, 255);
 
         internal Color32 StoneLight =>
             _catalog != null ? _catalog.dungeonStoneLight : _fallback.RaisedTop;
@@ -85,7 +85,7 @@ namespace ProjectC.Gameplay
         internal Color32 WallShadow =>
             _catalog != null
                 ? _catalog.dungeonWallShadow
-                : new Color32(10, 13, 19, 255);
+                : new Color32(43, 39, 34, 255);
 
         internal Color32 Wall =>
             _catalog != null
@@ -95,7 +95,7 @@ namespace ProjectC.Gameplay
         internal Color32 WallLight =>
             _catalog != null
                 ? _catalog.dungeonWallLight
-                : new Color32(207, 192, 174, 255);
+                : new Color32(113, 97, 80, 255);
 
         internal Color32 Moss =>
             _catalog != null

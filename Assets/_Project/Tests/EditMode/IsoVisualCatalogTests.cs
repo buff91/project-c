@@ -170,10 +170,15 @@ namespace ProjectC.Tests
         public void DungeonPalette_DefaultRolesUseTorchstoneTokens()
         {
             Assert.AreEqual(new Color32(5, 7, 12, 255), _catalog.dungeonVoid);
+            Assert.AreEqual(new Color32(10, 13, 19, 255), _catalog.dungeonFog);
+            Assert.AreEqual(new Color32(31, 31, 27, 228), _catalog.dungeonFogEdge);
             Assert.AreEqual(new Color32(10, 13, 19, 255), _catalog.dungeonSeam);
-            Assert.AreEqual(new Color32(74, 64, 56, 255), _catalog.dungeonStone);
-            Assert.AreEqual(new Color32(152, 134, 111, 255), _catalog.dungeonStoneLight);
-            Assert.AreEqual(new Color32(207, 192, 174, 255), _catalog.dungeonWallLight);
+            Assert.AreEqual(new Color32(31, 31, 27, 255), _catalog.dungeonStoneShadow);
+            Assert.AreEqual(new Color32(82, 72, 62, 255), _catalog.dungeonStone);
+            Assert.AreEqual(new Color32(113, 97, 80, 255), _catalog.dungeonStoneLight);
+            Assert.AreEqual(new Color32(43, 39, 34, 255), _catalog.dungeonWallShadow);
+            Assert.AreEqual(new Color32(74, 64, 56, 255), _catalog.dungeonWall);
+            Assert.AreEqual(new Color32(113, 97, 80, 255), _catalog.dungeonWallLight);
             Assert.AreEqual(new Color32(255, 189, 65, 255), _catalog.dungeonAmber);
             Assert.AreEqual(new Color32(255, 213, 84, 255), _catalog.dungeonAmberCore);
             Assert.AreEqual(new Color32(79, 167, 160, 255), _catalog.dungeonMagic);
@@ -192,6 +197,41 @@ namespace ProjectC.Tests
             Assert.AreSame(torchRight, _catalog.RearWallFor(true, true));
             Assert.AreSame(wallLeft, _catalog.RearWallFor(true, false));
             Assert.AreSame(wallRight, _catalog.RearWallFor(false, true));
+        }
+
+        [Test]
+        public void HospitalFloorFor_UsesSparseDeterministicSlots()
+        {
+            Sprite grate = MakeSprite();
+            Sprite cracked = MakeSprite();
+            Sprite service = MakeSprite();
+            _catalog.hospitalFloorGrate = grate;
+            _catalog.hospitalFloorCracked = cracked;
+            _catalog.hospitalFloorService = service;
+
+            Assert.AreSame(grate, _catalog.HospitalFloorFor(0));
+            Assert.AreSame(cracked, _catalog.HospitalFloorFor(3));
+            Assert.AreSame(service, _catalog.HospitalFloorFor(6));
+            Assert.IsNull(_catalog.HospitalFloorFor(1));
+            Assert.AreSame(grate, _catalog.HospitalFloorFor(8));
+        }
+
+        [Test]
+        public void RearWallFor_UsesHospitalDecorationBeforeBaseWall()
+        {
+            Sprite baseWall = MakeSprite();
+            Sprite pipes = MakeSprite();
+            Sprite window = MakeSprite();
+            Sprite cabinet = MakeSprite();
+            _catalog.rearWallRisingRight = baseWall;
+            _catalog.hospitalWallPipesRisingRight = pipes;
+            _catalog.hospitalWallWindowRisingRight = window;
+            _catalog.hospitalWallCabinetRisingRight = cabinet;
+
+            Assert.AreSame(pipes, _catalog.RearWallFor(false, true, 0));
+            Assert.AreSame(window, _catalog.RearWallFor(false, true, 1));
+            Assert.AreSame(cabinet, _catalog.RearWallFor(false, true, 2));
+            Assert.AreSame(baseWall, _catalog.RearWallFor(false, true, 3));
         }
 
         [Test]

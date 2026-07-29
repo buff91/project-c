@@ -426,6 +426,27 @@ def _join_prompt(*parts: str) -> str:
     return ", ".join(part.strip().strip(",") for part in parts if part.strip())
 
 
+def _merge_quality_gates(
+    method_gates: dict[str, Any],
+    subject_gates: dict[str, Any],
+) -> dict[str, Any]:
+    """Keep reusable checks in methods and identity checks in subjects."""
+    merged = copy.deepcopy(method_gates)
+    for key, value in subject_gates.items():
+        if key in {"silhouette_tags", "reject_if"}:
+            combined: list[Any] = []
+            for item in [
+                *(merged.get(key, []) or []),
+                *(value or []),
+            ]:
+                if item not in combined:
+                    combined.append(copy.deepcopy(item))
+            merged[key] = combined
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
 def _shot_document(
     *,
     shot_id: str,
@@ -600,10 +621,25 @@ def resolve(
             "id": world.id,
             "name": world.name,
         }
-    for optional in ("loras", "controlnets", "quality_gates", "review",
+    for optional in ("loras", "controlnets", "review",
                      "animation", "effect_variants"):
         if optional in method.document:
             document[optional] = copy.deepcopy(method.document[optional])
+    method_gates = _mapping(
+        method.document.get("quality_gates", {}),
+        "method quality_gates",
+    )
+    subject_gates = (
+        _mapping(
+            lead.document.get("quality_gates", {}),
+            "subject quality_gates",
+        )
+        if len(members) == 1
+        else {}
+    )
+    quality_gates = _merge_quality_gates(method_gates, subject_gates)
+    if quality_gates:
+        document["quality_gates"] = quality_gates
 
     # 대상의 가이드 이미지를 역할 → 노드로 옮긴다.
     uploads = dict(pipeline.get("uploads", {}))

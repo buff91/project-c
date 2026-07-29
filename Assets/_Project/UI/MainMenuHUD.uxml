@@ -7,12 +7,12 @@
     <ui:VisualElement name="main-menu-root" class="main-menu-root">
         <ui:VisualElement class="main-menu-vignette">
             <ui:Label text="PROJECT C" class="main-menu-title" />
-            <ui:Label text="깊이를 읽고, 살아서 돌아와라" class="main-menu-subtitle" />
+            <ui:Label text="높이를 읽고, 살아서 돌아와라" class="main-menu-subtitle" />
             <ui:VisualElement class="main-menu-divider" />
 
             <ui:VisualElement name="main-story-slot" class="main-story-slot">
-                <ui:Label text="왕국 아래 잠든 문이 다시 열렸다." class="main-story-kicker" />
-                <ui:Label text="캠프에서 원정을 준비하고, 잊힌 심연의 끝을 찾아라." class="main-story-copy" />
+                <ui:Label text="폐병원의 봉쇄선이 다시 열렸다." class="main-story-kicker" />
+                <ui:Label text="B2에서 원정을 시작해 감시자를 처치하고, 옥상 출구를 확보하라." class="main-story-copy" />
             </ui:VisualElement>
 
             <ui:VisualElement class="main-menu-actions">

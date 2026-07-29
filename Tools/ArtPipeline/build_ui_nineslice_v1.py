@@ -10,6 +10,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from torchstone_palette import lock_rgba_to_palette
+
 OUT = Path(__file__).resolve().parents[2] / "Assets/_Project/Art/Runtime"
 
 VOID = (5, 7, 12, 255)
@@ -87,10 +89,14 @@ def gauge_tick():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    window_frame(S_LIT, STONE, S_DIM).save(OUT / "ui-window-frame.png")
-    window_frame(ICE, TEAL, TEAL_BG).save(OUT / "ui-window-frame-teal.png")
-    glow_frame().save(OUT / "ui-glow-frame.png")
-    gauge_tick().save(OUT / "ui-gauge-tick.png")
+    lock_rgba_to_palette(window_frame(S_LIT, STONE, S_DIM)).save(
+        OUT / "ui-window-frame.png"
+    )
+    lock_rgba_to_palette(window_frame(ICE, TEAL, TEAL_BG)).save(
+        OUT / "ui-window-frame-teal.png"
+    )
+    lock_rgba_to_palette(glow_frame()).save(OUT / "ui-glow-frame.png")
+    lock_rgba_to_palette(gauge_tick()).save(OUT / "ui-gauge-tick.png")
     print(f"wrote 4 Torchstone 9-slice UI sprites to {OUT}")
 
 

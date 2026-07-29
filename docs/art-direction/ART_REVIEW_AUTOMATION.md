@@ -153,10 +153,12 @@ python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가
 | 새 제작 단계 | `comfyui/methods/<method-id>.yaml` | ComfyUI 워크플로, 모델·LoRA, 생성값, 승인 소스 요구 |
 
 현재 메인 캐릭터는 `subjects/actor-knight.yaml`이다. 이름은 원정자지만 직업·영웅 선택이
-없으므로 컨셉 단계에서도 검·방패 같은 직업 장비를 정체성에 굽지 않는다. 권장 계보는
-`concept-sdxl-v1 → 승인 → character-idle-v1 → 승인 →
-character-action-keyframes-v5`다. 기본 스프라이트와 액션 키프레임은 모두 같은 승인 후보를
-identity 입력으로 쓰며, 각 샷의 OpenPose만 달라진다.
+없으므로 컨셉 단계에서도 검·방패 같은 직업 장비를 정체성에 굽지 않는다. 기존 Game View에서
+검증된 정적 원정자는 버전 고정 512 identity guide로 만들고
+`character-runtime-base-v2 → 승인 → character-action-keyframes-v6`로 이어 간다.
+신규 액터는 앞에 `concept-sdxl-v1 → 승인`을 붙인다. 기본 스프라이트와 액션 키프레임은
+같은 승인 후보를 identity 입력으로 쓰며, 각 샷의 OpenPose만 달라진다. 해부/피벗 검사는
+method, 마스크·팩·고정 무기 금지처럼 캐릭터 고유 검사는 subject가 소유하고 합성 시 병합된다.
 
 정적 환경 대상은 mid/deep/boss 기본·raised 바닥, hole, weak-floor, ladder 9종이 등록돼 있다.
 각 대상 YAML이 자신의 정확한 캔버스와 피벗을 소유한다. 환경 루프 대상은 campfire, portal,
@@ -230,8 +232,9 @@ base seed에 넣고 후보 수를 1로 둔다.
 승인 후보 카드의 **다음 단계 생성**은 후보 ID를 폼에 넘긴다. img2img 제작 방법을 고르면
 승인 시 보관한 `approvals/.../raw.png`가 실제 ComfyUI 입력 노드에 연결된다.
 
-- 원정자/캐릭터: `concept-sdxl-v1 → 컨셉 후보 승인 → character-idle-v1 → 기본 스프라이트 승인 →
-  character-action-keyframes-v5 → Aseprite 애니 초안`
+- 기존 메인 원정자: 현재 정적 identity guide → `character-runtime-base-v2` → 기본 스프라이트 승인 →
+  `character-action-keyframes-v6` → Aseprite 애니 초안
+- 신규 캐릭터: `concept-sdxl-v1 → 컨셉 후보 승인` 뒤에 위 기본/액션 단계를 연결
 - VFX: `effect-concept-sdxl-v1 → effect-refine-img2img-v1 → Aseprite의 burst/idle-loop`
 - 정적 환경 한 슬롯: `environment-concept-sdxl-v1 → 승인 →
   environment-static-refine-v1 → Aseprite/Unity`
@@ -271,6 +274,9 @@ python3 Tools/ArtPipeline/art_runner.py compose-submit \
 생성 모델이 seed마다 마젠타 색을 조금 바꾸므로 액터·효과 레시피는 `key_color: auto`를 쓴다.
 테두리 중앙값으로 배경색을 찾는다. 액터는 `trim_detached: true`로 본체와 분리된 잔여
 노이즈를 제거하지만, 이펙트는 분리된 파티클을 보존하려고 `false`로 둔다.
+`quality_gates.color_area_limits`는 conform된 PNG의 투명 픽셀을 제외하고, 지정한 RGB 그룹이
+차지하는 비율을 잰다. 예를 들어 메인 원정자는 teal 4%·warning 2% 상한을 두어 신호색 한 점은
+허용하되 의상 전체가 청록/주황으로 드리프트한 후보는 자동 거절한다.
 
 검사:
 

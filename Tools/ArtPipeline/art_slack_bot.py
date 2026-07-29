@@ -883,7 +883,7 @@ def diversity_candidate_count(
         raise ReviewError(f"Unknown diversity preset {preset!r}")
     if recipe is not None and recipe.is_multi_shot:
         # 키프레임 레시피의 후보 수는 "한 장"이 아니라 전체 샷 세트 수다.
-        # 액터 10샷에서 일반 6장을 그대로 쓰면 한 클릭으로 60장을 만든다.
+        # 액터 10~11샷에서 일반 6장을 그대로 쓰면 한 클릭으로 60장 이상 만든다.
         return {"focused": 1, "balanced": 1, "wide": 2}[preset]
     return DIVERSITY_PRESETS[preset]
 

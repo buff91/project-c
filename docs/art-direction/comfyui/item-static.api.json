@@ -1,0 +1,119 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "zavychromaxl_v100.safetensors"
+    },
+    "_meta": {
+      "title": "Project-C SDXL Checkpoint"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["1", 0],
+      "clip": ["1", 1],
+      "lora_name": "project-c-isopixel-sdxl-v1.safetensors",
+      "strength_model": 0.3,
+      "strength_clip": 0.3
+    },
+    "_meta": {
+      "title": "IsoPixel Structure"
+    }
+  },
+  "3": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["2", 0],
+      "clip": ["2", 1],
+      "lora_name": "project-c-envy-junkworld-xl01.safetensors",
+      "strength_model": 0.2,
+      "strength_clip": 0.2
+    },
+    "_meta": {
+      "title": "Junkworld Material"
+    }
+  },
+  "10": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["3", 0],
+      "clip": ["3", 1],
+      "lora_name": "project-c-pixelart-redmond-sdxl-v1-lite64.safetensors",
+      "strength_model": 0.55,
+      "strength_clip": 0.55
+    },
+    "_meta": {
+      "title": "PixelArtRedmond"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["10", 1],
+      "text": "Pixel Art, PixArFK, junkworld, single 2D inventory sprite, one isolated rugged emergency healing ampoule, post-apocalyptic abandoned hospital survivor item, squat rust-red medical canister, dark steel cap, chipped off-white medical cross plate, wrapped rubber grip, three-quarter isometric game-item view, simple strong readable silhouette, centered with generous empty border, full-bleed flat solid chroma-key magenta RGB 255 0 255 background touching every image border, icon floating in empty space, no ground plane, absolutely no shadow, deliberate hard-edged pixel clusters, limited color ramps, restrained Project-C colors, readable after nearest-neighbor reduction to 64 pixels"
+    },
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["10", 1],
+      "text": "multiple objects, contact sheet, fantasy potion, cork bottle, alchemy flask, ornate magic, character, hand, scenery, floor, ground, platform, pedestal, contact shadow, cast shadow, drop shadow, ambient shadow outside object, horizon, gradient background, beige background, gray background, transparent glass, text, letters, numbers, label, watermark, photorealism, smooth 3d, vector art, painterly blur, soft edges, cyan body"
+    },
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "6": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Item Source Canvas"
+    }
+  },
+  "7": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["10", 0],
+      "positive": ["4", 0],
+      "negative": ["5", 0],
+      "latent_image": ["6", 0],
+      "seed": 73101,
+      "steps": 28,
+      "cfg": 6.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "Fixed Seed Item Draft"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["7", 0],
+      "vae": ["1", 2]
+    },
+    "_meta": {
+      "title": "Decode Item"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["8", 0],
+      "filename_prefix": "project-c/item-static"
+    },
+    "_meta": {
+      "title": "Save Item Draft"
+    }
+  }
+}

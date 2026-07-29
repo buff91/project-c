@@ -1,6 +1,6 @@
 # AI → Aseprite 마감 워크플로 (솔로 제작 실전)
 
-> 전제: **무통제 AI 이미지 생성은 컨셉·무드용으로만 유효**하다. PPU64 그리드, 발 피벗 고정,
+> 전제: **무통제 AI 이미지 생성은 컨셉·무드용으로만 유효**하다. PPU128 그리드, 발 피벗 고정,
 > 태그별 프레임 정합을 AI가 못 맞추므로 **런타임 에셋은 Aseprite에서 손마감**해야 한다.
 > 이 문서는 "AI로 뽑은 그림"을 우리 파이프라인이 받는 규격까지 끌고 오는 절차다.
 >
@@ -54,7 +54,7 @@
 
 ## 2단계 — 캔버스 세팅 (Aseprite)
 
-- 슬롯 규격의 **정확한 W×H**로 새 문서. (예: 액터 48×64, 아이템 32×32, 바닥 64×32)
+- 슬롯 규격의 **정확한 W×H**로 새 문서. (예: 액터 96×128, 아이템 64×64, 바닥 128×64)
 - 팔레트를 0단계 `.gpl`로 로드. **Indexed 모드** 권장(팔레트 이탈 차단).
 - 카테고리별 **템플릿 파일** 하나씩 만들어 두면 반복이 빨라진다:
   가이드(발 기준선·타일 다이아 외곽) + 팔레트 + 빈 태그(idle/walk/attack/hit/fall/death) 프리셋.
@@ -88,15 +88,17 @@
 
 ## 6단계 — Unity 자동 처리 확인
 
-- 복귀 시 자동: Point / PPU64 / MipOff / 무압축 / Canvas 피벗 / (다중 프레임 시) AnimationClip.
+- 복귀 시 자동: Point / PPU128(`ui-*`만 64) / MipOff / 무압축 / Canvas 피벗 /
+  (다중 프레임 시) AnimationClip.
 - 첫 프레임이 `ProjectCEnvironmentCatalog` 대응 슬롯에 자동 연결.
 - `Project-C > Art > Aseprite > Validate Sources` 실행 → 파일명·규격·프레임 경고 0 확인.
 
 ## 7단계 — 실기 검증
 
-- **Unity MCP**로 실제 Play 캡처: 모바일 세로 + PC 가로 각각.
+- **Unity MCP**로 실제 Play 캡처: 현재 검증 타깃인 PC 가로 Game View.
   FOV 3상태(Unknown/Explored/Visible)에서 톤이 유지되는지, 발/피벗이 타일에 정확히 앉는지 확인.
-- 회귀: EditMode `ProjectC.Tests.EditMode` **673** / PlayMode `ProjectC.Tests.PlayMode` **1**.
+- 회귀: EditMode `ProjectC.Tests.EditMode` / PlayMode `ProjectC.Tests.PlayMode` 전체.
+  실행 수치는 기준 커밋 없이 문서에 고정하지 않는다.
 
 ---
 

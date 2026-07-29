@@ -69,6 +69,17 @@ def lock_to_palette(rgb: Image.Image) -> Image.Image:
     return rgb.quantize(palette=_palette_image(), dither=Image.Dither.NONE).convert("RGB")
 
 
+def lock_rgba_to_palette(image: Image.Image) -> Image.Image:
+    """Lock visible RGB to Torchstone while preserving the source alpha."""
+    source = image.convert("RGBA")
+    alpha = source.getchannel("A")
+    rgb = Image.new("RGB", source.size, load_gpl()[0])
+    rgb.paste(source, mask=alpha)
+    locked = lock_to_palette(rgb).convert("RGBA")
+    locked.putalpha(alpha)
+    return locked
+
+
 if __name__ == "__main__":
     parsed = load_gpl()
     print(f"{len(parsed)} colors loaded from {GPL_PATH.name}")

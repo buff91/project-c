@@ -2872,6 +2872,72 @@ def image_metrics(path: Path, alpha_cutoff: int = 80) -> dict[str, Any]:
     }
 
 
+def enforce_color_area_limits(
+    path: Path,
+    quality_gates: dict[str, Any],
+    *,
+    alpha_cutoff: int = 80,
+) -> dict[str, float]:
+    """Reject palette-legal images that spend too much area on signal colors."""
+    limits = quality_gates.get("color_area_limits", {}) or {}
+    if not isinstance(limits, dict):
+        raise ReviewError("quality_gates.color_area_limits must be a mapping")
+    if not limits:
+        return {}
+
+    with Image.open(path) as source:
+        rgba = source.convert("RGBA")
+    pixels = (
+        rgba.get_flattened_data()
+        if hasattr(rgba, "get_flattened_data")
+        else rgba.getdata()
+    )
+    visible = [
+        (red, green, blue)
+        for red, green, blue, alpha in pixels
+        if alpha >= alpha_cutoff
+    ]
+    if not visible:
+        raise ReviewError(f"color area gate requires visible pixels: {path}")
+
+    measured: dict[str, float] = {}
+    for role, raw_spec in limits.items():
+        if not isinstance(raw_spec, dict):
+            raise ReviewError(
+                f"color_area_limits.{role} must be a mapping"
+            )
+        raw_colors = raw_spec.get("colors", []) or []
+        maximum = raw_spec.get("maximum_fraction")
+        if not isinstance(raw_colors, list) or not raw_colors:
+            raise ReviewError(
+                f"color_area_limits.{role}.colors must be a non-empty list"
+            )
+        if not isinstance(maximum, (int, float)) or not 0 <= maximum <= 1:
+            raise ReviewError(
+                f"color_area_limits.{role}.maximum_fraction must be in 0..1"
+            )
+
+        colors: set[tuple[int, int, int]] = set()
+        for raw_color in raw_colors:
+            match = re.fullmatch(r"#([0-9a-fA-F]{6})", str(raw_color))
+            if match is None:
+                raise ReviewError(
+                    f"color_area_limits.{role} has invalid RGB hex "
+                    f"{raw_color!r}"
+                )
+            value = int(match.group(1), 16)
+            colors.add((value >> 16, (value >> 8) & 255, value & 255))
+
+        fraction = sum(pixel in colors for pixel in visible) / len(visible)
+        measured[str(role)] = fraction
+        if fraction > float(maximum):
+            raise ReviewError(
+                f"{role} color area {fraction:.1%} exceeds "
+                f"{float(maximum):.1%}: {path}"
+            )
+    return measured
+
+
 def recipe_from_job(row: sqlite3.Row) -> Recipe:
     document = json.loads(row["recipe_json"])
     return Recipe.from_document(

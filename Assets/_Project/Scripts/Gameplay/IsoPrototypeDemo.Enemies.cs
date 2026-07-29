@@ -145,7 +145,7 @@ namespace ProjectC.Gameplay
                     archetype.AttackPower),
                 Brain = new MonsterBrain(archetype, spawn, dungeonSeed * 31 + _enemies.Count)
             };
-            enemy.Root = CreateStandingSprite(
+            enemy.Root = CreateActorSprite(
                 enemy.State.Id, MonsterSpriteFor(archetype), spawn, out SpriteRenderer renderer);
             enemy.Renderer = renderer;
             enemy.Animator = AttachActorAnimator(

@@ -16,31 +16,77 @@ prompt:
     single practical post-apocalyptic hospital scavenger survivor, gender
     neutral adult silhouette, patched charcoal field jacket, concrete-gray
     work trousers, compact medical utility pack, respirator hanging at the
-    neck, reinforced boots, one small desaturated teal route marker, empty
-    modular belt and free hands ready to show changing equipment
+    neck, reinforced boots, neutral concrete and taupe clothing covering at
+    least ninety percent of the body, one tiny desaturated teal route marker
+    under four percent of the sprite, empty modular belt and free hands ready
+    to show changing equipment
   signature_pose: >-
     grounded three-quarter isometric ready stance, knees slightly bent, one
     empty hand forward and the other near the modular belt
   negative: >-
     fantasy knight, royal armor, fixed character class, permanent signature
     weapon, giant sword, wizard robe, superhero suit, pristine military
-    uniform, cyberpunk neon outfit, oversized backpack
+    uniform, cyberpunk neon outfit, teal jacket, teal trousers, red jacket,
+    red trousers, broad signal-color clothing, oversized backpack
 
 guides:
-  # 컨셉 승인본은 다음 단계의 style_source로 job이 직접 주입한다.
-  # 이 파일은 자세만 소유한다.
-  pose: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
+  # 이미 게임에서 검증된 정적 원정자를 production bootstrap의 identity
+  # anchor로 사용하되, 옛 직업 장비 영역은 magenta로 비워 새 양손을 생성한다.
+  # 이후 승인된 base 후보는 job이 이 입력을 덮는다.
+  style_source: >-
+    docs/art-direction/comfyui/guides/actor-survivor-neutral-source-512-v1.png
+  pose: docs/art-direction/comfyui/guides/openpose/actor-survivor-idle.png
 
 # 현재 런타임의 상태 태그 골격은 인간형끼리 공유한다. 최종 손·장비 위치와
 # 실루엣은 승인본을 기준으로 Aseprite에서 고친다.
 pose_guides:
-  idle: docs/art-direction/comfyui/guides/openpose/actor-slinger-idle.png
-  walk-contact-a: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-a.png
-  walk-pass: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-pass.png
-  walk-contact-b: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-contact-b.png
-  attack-windup: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
-  attack-release: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
-  attack-recovery: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-recovery.png
-  hit: docs/art-direction/comfyui/guides/openpose/actor-slinger-hit.png
-  fall: docs/art-direction/comfyui/guides/openpose/actor-slinger-fall.png
-  death: docs/art-direction/comfyui/guides/openpose/actor-slinger-death.png
+  idle: docs/art-direction/comfyui/guides/openpose/actor-survivor-idle.png
+  idle-breathe: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-idle-breathe.png
+  walk-contact-a: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-walk-contact-a.png
+  walk-pass: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-walk-pass.png
+  walk-contact-b: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-walk-contact-b.png
+  attack-windup: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-attack-windup.png
+  attack-release: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-attack-impact.png
+  attack-recovery: >-
+    docs/art-direction/comfyui/guides/openpose/actor-survivor-attack-recovery.png
+  hit: docs/art-direction/comfyui/guides/openpose/actor-survivor-hit.png
+  fall: docs/art-direction/comfyui/guides/openpose/actor-survivor-fall.png
+  death: docs/art-direction/comfyui/guides/openpose/actor-survivor-death.png
+
+quality_gates:
+  silhouette_tags:
+  - compact-medical-pack
+  - neck-respirator
+  - free-hands
+  - low-center-of-gravity
+  reject_if:
+  - permanent-signature-weapon
+  - tower-shield
+  - fantasy-knight
+  - bright-modern-hiking-gear
+  - broad-teal-clothing
+  - broad-red-clothing
+  color_area_limits:
+    teal-signal:
+      colors:
+      - '#14343A'
+      - '#1C4347'
+      - '#376A67'
+      - '#3899A6'
+      - '#4FA7A0'
+      - '#9ADFE8'
+      - '#C6F4F7'
+      maximum_fraction: 0.04
+    warning-signal:
+      colors:
+      - '#45100B'
+      - '#A43122'
+      - '#D8452A'
+      - '#F0492A'
+      maximum_fraction: 0.02

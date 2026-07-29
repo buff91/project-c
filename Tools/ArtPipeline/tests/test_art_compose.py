@@ -175,6 +175,38 @@ class ComposeTests(unittest.TestCase):
         self.assertNotIn("5.image", recipe.pipeline.get("uploads", {}))
         self.assertIn("6.image", recipe.pipeline["uploads"])
 
+    def test_survivor_runtime_methods_keep_subject_gates_separate(self) -> None:
+        base = resolve_by_id("character-runtime-base-v2", "actor-knight")
+        self.assertFalse(
+            self.methods.get(
+                "character-runtime-base-v2"
+            ).requires_source_candidate
+        )
+        self.assertIn("5.image", base.pipeline["uploads"])
+        self.assertIn("6.image", base.pipeline["uploads"])
+        self.assertIn(
+            "compact-medical-pack",
+            base.document["quality_gates"]["silhouette_tags"],
+        )
+        self.assertNotIn(
+            "visible-sling",
+            base.document["quality_gates"]["silhouette_tags"],
+        )
+        self.assertIn(
+            "permanent-signature-weapon",
+            base.document["quality_gates"]["reject_if"],
+        )
+
+        action = resolve_by_id(
+            "character-action-keyframes-v6", "actor-knight"
+        )
+        self.assertEqual(11, len(action.shots))
+        self.assertEqual(0.56, action.generation["denoise"])
+        self.assertNotIn("5.image", action.pipeline.get("uploads", {}))
+        self.assertIn("6.image", action.pipeline["shots"][0]["uploads"])
+        self.assertNotIn("male", action.prompt["positive"])
+        self.assertNotIn("sling", action.prompt["positive"])
+
     def test_composition_records_where_it_came_from(self) -> None:
         recipe = resolve_by_id("character-idle-v1", "actor-slinger")
         self.assertEqual(

@@ -42,6 +42,7 @@ from art_review import (
     UNITY_SLOT_SOURCE,
     VALID_ASSET_TYPES,
     WorkflowTypeRegistry,
+    enforce_color_area_limits,
     image_metrics,
     make_id,
     project_path,
@@ -685,6 +686,11 @@ def prepare_candidate(
                 force=True,
             )
             export_aseprite(shot_aseprite, shot_conformed)
+            enforce_color_area_limits(
+                shot_conformed,
+                recipe.document.get("quality_gates", {}),
+                alpha_cutoff=int(output.get("alpha_cutoff", 80)),
+            )
             prepared_images.append((shot.label, shot_conformed))
             prepared_shots.append(
                 {
@@ -745,6 +751,11 @@ def prepare_candidate(
         force=True,
     )
     export_aseprite(aseprite_path, preview_path)
+    enforce_color_area_limits(
+        preview_path,
+        recipe.document.get("quality_gates", {}),
+        alpha_cutoff=int(output.get("alpha_cutoff", 80)),
+    )
     store.set_candidate_status(
         candidate_id,
         "prepared",

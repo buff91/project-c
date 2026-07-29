@@ -433,7 +433,8 @@ namespace ProjectC.Gameplay
                 var backdrop = new GameObject("Dungeon Fog Backdrop");
                 backdrop.transform.SetParent(_visualRoot, false);
                 _dungeonFogBackdrop = backdrop.AddComponent<SpriteRenderer>();
-                _dungeonFogBackdrop.sortingOrder = OverlaySorting.FogBackdrop;
+                _dungeonFogBackdrop.sortingLayerName = DungeonFogBackdropLayout.SortingLayerName;
+                _dungeonFogBackdrop.sortingOrder = 0;
             }
 
             int baseElevation = _dungeon.Height.Elevation(_activeFloorIndex);
@@ -450,6 +451,10 @@ namespace ProjectC.Gameplay
                 frame.Width * 0.5f,
                 frame.Height,
                 1f);
+            _dungeonFogBackdrop.color =
+                visualCatalog != null && visualCatalog.dungeonBackdrop != null
+                    ? new Color32(255, 255, 255, 64)
+                    : Color.white;
             _dungeonFogBackdrop.enabled = true;
         }
 
@@ -855,24 +860,74 @@ namespace ProjectC.Gameplay
                 (byte)(bright.r * 0.42f), (byte)(bright.g * 0.42f), (byte)(bright.b * 0.42f), 255);
         }
 
-        private GridPos FindPreviewPropPosition()
+        private GridPos? FindPreviewPropPosition()
         {
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo active);
-            if (!active.Hole.HasValue || !_dungeon.TryGetFloor(active.FloorIndex - 1, out _))
-                return active.Entry;
-
-            GridPos hole = active.Hole.Value;
-            int belowFloor = active.FloorIndex - 1;
-            int baseElevation = _dungeon.Height.Elevation(belowFloor);
-            for (int localHeight = _dungeon.Height.ElevationsPerFloor - 1; localHeight >= 0; localHeight--)
+            var reserved = new HashSet<GridPos>();
+            foreach (DungeonFloorInfo floor in _dungeon.Floors)
             {
-                var candidate = new GridPos(hole.x, hole.y, baseElevation + localHeight);
-                if (_grid.Map.IsSolidGround(candidate)) return candidate;
+                reserved.Add(floor.Entry);
+                if (floor.UpStairs.HasValue) reserved.Add(floor.UpStairs.Value);
+                if (floor.DownStairs.HasValue) reserved.Add(floor.DownStairs.Value);
+                if (floor.RestSite.HasValue) reserved.Add(floor.RestSite.Value);
+                if (floor.ExtractionPoint.HasValue) reserved.Add(floor.ExtractionPoint.Value);
+                if (floor.RescueNpc.HasValue) reserved.Add(floor.RescueNpc.Value);
+                if (floor.Landmark.HasValue) reserved.Add(floor.Landmark.Value);
+                foreach (GridPos spawn in floor.EnemySpawns)
+                    reserved.Add(spawn);
+                foreach (ItemSpawn item in floor.Items)
+                    reserved.Add(item.Position);
             }
 
-            return _dungeon.TryGetFloor(belowFloor, out DungeonFloorInfo below)
-                ? below.Entry
-                : active.Entry;
+            var candidates = new List<GridPos>();
+            if (active.Hole.HasValue &&
+                _dungeon.TryGetFloor(active.FloorIndex - 1, out _))
+            {
+                GridPos hole = active.Hole.Value;
+                int belowFloor = active.FloorIndex - 1;
+                int baseElevation = _dungeon.Height.Elevation(belowFloor);
+                for (int localHeight = _dungeon.Height.ElevationsPerFloor - 1;
+                     localHeight >= 0;
+                     localHeight--)
+                {
+                    var candidate = new GridPos(
+                        hole.x,
+                        hole.y,
+                        baseElevation + localHeight);
+                    if (_grid.Map.IsSolidGround(candidate))
+                    {
+                        candidates.Add(candidate);
+                        break;
+                    }
+                }
+            }
+
+            var activeFloorCandidates = new List<GridPos>();
+            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
+            {
+                if (_dungeon.Height.FloorIndex(pair.Key.elevation) == active.FloorIndex)
+                    activeFloorCandidates.Add(pair.Key);
+            }
+            activeFloorCandidates.Sort((left, right) =>
+            {
+                int distance = left.ManhattanTo(active.Entry)
+                    .CompareTo(right.ManhattanTo(active.Entry));
+                if (distance != 0) return distance;
+                int x = left.x.CompareTo(right.x);
+                if (x != 0) return x;
+                int y = left.y.CompareTo(right.y);
+                return y != 0 ? y : left.elevation.CompareTo(right.elevation);
+            });
+            candidates.AddRange(activeFloorCandidates);
+
+            return DungeonPropPlacementRules.TrySelectSafePosition(
+                _grid.Map,
+                active.Entry,
+                candidates,
+                reserved,
+                out GridPos selected)
+                ? selected
+                : (GridPos?)null;
         }
 
         private static void SetSpriteHierarchyVisible(GameObject root, bool visible)
@@ -956,16 +1011,29 @@ namespace ProjectC.Gameplay
                     _grid.iso.viewQuarterTurns * 7) % 8;
             // 허브 벽은 휴식 공간 전용 따뜻한 팔레트를 사용한다. 던전 카탈로그는
             // 회전/계단/FOV 가독성 규칙을 보존하기 위해 그대로 둔다.
+            bool hospitalDressing =
+                !hubMode &&
+                (_dungeon?.Region ?? DungeonRegionProfile.Facility) ==
+                    DungeonRegionProfile.Facility;
             Sprite mapped = !hubMode && visualCatalog != null
-                ? visualCatalog.RearWallFor(torch, risesRight: flip)
+                ? visualCatalog.RearWallFor(
+                    torch,
+                    risesRight: flip,
+                    decoration: hospitalDressing ? decoration : -1)
                 : null;
+            PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode =
+                !torch && hospitalDressing && decoration == 2
+                    ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal
+                    : torch
+                        ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal
+                        : PrototypeEnvironmentSprites.EnvironmentAccentMode.None;
             renderer.sprite = hubMode
                 ? GetHubWallSprite(torch, decoration)
                 : mapped != null
                     ? GetToneMappedEnvironmentSprite(
                         mapped,
                         Palette.Wall,
-                        torch ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal : PrototypeEnvironmentSprites.EnvironmentAccentMode.None)
+                        accentMode)
                     : GetWallSprite(torch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);

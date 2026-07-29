@@ -27,6 +27,7 @@ namespace ProjectC.EditorTools
         private static readonly Dictionary<string, string> CatalogSlots =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                { "env-dungeon-backdrop", "dungeonBackdrop" },
                 { "env-floor", "floor" },
                 { "env-floor-raised", "raisedFloor" },
                 { "env-floor-lower", "lowerFloor" },
@@ -36,6 +37,9 @@ namespace ProjectC.EditorTools
                 { "env-floor-deep-raised", "deepRaisedFloor" },
                 { "env-floor-boss", "bossFloor" },
                 { "env-floor-boss-raised", "bossRaisedFloor" },
+                { "env-floor-grate", "hospitalFloorGrate" },
+                { "env-floor-cracked", "hospitalFloorCracked" },
+                { "env-floor-service", "hospitalFloorService" },
                 { "env-stairs", "stairs" },
                 { "env-ladder", "ladder" },
                 { "env-stairs-up", "stairsUp" },
@@ -58,6 +62,12 @@ namespace ProjectC.EditorTools
                 { "env-wall-rising-left", "rearWallRisingLeft" },
                 { "env-wall-torch-rising-right", "rearWallTorchRisingRight" },
                 { "env-wall-torch-rising-left", "rearWallTorchRisingLeft" },
+                { "env-wall-pipes-rising-right", "hospitalWallPipesRisingRight" },
+                { "env-wall-pipes-rising-left", "hospitalWallPipesRisingLeft" },
+                { "env-wall-window-rising-right", "hospitalWallWindowRisingRight" },
+                { "env-wall-window-rising-left", "hospitalWallWindowRisingLeft" },
+                { "env-wall-cabinet-rising-right", "hospitalWallCabinetRisingRight" },
+                { "env-wall-cabinet-rising-left", "hospitalWallCabinetRisingLeft" },
                 { "actor-player", "player" },
                 { "actor-knight", "knight" },
                 { "actor-ranger", "ranger" },

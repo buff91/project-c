@@ -50,7 +50,7 @@ namespace ProjectC.Gameplay
 
             GridPos pos = floor.RescueNpc.Value;
             // 동료는 적도 플레이어도 아니라 제3의 실루엣이어야 한다 — 묶인 손이 그 표식이다.
-            GameObject root = CreateStandingSprite(
+            GameObject root = CreateActorSprite(
                 $"Rescue {npc.Id}",
                 ActorSprites.GetRescueNpcSprite(npc.Id),
                 pos,

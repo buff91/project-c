@@ -11,6 +11,7 @@
 | elevation 1단 | 화면상 32 px |
 | 캐릭터 작업 캔버스 | 96×128 px |
 | 캐릭터 Pivot | 발 중앙 |
+| PC 메뉴 배경 런타임 | 960×540 px (`ui-*`, PPU 64) |
 | 기본 방향 수 | 4방향 |
 | 애니메이션 | 8~12 FPS |
 | Texture Filter | Point |
@@ -37,6 +38,20 @@ Aseprite에서 직접 만든다:
 - 정확한 Pivot, 타일 경계, 충돌 기준이 필요한 모든 에셋
 
 AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 경계가 서로 달라진다. AI 결과는 원화로만 사용한다.
+
+### 단계 게이트 (중간 수정 시)
+
+에셋 묶음은 `소스 승인 → conform/팔레트 잠금 → Unity 슬롯 연결 → PC Game View 캡처` 네 단계로
+진행한다. 앞 단계가 수정되면 뒤 단계 결과는 전부 **stale**로 보고 다시 만든다. 한 단계의 출력과
+캡처가 합격하기 전에는 다음 에셋군을 실행하지 않는다.
+
+1. **소스 승인** — 레퍼런스 역할, 프롬프트, 캔버스, 색 면적 제한을 고정한다.
+2. **conform 승인** — 최종 해상도·알파·공용 `.gpl`·피벗을 검사한다.
+3. **Unity 연결 승인** — `IsoVisualCatalog`/USS 참조와 Point·PPU·Mip·압축을 확인한다.
+4. **화면 승인** — 현재 우선순위인 PC 가로 Game View에서 실제 크기·톤·UI 충돌을 캡처한다.
+
+환경→UI→액터처럼 서로 영향을 주는 묶음도 같은 순서로 직렬 승인한다. 소스가 바뀌었는데 이전
+Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 
 ## 3. 첫 번째 실제 제작 묶음
 
@@ -66,7 +81,9 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
    키프레임을 만들고 Aseprite에서 4~8프레임 루프로 마감한다.
 5. **폐병원 소품/낙하 연출**: 들것, 커튼 레일, 수술등, 약품 캐비닛,
    엘리베이터 통로, 구멍 깊이 표현.
-6. **아이템 12종**: 64×64 포스트아포 리스킨.
+6. **아이템 12종**: 64×64 포스트아포 리스킨. fallback vertical slice는 완료했으며
+   `item-sources-v3/`의 항목별 단일 소스를 `process_items_v3.py`로 마감한다.
+   이후 Aseprite 원본으로 승격할 때도 파일명·피벗 계약은 유지한다.
 7. **액터 애니메이션**: 기본 스프라이트가 승인된 액터부터
    `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.
 8. **전투 VFX 6슬롯**: physical/heavy/fire/frost impact와 burn/freeze status.
@@ -86,11 +103,12 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
 
 1. 128×64 다이아몬드를 템플릿 레이어로 만든다.
 2. 모든 에셋에 같은 좌상단 광원을 사용한다.
-3. `Art/Source/Aseprite/project-c-torchstone.gpl`의 18색 인덱스에서만 색을 고른다.
+3. `Art/Source/Aseprite/project-c-torchstone.gpl` 안에서만 색을 고른다. 코어 18색의
+   순서는 고정이고, 그 뒤 포스트아포 재료/중립 계조를 append한다.
 4. 타일 경계 픽셀을 복사해 이웃 타일과 맞춘다.
 5. 캐릭터 발 중앙을 동일한 좌표에 둔다.
 6. `.aseprite` 원본을 Unity에 직접 임포트한다. PNG export는 외부 전달/검수용일 때만 만든다.
-7. Unity 테스트 룸에서 100%와 실제 모바일 크기로 확인한다.
+7. Unity 테스트 룸에서 100%와 현재 검증 타깃인 PC 가로 크기로 확인한다.
 
 ### 던전 공통 톤 SSOT
 
@@ -120,7 +138,8 @@ Assets/_Project/Art/
 ## 5. AI 시안용 프롬프트 템플릿
 
 ```text
-Create a clean modular isometric pixel-art asset reference board for a dark fantasy mobile roguelike.
+Create a clean modular isometric pixel-art asset reference board for a post-apocalyptic
+derelict-hospital roguelike.
 Use an exact-looking 2:1 diamond tile projection and one consistent upper-left light source.
 Show isolated floor, left/right wall faces, corner, stairs, hole, weak floor, door, crate,
 barrel, player and goblin on a flat dark background with generous spacing.
@@ -169,6 +188,14 @@ Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선�
 
 ## 7. 현재 레퍼런스
 
+- 현재 통합 화면 방향:
+  `docs/art-direction/project-c-integrated-postapoc-gameplay-target-v2.png`
+- 메인 메뉴 배경 소스/프롬프트:
+  `docs/art-direction/project-c-main-menu-backdrop-source-v1.png` /
+  `project-c-main-menu-backdrop-source-v1.prompt.md`
+- 임시 통합 패스 Unity 캡처:
+  `docs/captures/integrated-art-pass-main-menu.png`,
+  `integrated-art-pass-hub.png`, `integrated-art-pass-dungeon.png`
 - 전체 게임 화면 방향: `docs/art-direction/project-c-artstyle-concept-v1.png`
 - 허브 웜 다크 판타지 디오라마 타깃:
   `docs/art-direction/project-c-warm-diorama-hub-target-v1.png`
@@ -188,10 +215,24 @@ Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선�
 AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하지 않는다. `project-c-starter-art-kit-v1.png`와 `project-c-runtime-asset-board-v2.png`를 형태 참고로 삼아 바닥/벽/코너/계단/캐릭터를 각각 최종 픽셀 해상도에 다시 그린 뒤 Catalog 슬롯으로 교체한다.
 
 현재 `Assets/_Project/Art/Runtime` 세트는 실제 Aseprite 원본이 없는 슬롯의 폴백이다.
-`Tools/ArtPipeline/generate_runtime_art_v2.py`로 결정론적으로 재생성하며,
+정적 세트는 `process_postapoc_environment_v2.py`, `process_hospital_dressing_v1.py`,
+`process_postapoc_actors_v2.py`,
+`process_postapoc_support_v2.py`, `process_postapoc_props_v2.py`, `process_items_v3.py`로,
+UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
+`generate_ui_action_hex_v1.py`, `process_ui_backdrops_v1.py`로 재생성한다. 모든 프로세서는
+`torchstone_palette`의 공용 잠금 함수를 거친다.
 `ProjectCArtImporter`가 Point filter, PPU 128(`ui-*`는 64), 무압축, Mip Map Off를 강제하고,
 피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
 `Art/Environment/` PNG도 같은 임포터가 강제한다.
+
+폐병원 드레싱 소스와 생성 프롬프트는
+`docs/art-direction/project-c-hospital-dressing-source-v1.{png,prompt.md}`가 소유한다.
+3×2 소스의 바닥 3셀은 공용 `env-floor` 위에 합성해 완전한 128×64 타일로 만들고,
+벽 3셀은 64×112 좌/우 방향형으로 마감한다. 바닥 소스를 통째로 교체하면 생성 여백이
+투명한 void 구멍으로 보이므로 합성 단계를 제거하지 않는다.
+아이템 v3의 생성 방식·항목별 최종 프롬프트 세트는
+`docs/art-direction/item-sources-v3/README.md`가 소유한다. 한 소스에 여러 아이템을 넣지 않고,
+각 소스를 독립 생성한 뒤 크로마 제거→축소→하드 알파→공용 팔레트→피벗 여백 순서로 conform한다.
 최종 아트의 SSOT는 `Art/Source/Aseprite`이고, PNG를 수정해 최종본처럼 유지하지 않는다.
 허브와 전투 씬은 반드시 같은 `ProjectCEnvironmentCatalog`를 참조하며,
 씬별 독자 카탈로그나 캐릭터 색조 복제는 만들지 않는다.
@@ -217,6 +258,9 @@ ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자
 라이선스를 prompt 문서에 기록한다. Aseprite conform은 캔버스·알파·공용 팔레트를 강제한 뒤
 정식 파일명의 `.aseprite`로 저장한다. 멀티샷 레시피는 ComfyUI 키포즈/이펙트 슬롯 생성과
 샷별 Aseprite 소스 인계, 검수용 FrameTag·duration·GIF 초안까지 자동화한다.
+`quality_gates.color_area_limits`가 있는 레시피는 conform 결과의 불투명 픽셀만 세어
+신호색 그룹별 최대 면적을 넘긴 후보를 리뷰 전에 거절한다. 팔레트 안에 색이 존재하는 것과
+캐릭터 전체가 그 색으로 물드는 것은 다른 문제이므로, 액터의 국소 teal·warning 역할을 이 단계에서 고정한다.
 보간 프레임·발 기준선·실루엣·최종 타이밍은 사람이 Aseprite에서 마감한다.
 
 ### 애니메이션/이펙트 운영 규칙

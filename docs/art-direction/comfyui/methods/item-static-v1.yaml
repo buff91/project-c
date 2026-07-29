@@ -1,0 +1,101 @@
+schema_version: 1
+id: item-static-v1
+name: 정적 아이템 소스 v1
+applies_to:
+- prop
+guide_roles: []
+use: gameplay-source
+category: item
+animation_scope: static
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 28
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_items_v3.py
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/item-static.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 4.text
+    negative: 5.text
+    width: 6.width
+    height: 6.height
+    seed: 7.seed
+    steps: 7.steps
+    cfg: 7.cfg
+    denoise: 7.denoise
+    sampler: 7.sampler_name
+    scheduler: 7.scheduler
+generation:
+  width: 1024
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 1.0
+  candidates: 1
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    Pixel Art, PixArFK, junkworld, one isolated post-apocalyptic survivor
+    inventory item, three-quarter isometric game-item view, strong readable
+    silhouette
+  suffix: >-
+    centered with generous empty border, flat solid pure magenta background
+    touching every image border, icon floating in empty space, no floor,
+    absolutely no shadow, deliberate hard pixel clusters, limited color
+    ramps, restrained Project-C colors, readable after nearest-neighbor
+    reduction to 64 pixels
+  negative: >-
+    multiple objects, contact sheet, fantasy ornament, character, hand,
+    scenery, floor, ground, platform, pedestal, contact shadow, cast shadow,
+    drop shadow, horizon, gradient background, beige background, gray
+    background, text, letters, numbers, label, watermark, photorealism,
+    smooth 3d, vector art, painterly blur, soft edges
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 아이소메트릭 인벤토리 실루엣
+  attribution: Civitai model 149080 / version 166425
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.2
+  clip_strength: 0.2
+  purpose: 녹·고철·폐허 재질
+  attribution: Civitai model 233573 / version 263472
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 10
+  base_model: SDXL
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 도트 클러스터와 하드 에지
+  attribution: Civitai model 144684 / version 160844
+quality_gates:
+  require_transparency_after_prepare: true
+  exact_dimensions: [64, 64]
+  minimum_visible_pixels: 500
+  maximum_visible_pixels: 2600
+  reject_if:
+  - multiple-assets
+  - cropped-silhouette
+  - fantasy-materials
+  - unreadable-at-64px
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review

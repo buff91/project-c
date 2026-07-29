@@ -1,0 +1,109 @@
+schema_version: 1
+id: character-runtime-base-v2
+name: 런타임 기본 스프라이트 v2 · in-game anchor
+applies_to:
+- character
+required_guides:
+- style_source
+- pose
+guide_roles:
+- style_source
+- pose
+use: gameplay
+animation_scope: idle-base-only
+category: actor
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 40
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: aseprite
+  allow_replace: false
+pipeline:
+  type: sd15-img2img-openpose
+  workflow: docs/art-direction/comfyui/actor-slinger-openpose.api.json
+  checkpoint: dreamshaper_8.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+generation:
+  width: 512
+  height: 512
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 26
+  cfg: 6.0
+  denoise: 0.38
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  prefix: >-
+    pixelart, exact same single survivor as the reference sprite, preserve the
+    same mask, jacket, pack, boots, proportions, facing and upper-left light
+  use_signature_pose: true
+  suffix: >-
+    grounded three-quarter isometric gameplay stance, full body, feet visible
+    on one baseline, no floor or cast shadow, flat pure magenta background
+    touching every border, isolated centered cutout, chunky hard pixel
+    clusters, restrained dark values, readable after reduction to 96 by 128
+  negative: >-
+    different character, changed costume, fixed class, permanent weapon,
+    giant shield, bright red hiking jacket, pristine rescue uniform, extra
+    limbs, missing limbs, cropped feet, front portrait, floor, scenery,
+    surrounding props, multiple characters, gray background, white
+    background, gradient background, smooth anti-alias, blurry, photorealistic,
+    3d render, vector art
+loras:
+- name: pixelartV3.safetensors
+  node: 2
+  base_model: SD 1.5
+  model_strength: 0.25
+  clip_strength: 0.2
+  purpose: identity를 덮지 않는 범위의 하드 픽셀 클러스터
+controlnets:
+- model: control_v11p_sd15_openpose_fp16.safetensors
+  loader_node: 7
+  apply_node: 8
+  strength: 0.9
+  purpose: 기본 자세와 발 기준선 고정
+quality_gates:
+  require_transparency_after_prepare: true
+  minimum_visible_pixels: 1800
+  maximum_visible_pixels: 4200
+  silhouette_tags:
+  - full-body
+  - grounded-feet
+  - readable-head-shoulders
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - malformed-anatomy
+  - background-leak
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation

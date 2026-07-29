@@ -19,13 +19,15 @@ namespace ProjectC.Gameplay
             bool extruded,
             bool planeRisesRight,
             bool secretHinted,
-            bool hubMode)
+            bool hubMode,
+            bool hospitalDressing)
         {
             Context = context;
             Extruded = extruded;
             PlaneRisesRight = planeRisesRight;
             SecretHinted = secretHinted;
             HubMode = hubMode;
+            HospitalDressing = hospitalDressing;
         }
 
         /// <summary>진행 지수·국소 높이 등 깊이 맥락. 진행 지수는 레이아웃이 소유한다(고도로 역산하지 않는다).</summary>
@@ -45,5 +47,8 @@ namespace ProjectC.Gameplay
 
         /// <summary>허브 씬인지 — 바닥 분기와 측면 두께 색이 달라진다.</summary>
         internal bool HubMode { get; }
+
+        /// <summary>Facility 지역의 폐병원 전용 바닥·벽 드레싱을 사용할지.</summary>
+        internal bool HospitalDressing { get; }
     }
 }

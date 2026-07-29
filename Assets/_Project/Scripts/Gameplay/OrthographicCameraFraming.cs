@@ -15,32 +15,25 @@ namespace ProjectC.Gameplay
         }
     }
 
-    /// <summary>월드 경계를 주어진 화면비의 직교 카메라 안에 맞추는 순수 계산.</summary>
+    /// <summary>
+    /// 허브와 던전의 직교 카메라 배율 계약. 플레이 화면은 씬과 화면비에 관계없이
+    /// <c>playSize</c>를 그대로 쓰고, 던전 전체 보기만 별도 디버그 배율을 쓴다.
+    /// </summary>
     public static class OrthographicCameraFraming
     {
-        public static OrthographicCameraFrame Fit(
-            float minX,
-            float maxX,
-            float minY,
-            float maxY,
-            float aspect,
-            float minimumSize,
-            float horizontalPadding,
-            float verticalPadding)
+        public static OrthographicCameraFrame Follow(
+            Vector2 center,
+            bool hubMode,
+            DungeonViewMode viewMode,
+            float playSize,
+            float debugSize)
         {
-            if (maxX < minX) throw new ArgumentException("maxX must be greater than or equal to minX.");
-            if (maxY < minY) throw new ArgumentException("maxY must be greater than or equal to minY.");
-            if (aspect <= 0f) throw new ArgumentOutOfRangeException(nameof(aspect));
-            if (minimumSize <= 0f) throw new ArgumentOutOfRangeException(nameof(minimumSize));
-            if (horizontalPadding < 0f)
-                throw new ArgumentOutOfRangeException(nameof(horizontalPadding));
-            if (verticalPadding < 0f)
-                throw new ArgumentOutOfRangeException(nameof(verticalPadding));
+            if (playSize <= 0f) throw new ArgumentOutOfRangeException(nameof(playSize));
+            if (debugSize <= 0f) throw new ArgumentOutOfRangeException(nameof(debugSize));
 
-            var center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
-            float halfWidth = (maxX - minX) * 0.5f + horizontalPadding;
-            float halfHeight = (maxY - minY) * 0.5f + verticalPadding;
-            float size = Mathf.Max(minimumSize, halfHeight, halfWidth / aspect);
+            float size = !hubMode && viewMode == DungeonViewMode.DebugAll
+                ? debugSize
+                : playSize;
             return new OrthographicCameraFrame(center, size);
         }
     }

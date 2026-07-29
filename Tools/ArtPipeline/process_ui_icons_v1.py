@@ -6,39 +6,16 @@ from pathlib import Path
 
 from PIL import Image
 
+from torchstone_palette import lock_rgba_to_palette
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "docs/art-direction/project-c-torchstone-ui-icons-source-v1.png"
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime"
 CELL_SIZE = 418
-CANVAS_SIZE = (24, 24)
-VISIBLE_SIZE = (22, 22)
+CANVAS_SIZE = (32, 32)
+VISIBLE_SIZE = (30, 30)
 ALPHA_CUTOFF = 80
-
-TORCHSTONE_PALETTE = tuple(
-    tuple(bytes.fromhex(value))
-    for value in (
-        "05070C",
-        "07090E",
-        "0A0D13",
-        "4A4038",
-        "98866F",
-        "CFC0AE",
-        "9A6B22",
-        "FFBD41",
-        "FFD554",
-        "97907E",
-        "EADFC8",
-        "45100B",
-        "D8452A",
-        "14343A",
-        "1C4347",
-        "4FA7A0",
-        "9ADFE8",
-        "7FB241",
-    )
-)
-
 
 @dataclass(frozen=True)
 class IconSpec:
@@ -89,36 +66,6 @@ def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
     return cell.crop(bounds)
 
 
-def nearest_palette_color(color: tuple[int, int, int]) -> tuple[int, int, int]:
-    red, green, blue = color
-    return min(
-        TORCHSTONE_PALETTE,
-        key=lambda candidate:
-            (candidate[0] - red) ** 2
-            + (candidate[1] - green) ** 2
-            + (candidate[2] - blue) ** 2,
-    )
-
-
-def snap_to_palette(image: Image.Image) -> Image.Image:
-    result = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    source_pixels = image.load()
-    output_pixels = result.load()
-    color_cache: dict[tuple[int, int, int], tuple[int, int, int]] = {}
-    for y in range(image.height):
-        for x in range(image.width):
-            red, green, blue, alpha = source_pixels[x, y]
-            if alpha < ALPHA_CUTOFF:
-                continue
-            source_color = (red, green, blue)
-            target = color_cache.get(source_color)
-            if target is None:
-                target = nearest_palette_color(source_color)
-                color_cache[source_color] = target
-            output_pixels[x, y] = (*target, 255)
-    return result
-
-
 def build_icon(source: Image.Image) -> Image.Image:
     scale = min(
         VISIBLE_SIZE[0] / source.width,
@@ -128,7 +75,7 @@ def build_icon(source: Image.Image) -> Image.Image:
         max(1, round(source.width * scale)),
         max(1, round(source.height * scale)),
     )
-    sprite = snap_to_palette(source.resize(size, Image.Resampling.BOX))
+    sprite = lock_rgba_to_palette(source.resize(size, Image.Resampling.BOX))
     canvas = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
     x = (CANVAS_SIZE[0] - sprite.width) // 2
     y = (CANVAS_SIZE[1] - sprite.height) // 2

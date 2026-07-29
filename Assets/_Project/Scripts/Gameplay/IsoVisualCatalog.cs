@@ -14,22 +14,22 @@ namespace ProjectC.Gameplay
         [Header("던전 공통 톤 (Torchstone 18색의 런타임 역할)")]
         [Tooltip("pc-void — 월드 바깥과 깊은 개구부")]
         public Color32 dungeonVoid = new Color32(5, 7, 12, 255);
-        [Tooltip("pc-inset — 미탐색 영역의 청흑 안개")]
-        public Color32 dungeonFog = new Color32(7, 9, 14, 210);
-        [Tooltip("pc-panel — 안개 외곽")]
-        public Color32 dungeonFogEdge = new Color32(10, 13, 19, 228);
+        [Tooltip("pc-panel — void와 구분되는 미탐색 영역의 청흑 안개")]
+        public Color32 dungeonFog = new Color32(10, 13, 19, 255);
+        [Tooltip("ash — 실제 방 구조를 노출하지 않는 전체 생성 영역의 외곽")]
+        public Color32 dungeonFogEdge = new Color32(31, 31, 27, 228);
         [Tooltip("pc-void — 모든 던전 환경 실루엣의 최암부")]
         public Color32 dungeonOutline = new Color32(5, 7, 12, 255);
         [Tooltip("pc-panel — 바닥 줄눈과 얇은 경계")]
         public Color32 dungeonSeam = new Color32(10, 13, 19, 255);
-        public Color32 dungeonStoneShadow = new Color32(10, 13, 19, 255);
-        [Tooltip("pc-stone-dim — 횃불에 데워진 공통 석재 기준색")]
-        public Color32 dungeonStone = new Color32(74, 64, 56, 255);
+        public Color32 dungeonStoneShadow = new Color32(31, 31, 27, 255);
+        [Tooltip("taupe — 조명 전의 공통 콘크리트 중간톤")]
+        public Color32 dungeonStone = new Color32(82, 72, 62, 255);
         [Tooltip("pc-stone — 같은 층 안 단차의 밝은 면")]
-        public Color32 dungeonStoneLight = new Color32(152, 134, 111, 255);
-        public Color32 dungeonWallShadow = new Color32(10, 13, 19, 255);
+        public Color32 dungeonStoneLight = new Color32(113, 97, 80, 255);
+        public Color32 dungeonWallShadow = new Color32(43, 39, 34, 255);
         public Color32 dungeonWall = new Color32(74, 64, 56, 255);
-        public Color32 dungeonWallLight = new Color32(207, 192, 174, 255);
+        public Color32 dungeonWallLight = new Color32(113, 97, 80, 255);
         public Color32 dungeonMoss = new Color32(127, 178, 65, 255);
         public Color32 dungeonWood = new Color32(74, 64, 56, 255);
         public Color32 dungeonWoodLight = new Color32(154, 107, 34, 255);
@@ -40,6 +40,10 @@ namespace ProjectC.Gameplay
         public Color32 dungeonAmberCore = new Color32(255, 213, 84, 255);
         [Tooltip("pc-teal — Hole·포탈·마법 경로의 국소 신호색")]
         public Color32 dungeonMagic = new Color32(79, 167, 160, 255);
+
+        [Header("배경")]
+        [Tooltip("미탐색 구조를 노출하지 않는 전체 생성 영역의 교체 가능한 배경")]
+        public Sprite dungeonBackdrop;
 
         [Header("타일")]
         [Tooltip("B1~B3 기본 높이 바닥")]
@@ -60,6 +64,15 @@ namespace ProjectC.Gameplay
         public Sprite bossFloor;
         [Tooltip("B10 단차 바닥")]
         public Sprite bossRaisedFloor;
+
+        [Header("폐병원 바닥 드레싱")]
+        [Tooltip("Facility 지역의 희소 바닥 변주 — 서비스 그레이트")]
+        public Sprite hospitalFloorGrate;
+        [Tooltip("Facility 지역의 희소 바닥 변주 — 균열과 오염")]
+        public Sprite hospitalFloorCracked;
+        [Tooltip("Facility 지역의 희소 바닥 변주 — 열린 서비스 패널")]
+        public Sprite hospitalFloorService;
+
         public Sprite stairs;
         public Sprite ladder;
         public Sprite stairsUp;
@@ -87,6 +100,12 @@ namespace ProjectC.Gameplay
         public Sprite rearWallRisingLeft;
         public Sprite rearWallTorchRisingRight;
         public Sprite rearWallTorchRisingLeft;
+        public Sprite hospitalWallPipesRisingRight;
+        public Sprite hospitalWallPipesRisingLeft;
+        public Sprite hospitalWallWindowRisingRight;
+        public Sprite hospitalWallWindowRisingLeft;
+        public Sprite hospitalWallCabinetRisingRight;
+        public Sprite hospitalWallCabinetRisingLeft;
 
         [Header("액터와 소품")]
         public Sprite player;
@@ -379,12 +398,59 @@ namespace ProjectC.Gameplay
                 : TileFor(kind, DungeonVisualContext.Preview());
         }
 
+        /// <summary>
+        /// Facility 바닥의 seed 고정 드레싱. 0..7 중 세 값만 슬롯을 사용해 방의 기본 재질이
+        /// 장식에 묻히지 않게 한다. 비어 있는 슬롯은 호출부가 공용 바닥으로 폴백한다.
+        /// </summary>
+        public Sprite HospitalFloorFor(int variation)
+        {
+            switch ((variation % 8 + 8) % 8)
+            {
+                case 0: return hospitalFloorGrate;
+                case 3: return hospitalFloorCracked;
+                case 6: return hospitalFloorService;
+                default: return null;
+            }
+        }
+
         public Sprite RearWallFor(bool torch, bool risesRight)
+        {
+            return RearWallFor(torch, risesRight, -1);
+        }
+
+        /// <summary>
+        /// 벽 등잔이 없는 Facility 후면 벽 일부만 폐병원 드레싱으로 교체한다.
+        /// decoration은 월드 좌표와 시점으로 만든 0..7 해시라 같은 화면에서는 결정론적이다.
+        /// </summary>
+        public Sprite RearWallFor(bool torch, bool risesRight, int decoration)
         {
             Sprite directed = torch
                 ? (risesRight ? rearWallTorchRisingRight : rearWallTorchRisingLeft)
                 : null;
             if (directed != null) return directed;
+
+            if (!torch)
+            {
+                switch (decoration)
+                {
+                    case 0:
+                        directed = risesRight
+                            ? hospitalWallPipesRisingRight
+                            : hospitalWallPipesRisingLeft;
+                        break;
+                    case 1:
+                        directed = risesRight
+                            ? hospitalWallWindowRisingRight
+                            : hospitalWallWindowRisingLeft;
+                        break;
+                    case 2:
+                        directed = risesRight
+                            ? hospitalWallCabinetRisingRight
+                            : hospitalWallCabinetRisingLeft;
+                        break;
+                }
+                if (directed != null) return directed;
+            }
 
             return risesRight ? rearWallRisingRight : rearWallRisingLeft;
         }
