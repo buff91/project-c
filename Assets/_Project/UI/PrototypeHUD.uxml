@@ -161,6 +161,12 @@
                                 <ui:Label text="소지품" class="inventory-section-title" />
                                 <ui:Label name="inventory-capacity" text="0 / 24" class="inventory-capacity" />
                             </ui:VisualElement>
+                            <!-- 점유율 게이지. 숫자는 이미 위에 있었지만 "이제 곧 못 줍는다"는
+                                 압박은 한눈에 안 읽혔다 — 막대가 하는 일이 그것이다.
+                                 판정은 Core(BackpackPressure)가 소유한다. -->
+                            <ui:VisualElement name="inventory-capacity-bar" class="pc-bar-track inventory-capacity-bar" picking-mode="Ignore">
+                                <ui:VisualElement name="inventory-capacity-fill" class="pc-bar-fill inventory-capacity-fill" picking-mode="Ignore" />
+                            </ui:VisualElement>
                             <ui:VisualElement name="inventory-grid" class="inventory-grid item-slot-grid backpack-grid" />
                         </ui:VisualElement>
                         <ui:VisualElement class="inventory-detail inventory-detail-pane">

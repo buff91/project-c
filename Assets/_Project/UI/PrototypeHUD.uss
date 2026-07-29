@@ -2126,6 +2126,27 @@
     flex-shrink: 0;
 }
 
+/* 백팩 점유율 게이지. 트랙/채움은 DesignSystem 의 .pc-bar-track/.pc-bar-fill 을 쓰고
+   여기서는 이 자리에 맞는 치수만 준다. 기본색은 HP 빨강이 아니라 중립 stone 이다 —
+   백팩은 활력이 아니다. 경고 구간에서만 --pc-hazard 로 바뀐다. */
+.inventory-capacity-bar {
+    /* 폭은 페인이 소유한다. .inventory-grid-pane 이 align-items: center 라
+       폭을 안 주면 자식이 콘텐츠 크기(=0)로 접힌다 — 헤더/격자와 같은 함정이다. */
+    width: 100%;
+    height: 4px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+    background-color: var(--pc-inset);
+}
+
+.inventory-capacity-fill {
+    background-color: var(--pc-stone-dim);
+}
+
+.inventory-capacity-fill.is-warning {
+    background-color: var(--pc-hazard);
+}
+
 /* 상세 페인 스탯 행 — ItemDefinition 에 실제로 있는 값만 그린다. */
 .inventory-detail-stats {
     margin-top: 4px;

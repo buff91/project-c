@@ -197,6 +197,11 @@ USS에는 box-shadow가 없어 프레임·글로우·눈금은 도트 9-slice �
 - 다이아 현재층/선택의 **골드 글로우** → ✅ `ui-glow-frame.png` 9-slice. `.pc-dia--current`/`.pc-dbtn--selected`/`.pc-slot--selected`.
 - 게이지 **세그먼트 눈금** → ✅ `ui-gauge-tick.png` 가로 반복 오버레이(`.pc-bar-ticks`).
 
+`.pc-bar-track`/`.pc-bar-fill`은 인벤토리 백팩 점유율 게이지에서 **라이브**다.
+기본색은 HP 빨강이 아니라 중립 `--pc-stone-dim`이다 — 백팩은 활력이 아니다.
+경고 구간(점유율 80% 이상)에서만 `--pc-hazard`로 바뀐다. 판정은 `Core/BackpackRules.cs`의
+`BackpackPressure`가 소유한다.
+
 > 실 렌더·슬라이스 미세조정은 `DesignSystemGallery`를 UIDocument에 붙여 Unity에서 확인.
 > **라이브다.** 던전 모달 카드가 `.pc-window` 9-slice를 쓰고, 상태이상 칩(`.pc-chip--burn/--freeze/--poison`)은
 > 던전 HUD 좌상단에 나온다. `.pc-heart`만 쓰던 시절의 "무영향" 메모는 더 이상 사실이 아니다.

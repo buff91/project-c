@@ -74,6 +74,41 @@ namespace ProjectC.Core
     }
 
     /// <summary>
+    /// 백팩 압박 게이지의 규칙. UI가 자체 판정하지 않도록 Core가 소유한다
+    /// (같은 이유로 <c>ItemUnlockRules</c>도 판정이 한 곳뿐이다).
+    ///
+    /// <para>
+    /// 이 게이지가 재는 것은 <b>내구도가 아니라 점유율</b>이다. 계획에는 "내구도/충전 게이지"라고
+    /// 적혀 있었지만 <see cref="ItemDefinition"/>에 내구도도 충전도 없다 — 없는 값을 눈금으로
+    /// 그리면 화면이 시스템에 없는 규칙을 약속하게 된다. 내구도를 넣으려면 마모·파손·수리(대장간)
+    /// ·세이브 포맷이 함께 정해져야 하고, 그건 GDD/SYSTEMS가 먼저 결정할 일이지 UI 작업이
+    /// 곁다리로 만들 것이 아니다.
+    /// </para>
+    /// <para>
+    /// 점유율을 고른 이유: 백팩 칸은 플레이어가 <b>매 판 실제로 관리하는</b> 유일한 수치이고
+    /// (기둥 ④ 파밍 &amp; 조합), "주울 자리가 남았나"는 생환 판돈과 직결된다. 숫자("18 / 24 칸")는
+    /// 이미 있었지만 압박은 한눈에 안 읽혔다 — 막대가 하는 일이 그것이다.
+    /// </para>
+    /// </summary>
+    public static class BackpackPressure
+    {
+        /// <summary>이 비율 이상이면 경고색으로 바뀐다 — "이제 곧 못 줍는다".</summary>
+        public const float WarningRatio = 0.8f;
+
+        /// <summary>0~1로 정규화한 점유율. 용량이 0이면 0(게이지를 그리지 않는다).</summary>
+        public static float Ratio(int usedCells, int capacity)
+        {
+            if (capacity <= 0 || usedCells <= 0) return 0f;
+            float ratio = usedCells / (float)capacity;
+            return ratio > 1f ? 1f : ratio;
+        }
+
+        /// <summary>경고 구간인가. 가득 찬 경우도 포함한다.</summary>
+        public static bool IsWarning(int usedCells, int capacity) =>
+            capacity > 0 && Ratio(usedCells, capacity) >= WarningRatio;
+    }
+
+    /// <summary>
     /// 디아블로식 멀티슬롯 백팩 규칙.
     /// 큰 아이템부터 행 우선으로 다시 정리해 모바일에서도 드래그 없이 항상 같은 배치를 만든다.
     /// </summary>

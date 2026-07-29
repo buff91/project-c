@@ -40,6 +40,8 @@ namespace ProjectC.Gameplay
         private Label _detailName;
         private Label _detailDesc;
         private VisualElement _detailStats;
+        private VisualElement _capacityBar;
+        private VisualElement _capacityFill;
         private Button _useButton;
         private Button _bagButton;
         private Button _closeButton;
@@ -71,6 +73,8 @@ namespace ProjectC.Gameplay
             _detailName = root.Q<Label>("inventory-detail-name");
             _detailDesc = root.Q<Label>("inventory-detail-desc");
             _detailStats = root.Q<VisualElement>("inventory-detail-stats");
+            _capacityBar = root.Q<VisualElement>("inventory-capacity-bar");
+            _capacityFill = root.Q<VisualElement>("inventory-capacity-fill");
             _useButton = root.Q<Button>("inventory-use");
             _bagButton = root.Q<Button>("bag-button");
             _closeButton = root.Q<Button>("inventory-close");
@@ -114,6 +118,8 @@ namespace ProjectC.Gameplay
             _detailName = null;
             _detailDesc = null;
             _detailStats = null;
+            _capacityBar = null;
+            _capacityFill = null;
             _useButton = null;
             _bagButton = null;
             _closeButton = null;
@@ -195,6 +201,7 @@ namespace ProjectC.Gameplay
 
             if (_capacityLabel != null)
                 _capacityLabel.text = $"{layout.UsedCells} / {layout.Capacity} 칸";
+            UpdateCapacityBar(layout);
 
             if (_selected.HasValue && CountOf(_selected.Value) > 0)
                 Select(
@@ -395,6 +402,22 @@ namespace ProjectC.Gameplay
                 case ItemCategory.Equipment: return "장비";
                 default: return "--";
             }
+        }
+
+        /// <summary>
+        /// 점유율 게이지. 비율과 경고 판정은 <see cref="BackpackPressure"/>가 소유한다 —
+        /// UI가 자체 판정하면 숫자와 막대가 다른 말을 하는 상태가 조용히 생긴다.
+        /// </summary>
+        private void UpdateCapacityBar(BackpackLayout layout)
+        {
+            if (_capacityBar == null || _capacityFill == null) return;
+
+            float ratio = BackpackPressure.Ratio(layout.UsedCells, layout.Capacity);
+            _capacityFill.style.width = Length.Percent(ratio * 100f);
+
+            bool warning = BackpackPressure.IsWarning(layout.UsedCells, layout.Capacity);
+            _capacityBar.EnableInClassList("is-warning", warning);
+            _capacityFill.EnableInClassList("is-warning", warning);
         }
 
         private void ClearSelection()
