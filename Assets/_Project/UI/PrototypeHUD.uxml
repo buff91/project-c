@@ -4,6 +4,8 @@
     <ui:Style src="DesignSystem.uss" />
     <ui:Style src="PrototypeHUD.uss" />
     <ui:VisualElement name="hud-root" class="hud-root">
+        <!-- 화면공간 비네트. 첫 자식 = 모든 HUD 콘텐츠 뒤 → 월드만 어둡게 한다. -->
+        <ui:VisualElement class="pc-vignette" picking-mode="Ignore" />
         <!-- A · 바이탈. 상태이상 칩은 hp 바로 아래 붙는다 — HP 를 깎는 것과 HP 그 자체는
              같은 질문("이번 턴을 버티나")이라 눈이 한 번만 움직여야 한다. -->
         <ui:VisualElement class="vitals">

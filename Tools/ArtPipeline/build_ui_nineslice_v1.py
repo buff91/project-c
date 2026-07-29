@@ -87,6 +87,55 @@ def gauge_tick():
     return im
 
 
+VIG = 96   # vignette canvas (slice 24 -> 48px stretchable centre)
+VIG_SLICE = 24
+
+
+def vignette():
+    """Screen-space edge darkening as a 9-slice with a fully transparent centre.
+
+    Deliberately NOT a URP post-process Vignette override. Three reasons:
+    * a smooth radial gradient over 1-bit pixel art reads as a shader effect
+      bolted onto a sprite game -- it fights the dither language, it doesn't join it;
+    * the scene clear colour is already ``--pc-void`` (#05070C), so a multiply
+      vignette has almost nothing left to darken -- the whole visible effect lands
+      on lit room edges, which a sprite produces far more cheaply;
+    * it would need ``m_RenderPostProcessing`` plus a Volume in each of three
+      scenes and a full-screen blit.
+
+    Only the transparent centre stretches, so the dither dots keep their size at
+    every panel scale -- the same trick ``.pc-window`` already uses.
+    """
+    im = Image.new("RGBA", (VIG, VIG), (0, 0, 0, 0))
+    px = im.load()
+    peak = 0.70          # max alpha at the very corner
+    reach = VIG_SLICE    # darkening depth, in px, from each edge
+
+    for y in range(VIG):
+        for x in range(VIG):
+            # Distance inward from the nearest horizontal / vertical edge.
+            dx = min(x, VIG - 1 - x)
+            dy = min(y, VIG - 1 - y)
+            if dx >= reach and dy >= reach:
+                continue
+            # Combine both axes so corners go darkest, edges less so.
+            fx = max(0.0, 1.0 - dx / reach)
+            fy = max(0.0, 1.0 - dy / reach)
+            falloff = 1.0 - (1.0 - fx) * (1.0 - fy)
+            a = peak * falloff * falloff        # squared = softer shoulder
+            if a <= 0.0:
+                continue
+            # 2x2 ordered dither so the ramp stays dotted instead of smooth.
+            threshold = ((x & 1) * 2 + (y & 1) + 0.5) / 4.0
+            quantised = int(a * 255)
+            if (a * 255 - quantised) > threshold:
+                quantised += 1
+            if quantised <= 0:
+                continue
+            px[x, y] = (VOID[0], VOID[1], VOID[2], min(255, quantised))
+    return im
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     lock_rgba_to_palette(window_frame(S_LIT, STONE, S_DIM)).save(
@@ -97,7 +146,10 @@ def main():
     )
     lock_rgba_to_palette(glow_frame()).save(OUT / "ui-glow-frame.png")
     lock_rgba_to_palette(gauge_tick()).save(OUT / "ui-gauge-tick.png")
-    print(f"wrote 4 Torchstone 9-slice UI sprites to {OUT}")
+    # 비네트는 팔레트 잠금을 하지 않는다 — 알파 램프가 본체인데 lock 은 RGB 를 인덱스로
+    # 스냅하면서 알파 계조를 뭉갠다. RGB 는 이미 --pc-void 단색이라 잠글 것도 없다.
+    vignette().save(OUT / "ui-vignette.png")
+    print(f"wrote 5 Torchstone 9-slice UI sprites to {OUT}")
 
 
 if __name__ == "__main__":

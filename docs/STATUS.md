@@ -34,6 +34,15 @@
   `docs/art-direction/project-c-main-menu-backdrop-source-v1*`와
   `Tools/ArtPipeline/process_ui_backdrops_v1.py`에 있다.
   메인·허브·던전은 같은 `PrototypePanelSettings`와 현재 Screen/Game View 해상도를 이어받는다.
+  **던전 화면 톤**: 세 화면 모두 화면공간 비네트(`.pc-vignette`, 9-slice 스프라이트)를 루트 첫
+  자식으로 깐다 — URP 포스트프로세싱은 켜지 않는다(근거는 `docs/UI_DESIGN_SYSTEM.md`).
+  벽 등잔은 **아트와 빛이 같은 판정**(`Core/SconcePlacement.cs`)을 쓴다. 예전엔 두 해시가
+  독립이라 그려진 램프는 빛을 내지 않고 빛 웅덩이엔 광원이 안 보였으며, 아트 해시가
+  `viewQuarterTurns`를 포함해 시점을 돌리면 램프가 순간이동했다.
+  **남은 튜닝**: 커플링이 들어갔으니 `sconceLightIntensity`/`WallSconceRarity`를 캡처 보며
+  재조정할 차례다(계획이 커플링 뒤로 미뤄 둔 단계). 시작 방에 램프가 하나도 안 걸리는
+  경우가 있어 희소도를 낮추는 쪽이 후보다.
+
   **PC 월드 카메라는 허브·던전 모두 `playCameraSize` 2.3을 그대로 쓴다.** 허브는 13×9 캠프를
   한 화면에 넣으려고 물러나는 auto-fit을 제거하고 던전처럼 플레이어를 추종한다. 따라서 같은 타일과
   액터는 씬을 바꿔도 같은 화면 크기로 보인다. 전체 조감 배율 `debugCameraSize`는 던전 DebugAll에서만

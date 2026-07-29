@@ -493,3 +493,27 @@
     background-image: url("../Art/Runtime/ui-gauge-tick.png");
     background-repeat: repeat no-repeat;
 }
+
+/* ============================================================
+   화면공간 비네트 (v1.7) — 월드만 어둡게 하고 UI는 건드리지 않는다.
+   URP 포스트프로세싱을 켜지 않는 이유는 build_ui_nineslice_v1.py 의
+   vignette() 주석에 있다(요약: 매끄러운 그라디언트는 도트 위에서 이물질로 읽히고,
+   씬 clear color 가 이미 --pc-void 라 곱셈 비네트가 어둡게 할 것이 거의 없다).
+
+   각 화면 루트의 **첫 자식**으로 둔다 = 모든 HUD 콘텐츠 뒤. 늘어나는 것은
+   투명한 중앙뿐이라 디더 도트가 모든 패널 배율에서 크기를 유지한다.
+   ============================================================ */
+
+.pc-vignette {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-image: url("../Art/Runtime/ui-vignette.png");
+    -unity-slice-left: 24;
+    -unity-slice-top: 24;
+    -unity-slice-right: 24;
+    -unity-slice-bottom: 24;
+    -unity-slice-scale: 1px;
+}

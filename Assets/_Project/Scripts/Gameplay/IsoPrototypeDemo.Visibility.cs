@@ -944,11 +944,13 @@ namespace ProjectC.Gameplay
             // 허브는 캠프 톤을 유지한다.
             int torchRarity = hubMode || _dungeon == null
                 ? 5
-                : DungeonBandProfiles.ForDepth(
-                    _dungeon.Region,
-                    _dungeon.ProgressIndexFor(
-                        _dungeon.Height.FloorIndex(pos.elevation))).WallSconceRarity;
-            bool torch = Mathf.Abs(pos.x * 3 + pos.y + _grid.iso.viewQuarterTurns) % torchRarity == 0;
+                : WallSconceRarityFor(_dungeon.Height.FloorIndex(pos.elevation));
+            // 빛과 **같은 판정**을 쓴다. 예전엔 여기가 독립 해시라 그려진 램프와 빛 웅덩이가
+            // 우연 말고는 겹치지 않았고, viewQuarterTurns 가 섞여 있어 시점을 돌리면 램프가
+            // 순간이동했다. 이 벽이 서 있다는 것 자체가 pos 가 가장자리 타일이라는 뜻이므로
+            // 빛 쪽의 edge 판정과 결과가 일치한다.
+            bool torch = SconcePlacement.IsSconce(
+                pos.x, pos.y, dungeonSeed, torchRarity);
             int decoration = torch
                 ? 0
                 : Mathf.Abs(

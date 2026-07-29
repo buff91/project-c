@@ -5,6 +5,8 @@
     <ui:Style src="PrototypeHUD.uss" />
     <ui:Style src="HubHUD.uss" />
     <ui:VisualElement name="hub-root" class="hud-root">
+        <!-- 화면공간 비네트. 첫 자식 = 모든 HUD 콘텐츠 뒤 → 월드만 어둡게 한다. -->
+        <ui:VisualElement class="pc-vignette" picking-mode="Ignore" />
         <ui:VisualElement class="hub-topbar">
             <ui:VisualElement class="artifact-panel hub-pill">
                 <ui:Label text="캠프" class="hub-caption" />

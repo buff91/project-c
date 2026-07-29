@@ -5,6 +5,8 @@
     <ui:Style src="PrototypeHUD.uss" />
     <ui:Style src="MainMenuHUD.uss" />
     <ui:VisualElement name="main-menu-root" class="main-menu-root">
+        <!-- 화면공간 비네트. 첫 자식 = 모든 HUD 콘텐츠 뒤 → 월드만 어둡게 한다. -->
+        <ui:VisualElement class="pc-vignette" picking-mode="Ignore" />
         <ui:VisualElement class="main-menu-card">
             <ui:Label text="PROJECT C" class="main-menu-title" />
             <ui:Label text="높이를 읽고, 살아서 돌아와라" class="main-menu-subtitle" />

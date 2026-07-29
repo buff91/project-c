@@ -236,3 +236,19 @@ Claude의 HTML 시안(아티팩트)은 이 토큰과 같은 이름을 쓴다. �
   (FloorIndex) 기준이라 상승·하강 던전이 같은 코드로 성립하고, 밝기만 **진행 인덱스** 기준이다
   (현재=`--pc-gold` / 탐색함=`--pc-stone-dim` / 미도달=`--pc-inset`). ▲▼ 캡은 스택의 **양 끝**을
   가리키며 그 끝에 서 있으면 사라진다. 던전 HUD에서 골드는 여기 하나뿐이다.
+
+
+## 화면공간 비네트 (`.pc-vignette`)
+
+- `Art/Runtime/ui-vignette.png` 96×96 9-slice, `-unity-slice-*: 24`. 중앙 48×48이 **완전 투명**이라
+  늘어나는 건 투명한 부분뿐이고, 디더 도트는 모든 패널 배율에서 크기를 유지한다
+  (`.pc-window`가 이미 쓰는 수법). 생성기는 `Tools/ArtPipeline/build_ui_nineslice_v1.py`.
+- 세 화면 루트(`hud-root`/`hub-root`/`main-menu-root`)의 **첫 자식**으로 둔다 = 모든 HUD 콘텐츠 뒤.
+  월드만 어둡게 하고 UI는 건드리지 않는다. `picking-mode="Ignore"`.
+- 최대 알파 0.70, `--pc-void` 단색. 화면공간에서 월드 **뒤에** 합성되므로 FOV 틴트 시스템
+  (`SpriteRenderer.color` 곱)과 싸우지 않는다.
+- **URP 포스트프로세싱 Vignette를 쓰지 않는 이유**: ① 1비트 도트 위의 매끄러운 방사형
+  그라디언트는 스프라이트 게임에 셰이더를 덧댄 것처럼 읽힌다 — 디더 어휘에 합류하지 못하고
+  싸운다. ② 씬 clear color가 이미 `#05070C`(=`--pc-void`)라 곱셈 비네트가 어둡게 할 것이 거의
+  없다 — 실제 효과는 전부 밝은 방 가장자리에 나타나고 그건 스프라이트가 훨씬 싸게 낸다.
+  ③ 카메라 `m_RenderPostProcessing` + 씬 3개마다 Volume + 전면 blit이 필요하다.

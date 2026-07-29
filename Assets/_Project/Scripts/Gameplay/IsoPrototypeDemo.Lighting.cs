@@ -99,14 +99,20 @@ namespace ProjectC.Gameplay
                 !HasPlanarTile(pos.x, pos.y + 1, floor) ||
                 !HasPlanarTile(pos.x, pos.y - 1, floor);
             if (!edge) return false;
-            int rarity = DungeonBandProfiles
+            return SconcePlacement.IsSconce(
+                pos.x, pos.y, dungeonSeed, WallSconceRarityFor(floor));
+        }
+
+        /// <summary>
+        /// 이 층의 등잔 희소도. 깊어질수록 드물어 어둠이 깊어진다.
+        /// 아트(<c>CreateRearWall</c>)와 빛이 <b>같은 값</b>을 봐야 램프와 빛 웅덩이가 겹친다.
+        /// </summary>
+        private int WallSconceRarityFor(int floorIndex) =>
+            DungeonBandProfiles
                 .ForDepth(
                     _dungeon?.Region ?? DungeonRegionProfile.Facility,
-                    _dungeon != null ? _dungeon.ProgressIndexFor(floor) : 0)
+                    _dungeon != null ? _dungeon.ProgressIndexFor(floorIndex) : 0)
                 .WallSconceRarity;
-            int hash = (pos.x * 73856093) ^ (pos.y * 19349663) ^ (dungeonSeed * 83492791);
-            return (hash & 0x7fffffff) % rarity == 0;
-        }
 
         private float StaticWarmAt(GridPos pos) =>
             _staticWarmField != null && _staticWarmField.TryGetValue(pos, out float v) ? v : 0f;
