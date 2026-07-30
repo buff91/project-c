@@ -83,8 +83,10 @@
 | `env-floor-deep` / `env-floor-deep-raised` | deepFloor / deepRaisedFloor | 128×64 | (0.5, 0.5) |
 | `env-floor-boss` / `env-floor-boss-raised` | bossFloor / bossRaisedFloor | 128×64 | (0.5, 0.5) |
 
-**폐병원 Facility 드레싱** — 공용 바닥을 대체하는 새 지형이 아니라 seed 고정 희소 변주다.
-바닥 PNG는 `process_hospital_dressing_v1.py`가 `env-floor` 위에 합성한다.
+**Facility 드레싱 (아케이드 재발주 대상)** — 공용 바닥을 대체하는 새 지형이 아니라 seed 고정
+희소 변주다. 바닥 PNG는 `process_hospital_dressing_v1.py`가 `env-floor` 위에 합성한다.
+슬롯명 `hospital*`은 구 폐병원 시절 명명을 유지한 것이다(리스킨 표 §5 — 개명은 콘텐츠가
+늘어난 뒤 일괄). 내용물은 M5 재발주에서 아케이드 어휘(자판기·죽은 네온 간판·홀로 패널)로 교체한다.
 
 | 파일명 | 슬롯 | 캔버스 | 피벗 | 상태 |
 |--------|------|--------|------|------|

@@ -79,7 +79,8 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
    `env-weak-floor`, `env-ladder`.
 4. **환경 루프**: `prop-campfire`, `prop-portal`, 좌·우 상승 벽 횃불의 `idle`
    키프레임을 만들고 Aseprite에서 4~8프레임 루프로 마감한다.
-5. **폐병원 소품/낙하 연출**: 들것, 커튼 레일, 수술등, 약품 캐비닛,
+5. **아케이드 소품/낙하 연출** (v0.3.3 개정 — 구 병원 소품 발주는 집행 전 폐기,
+   `docs/ROADMAP.md` 「아트」와 동기): 자판기, 죽은 네온 간판, 홀로 패널, 셔터 내린 점포,
    엘리베이터 통로, 구멍 깊이 표현.
 6. **아이템 12종**: 64×64 포스트아포 리스킨. fallback vertical slice는 완료했으며
    `item-sources-v3/`의 항목별 단일 소스를 `process_items_v3.py`로 마감한다.
@@ -93,7 +94,7 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 
 - 대상 계약: Unity 슬롯, 캔버스, 피벗, 게임에서 읽혀야 할 실루엣
 - 화풍 계약: 픽셀 클러스터, 에지, 명도 단계, 최종 해상도에서의 렌더링 문법
-- 세계관 계약: 폐병원·이상 미궁의 재료 어휘, Torchstone 팔레트, 신호색 한 점
+- 세계관 계약: 폐 아케이드 복합타워(네온 아포칼립스)·이상 미궁의 재료 어휘, Torchstone 팔레트, 신호색 한 점
 - 생성 입력: style, world, subject, method, 캐릭터/대상 정의, 이번 생성 내용,
   positive/negative
 - 재현값: checkpoint/LoRA 버전, seed, Steps, CFG, denoise, sampler/scheduler
@@ -156,7 +157,7 @@ Assets/_Project/Art/
 
 ```text
 Create a clean modular isometric pixel-art asset reference board for a post-apocalyptic
-derelict-hospital roguelike.
+cyberpunk derelict arcade-tower roguelike (dead neon signs, concrete, emergency lights).
 Use an exact-looking 2:1 diamond tile projection and one consistent upper-left light source.
 Show isolated floor, left/right wall faces, corner, stairs, hole, weak floor, door, crate,
 barrel, player and goblin on a flat dark background with generous spacing.
@@ -242,8 +243,10 @@ UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
 `Art/Environment/` PNG도 같은 임포터가 강제한다.
 
-폐병원 드레싱 소스와 생성 프롬프트는
-`docs/art-direction/project-c-hospital-dressing-source-v1.{png,prompt.md}`가 소유한다.
+드레싱(바닥 3 + 하단 벽 3) 슬롯의 구판 소스와 생성 프롬프트는
+`docs/art-direction/project-c-hospital-dressing-source-v1.{png,prompt.md}`가 소유한다
+(구 폐병원 보드 — 셀 배치 계약의 원본이라 스타일 트랜스퍼 입력으로 유지하며, 아케이드
+재발주는 `environment-neon-dressing-v1` 레시피가 소유한다 — M5 잔여 범위는 `docs/ROADMAP.md`).
 3×2 소스의 바닥 3셀은 공용 `env-floor` 위에 합성해 완전한 128×64 타일로 만들고,
 벽 3셀은 64×112 좌/우 방향형으로 마감한다. 바닥 소스를 통째로 교체하면 생성 여백이
 투명한 void 구멍으로 보이므로 합성 단계를 제거하지 않는다.
