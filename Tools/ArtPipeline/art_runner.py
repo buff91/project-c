@@ -149,6 +149,86 @@ def review_sheet(
     return destination
 
 
+def _remove_border_background(image: Image.Image, tolerance: int) -> Image.Image:
+    """테두리에 연결된 균일 배경만 투명화한다(내부 같은 색 보존)."""
+    from collections import deque
+
+    image = image.convert("RGBA")
+    pixels = image.load()
+    width, height = image.size
+    base = pixels[min(3, width - 1), min(3, height - 1)][:3]
+    seen = bytearray(width * height)
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
+    for y in range(height):
+        queue.append((0, y))
+        queue.append((width - 1, y))
+    while queue:
+        x, y = queue.popleft()
+        if x < 0 or y < 0 or x >= width or y >= height:
+            continue
+        index = y * width + x
+        if seen[index]:
+            continue
+        seen[index] = 1
+        r, g, b, _ = pixels[x, y]
+        if (
+            abs(r - base[0]) <= tolerance
+            and abs(g - base[1]) <= tolerance
+            and abs(b - base[2]) <= tolerance
+        ):
+            pixels[x, y] = (0, 0, 0, 0)
+            queue.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    return image
+
+
+def game_scale_preview(
+    source: Path,
+    destination: Path,
+    *,
+    canvas: tuple[int, int],
+    normalize_rows: dict[str, Any],
+    key_tolerance: int = 48,
+    preview_zoom: int = 3,
+    colors: int = 24,
+) -> Path:
+    """리뷰 판정용 게임 스케일 프리뷰.
+
+    1024 원본을 캔버스 행 계약(crown/feet row)으로 정규화해 실제 게임에서 읽히는
+    비율·밀도를 리뷰 시트에 함께 보여준다. 정식 conform(팔레트 잠금)의 대체가 아니라
+    판정 보조다 — "컨셉 원본으로 톤·비율을 판정하지 않는다"(액터 계약 §4-b).
+    """
+    crown = int(normalize_rows.get("crown", 8))
+    feet = int(normalize_rows.get("feet", canvas[1] - 6))
+    if feet <= crown:
+        raise ReviewError("normalize_rows: feet row must be below crown row")
+    image = _remove_border_background(Image.open(source), key_tolerance)
+    bbox = image.getbbox()
+    if bbox is None:
+        raise ReviewError(f"game preview found no opaque pixels: {source}")
+    content = image.crop(bbox)
+    target_height = feet - crown
+    scale = target_height / content.height
+    target_width = max(1, round(content.width * scale))
+    small = content.resize((target_width, target_height), Image.Resampling.BOX)
+    sprite = Image.new("RGBA", canvas, (0, 0, 0, 0))
+    sprite.alpha_composite(small, ((canvas[0] - target_width) // 2, crown))
+    alpha = sprite.split()[3]
+    quantized = sprite.convert("RGB").quantize(
+        colors=colors, dither=Image.Dither.NONE
+    ).convert("RGBA")
+    quantized.putalpha(alpha)
+    preview = quantized.resize(
+        (canvas[0] * preview_zoom, canvas[1] * preview_zoom),
+        Image.Resampling.NEAREST,
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    preview.save(destination)
+    return destination
+
+
 def write_shot_manifest(
     destination: Path,
     *,
@@ -231,6 +311,20 @@ def process_job(
                             "raw_path": relative_project_path(raw_shot),
                         }
                     )
+                normalize_rows = recipe.output.get("normalize_rows")
+                if isinstance(normalize_rows, dict):
+                    key_tolerance = int(recipe.output.get("key_tolerance", 48))
+                    for item in manifest_shots:
+                        raw_shot = project_path(item["raw_path"])
+                        preview = game_scale_preview(
+                            raw_shot,
+                            raw_shot.parent / "game-preview.png",
+                            canvas=tuple(item["canvas"]),
+                            normalize_rows=normalize_rows,
+                            key_tolerance=key_tolerance,
+                        )
+                        item["game_preview_path"] = relative_project_path(preview)
+                        generated.append((f"{item['label']} · game", preview))
                 review_sheet(generated, destination)
                 write_shot_manifest(
                     candidate_dir / "shot-manifest.json",

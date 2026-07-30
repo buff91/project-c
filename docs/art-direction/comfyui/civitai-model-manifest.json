@@ -5,6 +5,39 @@
   "installRoot": "~/Documents/ComfyUI/models/loras",
   "models": [
     {
+      "purpose": "Anime-native SDXL checkpoint for the actor concept lane (v0.3.3 streetwear chibi). Environment lane stays on zavychromaxl.",
+      "type": "checkpoint",
+      "installPath": "~/Documents/ComfyUI/models/checkpoints",
+      "modelId": 1188071,
+      "name": "Animagine XL 4.0",
+      "version": "v4 Opt",
+      "filename": "animagine-xl-4.0-opt.safetensors",
+      "sha256": "6327eca98bfb6538dd7a4edce22484a1bbc57a8cff6b11d075d40da1afb847ac",
+      "source": "https://huggingface.co/cagliostrolab/animagine-xl-4.0",
+      "download": "https://huggingface.co/cagliostrolab/animagine-xl-4.0/resolve/main/animagine-xl-4.0-opt.safetensors",
+      "trainedWords": ["masterpiece, high score, great score, absurdres (quality tail)", "booru tag prompting: 1boy/1girl, ..."],
+      "recommendedSettings": {"sampler": "euler_ancestral", "steps": 28, "cfg": 5.0},
+      "licenseSnapshot": {
+        "license": "CreativeML Open RAIL++-M",
+        "allowCommercialUse": true,
+        "note": "2026-07-30 HF 모델 카드 기준 — 상업 사용·수정·재배포 허용, 불법·유해 사용 금지"
+      }
+    },
+    {
+      "purpose": "SDXL OpenPose ControlNet — 치비 BODY_18 골격으로 액터 비율·포즈 고정 (actor-chibi-base 레시피)",
+      "type": "controlnet",
+      "installPath": "~/Documents/ComfyUI/models/controlnet",
+      "name": "controlnet-openpose-sdxl-1.0 (xinsir)",
+      "version": "1.0",
+      "filename": "controlnet-openpose-sdxl-xinsir.safetensors",
+      "source": "https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0",
+      "download": "https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.safetensors",
+      "licenseSnapshot": {
+        "license": "Apache-2.0",
+        "note": "2026-07-30 HF 모델 카드 기준"
+      }
+    },
+    {
       "purpose": "SD1.5 pixel style for pose-controlled actor drafts",
       "modelId": 43820,
       "versionId": 121559,

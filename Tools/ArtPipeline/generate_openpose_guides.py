@@ -127,10 +127,57 @@ POSES: dict[str, dict[str, tuple[float, float]]] = {
         "lh": (0.55, 0.66), "lk": (0.67, 0.60), "la": (0.79, 0.62),
         "rh": (0.56, 0.74), "rk": (0.69, 0.78), "ra": (0.82, 0.76),
     },
+    # 액터 계약 v2(2.5~3등신)용 치비 골격 — 기존 골격은 ~5등신이라 그대로 쓰면
+    # 생성 결과가 리얼 비율로 회귀한다. 머리 유닛 ≈ 전체 높이의 36%.
+    # 방향이 달라도 y 행(crown/neck/hip/ankle)은 동일해야 한다 — 방향 간 비율 일관성의 근거.
+    "chibi-idle": {
+        "head": (0.50, 0.26), "neck": (0.50, 0.42), "hip": (0.50, 0.58),
+        "ls": (0.42, 0.44), "le": (0.39, 0.53), "lw": (0.37, 0.62),
+        "rs": (0.58, 0.44), "re": (0.61, 0.53), "rw": (0.63, 0.62),
+        "lh": (0.455, 0.58), "lk": (0.44, 0.73), "la": (0.43, 0.87),
+        "rh": (0.545, 0.58), "rk": (0.56, 0.73), "ra": (0.57, 0.87),
+    },
+    # 3/4 우향(동쪽) — 어깨·골반 폭을 좁혀 측면감을 만들고 머리를 진행 방향으로 민다.
+    "chibi-idle-east": {
+        "head": (0.53, 0.26), "neck": (0.50, 0.42), "hip": (0.50, 0.58),
+        "ls": (0.45, 0.44), "le": (0.42, 0.53), "lw": (0.41, 0.62),
+        "rs": (0.56, 0.44), "re": (0.59, 0.53), "rw": (0.60, 0.62),
+        "lh": (0.465, 0.58), "lk": (0.45, 0.73), "la": (0.44, 0.87),
+        "rh": (0.535, 0.58), "rk": (0.55, 0.73), "ra": (0.56, 0.87),
+    },
+    # 등면(북쪽) — 얼굴 키포인트를 그리지 않는다(NO_FACE_POSES).
+    "chibi-idle-north": {
+        "head": (0.50, 0.26), "neck": (0.50, 0.42), "hip": (0.50, 0.58),
+        "ls": (0.58, 0.44), "le": (0.61, 0.53), "lw": (0.63, 0.62),
+        "rs": (0.42, 0.44), "re": (0.39, 0.53), "rw": (0.37, 0.62),
+        "lh": (0.545, 0.58), "lk": (0.56, 0.73), "la": (0.57, 0.87),
+        "rh": (0.455, 0.58), "rk": (0.44, 0.73), "ra": (0.43, 0.87),
+    },
 }
+
+# 등면 등 얼굴 키포인트를 그리면 안 되는 포즈. OpenPose는 얼굴 점 유무로 앞/뒤를 판정한다.
+NO_FACE_POSES = {"chibi-idle-north"}
+
+# 좌우 미러 파생 포즈: 원본 포즈의 x를 뒤집고 좌/우 관절을 맞바꾼다.
+# BODY_18은 색으로 좌우를 식별하므로 단순 이미지 플립이 아니라 관절 재명명이 필요하다.
+MIRRORED_POSES = {"chibi-idle-west": "chibi-idle-east"}
+
+_SIDE_SWAP = {
+    "ls": "rs", "rs": "ls", "le": "re", "re": "le", "lw": "rw", "rw": "lw",
+    "lh": "rh", "rh": "lh", "lk": "rk", "rk": "lk", "la": "ra", "ra": "la",
+}
+
+
+def mirror_pose(points: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float]]:
+    return {
+        _SIDE_SWAP.get(joint, joint): (1.0 - x, y)
+        for joint, (x, y) in points.items()
+    }
 OUTPUT_PROFILES = {
     "actor-slinger": tuple(
-        name for name in POSES if name != "idle-breathe"
+        name
+        for name in POSES
+        if name != "idle-breathe" and not name.startswith("chibi-")
     ),
     "actor-survivor": (
         "idle",
@@ -145,7 +192,18 @@ OUTPUT_PROFILES = {
         "fall",
         "death",
     ),
+    # 치비 골격은 얼굴 키포인트 간격도 머리 크기에 맞춰 커야 한다(face_scale).
+    # 4방향: south(기본) · east · west(미러 파생) · north(등면, 얼굴 키포인트 없음).
+    "actor-chibi": (
+        "chibi-idle",
+        "chibi-idle-east",
+        "chibi-idle-west",
+        "chibi-idle-north",
+    ),
 }
+
+# 프로파일별 얼굴 키포인트 배율. 기본 1.0은 기존 가이드와 픽셀 단위로 동일한 출력을 유지한다.
+PROFILE_FACE_SCALE = {"actor-chibi": 2.6}
 
 BODY_18_COLORS = (
     (255, 0, 0),
@@ -196,20 +254,27 @@ def point(value: tuple[float, float]) -> tuple[int, int]:
     return round(value[0] * SIZE), round(value[1] * SIZE)
 
 
-def render_pose(points: dict[str, tuple[float, float]]) -> Image.Image:
+def render_pose(
+    points: dict[str, tuple[float, float]],
+    face_scale: float = 1.0,
+    draw_face: bool = True,
+) -> Image.Image:
     image = Image.new("RGB", (SIZE, SIZE), (0, 0, 0))
     draw = ImageDraw.Draw(image)
     body = dict(points)
     head_x, head_y = points["head"]
     body.update(
         {
-            "reye": (head_x + 0.018, head_y - 0.006),
-            "rear": (head_x + 0.038, head_y),
-            "leye": (head_x - 0.018, head_y - 0.006),
-            "lear": (head_x - 0.038, head_y),
+            "reye": (head_x + 0.018 * face_scale, head_y - 0.006 * face_scale),
+            "rear": (head_x + 0.038 * face_scale, head_y),
+            "leye": (head_x - 0.018 * face_scale, head_y - 0.006 * face_scale),
+            "lear": (head_x - 0.038 * face_scale, head_y),
         }
     )
+    face_joints = {"reye", "rear", "leye", "lear"}
     for start, end, color_index in BODY_18_BONES:
+        if not draw_face and (start in face_joints or end in face_joints):
+            continue
         draw.line(
             (point(body[start]), point(body[end])),
             fill=BODY_18_COLORS[color_index],
@@ -237,6 +302,8 @@ def render_pose(points: dict[str, tuple[float, float]]) -> Image.Image:
         "lear",
     )
     for color_index, joint in enumerate(joint_order):
+        if not draw_face and joint in face_joints:
+            continue
         x, y = point(body[joint])
         draw.ellipse(
             (x - 7, y - 7, x + 7, y + 7),
@@ -245,13 +312,25 @@ def render_pose(points: dict[str, tuple[float, float]]) -> Image.Image:
     return image
 
 
+def resolve_pose(name: str) -> dict[str, tuple[float, float]]:
+    if name in MIRRORED_POSES:
+        return mirror_pose(POSES[MIRRORED_POSES[name]])
+    return POSES[name]
+
+
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for prefix, names in OUTPUT_PROFILES.items():
+        face_scale = PROFILE_FACE_SCALE.get(prefix, 1.0)
         for name in names:
-            pose = POSES[name]
+            pose = resolve_pose(name)
+            source_name = MIRRORED_POSES.get(name, name)
             destination = OUTPUT_DIR / f"{prefix}-{name}.png"
-            render_pose(pose).save(destination)
+            render_pose(
+                pose,
+                face_scale,
+                draw_face=source_name not in NO_FACE_POSES,
+            ).save(destination)
             print(destination)
     return 0
 

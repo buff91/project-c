@@ -56,6 +56,30 @@ types:
       denoise: true
       controlnet: false
 
+  - id: sdxl-txt2img-openpose
+    label: SDXL txt2img + OpenPose (치비 골격 고정)
+    summary: >-
+      프롬프트가 정체성을, BODY_18 골격 가이드가 비율·포즈를 고정한다.
+      v0.3.3 액터 레인 표준 — 모든 액터가 같은 치비 골격을 공유해
+      비율·포즈 일관성을 구조로 보장한다.
+    default_workflow: >-
+      docs/art-direction/comfyui/actor-chibi-openpose-sdxl.api.json
+    requires:
+      bindings:
+        - checkpoint
+        - positive
+        - negative
+        - seed
+        - steps
+        - cfg
+        - sampler
+        - scheduler
+      uploads:
+        pose: 5.image
+    supports:
+      denoise: false
+      controlnet: true
+
   - id: sd15-img2img-openpose
     label: SD1.5 img2img + OpenPose
     summary: >-
