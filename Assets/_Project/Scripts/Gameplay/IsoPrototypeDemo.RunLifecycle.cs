@@ -171,7 +171,7 @@ namespace ProjectC.Gameplay
                 !HasBoss
                     ? "최심부 도달 — 출구(▼)로 향하라"
                     : BossExitUnlocked
-                        ? "최심층 출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
+                        ? "출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
                         : $"최심층 도달 — {BossName}를 쓰러뜨려 출구를 열어라");
             BossStateChanged?.Invoke();
         }

@@ -68,6 +68,7 @@ namespace ProjectC.Gameplay
         private Button _exitAdvance;
         private Button _exitExtract;
         private VisualElement _bossPanel;
+        private Label _bossKicker;
         private Label _bossName;
         private VisualElement _bossHealthFill;
         private Label _bossHealthValue;
@@ -273,6 +274,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _exitAdvance, root.Q<Button>("exit-advance"), HandleExitAdvance);
             RebindButton(ref _exitExtract, root.Q<Button>("exit-extract"), HandleExitExtract);
             _bossPanel = root.Q<VisualElement>("boss-panel");
+            _bossKicker = root.Q<Label>("boss-kicker");
             _bossName = root.Q<Label>("boss-name");
             _bossHealthFill = root.Q<VisualElement>("boss-health-fill");
             _bossHealthValue = root.Q<Label>("boss-health-value");

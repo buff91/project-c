@@ -85,10 +85,10 @@ namespace ProjectC.Tests
             CollectionAssert.AreEqual(Pick(30, 0, seed: 5), Pick(30, 0, seed: 5));
 
             List<string> shallow = Pick(60, 0, seed: 3);
-            CollectionAssert.DoesNotContain(shallow, "Skeleton", "최상층(B1)엔 해골이 없다");
+            CollectionAssert.DoesNotContain(shallow, "Skeleton", "초반 구간엔 경비 드론이 없다");
 
             List<string> deep = Pick(60, 3, seed: 3);
-            CollectionAssert.Contains(deep, "Skeleton", "깊은 층엔 해골이 섞인다");
+            CollectionAssert.Contains(deep, "Skeleton", "후반 구간엔 경비 드론이 섞인다");
         }
 
         private static List<string> Pick(int count, int depth, int seed)

@@ -287,19 +287,19 @@ namespace ProjectC.Tests
             // 시작 층은 전역 선택) 허브를 그릴 때 던전 값을 쓰거나 던전 체인의 2번째 던전이
             // 1번째 값을 쓴다. 레이아웃이 둘 다 들고 있어야 한다.
             var map = new GridMap();
-            DungeonLayout hospital = DungeonGenerator.Generate(
+            DungeonLayout arcadeTower = DungeonGenerator.Generate(
                 map, 13, 13, 10, 4, 1977,
                 DungeonProgressDirection.Ascend,
                 firstBuildingFloor: -2);
 
-            Assert.AreEqual(DungeonProgressDirection.Ascend, hospital.Direction);
-            Assert.AreEqual(-2, hospital.FirstBuildingFloor);
+            Assert.AreEqual(DungeonProgressDirection.Ascend, arcadeTower.Direction);
+            Assert.AreEqual(-2, arcadeTower.FirstBuildingFloor);
             Assert.AreEqual("B2", DungeonDirectionRules.FloorLabelFor(
-                hospital.Direction, hospital.FirstBuildingFloor, 0));
+                arcadeTower.Direction, arcadeTower.FirstBuildingFloor, 0));
             Assert.AreEqual("1F", DungeonDirectionRules.FloorLabelFor(
-                hospital.Direction, hospital.FirstBuildingFloor, 2));
+                arcadeTower.Direction, arcadeTower.FirstBuildingFloor, 2));
             Assert.AreEqual("8F", DungeonDirectionRules.FloorLabelFor(
-                hospital.Direction, hospital.FirstBuildingFloor, 9));
+                arcadeTower.Direction, arcadeTower.FirstBuildingFloor, 9));
 
             // 표기 기준을 주지 않은 레이아웃(허브 등)은 지하 1층 기준 하강으로 떨어진다.
             var plain = new DungeonLayout(

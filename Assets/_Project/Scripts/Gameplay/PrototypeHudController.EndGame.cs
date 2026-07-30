@@ -66,6 +66,9 @@ namespace ProjectC.Gameplay
             _bossPanel.EnableInClassList("is-open", show);
             if (!show) return;
 
+            // 보스 패널은 아레나 층에서만 열리므로 현재 층 라벨이 곧 보스 층 라벨이다.
+            if (_bossKicker != null)
+                _bossKicker.text = $"{demo.ActiveFloorLabel} · FINAL GUARDIAN";
             if (_bossName != null)
                 _bossName.text = demo.BossDefeated
                     ? $"{demo.BossName} · 처치 완료"

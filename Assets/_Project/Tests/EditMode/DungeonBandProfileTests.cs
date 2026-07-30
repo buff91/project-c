@@ -116,7 +116,7 @@ namespace ProjectC.Tests
                 Assert.AreEqual(0, shallow.CatwalkLength, $"{region} — 도입 구간은 평평하게 둔다");
                 Assert.AreEqual(0, shallow.ExtraEnemies, $"{region} — 도입 구간은 기본 밀도");
 
-                Assert.Greater(mid.SkeletonWeight, 0, $"{region} — 중반엔 단단한 적이 등장한다");
+                Assert.Greater(mid.SkeletonWeight, 0, $"{region} — 중반엔 경비 드론이 등장한다");
                 Assert.Greater(mid.SlingerWeight, 0, $"{region} — 중반엔 원거리 압박이 등장한다");
             }
         }

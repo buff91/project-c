@@ -42,7 +42,7 @@ namespace ProjectC.Tests
         /// </list>
         /// </summary>
         [Test]
-        public void Ascending_HospitalShape_MatchesGoldenFingerprint()
+        public void Ascending_ArcadeTowerShape_MatchesGoldenFingerprint()
         {
             Assert.AreEqual(
                 "8fbf82c8067b1cb3",

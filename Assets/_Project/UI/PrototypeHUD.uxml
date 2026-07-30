@@ -71,7 +71,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="boss-panel" class="artifact-panel boss-panel" picking-mode="Ignore">
-            <ui:Label text="B10 · FINAL GUARDIAN" class="boss-kicker" />
+            <ui:Label name="boss-kicker" text="FINAL GUARDIAN" class="boss-kicker" />
             <ui:Label name="boss-name" text="감시자" class="boss-name" />
             <ui:VisualElement class="boss-health-track">
                 <ui:VisualElement name="boss-health-fill" class="boss-health-fill" />
@@ -212,7 +212,7 @@
                 <ui:Label text="죽으면 전부 잃는다 — 생환만이 전리품을 지킨다" class="gameover-detail" />
                 <ui:VisualElement class="settings-actions">
                     <ui:Button name="exit-extract" text="생환하기" class="settings-reset" />
-                    <ui:Button name="exit-advance" text="더 깊이" class="settings-done" />
+                    <ui:Button name="exit-advance" text="더 나아가기" class="settings-done" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

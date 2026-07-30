@@ -152,7 +152,7 @@ namespace ProjectC.Tests
         public void RefreshBands_AscendingDungeon_UsesProgressNotFloorSign()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "derelict-hospital", 9, -1, DateTime.UtcNow);
+                "forgotten-catacombs", 9, -1, DateTime.UtcNow);
 
             // 아케이드 타워: B2(진행 0) → 1F(진행 2) → 5F(진행 6) → 8F(진행 9, 보스).
             telemetry.RecordTurn(-1);
@@ -180,7 +180,7 @@ namespace ProjectC.Tests
         public void Floors_AreOrderedByProgress_NotByElevation()
         {
             RunTelemetry telemetry = RunTelemetry.Begin(
-                "derelict-hospital", 9, -1, DateTime.UtcNow);
+                "forgotten-catacombs", 9, -1, DateTime.UtcNow);
 
             telemetry.RecordFloorEntered(3, 1);
             telemetry.RecordFloorEntered(1, 2);   // 내려갔다 — 고도는 낮지만 나중에 방문했다

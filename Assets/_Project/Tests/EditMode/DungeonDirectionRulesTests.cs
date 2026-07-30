@@ -120,7 +120,7 @@ namespace ProjectC.Tests
         [TestCase(2, "1F")]
         [TestCase(3, "2F")]
         [TestCase(9, "8F")]
-        public void FloorLabel_AscendingHospital_SkipsGroundZero(int progressIndex, string expected)
+        public void FloorLabel_AscendingArcadeTower_SkipsGroundZero(int progressIndex, string expected)
         {
             Assert.AreEqual(
                 expected,
@@ -162,9 +162,9 @@ namespace ProjectC.Tests
         [Test]
         public void Catalog_DeclaresDirectionPerDungeon()
         {
-            DungeonDefinition hospital = DungeonCatalog.ById(DungeonCatalog.DefaultId);
-            Assert.AreEqual(DungeonProgressDirection.Ascend, hospital.Direction);
-            Assert.AreEqual(-2, hospital.FirstBuildingFloor, "아케이드 타워은 B2에서 시작한다");
+            DungeonDefinition arcadeTower = DungeonCatalog.ById(DungeonCatalog.DefaultId);
+            Assert.AreEqual(DungeonProgressDirection.Ascend, arcadeTower.Direction);
+            Assert.AreEqual(-2, arcadeTower.FirstBuildingFloor, "아케이드 타워는 B2에서 시작한다");
 
             DungeonDefinition vault = DungeonCatalog.ById("flooded-vault");
             Assert.AreEqual(DungeonProgressDirection.Inward, vault.Direction,
