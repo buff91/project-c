@@ -19,7 +19,7 @@ from torchstone_palette import lock_to_palette
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (
     ROOT
-    / "docs/art-direction/project-c-collapsed-transit-environment-source-v2.png"
+    / "docs/art-direction/project-c-collapsed-transit-environment-source-v3.png"
 )
 STAIRS_SOURCE = (
     ROOT
