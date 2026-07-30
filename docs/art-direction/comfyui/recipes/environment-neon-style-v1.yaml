@@ -5,6 +5,8 @@ name: 아케이드 타워 환경 스타일 트랜스퍼 v1 (M5 네온 전환)
 # 아케이드 타워(죽은 네온 상가)로 교체한다. 실루엣·2:1 투영·셀 배치 보존 조항은 동일.
 # 톤 기준: reference/ref-cyberpunk-* + project-c-combat-space-parking-target-v1.png.
 # 네온은 광원 웅덩이/간판 포인트로만 — 바닥은 저채도 콘크리트 유지(§1-c 판독 규칙).
+# 2026-07-30 클린 클러스터 재조정(§1-d 렌더링 문법 계약): 잔점 노이즈 어휘를 negative로
+# 밀어내고 PixelArtRedmond·denoise를 올려 플랫 클러스터 문법을 생성 단계부터 강제한다.
 purpose:
   category: environment
   asset_type: environment
@@ -63,9 +65,9 @@ loras:
 - name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
   node: 4
   base_model: SDXL
-  model_strength: 0.4
-  clip_strength: 0.4
-  purpose: 하드 픽셀 에지
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 하드 픽셀 에지 + 큰 클러스터 강조 — §1-d 재조정으로 0.4→0.55 상향
   attribution: Civitai model 144684 / version 160844
 controlnets: []
 generation:
@@ -75,13 +77,14 @@ generation:
   scheduler: karras
   steps: 28
   cfg: 6.0
-  denoise: 0.45
+  denoise: 0.55
   candidates: 4
   seed_strategy: sequential-random-base
 prompt:
   positive: >-
     Pixel Art, PixArFK, polished chunky isometric pixel art, exact 2:1 dimetric
-    modular game assets, abandoned neon shopping arcade tower interior, cracked
+    modular game assets, clean flat color planes, large deliberate pixel
+    clusters, abandoned neon shopping arcade tower interior, cracked
     concrete in dark desaturated gray, scuffed shop-front panels, shuttered
     storefronts, dead signage boxes and broken holo panel frames, cable trays,
     one small flickering cyan neon strip and one magenta sign glow as local light
@@ -89,7 +92,8 @@ prompt:
     blue-black charcoal shadows, preserve exact source sheet cell positions,
     scale, perspective, silhouettes, spacing, and flat magenta background
   negative: >-
-    pink floor, magenta floor, saturated floor, neon flood, fantasy masonry, wood
+    pink floor, magenta floor, saturated floor, neon flood, speckle, fine grain
+    noise, gritty texture, dust specks, fantasy masonry, wood
     planks, medieval iron straps, torches, arches, runes, neon overload, excessive
     dithering, white outline noise, photorealism, smooth 3d, vector look, text,
     letters, labels, watermark, overlapping cells, changed layout, changed
