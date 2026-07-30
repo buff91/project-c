@@ -129,6 +129,15 @@ covered face, hood up, pink scarf, magenta clothing`
   팔레트 잠금)이 흡수할 몫이므로, **컨셉 원본으로 톤을 판정하지 않는다** — 판정은 conform 후
   게임 캡처에서 한다.
 
+## 4-c. 원정자 정식 컨셉 후보 채택 (2026-07-30)
+
+`concept-final-v1` 배치의 **필드 메딕 생존자**(블론드+주황 팁 포니테일)를 원정자 정식 디자인
+후보로 채택했다. 정체성 레퍼런스·재현값·승격 전 게이트는
+`reference/ref-cyberpunk-05-expeditioner-medic-concept.{png,prompt.md}`가 소유하고,
+게임 스케일 판정 근거는 `docs/captures/expeditioner-medic-concept-game-preview-v1.png`다.
+현행 `actor-knight.aseprite`(치비 라이더 자동 조립 초안)는 4방향 기본 스프라이트가
+승인될 때까지 유지한다(`allow_replace: false`).
+
 ## 5. 적용 순서
 
 1. 원정자(`actor-player`/`actor-knight` 슬롯) 후보 확정 → 팔레트 append → conform →

@@ -1,0 +1,127 @@
+schema_version: 1
+id: actor-knight-medic-base-v1
+name: 원정자 메딕 기본 스프라이트 4방향 v1 · 필드 메딕 정체성
+purpose:
+  category: actor
+  asset_type: concept
+  slot: actor-concept
+  use: concept
+  readability_goal: 서로 다른 정체성·방향에서도 crown/neck/hip/ankle 행이 일치해야 하고, 아군은 얼굴이 읽혀야 한다(액터 계약 v2).
+  animation_scope: base-4dir
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  normalize_rows:
+    crown: 8
+    feet: 122
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img-openpose
+  workflow: docs/art-direction/comfyui/actor-chibi-openpose-sdxl.api.json
+  checkpoint: animagine-xl-4.0-opt.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  shots:
+  - id: idle-south
+    label: idle · south (정면 3/4)
+    seed_offset: 0
+    prompt_suffix: ', facing viewer, three-quarter front view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle.png
+  - id: idle-east
+    label: idle · east (우향)
+    seed_offset: 0
+    prompt_suffix: ', facing right, three-quarter side view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-east.png
+  - id: idle-west
+    label: idle · west (좌향)
+    seed_offset: 0
+    prompt_suffix: ', facing left, three-quarter side view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-west.png
+  - id: idle-north
+    label: idle · north (등면)
+    seed_offset: 0
+    prompt_suffix: ', from behind, back view, back of head visible'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-north.png
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 도트 클러스터와 하드 에지
+  attribution: Civitai model 144684 / version 160844
+controlnets:
+- model: controlnet-openpose-sdxl-xinsir.safetensors
+  loader_node: 6
+  apply_node: 7
+  strength: 0.9
+  purpose: 치비 골격으로 비율·포즈 고정 (end_percent 0.8)
+generation:
+  width: 1024
+  height: 1024
+  sampler: euler_ancestral
+  scheduler: karras
+  steps: 28
+  cfg: 5.0
+  denoise: 1.0
+  candidates: 2
+  seed_strategy: sequential-random-base
+prompt:
+  positive: 1girl, solo, chibi, pixel art, full body, standing, field medic survivor, blonde messy short
+    ponytail with orange tint tips, determined kind eyes, reworked white coat as patched short jacket
+    with rolled sleeves, gray utility shirt, medical pouch on hip belt, shoulder satchel, fingerless gloves,
+    dark charcoal leggings, sturdy boots, visible face, large bright expressive eyes, isolated character,
+    simple gray background, flat color, clean pixel clusters, safe, masterpiece, high score, great score,
+    absurdres
+  negative: lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped,
+    worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry,
+    realistic proportions, tall body, small head, half-closed eyes, sleepy eyes, multiple views, multiple
+    characters, gradient background, scenery, photorealistic, 3d, neon overload, fully glowing outfit,
+    covered face, covered eyes, hidden eyes, mask over mouth, gas mask worn on face, weapon, baseball
+    bat, cyan outfit, glowing weapon, navy jacket, blue jacket
+quality_gates:
+  require_transparency_after_prepare: true
+  silhouette_tags:
+  - grounded-feet
+  - readable-face
+  - consistent-rows
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - malformed-anatomy
+  - realistic-proportions
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation

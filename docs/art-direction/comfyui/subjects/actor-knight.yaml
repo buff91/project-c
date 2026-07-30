@@ -7,27 +7,35 @@ asset_type: character
 # 직업/영웅 선택은 없다. 런타임이 기존 씬 연결을 보존하려고 knight 슬롯을
 # 단일 원정자 슬롯으로 우선 사용한다(IsoVisualCatalog.SurvivorSprite).
 
+# 정체성 v2 (2026-07-30 채택): 필드 메딕 생존자 — 블론드+주황 팁 포니테일.
+# 채택 근거·재현값은 docs/art-direction/reference/
+# ref-cyberpunk-05-expeditioner-medic-concept.prompt.md 소유. 프롬프트는 v2 치비 레인
+# (animagine 부루 태그 문법, 액터 계약 §4)이며, 의상 어휘는 navy 대신 charcoal을
+# 쓴다(§3 실측 — 네이비 램프 부재로 틸 양자화됨).
+
 readability_goal: >-
-  한 손이 장비를 받아도 무너지지 않는 중립적인 원정자 실루엣, 낮은 무게중심,
-  소형 생존 배낭과 마스크가 96×128에서 읽혀야 한다.
+  주황 팁 포니테일 실루엣과 아군 얼굴(눈)이 96×128에서 읽혀야 하고, 힙 벨트의
+  메디컬 파우치·숄더 사첼이 장비 연출을 방해하지 않는 빈손을 유지해야 한다.
 
 prompt:
   positive: >-
-    single practical post-apocalyptic hospital scavenger survivor, gender
-    neutral adult silhouette, patched charcoal field jacket, concrete-gray
-    work trousers, compact medical utility pack, respirator hanging at the
-    neck, reinforced boots, neutral concrete and taupe clothing covering at
-    least ninety percent of the body, one tiny desaturated teal route marker
-    under four percent of the sprite, empty modular belt and free hands ready
-    to show changing equipment
+    1girl, solo, field medic survivor, blonde messy short ponytail with orange
+    tint tips, determined kind eyes, reworked white coat as patched short
+    jacket with rolled sleeves, gray utility shirt, medical pouch on hip belt,
+    shoulder satchel, fingerless gloves, dark charcoal leggings, sturdy boots,
+    visible face, large bright expressive eyes, empty hands ready to show
+    changing equipment
   signature_pose: >-
     grounded three-quarter isometric ready stance, knees slightly bent, one
-    empty hand forward and the other near the modular belt
+    empty hand forward and the other near the hip belt
   negative: >-
     fantasy knight, royal armor, fixed character class, permanent signature
     weapon, giant sword, wizard robe, superhero suit, pristine military
-    uniform, full-body neon glowing outfit, teal jacket, teal trousers, red jacket,
-    red trousers, broad signal-color clothing, oversized backpack
+    uniform, full-body neon glowing outfit, cyan outfit, glowing weapon,
+    navy jacket, blue jacket, teal jacket, teal trousers, red jacket,
+    red trousers, broad signal-color clothing, oversized backpack,
+    gas mask worn on face, mask over mouth, covered eyes, hidden eyes,
+    weapon, baseball bat
 
 guides:
   # 이미 게임에서 검증된 정적 원정자를 production bootstrap의 identity
@@ -61,15 +69,17 @@ pose_guides:
 
 quality_gates:
   silhouette_tags:
-  - compact-medical-pack
-  - neck-respirator
+  - orange-tip-ponytail
+  - hip-medical-pouch
+  - shoulder-satchel
+  - readable-friendly-face
   - free-hands
-  - low-center-of-gravity
   reject_if:
   - permanent-signature-weapon
   - tower-shield
   - fantasy-knight
   - bright-modern-hiking-gear
+  - mask-on-face
   - broad-teal-clothing
   - broad-red-clothing
   color_area_limits:
