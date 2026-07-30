@@ -185,7 +185,7 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("5.image", base.pipeline["uploads"])
         self.assertIn("6.image", base.pipeline["uploads"])
         self.assertIn(
-            "compact-medical-pack",
+            "hip-medical-pouch",
             base.document["quality_gates"]["silhouette_tags"],
         )
         self.assertNotIn(
