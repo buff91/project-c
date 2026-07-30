@@ -130,71 +130,67 @@ MonoBehaviour:
     - tag: attack
       loop: 0
       frames:
+      - {fileID: 5528483142515249879, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: 8321575434059696624, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       - {fileID: -2472610717621283188, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -7868191235343111395, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -2472610717621283188, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
       - 0.100000024
-      - 0.20000005
-      - 0.29000005
-      length: 0.30000004
+      - 0.19999999
+      - 0.29
+      length: 0.29999998
     - tag: death
       loop: 0
       frames:
-      - {fileID: 9050947798319475650, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 9050947798319475650, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
-      - 0.115
-      length: 0.125
+      - 0.14999999
+      length: 0.16
     - tag: fall
       loop: 0
       frames:
-      - {fileID: 4140205123939503545, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 4140205123939503545, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
-      - 0.115
-      length: 0.125
+      - 0.13
+      length: 0.14
     - tag: hit
       loop: 0
       frames:
-      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -7868191235343111395, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -7868191235343111395, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
-      - 0.073
-      length: 0.083
+      - 0.11
+      length: 0.12
     - tag: idle
       loop: 1
       frames:
       - {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -2882790841634084083, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 3653833645730265374, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 3653833645730265374, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
-      - 0.2
-      - 0.4
-      - 0.59000003
-      length: 0.6
+      - 0.14999999
+      length: 0.16
     - tag: walk
       loop: 1
       frames:
+      - {fileID: -2882790841634084083, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: 3653833645730265374, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       - {fileID: -1626408373476521225, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       - {fileID: -4964891802342872153, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 5528483142515249879, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 8321575434059696624, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 8321575434059696624, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
+      - {fileID: -4964891802342872153, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
       frameStartTimes:
       - 0
-      - 0.099999964
-      - 0.19999999
-      - 0.29999995
-      - 0.38999996
-      length: 0.39999995
+      - 0.099999994
+      - 0.20000002
+      - 0.3
+      - 0.39000002
+      length: 0.4
   environmentAnimations: []
   potion: {fileID: 21300000, guid: a7a56b266ed4a49e3b2234db75fcf583, type: 3}
   bomb: {fileID: 21300000, guid: 52c7ba7074469415dacd16d036c373a3, type: 3}

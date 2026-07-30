@@ -412,6 +412,7 @@ MonoBehaviour:
   pickHighestExisting: 1
   minElevation: 0
   maxElevation: 3
+  trackHover: 0
 --- !u!114 &1920040124
 MonoBehaviour:
   m_ObjectHideFlags: 0

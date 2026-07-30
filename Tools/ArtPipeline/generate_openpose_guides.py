@@ -158,6 +158,45 @@ POSES: dict[str, dict[str, tuple[float, float]]] = {
 # 등면 등 얼굴 키포인트를 그리면 안 되는 포즈. OpenPose는 얼굴 점 유무로 앞/뒤를 판정한다.
 NO_FACE_POSES = {"chibi-idle-north"}
 
+# 리얼 골격(~5등신) 포즈를 치비 앵커 행으로 사상하는 조각별 선형 y-리맵.
+# 좌: 리얼 골격의 공용 행(head/neck/hip/knee/ankle) → 우: 치비 골격의 같은 관절 행.
+# 애니 키포즈를 손으로 다시 그리지 않고 기존 포즈 사전을 재사용하기 위한 장치다.
+# fall/death 처럼 몸이 눕는 포즈는 y-리맵이 근사가 되므로 결과를 리뷰 시트에서 확인한다.
+CHIBI_Y_ANCHORS = (
+    (0.17, 0.26),
+    (0.27, 0.42),
+    (0.51, 0.58),
+    (0.69, 0.73),
+    (0.88, 0.87),
+)
+
+# 치비 애니 키포즈: 파생 이름 → 리얼 원본 포즈 이름.
+CHIBI_REMAPPED_POSES = {
+    "chibi-walk-contact-a": "walk-contact-a",
+    "chibi-walk-pass": "walk-pass",
+    "chibi-walk-contact-b": "walk-contact-b",
+    "chibi-attack-windup": "attack-windup",
+    "chibi-attack-impact": "attack-impact",
+    "chibi-attack-recovery": "attack-recovery",
+    "chibi-hit": "hit",
+    "chibi-fall": "fall",
+    "chibi-death": "death",
+}
+
+
+def chibi_y(value: float) -> float:
+    anchors = CHIBI_Y_ANCHORS
+    if value <= anchors[0][0]:
+        return anchors[0][1] + (value - anchors[0][0])
+    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
+        if value <= x1:
+            return y0 + (value - x0) * (y1 - y0) / (x1 - x0)
+    return anchors[-1][1] + (value - anchors[-1][0])
+
+
+def chibi_remap(points: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float]]:
+    return {joint: (x, chibi_y(y)) for joint, (x, y) in points.items()}
+
 # 좌우 미러 파생 포즈: 원본 포즈의 x를 뒤집고 좌/우 관절을 맞바꾼다.
 # BODY_18은 색으로 좌우를 식별하므로 단순 이미지 플립이 아니라 관절 재명명이 필요하다.
 MIRRORED_POSES = {"chibi-idle-west": "chibi-idle-east"}
@@ -194,11 +233,13 @@ OUTPUT_PROFILES = {
     ),
     # 치비 골격은 얼굴 키포인트 간격도 머리 크기에 맞춰 커야 한다(face_scale).
     # 4방향: south(기본) · east · west(미러 파생) · north(등면, 얼굴 키포인트 없음).
+    # 애니 키포즈는 CHIBI_REMAPPED_POSES가 리얼 포즈 사전에서 파생한다.
     "actor-chibi": (
         "chibi-idle",
         "chibi-idle-east",
         "chibi-idle-west",
         "chibi-idle-north",
+        *CHIBI_REMAPPED_POSES,
     ),
 }
 
@@ -315,6 +356,8 @@ def render_pose(
 def resolve_pose(name: str) -> dict[str, tuple[float, float]]:
     if name in MIRRORED_POSES:
         return mirror_pose(POSES[MIRRORED_POSES[name]])
+    if name in CHIBI_REMAPPED_POSES:
+        return chibi_remap(POSES[CHIBI_REMAPPED_POSES[name]])
     return POSES[name]
 
 

@@ -218,8 +218,12 @@ namespace ProjectC.Tests
                 "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
             ActorAnimationSet set = ActorAnimationBake.ExtractSet(source, "knight");
 
+            // 기대값은 현재 원본의 스냅샷이다 — v0.3.3 치비 라이더 교체(2026-07-30) 기준.
+            // idle 1프레임, walk 는 contact-a/pass/contact-b/pass 4셀(pass 는 픽셀 동일해도
+            // 셀이 분리돼 개별 Sprite 로 구워진다). 각 수가 "그 태그의 프레임만" 세는 것이
+            // 태그 삼킴 회귀의 방어선이다.
             Assert.AreEqual(6, set.clips.Count);
-            AssertClip("idle", true, 3);
+            AssertClip("idle", true, 1);
             AssertClip("walk", true, 4);
             AssertClip("attack", false, 3);
             AssertClip("hit", false, 1);
