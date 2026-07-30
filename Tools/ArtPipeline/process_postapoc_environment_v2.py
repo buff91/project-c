@@ -19,7 +19,7 @@ from torchstone_palette import despeckle, lock_to_palette
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (
     ROOT
-    / "docs/art-direction/project-c-collapsed-transit-environment-source-v3.png"
+    / "docs/art-direction/project-c-collapsed-transit-environment-source-v4.png"
 )
 STAIRS_SOURCE = (
     ROOT
