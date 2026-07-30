@@ -79,6 +79,15 @@ Columns: 6
 135 116  93	stone-mid #87745D [KEEP]
  51  47  40	umber-dim #332F28 [KEEP]
  31  31  27	ash #1F1F1B [KEEP]
+# --- actor 아이덴티티 (v0.3.3 — 얼굴 노출 액터용. 암부는 fabric-1 공유, 3단 이내) ---
+138  90  68	skin-1 #8A5A44 [NEW]
+198 139 111	skin-2 #C68B6F [NEW]
+240 203 168	skin-3 #F0CBA8 [NEW]
+193  59 120	hair-pink-1 #C13B78 [NEW]
+240 127 178	hair-pink-2 #F07FB2 [NEW]
+# --- signal 확장 (램프 아님 — 네온 간판/광원 포인트 전용, v0.3.3 사이버펑크) ---
+ 61 225 232	sig-neon-cyan #3DE1E8 [NEW]
+230  68 184	sig-neon-magenta #E644B8 [NEW]
 # --- ui token ---
   7   9  14	ui-inset #07090E [KEEP]
  10  13  19	ui-panel #0A0D13 [KEEP]
