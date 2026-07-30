@@ -39,8 +39,13 @@
   - [x] **1차 슬라이스(2026-07-30)**: 공용 환경 6셀(바닥·좌우 벽·문 2종·계단)을
     `environment-neon-style-v1` 레시피(C03 채택)로 재마감해 `Art/Environment` 16종 교체,
     원정자는 치비 라이더로 교체. 캡처 `docs/captures/neon-environment-live-v1.png`.
-  - [ ] **잔여 범위**: `hospital*` 드레싱 9슬롯 교체(자판기·죽은 네온 간판·홀로 패널 —
-    슬롯명은 유지, `environment-neon-dressing-v1` 레시피) · 계단 특수 소스 · 소품 재발주.
+  - [x] **2차 슬라이스(2026-07-30)**: `hospital*` 드레싱 9슬롯(바닥 3 + 상승 벽 3×좌우)을
+    `environment-neon-dressing-v1` 레시피(C03 채택, §1-d 라이더 합성 게이트)로 아케이드
+    어휘(자판기·꺼진 홀로 패널·상태 패널 + 그레이트/전단지 균열/서비스 패널 바닥)로 교체 —
+    슬롯명·파일명 계약은 구판 유지. 캡처 `docs/captures/arcade-dressing-live-v1.png`.
+  - [ ] **잔여 범위**: 계단 특수 소스(stairs-source-v2) · 소품 재발주 · **메인 메뉴 배경 재발주**
+    (`ui-main-menu-backdrop.png` — 현재 소스가 구 병원 복도
+    `project-c-main-menu-backdrop-source-v1.prompt.md`라 잔여 목록에서 빠져 있던 구판 자산).
 - [ ] **아케이드 소품 추가** (v0.3.3 개정 — 구 "병원 소품" 발주는 집행 전 폐기) — 자판기·네온 간판·
   홀로 패널·셔터 내린 점포. 확정된 환경 세트(콘크리트·비상등·방폭문·서비스 계단)는 그대로 쓰고
   **지상층부터 덧붙인다**(리스킨 표 §5 주석). 기존 `hospitalFloor*`/`hospitalWall*` 9슬롯은
