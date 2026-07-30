@@ -1,6 +1,6 @@
 schema_version: 1
 id: env-floor-mid-raised
-name: 중반 폐병원 단차 바닥
+name: 중반 아케이드 단차 바닥
 slot: env-floor-mid-raised
 asset_type: environment
 readability_goal: 중반 바닥 재료를 유지하면서 밝은 전면 두께로 +1 단차가 읽혀야 한다.
@@ -11,8 +11,8 @@ output:
   anchor: center
 prompt:
   positive: >-
-    exact 2:1 isometric raised floor tile, cracked hospital tile top,
-    one readable shallow concrete front lip, sparse disinfectant stains,
+    exact 2:1 isometric raised floor tile, cracked arcade tile top,
+    one readable shallow concrete front lip, sparse dried coolant stains,
     seamless side edges
   negative: >-
     tall block, stairs, floating platform, hole, wall, object pile

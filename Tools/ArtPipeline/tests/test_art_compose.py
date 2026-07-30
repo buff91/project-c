@@ -154,7 +154,7 @@ class ComposeTests(unittest.TestCase):
             "concept-sdxl-v1",
             "actor-grave-warden",
             style_id="chunky-isometric-pixel-v1",
-            world_id="collapsed-hospital-v1",
+            world_id="arcade-tower-v1",
         )
         self.assertEqual("actor-grave-warden", recipe.slot)
         self.assertEqual("concept-only", recipe.output["promotion"])
@@ -222,14 +222,14 @@ class ComposeTests(unittest.TestCase):
             "character-idle-v1",
             "actor-slinger",
             style_id="chunky-isometric-pixel-v1",
-            world_id="collapsed-hospital-v1",
+            world_id="arcade-tower-v1",
         )
         self.assertEqual(
             "chunky-isometric-pixel-v1",
             recipe.document["composed_from"]["style"],
         )
         self.assertEqual(
-            "collapsed-hospital-v1",
+            "arcade-tower-v1",
             recipe.document["composed_from"]["world"],
         )
         self.assertEqual(
@@ -237,11 +237,11 @@ class ComposeTests(unittest.TestCase):
             recipe.document["art_style"]["name"],
         )
         self.assertEqual(
-            "붕괴 폐병원 이상 미궁",
+            "폐 아케이드 복합타워 네온 미궁 (v0.3.3)",
             recipe.document["world"]["name"],
         )
         self.assertIn("deliberate hard-edged", recipe.prompt["positive"])
-        self.assertIn("abandoned concrete", recipe.prompt["positive"])
+        self.assertIn("cracked concrete", recipe.prompt["positive"])
         self.assertIn("photorealism", recipe.prompt["negative"])
         self.assertIn("medieval fantasy", recipe.prompt["negative"])
 
@@ -250,7 +250,7 @@ class ComposeTests(unittest.TestCase):
             "environment-concept-sdxl-v1",
             "env-ladder",
             style_id="chunky-isometric-pixel-v1",
-            world_id="collapsed-hospital-v1",
+            world_id="arcade-tower-v1",
         )
         self.assertEqual("env-ladder", ladder.slot)
         self.assertEqual((64, 112), ladder.canvas)
@@ -270,7 +270,7 @@ class ComposeTests(unittest.TestCase):
             "environment-idle-keyframes-v1",
             "prop-campfire",
             style_id="chunky-isometric-pixel-v1",
-            world_id="collapsed-hospital-v1",
+            world_id="arcade-tower-v1",
         )
         self.assertEqual("environment", recipe.purpose["category"])
         self.assertEqual((128, 128), recipe.canvas)

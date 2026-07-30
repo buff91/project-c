@@ -219,13 +219,13 @@ class RecipeTests(unittest.TestCase):
         )
         world_element = modal_view(self.registry)["blocks"][1]["element"]
         self.assertEqual(
-            {"collapsed-hospital-v1"},
+            {"arcade-tower-v1", "collapsed-hospital-v1"},
             {option["value"] for option in world_element["options"]},
         )
         target_element = modal_view(
             self.registry,
             selected_style_id="chunky-isometric-pixel-v1",
-            selected_world_id="collapsed-hospital-v1",
+            selected_world_id="arcade-tower-v1",
         )["blocks"][2]["element"]
         self.assertEqual(
             ["배경", "캐릭터", "애니메이션", "이펙트", "소품·아이템"],
@@ -1318,7 +1318,7 @@ class StoreTests(unittest.TestCase):
             by_id["style"]["element"]["initial_option"]["value"],
         )
         self.assertEqual(
-            "collapsed-hospital-v1",
+            "arcade-tower-v1",
             by_id["world"]["element"]["initial_option"]["value"],
         )
         self.assertIn("target", by_id)
@@ -1388,7 +1388,7 @@ class StoreTests(unittest.TestCase):
             "character-idle-v1",
             "actor-slinger",
             style_id="chunky-isometric-pixel-v1",
-            world_id="collapsed-hospital-v1",
+            world_id="arcade-tower-v1",
         )
         self.assertEqual(
             recipe.pipeline["checkpoint"],

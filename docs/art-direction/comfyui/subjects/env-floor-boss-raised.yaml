@@ -1,6 +1,6 @@
 schema_version: 1
 id: env-floor-boss-raised
-name: 보스 폐병원 단차 바닥
+name: 보스 아케이드 단차 바닥
 slot: env-floor-boss-raised
 asset_type: environment
 readability_goal: 보스 경고 재료와 얕은 전면 두께가 함께 읽혀야 한다.
@@ -11,7 +11,7 @@ output:
   anchor: center
 prompt:
   positive: >-
-    exact 2:1 isometric raised boss floor tile, crushed hospital concrete top,
+    exact 2:1 isometric raised boss floor tile, crushed concrete top,
     chipped hazard stripe fragment, one tiny teal anomaly seam, shallow dark
     front lip
   negative: >-

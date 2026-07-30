@@ -53,7 +53,8 @@ art-review.sqlite3
 - `actor-slinger-animation-v5`: 현재 런타임 6태그, 동일 seed, 버전 고정 512 identity
   입력을 쓰는 키포즈 참고 시안 묶음. 최종 프레임으로 자동 승격하지 않는다.
 - `actor-concept-sdxl-v1`: SDXL txt2img. 액터 콘셉트 탐색.
-- `environment-hospital-style-v1`: SDXL img2img. 기존 6셀 병원 환경 시트 스타일 트랜스퍼.
+- `environment-hospital-style-v1`: SDXL img2img. 구 6셀 병원 환경 시트 스타일 트랜스퍼
+  (DEPRECATED — 현행은 `environment-neon-style-v1`).
 - `fx-impact-suite-v1`: 첫 실생성 비교를 보존한 원형/동심원 기준 레시피.
 - `fx-impact-suite-v2`: UI 아이콘화를 억제하고 비대칭 파편·열린 상태 호를 강제한 6슬롯 묶음.
 
@@ -199,7 +200,7 @@ Slack 생성 폼은 고정 레시피 이름부터 고르지 않는다. 기본 �
 1. **화풍**: `styles/*.yaml`에서 렌더링 문법을 고른다. 현재 기본값은
    `chunky-isometric-pixel-v1`이다.
 2. **세계관**: `worlds/*.yaml`에서 테마와 재료 어휘를 고른다. 현재 기본값은
-   `collapsed-hospital-v1`이다.
+   `arcade-tower-v1`이다(구 `collapsed-hospital-v1`은 재현용 DEPRECATED).
 3. **제작 대상**: `subjects/*.yaml` 또는 `subject-sets/*.yaml`에서 어떤 캐릭터·환경·VFX를
    만들지 고른다. 캐릭터는 `actor-slinger`(투석 약탈자)·`actor-grave-warden`(감시자)처럼
    실제 Unity 슬롯과 정체성을 함께 가진다. `컨셉`은 대상이 아니라 다음 단계의 제작 방법이다.
@@ -251,9 +252,9 @@ Slack 없이 같은 작업을 넣는 예:
 python3 Tools/ArtPipeline/art_runner.py compose-submit \
   actor-slinger character-idle-v1 \
   --style chunky-isometric-pixel-v1 \
-  --world collapsed-hospital-v1 \
+  --world arcade-tower-v1 \
   --source-candidate ART-...-C01 \
-  --target-definition "붉은 센서 눈과 짧은 슬링을 지닌 폐병원 약탈자" \
+  --target-definition "붉은 센서 눈과 짧은 슬링을 지닌 아케이드 타워 약탈자" \
   --positive-suffix "shorter sling, one compact oxygen tank" \
   --seed 1667020327 --steps 26 --cfg 6.0 --denoise 0.55 --count 2
 ```

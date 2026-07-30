@@ -1,6 +1,8 @@
 schema_version: 1
 id: environment-hospital-style-v1
-name: 폐병원 환경 스타일 트랜스퍼 v1
+name: 폐병원 환경 스타일 트랜스퍼 v1 (DEPRECATED — environment-neon-style-v1이 승계)
+# 구 v0.3.2 폐병원 레시피. 기존 산출물 재현용으로만 남긴다 — 새 발주는
+# environment-neon-style-v1(M5 네온 전환)을 쓴다.
 
 purpose:
   category: environment

@@ -1,6 +1,8 @@
 schema_version: 1
 id: collapsed-hospital-v1
-name: 붕괴 폐병원 이상 미궁
+name: 붕괴 폐병원 이상 미궁 (DEPRECATED — v0.3.3부터 arcade-tower-v1이 승계)
+# 구 v0.3.2 폐병원 세계관. 기존 산출물 재현용으로만 남긴다 — 새 발주에 쓰지 않는다.
+# negative의 "neon overload"가 v0.3.3 신테마(네온 아케이드)와 정면 충돌한다.
 applies_to:
 - concept
 - environment

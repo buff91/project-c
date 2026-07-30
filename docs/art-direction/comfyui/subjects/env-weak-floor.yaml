@@ -11,7 +11,7 @@ output:
   anchor: center
 prompt:
   positive: >-
-    exact 2:1 isometric hospital floor tile, intact outer diamond, sagging
+    exact 2:1 isometric concrete floor tile, intact outer diamond, sagging
     cracked center slab, exposed narrow dark seams, tiny loose concrete chips,
     clearly fragile but not yet an open hole
   negative: >-

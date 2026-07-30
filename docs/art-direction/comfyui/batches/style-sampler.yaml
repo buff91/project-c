@@ -12,9 +12,9 @@ items:
     count: 1
     notes: 실제 게임 크기 액터 가독성 확인
   - id: environment
-    recipe: environment-hospital-style-v1
+    recipe: environment-neon-style-v1
     count: 1
-    notes: 폐병원 환경 재료와 투영 확인
+    notes: 아케이드 타워 환경 재료와 투영 확인
   - id: effect
     recipe: fx-impact-suite-v2
     count: 1

@@ -3,16 +3,16 @@ id: env-collapsed-transit-source
 name: 붕괴 환승로 환경 시트
 slot: env-collapsed-transit-source
 asset_type: environment
-readability_goal: 기존 6셀 배치와 2:1 투영을 보존하면서 재료만 폐병원 포스트아포로 바꾼다.
+readability_goal: 기존 6셀 배치와 2:1 투영을 보존하면서 재료만 폐 아케이드 타워 포스트아포로 바꾼다.
 prompt:
   positive: Pixel Art, PixArFK, junkworld, polished chunky isometric pixel art, exact 2:1 dimetric modular
-    game assets, abandoned post-apocalyptic hospital interior, cracked concrete, chipped sanitary tile,
+    game assets, abandoned post-apocalyptic arcade tower interior, cracked concrete, scuffed shop-front panels,
     oxidized dark steel, exposed rebar, restrained rust-orange wear, saturated amber only for one emergency
     light, one subtle desaturated teal service stripe, crisp hard edges, blue-black charcoal shadows,
     preserve exact source sheet cell positions, scale, perspective, silhouettes, spacing, and flat magenta
     background
-  negative: fantasy masonry, wood planks, medieval iron straps, torches, arches, runes, neon
-    overload, excessive dithering, white outline noise, photorealism, smooth 3d, vector look, text, labels,
+  negative: fantasy masonry, wood planks, medieval iron straps, torches, arches, runes, neon-flooded
+    floors, excessive dithering, white outline noise, photorealism, smooth 3d, vector look, text, labels,
     watermark, overlapping cells, changed layout, changed projection, missing assets
 guides:
   source_sheet: docs/art-direction/project-c-collapsed-transit-environment-source-v2.png

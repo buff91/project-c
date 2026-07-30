@@ -1,6 +1,6 @@
 schema_version: 1
 id: env-floor-boss
-name: 보스 폐병원 바닥
+name: 보스 아케이드 바닥
 slot: env-floor-boss
 asset_type: environment
 readability_goal: 같은 보행 규격 안에서 경고선과 이상 균열 한 점으로 보스 구간이 즉시 읽혀야 한다.
@@ -11,7 +11,7 @@ output:
   anchor: center
 prompt:
   positive: >-
-    exact 2:1 isometric diamond hospital floor tile, crushed concrete and
+    exact 2:1 isometric diamond floor tile, crushed concrete and
     chipped hazard stripe fragment, one tiny teal anomaly seam, severe but
     walkable boss-arena wear, seamless edges, no height lip
   negative: >-

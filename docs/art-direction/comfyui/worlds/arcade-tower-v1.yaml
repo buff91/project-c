@@ -1,0 +1,28 @@
+schema_version: 1
+id: arcade-tower-v1
+name: 폐 아케이드 복합타워 네온 미궁 (v0.3.3)
+# collapsed-hospital-v1 승계 — v0.3.3 사이버펑크 승격(GDD §10)에 따라 세계관 재료 어휘를
+# 폐 아케이드 복합타워(죽은 네온 상가)로 교체한다. 구판이 negative로 neon 자체를 금지하던
+# 것을 "국소 광원만 허용" 규율(§6 채도 규율, §1-c 판독 규칙)로 바꾼다 — 네온은 간판/광원
+# 웅덩이 포인트로만, 바닥은 저채도 콘크리트 유지.
+applies_to:
+- concept
+- environment
+- character
+- animation
+- effect
+- prop
+prompt:
+  positive: >-
+    Project-C post-apocalyptic cyberpunk anomaly-dungeon world, abandoned
+    neon shopping arcade tower, cracked concrete, shuttered storefronts,
+    dead signage boxes and broken holo panel frames, cable trays, oxidized
+    dark steel, exposed rebar, practical scavenged survival materials,
+    blue-black charcoal shadows, restrained rust-orange wear, small local
+    neon light pools (one cyan strip, one magenta sign glow), emergency
+    amber and desaturated teal only as small functional signals
+  negative: >-
+    medieval fantasy, royal uniform, pristine modern military, glossy sci-fi
+    armor, gothic cathedral, wood tavern, neon-flooded floors, full-scene
+    neon wash, saturated floor, clean modern shopping mall, hospital
+    interior, medical equipment
