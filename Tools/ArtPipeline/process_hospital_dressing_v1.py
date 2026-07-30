@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Conform the approved derelict-hospital dressing board into runtime sprites."""
+"""Conform the approved dressing board into runtime sprites.
+
+v0.3.3 아케이드 재발주: 소스가 폐병원 보드에서 아케이드 소품 보드(자판기·네온
+간판·홀로 패널)로 교체됐다. 출력 파일명(env-floor-*/env-wall-*)과 슬롯 계약은
+구판을 유지한다 — 코드의 hospital* 슬롯명과 같은 이유다.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
 
-from torchstone_palette import lock_rgba_to_palette
+from torchstone_palette import despeckle, lock_rgba_to_palette
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "docs/art-direction/project-c-hospital-dressing-source-v1.png"
+SOURCE = ROOT / "docs/art-direction/project-c-arcade-dressing-source-v1.png"
 OUTPUT = ROOT / "Assets/_Project/Art/Environment"
 BASE_FLOOR = OUTPUT / "env-floor.png"
 SHEET_SIZE = (1536, 1024)
@@ -78,7 +83,8 @@ def build_sprite(source: Image.Image, size: tuple[int, int]) -> Image.Image:
         lambda value: 255 if value >= ALPHA_CUTOFF else 0
     )
     resized.putalpha(alpha)
-    return lock_rgba_to_palette(resized)
+    # 잠금 직후 despeckle — 렌더링 문법 계약 §1-d(plan v2): 고립 1px 노이즈 금지.
+    return despeckle(lock_rgba_to_palette(resized))
 
 
 def build_outputs(
@@ -99,7 +105,7 @@ def build_outputs(
             # 합성해 완전한 타일 변주로 만든다.
             composed = lock_rgba_to_palette(base_floor.convert("RGBA"))
             composed.alpha_composite(sprite)
-            sprite = lock_rgba_to_palette(composed)
+            sprite = despeckle(lock_rgba_to_palette(composed))
         for output_index, output_name in enumerate(spec.output_names):
             outputs[output_name] = (
                 sprite

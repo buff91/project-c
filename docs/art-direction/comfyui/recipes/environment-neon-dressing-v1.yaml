@@ -1,0 +1,112 @@
+schema_version: 1
+id: environment-neon-dressing-v1
+name: 아케이드 드레싱 스타일 트랜스퍼 v1 (M5 소품 재발주)
+# environment-neon-style-v1에서 분기 — hospital* 드레싱 9슬롯(바닥 3 + 상승 벽 3×좌우)을
+# 아케이드 소품(자판기·죽은 네온 간판·홀로 패널)으로 재발주한다. 소스는 병원 드레싱 보드
+# (3×2, 512px 셀)이며 셀 배치·스케일은 보존하되 벽 모듈의 내용물은 의미가 바뀌므로
+# denoise를 환경판(0.55)보다 올린다(0.62). §1-d 클린 클러스터 문법 조항은 동일 적용.
+purpose:
+  category: environment
+  asset_type: environment
+  slot: env-arcade-dressing-source
+  use: gameplay-source-sheet
+  readability_goal: >-
+    3×2 드레싱 보드의 셀 배치·2:1 투영·모듈 스케일을 보존하면서 내용물을 아케이드 타워
+    어휘로 바꾼다 — 상단 바닥 3종(그레이트/균열 상가 타일/서비스 패널), 하단 벽 3종
+    (자판기·죽은 네온 간판·홀로 패널). 바닥 저채도·신호색 판독 우선.
+  animation_scope: static-source-sheet
+output:
+  canvas:
+  - 1536
+  - 1024
+  pivot:
+  - 0.5
+  - 0.0
+  fit: strict
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_hospital_dressing_v1.py
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  uploads:
+    7.image: docs/art-direction/project-c-hospital-dressing-source-v1.png
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 2:1 아이소메트릭 형태 유지
+  attribution: Civitai model 149080 / version 166425
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.15
+  clip_strength: 0.15
+  purpose: 녹·폐허 재질 — 네온 채도를 먹지 않게 병원판(0.25)보다 낮춘다
+  attribution: Civitai model 233573 / version 263472
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 하드 픽셀 에지 + 큰 클러스터 강조 — §1-d 재조정으로 0.4→0.55 상향
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1536
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 0.62
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  positive: Pixel Art, PixArFK, polished chunky isometric pixel art, exact 2:1 dimetric modular game assets,
+    clean flat color planes, large deliberate pixel clusters, six isolated abandoned arcade tower dressing
+    modules on a 3 by 2 board, top row three complete 2:1 diamond floor tiles - one with a recessed dark
+    metal drainage grate, one cracked commercial arcade floor tile with faded painted marking and dried
+    stains, one floor tile with a broken service panel inset and a single loose cable - bottom row three
+    vertical wall modules - one dead vending machine built into the wall with a dark dispenser slot, one
+    broken dead neon sign box with exposed tube fragments and one small magenta glow remnant, one wall
+    mounted holographic panel frame with a dark cracked screen and one tiny cyan status lamp - cracked
+    concrete in dark desaturated gray, dead tech clutter, crisp hard edges, blue-black charcoal shadows,
+    local light pools only, preserve exact source sheet cell positions, scale, perspective, module
+    spacing, and flat magenta background
+  negative: pink floor, magenta floor, saturated floor, neon flood, speckle, fine grain noise, gritty
+    texture, dust specks, fantasy masonry, wood planks, medieval iron straps, torches, arches, runes,
+    hospital equipment, medical pipes, curtain rail, medicine cabinet, neon overload, excessive dithering,
+    white outline noise, photorealism, smooth 3d, vector look, text, letters, labels, watermark,
+    overlapping cells, changed layout, changed projection, missing assets, characters, people
+quality_gates:
+  exact_dimensions:
+  - 1536
+  - 1024
+  preserve_layout: true
+  preserve_projection: '2:1'
+  reject_if:
+  - overlapping-cells
+  - missing-cell
+  - fantasy-materials
+  - neon-flooded-floor
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review
