@@ -361,6 +361,23 @@
     justify-content: center;
 }
 
+/* 「짧은 화면」 정책(docs/UI_ARCHITECTURE.md): 컨트롤을 축소하지 않고 본문만 스크롤한다.
+   본문 = 3열 배치뿐이다. 헤더와 상세/이동 버튼 줄은 카드에 고정된다. */
+.expedition-body-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+/* 창고 격자는 백팩 격자와 같은 160px 창으로 잘라 두 페인의 눈높이를 맞춘다.
+   48칸은 5열 × 10줄이라 어떤 배치로도 360 캔버스에 다 들어가지 않는다 — 스크롤이 정답이고,
+   스크롤은 격자 안에서 끝나야 ↔ 레일과 드롭 대상(백팩)이 항상 화면에 남는다. */
+.expedition-stash-scroll {
+    height: 160px;
+    min-height: 0;
+    flex-shrink: 0;
+}
+
 .expedition-card .unity-scroll-view__horizontal-scroller {
     display: none;
 }
@@ -404,8 +421,7 @@
 }
 
 .expedition-transfer-hint,
-.expedition-hero-label,
-.expedition-locked-hint {
+.expedition-hero-label {
     color: var(--pc-dim);
     font-size: var(--pc-fs-1);
     white-space: normal;
@@ -416,24 +432,23 @@
     margin-top: 8px;
 }
 
+/* 한 줄 헤더의 가운데 칸이다 — 줄바꿈을 허용하면 헤더가 높아져 격자를 밀어낸다. */
 .expedition-hero-label {
-    margin-top: 3px;
-    -unity-text-align: middle-left;
-}
-
-.expedition-locked-hint {
-    width: 100%;
-    margin-top: 6px;
+    flex-shrink: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .expedition-backpack-grid {
     flex-shrink: 0;
 }
 
+/* `height: auto` 는 제목 아래 캡션을 두 줄로 쌓던 시절의 규칙이었다. 캡션이 헤더 한 줄로
+   들어온 지금은 페인만 키우므로 지웠다 — 높이는 아래 `.expedition-card` 규칙이 정한다. */
 .hud-root.is-expanded .expedition-loadout-pane .inventory-section-header,
 .hud-root.is-landscape .expedition-loadout-pane .inventory-section-header {
     width: 100%;
-    height: auto;
 }
 
 .hud-root.is-expanded .expedition-loadout-pane .backpack-grid,
@@ -447,11 +462,13 @@
     padding-right: 8px;
 }
 
+/* 카드에 고정되는 줄이므로 절대 줄어들면 안 된다 — 여기가 눌리면 이동 버튼이 다시 사라진다. */
 .expedition-detail {
     width: 100%;
-    min-height: 64px;
+    min-height: 56px;
     margin-top: 6px;
-    padding: 6px;
+    padding: 4px 6px;
+    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
 }
@@ -461,19 +478,47 @@
     min-width: 140px;
 }
 
+/* 고정 줄의 세로 여백은 그대로 본문에서 빼앗은 것이다 — 360 캔버스에서는 그 몇 px 이
+   백팩 격자의 마지막 줄이라, 글자 크기는 두고 줄간만 좁힌다. */
 .expedition-feedback {
-    margin-top: 8px;
+    margin-top: 2px;
 }
 
+.expedition-detail .inventory-detail-name {
+    margin-bottom: 0;
+}
+
+/* `.hud-root.is-short .settings-header`(0,3,0) 를 이겨야 한다 — 짧은 화면 기본값 36px 을
+   그대로 두면 아래에서 아무리 짜내도 백팩 격자가 들어오지 않는다. 닫기 버튼 16px 은 그대로다. */
+.hud-root.is-short .expedition-card > .settings-header {
+    height: 30px;
+    margin-bottom: 2px;
+}
+
+/* 두 페인의 제목 줄. `.hud-root.is-landscape …`(0,3,0) 와 같은 특정성이어야 이긴다. */
+.hud-root .expedition-card .inventory-section-header {
+    height: 20px;
+}
+
+/* `.hud-root.is-short .inventory-grid`(0,3,0) 의 4px 아래 여백을 끈다 — 페인 두 개에서
+   각각 4px 이면 백팩 격자의 마지막 줄이 다시 접힌다. */
+.hud-root.is-short .expedition-card .inventory-grid {
+    margin-bottom: 0;
+}
+
+/* 버튼을 세로로 쌓으면 고정 줄이 64px 이 되어 본문에서 그만큼을 빼앗는다 — 360 캔버스에서는
+   그 64px 이 백팩 격자의 마지막 줄이다. 가로로 눕히면 28px 이면 되고, 버튼도 넓어져
+   "백팩에 넣기 (3회분) →" 같은 회분 표기가 잘리지 않는다. */
 .expedition-actions {
-    min-width: 96px;
     margin-left: 6px;
+    flex-direction: row;
+    flex-shrink: 0;
 }
 
 .expedition-transfer-button {
-    width: 96px;
+    width: 120px;
     min-height: 20px;
-    margin: 2px 0;
+    margin: 0 2px;
 }
 
 .backpack-item.loadout-starter {

@@ -1,69 +1,95 @@
 GIMP Palette
 Name: Project-C Torchstone
 Columns: 6
-# Project-C 기준 팔레트 (SSOT). 출처: Assets/_Project/UI/DesignSystem.uss 토큰 = 씬 실측.
-# 모든 스프라이트는 이 팔레트 인덱스만 사용한다. 새 색은 씬 실측/레퍼런스 도출 후 토큰화하여 추가한다.
+# Project-C 기준 팔레트 (SSOT) — v2. 출처: 재료 램프 설계 + Assets/_Project/UI/DesignSystem.uss 토큰.
+# 모든 스프라이트는 이 팔레트 인덱스만 사용한다.
+#
 # 원리(테마 무관 유지): 청흑 void 바탕 + 국소 앰버 광원 + 틸 신호색 1개.
-#   판타지("횃불에 데워진 돌")→포스트아포("비상등에 데워진 콘크리트")는 어휘만 바뀌고 구조는 동일.
+# v2가 더한 것 — 이 세계의 광원이 앰버라는 사실을 램프 구조로 굽는다:
+#   ① 재료마다 4~6단 램프. v1은 2~3단이라 형태(베벨·균열·원통)를 그릴 수 없었다.
+#   ② 램프는 그림자로 갈수록 청보라로 떨어지고 하이라이트로 갈수록 앰버로 튼다(휴 스팬 25~40°).
+#      v1은 6~8°라 사실상 밝기 슬라이더였다.
+#   ③ 채도는 중간에서 최고, 하이라이트에서 하강 — 이게 없으면 녹이 '주황 플라스틱'으로 읽힌다.
 #
-# === 코어 18색 (인덱스 0~17 · 절대 재배치 금지 — 런타임 카탈로그/테스트가 단언) ===
-# --- 청흑 배경 ---
-  5   7  12	pc-void #05070C
-  7   9  14	pc-inset #07090E
- 10  13  19	pc-panel #0A0D13
-# --- 돌 프레임 (횃불/비상등에 데워진 웜 그레이) ---
- 74  64  56	pc-stone-dim #4A4038
-152 134 111	pc-stone #98866F
-207 192 174	pc-stone-lit #CFC0AE
-# --- 토치 / 앰버 (국소 인공광) ---
-154 107  34	pc-gold-deep #9A6B22
-255 189  65	pc-torch #FFBD41
-255 213  84	pc-gold #FFD554
-# --- 본문 / 보조 ---
-151 144 126	pc-dim #97907E
-234 223 200	pc-text #EADFC8
-# --- HP / 화염 램프 ---
- 69  16  11	pc-hp-empty #45100B
-216  69  42	pc-hp #D8452A
-# --- 틸 / 얼음 / 물 (이상 신호) ---
- 20  52  58	pc-teal-bg #14343A
- 28  67  71	water #1C4347
- 79 167 160	pc-teal #4FA7A0
-154 223 232	pc-ice #9ADFE8
-# --- 독 / 경험치 ---
-127 178  65	pc-xp #7FB241
+# 설계 규칙(어겼다가 실측으로 잡힌 것들 — 색을 더할 때 지킨다):
+#   · 암부는 저채도로 공유한다. 재료마다 채도 높은 shadow-core를 두면 최근접 양자화가
+#     RGB 거리로 돌기 때문에 서로 남의 그림자 픽셀을 뺏어간다(회색 계단 → 적갈색).
+#   · 같은 색 계열 + 겹치는 명도 구간을 두 램프로 쪼개지 않는다. 양자화가 둘 사이를
+#     무작위로 오가며 얼룩이 생긴다(콘크리트/강철 분리 → 벽에 파란 점). 합치고,
+#     재료 구분은 스펙 하이라이트와 악센트가 진다.
+#   · sig-* 는 램프가 아니다. 재료 위에 포인트로만 얹는다 — 넓은 면적에 쓰면
+#     광원·상태이상 판독을 방해한다(art-improvement-plan-v2 §1-a).
+#   · ui-* 도 이 파일에 있고 스프라이트 잠금에 함께 들어간다. UI 스프라이트 생성기
+#     (build_ui_nineslice_v1 · process_ui_icons_v1 등)가 같은 lock_to_palette를 쓴다.
+#   · legacy 항목은 USS/절차 생성 코드가 이름으로 참조하는 v1 색이다. 지우면 off-palette가 된다.
 #
-# === POSTAPOC 재료색 확장 (인덱스 18~ · 코어 뒤에만 추가) ===
-# 도출: postapoc-ref-01~05 + integrated-postapoc-gameplay-target-v2.
-# 코어 원리(void+앰버+틸) 위에서 폐허 재료 어휘만 확장한다. 고채도 신호는 여전히 틸.
-# --- 콘크리트 (냉·비조명 그림자면 — 웜 stone과 대비. 조명받으면 stone-lit로 수렴) ---
- 59  63  69	pc-concrete-dim #3B3F45
-107 113 120	pc-concrete #6B7178
-# --- 녹 rust (드럼통·철골·간판·방폭문) ---
- 90  46  27	pc-rust-dark #5A2E1B
-156  90  46	pc-rust #9C5A2E
-# --- 이끼 / 담쟁이 (자연 잠식 — xp 그린보다 올리브·저채도로 구분) ---
- 62  74  36	pc-moss-dim #3E4A24
-110 138  60	pc-moss #6E8A3C
-# --- 흑황 위험 스트라이프의 황 (diegetic paint. 흑은 pc-void/inset 재사용) ---
-224 166  43	pc-hazard #E0A62B
-# --- 붉은 신호/봉인 네온 (diegetic + UI danger. HP 혈적색과 역할 분리) ---
-240  73  42	pc-warning #F0492A
+# 별칭(같은 값이라 항목을 합쳤다): ui-void == dark-void · ui-teal-bg == anomaly-1
 #
-# === 재료 계조 보강 (인덱스 30~ · UI 토큰 아님 · 스프라이트 셰이딩 전용) ===
-# 도출: collapsed-transit env 실아트에서 추출한 웜 중립 중간톤. UI 팔레트만으론
-# 무디더 최근접 양자화 시 콘크리트 중간톤이 teal/moss로 튀어(노이즈), 아래 중립 계조로
-# 그 구멍을 메운다. UI는 이 계조를 토큰화하지 않는다(스프라이트 마감 전용).
-135 116  93	stone-mid #87745D
-113  97  80	taupe #716150
- 51  47  40	umber-dim #332F28
- 31  31  27	ash #1F1F1B
-# --- 액터/소품 재료 계조 (actors·props 실아트 도출) ---
-190 162 109	tan-lit #BEA26D
-166 130  88	tan #A68258
- 55 106 103	teal-mid #376A67
-122  62  28	rust-brown #7A3E1C
-# --- 아이템 고유색 (items 실아트 도출 · 가독성 유지용) ---
-198 244 247	ice-lit #C6F4F7
- 56 153 166	teal-item #3899A6
-164  49  34	red-dark #A43122
+# --- shared dark ---
+  5   7  12	dark-void #05070C [KEEP]
+ 21  23  29	dark-cool #15171D [NEW]
+ 33  28  26	dark-warm #211C1A [NEW]
+# --- grey 콘크리트/강철 ---
+ 44  49  56	grey-1 #2C3138 [NEW]
+ 59  63  69	grey-2 #3B3F45 [KEEP]
+ 84  91  97	grey-3 #545B61 [NEW]
+107 113 120	grey-4 #6B7178 [KEEP]
+148 155 161	grey-5 #949BA1 [NEW]
+222 213 195	grey-6 #DED5C3 [NEW]
+# --- tile 바닥타일 ---
+ 74  64  56	tile-1 #4A4038 [KEEP]
+112  97  82	tile-2 #706152 [NEW]
+152 134 111	tile-3 #98866F [KEEP]
+217 203 177	tile-4 #D9CBB1 [NEW]
+# --- rust 녹 ---
+ 90  46  27	rust-1 #5A2E1B [KEEP]
+122  62  28	rust-2 #7A3E1C [KEEP]
+156  90  46	rust-3 #9C5A2E [KEEP]
+204 160  94	rust-4 #CCA05E [NEW]
+# --- fabric 의복/가죽 ---
+ 75  58  49	fabric-1 #4B3A31 [NEW]
+113  97  80	fabric-2 #716150 [KEEP]
+166 130  88	fabric-3 #A68258 [KEEP]
+190 162 109	fabric-4 #BEA26D [KEEP]
+224 208 157	fabric-5 #E0D09D [NEW]
+# --- sludge 오염/잠식 ---
+ 62  74  36	sludge-1 #3E4A24 [KEEP]
+ 83 102  46	sludge-2 #53662E [NEW]
+110 138  60	sludge-3 #6E8A3C [KEEP]
+173 184 106	sludge-4 #ADB86A [NEW]
+# --- anomaly 이상 청록 ---
+ 20  52  58	anomaly-1 #14343A [KEEP]
+ 55 106 103	anomaly-2 #376A67 [KEEP]
+ 79 167 160	anomaly-3 #4FA7A0 [KEEP]
+154 223 232	anomaly-4 #9ADFE8 [KEEP]
+# --- signal (램프 아님) ---
+255 189  65	sig-torch #FFBD41 [KEEP]
+255 213  84	sig-gold #FFD554 [KEEP]
+154 107  34	sig-gold-deep #9A6B22 [KEEP]
+240  73  42	sig-warning #F0492A [KEEP]
+120  39  26	sig-warning-deep #78271A [NEW]
+224 166  43	sig-hazard #E0A62B [KEEP]
+198 244 247	sig-ice #C6F4F7 [KEEP]
+ 56 153 166	sig-teal-item #3899A6 [KEEP]
+164  49  34	blood #A43122 [KEEP]
+ 59  16  19	blood-deep #3B1013 [NEW]
+# --- legacy (v1 호환) ---
+207 192 174	pc-stone-lit #CFC0AE [KEEP]
+ 28  67  71	water #1C4347 [KEEP]
+135 116  93	stone-mid #87745D [KEEP]
+ 51  47  40	umber-dim #332F28 [KEEP]
+ 31  31  27	ash #1F1F1B [KEEP]
+# --- ui token ---
+  7   9  14	ui-inset #07090E [KEEP]
+ 10  13  19	ui-panel #0A0D13 [KEEP]
+ 13  16  22	ui-panel-solid #0D1016 [KEEP]
+ 22  27  35	ui-btn #161B23 [KEEP]
+ 34  42  53	ui-btn-hover #222A35 [KEEP]
+ 31  23  16	ui-action #1F1710 [KEEP]
+ 46  33  21	ui-action-hover #2E2115 [KEEP]
+234 223 200	ui-text #EADFC8 [KEEP]
+151 144 126	ui-dim #97907E [KEEP]
+216  69  42	ui-hp #D8452A [KEEP]
+ 69  16  11	ui-hp-empty #45100B [KEEP]
+127 178  65	ui-xp #7FB241 [KEEP]
+ 27  68  75	ui-teal-bg-hover #1B444B [KEEP]
