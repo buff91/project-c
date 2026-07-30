@@ -398,7 +398,7 @@ namespace ProjectC.Core
                 }
                 foreach (GridPos pos in TakeRandom(branchTiles, 1, random))
                 {
-                    // 숨은 방 보상: 기본은 깊이에 따라 유물/보석이고, 아주 가끔만 비상 송출기가
+                    // 숨은 방 보상: 기본은 깊이에 따라 유물/코어 파편이고, 아주 가끔만 비상 송출기가
                     // 나온다(살아 나갈 권리). 롤은 비밀 방일 때 항상 한 번만 소비해 재현성을 지킨다.
                     ItemKind kind;
                     if (p.BranchIsSecret)

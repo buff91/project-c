@@ -43,7 +43,7 @@ namespace ProjectC.Core
     /// <para>
     /// <b>조건에 쓸 수 있는 계측이 제한된다(순환 금지).</b> 잠긴 도구로만 오르는 계측을
     /// 조건으로 걸면 영원히 못 연다 — <see cref="BountyMetric.FreezeApplications"/>는 냉기
-    /// 폭탄/서리 수정이, <see cref="BountyMetric.OilIgnited"/>는 기름 병이,
+    /// 폭발물/냉매 결정이, <see cref="BountyMetric.OilIgnited"/>는 연료통이,
     /// <see cref="BountyMetric.WaterFrozen"/>은 냉기가 있어야 오른다.
     /// 그래서 <see cref="StarterReachableMetrics"/>에 있는 축만 쓴다(테스트로 고정).
     /// </para>
@@ -51,7 +51,7 @@ namespace ProjectC.Core
     public static class ItemUnlockRules
     {
         /// <summary>
-        /// 시작 풀(물약·폭탄·통조림·전리품·약초·화약)만으로 올릴 수 있는 계측.
+        /// 시작 풀(응급 키트·폭발물·통조림·전리품·균사·화약)만으로 올릴 수 있는 계측.
         /// 화상이 들어 있는 이유는 <b>폭탄이 화상을 준다</b>는 것이다.
         /// </summary>
         public static readonly IReadOnlyList<BountyMetric> StarterReachableMetrics = new[]

@@ -93,7 +93,7 @@ namespace ProjectC.Gameplay
         [Min(1)] public int bombDamage = 3;
         [Min(0)] public int frostBombDamage = 1;
         [Range(2, 8)] public int bombThrowRange = 4;
-        [Tooltip("투척 단검 피해. 소모품이므로 상시 원거리보다 강하다.")]
+        [Tooltip("투척 볼트 피해. 소모품이므로 상시 원거리보다 강하다.")]
         [Min(1)] public int knifeDamage = 3;
 
         [Header("던전 체인")]

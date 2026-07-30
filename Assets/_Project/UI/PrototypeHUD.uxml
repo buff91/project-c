@@ -105,15 +105,15 @@
 
         <ui:VisualElement class="hud-bottom">
             <ui:VisualElement class="resources">
-                <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="물약 사용 — HP 회복, 행동 1회 소비">
+                <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="응급 키트 사용 — HP 회복, 행동 1회 소비">
                     <ui:VisualElement class="resource-icon potion-icon" />
                     <ui:Label name="potion-count" text="×0" class="resource-value" />
                 </ui:Button>
-                <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="폭탄 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발+화상+넉백">
+                <ui:Button name="bomb-button" class="artifact-panel resource-pill item-button" tooltip="급조 폭발물 투척 — 누른 뒤 목표 타일 탭, 3×3 폭발+화상+넉백">
                     <ui:VisualElement class="resource-icon bomb-icon" />
                     <ui:Label name="bomb-count" text="×0" class="resource-value" />
                 </ui:Button>
-                <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉기 폭탄 투척 — 낮은 피해 + 빙결">
+                <ui:Button name="frost-button" class="artifact-panel resource-pill item-button" tooltip="냉각재 수류탄 투척 — 낮은 피해 + 빙결">
                     <ui:VisualElement class="resource-icon frost-icon" />
                     <ui:Label name="frost-count" text="×0" class="resource-value" />
                 </ui:Button>

@@ -12,7 +12,7 @@ namespace ProjectC.Core
     {
         /// <summary>
         /// 영향 범위가 있는 투척물인가. 단검은 칸이 아니라 적 하나를 맞히므로 3×3이 없다.
-        /// 폭탄·냉기 폭탄·기름 병은 전부 같은 3×3(<see cref="BombRules.ForEachBlastCell"/>)을 쓴다.
+        /// 급조 폭발물·냉각재 수류탄·연료통은 전부 같은 3×3(<see cref="BombRules.ForEachBlastCell"/>)을 쓴다.
         /// </summary>
         public static bool HasBlast(ItemKind kind) =>
             kind == ItemKind.Bomb ||

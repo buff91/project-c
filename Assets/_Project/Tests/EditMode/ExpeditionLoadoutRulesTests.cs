@@ -18,7 +18,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(1, meta.GetLoadoutCount(ItemKind.OilFlask));
 
             BackpackLayout layout = ExpeditionLoadoutRules.CreateLayout(meta);
-            Assert.AreEqual(3, layout.UsedCells, "기사 기본 물약 1칸 + 기름 병 2칸");
+            Assert.AreEqual(3, layout.UsedCells, "원정자 기본 응급 키트 1칸 + 연료통 2칸");
         }
 
         [Test]

@@ -4,27 +4,28 @@ using System.Collections.Generic;
 namespace ProjectC.Core
 {
     /// <summary>
-    /// M1 아이템 최소 셋: 물약(회복), 폭탄(광역 피해 + 약한 바닥 붕괴). (GDD §5.6, §5.8)
+    /// M1 아이템 최소 셋: 응급 키트(회복), 급조 폭발물(광역 피해 + 약한 바닥 붕괴). (GDD §5.6, §5.8)
+    /// 표시명은 리스킨 표 §4(사이버펑크)를 따른다 — 규칙·enum 이름·세이브 키는 불변.
     /// </summary>
     public enum ItemKind
     {
-        Potion = 0,        // 회복 물약
-        Bomb = 1,          // 폭탄: 3×3 피해 + 화상 + 넉백, 약한 바닥 붕괴·폭발통 유폭.
-        FrostBomb = 2,     // 냉기 폭탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
-        OilFlask = 3,      // 기름 병: 3×3 기름 살포. 불 폭발과 겹치면 발화 → 화상.
-        ThrowingKnife = 4, // 투척 단검: 소모형 단일 대상 원거리 피해.
-        RecallScroll = 5,  // 귀환 두루마리: 현재 층 입구로 순간이동.
+        Potion = 0,        // 응급 키트(회복)
+        Bomb = 1,          // 급조 폭발물: 3×3 피해 + 화상 + 넉백, 약한 바닥 붕괴·폭발통 유폭.
+        FrostBomb = 2,     // 냉각재 수류탄: 낮은 피해 + 빙결. 불이 아니라 폭발통은 유폭하지 않는다.
+        OilFlask = 3,      // 연료통: 3×3 연료 살포. 불 폭발과 겹치면 발화 → 화상.
+        ThrowingKnife = 4, // 투척 볼트: 소모형 단일 대상 원거리 피해.
+        RecallScroll = 5,  // 귀환 비컨: 현재 층 입구로 순간이동.
         CoinPouch = 6,     // 전리품: 생환 시 골드로 환산. 던전 안에서는 쓸 수 없다.
         Gemstone = 7,      // 전리품(중): 생환 시 골드로 환산.
         Relic = 8,         // 전리품(대): 희귀. 생환 시 골드로 환산.
-        Herb = 9,          // 조합 재료: 약초. 2개로 회복 물약을 만든다.
-        BlastPowder = 10,  // 조합 재료: 화약. 2개로 폭탄을 만든다.
-        FrostShard = 11,   // 조합 재료: 서리 수정. 폭탄에 섞어 냉기 폭탄을 만든다.
+        Herb = 9,          // 조합 재료: 정화 균사. 2개로 응급 키트를 만든다.
+        BlastPowder = 10,  // 조합 재료: 뇌관 화약. 2개로 급조 폭발물을 만든다.
+        FrostShard = 11,   // 조합 재료: 냉매 결정. 폭발물에 섞어 냉각재 수류탄을 만든다.
         // 장비 (대장간 제작 — 스탯이 아니라 행동 규칙을 바꾼다. EquipmentCatalog 참조)
-        PipeSpear = 12,    // 긴 파이프: 근접 사거리 2(직선).
-        HeavyWrench = 13,  // 대형 렌치: 근접 명중 시 1칸 넉백.
-        SignShield = 14,   // 표지판 방패: 받는 물리 피해 -1. 2×2 점유.
-        PaddedBoots = 15,  // 완충 부츠: 안전 낙하 높이 +2.
+        PipeSpear = 12,    // 빔 랜스: 근접 사거리 2(직선).
+        HeavyWrench = 13,  // 임팩트 렌치: 근접 명중 시 1칸 넉백.
+        SignShield = 14,   // 전광판 방패: 받는 물리 피해 -1. 2×2 점유.
+        PaddedBoots = 15,  // 서스펜션 부츠: 안전 낙하 높이 +2.
         CannedFood = 16,   // 통조림: 배고픔을 채운다. (HungerRules)
         ExtractionBeacon = 17 // 비상 송출기: 어디서든 즉시 생환. (ExtractionRules)
     }
@@ -138,36 +139,36 @@ namespace ProjectC.Core
             // "몇 회분 챙길까"가 아니라 "포기할까"만 남았다. 광역 화력(폭탄·냉기·기름)과
             // 탈출 자원(귀환·송출기)은 1로 둔다 — 폭발은 한 발이 판을 뒤집고, 탈출은
             // 익스트랙션 판돈 그 자체다.
-            Define(ItemKind.Potion, ItemCategory.Consumable, "회복 물약", "POTION",
-                "HP를 회복한다. 마시는 데 행동 1회를 소비한다.", shopPrice: 15,
+            Define(ItemKind.Potion, ItemCategory.Consumable, "응급 키트", "MEDKIT",
+                "HP를 회복한다. 쓰는 데 행동 1회를 소비한다.", shopPrice: 15,
                 chargesPerItem: 2),
-            Define(ItemKind.Bomb, ItemCategory.Consumable, "폭탄", "BOMB",
+            Define(ItemKind.Bomb, ItemCategory.Consumable, "급조 폭발물", "BOMB",
                 "3×3 폭발 — 화상·넉백, 약한 바닥 붕괴와 폭발통 유폭. 본인도 피해를 입는다.", shopPrice: 20),
-            Define(ItemKind.FrostBomb, ItemCategory.Consumable, "냉기 폭탄", "FROST",
+            Define(ItemKind.FrostBomb, ItemCategory.Consumable, "냉각재 수류탄", "FROST",
                 "낮은 피해의 3×3 냉기 폭발 — 맞은 대상을 빙결시킨다. 폭발통은 터뜨리지 않는다.", shopPrice: 15),
-            Define(ItemKind.OilFlask, ItemCategory.Consumable, "기름 병", "OIL",
-                "3×3 범위에 기름을 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.", 10, footprint: Tall),
+            Define(ItemKind.OilFlask, ItemCategory.Consumable, "연료통", "FUEL",
+                "3×3 범위에 연료를 뿌린다. 불 폭발이 닿으면 발화해 위에 있는 모두가 불탄다.", 10, footprint: Tall),
             // 칸당 3회분. 1×2라 한 자루가 두 칸을 먹었고, 세 자루면 백팩의 1/4이 칼집이었다 —
             // 단일 대상 한 방짜리 자원에 그 값은 "쓸까"가 아니라 "아예 안 가져간다"로 끝난다.
             // **이건 순수한 칸 산수가 아니다**: 실질 휴대량이 늘어 원거리 연발 횟수가 오른다.
             // 그래도 광역·연쇄가 없어 한 발이 판을 뒤집지 않는 단일 대상 자원이라 허용한다.
-            Define(ItemKind.ThrowingKnife, ItemCategory.Consumable, "투척 단검", "KNIFE",
+            Define(ItemKind.ThrowingKnife, ItemCategory.Consumable, "투척 볼트", "BOLT",
                 "적 하나에게 강한 원거리 피해를 준다. 소모품 — 시야선이 필요하다.", 10,
                 footprint: Tall, chargesPerItem: 3),
-            Define(ItemKind.RecallScroll, ItemCategory.Consumable, "귀환 두루마리", "SCROLL",
+            Define(ItemKind.RecallScroll, ItemCategory.Consumable, "귀환 비컨", "RECALL",
                 "현재 층의 입구로 순간이동한다. 행동 1회를 소비한다.", 25, footprint: Tall),
-            Define(ItemKind.CoinPouch, ItemCategory.Treasure, "동전 주머니", "COIN",
+            Define(ItemKind.CoinPouch, ItemCategory.Treasure, "스크랩 파우치", "SCRAP",
                 "생환하면 소지금 $10을 얻는다. 죽으면 잃는다.", goldValue: 10),
-            Define(ItemKind.Gemstone, ItemCategory.Treasure, "보석", "GEM",
+            Define(ItemKind.Gemstone, ItemCategory.Treasure, "코어 파편", "CORE",
                 "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.", goldValue: 25),
-            Define(ItemKind.Relic, ItemCategory.Treasure, "고대 유물", "RELIC",
-                "깊은 층의 희귀한 유물. 생환하면 소지금 $60을 얻는다.", goldValue: 60, footprint: Large),
-            Define(ItemKind.Herb, ItemCategory.Material, "약초", "HERB",
-                "조합 재료. 2개를 빻으면 회복 물약이 된다.", shopPrice: 6),
-            Define(ItemKind.BlastPowder, ItemCategory.Material, "화약", "POWDER",
-                "조합 재료. 2개를 뭉치면 폭탄이 된다.", shopPrice: 8),
-            Define(ItemKind.FrostShard, ItemCategory.Material, "서리 수정", "SHARD",
-                "조합 재료. 폭탄에 섞으면 냉기 폭탄이 된다.", shopPrice: 5),
+            Define(ItemKind.Relic, ItemCategory.Treasure, "이상 유물", "RELIC",
+                "이상 미궁이 남긴 미상 장치. 생환하면 소지금 $60을 얻는다.", goldValue: 60, footprint: Large),
+            Define(ItemKind.Herb, ItemCategory.Material, "정화 균사", "SPORE",
+                "조합 재료. 2개를 가공하면 응급 키트가 된다.", shopPrice: 6),
+            Define(ItemKind.BlastPowder, ItemCategory.Material, "뇌관 화약", "POWDER",
+                "조합 재료. 2개를 뭉치면 급조 폭발물이 된다.", shopPrice: 8),
+            Define(ItemKind.FrostShard, ItemCategory.Material, "냉매 결정", "SHARD",
+                "조합 재료. 폭발물에 섞으면 냉각재 수류탄이 된다.", shopPrice: 5),
             DefineEquipment(ItemKind.PipeSpear, "LANCE", Tall),
             DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),

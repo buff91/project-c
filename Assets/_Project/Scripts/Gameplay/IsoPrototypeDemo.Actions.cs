@@ -359,7 +359,7 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
-        /// <summary>귀환 두루마리: 현재 층 입구로 순간이동. 행동 1회 소비.</summary>
+        /// <summary>귀환 비컨: 현재 층 입구로 순간이동. 행동 1회 소비.</summary>
         public void UseRecallScroll()
         {
             if (!Application.isPlaying || _resolvingAction ||
@@ -398,7 +398,7 @@ namespace ProjectC.Gameplay
             }
 
             InteractionFeedback?.Invoke("RECALL — 층 입구로 귀환");
-            Debug.Log($"[Item] 귀환 두루마리: {_playerPos} → {destination}");
+            Debug.Log($"[Item] 귀환 비컨: {_playerPos} → {destination}");
             yield return AnimateFloorTransition(_grid.GridToWorld(destination));
             _playerState.MoveTo(destination);
             SyncPlayerView(destination, floorChanged: false);

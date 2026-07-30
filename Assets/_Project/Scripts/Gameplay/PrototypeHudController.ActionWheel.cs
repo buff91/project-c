@@ -58,16 +58,16 @@ namespace ProjectC.Gameplay
                 },
                 new WheelSlot
                 {
-                    Label = $"물약 ×{demo.PotionCount}",
-                    Tooltip = $"회복 물약 사용 · 보유 {demo.PotionCount}",
+                    Label = $"키트 ×{demo.PotionCount}",
+                    Tooltip = $"응급 키트 사용 · 보유 {demo.PotionCount}",
                     IconClass = "potion-icon",
                     Action = () => demo.UsePotion(),
                     Enabled = demo.PotionCount > 0
                 },
                 new WheelSlot
                 {
-                    Label = $"폭탄 ×{demo.BombCount}",
-                    Tooltip = $"폭탄 조준 · 보유 {demo.BombCount}",
+                    Label = $"폭발물 ×{demo.BombCount}",
+                    Tooltip = $"급조 폭발물 조준 · 보유 {demo.BombCount}",
                     IconClass = "bomb-icon",
                     Action = () => demo.ToggleBombAim(),
                     Enabled = demo.BombCount > 0
@@ -75,7 +75,7 @@ namespace ProjectC.Gameplay
                 new WheelSlot
                 {
                     Label = $"냉기 ×{demo.FrostBombCount}",
-                    Tooltip = $"냉기 폭탄 조준 · 보유 {demo.FrostBombCount}",
+                    Tooltip = $"냉각재 수류탄 조준 · 보유 {demo.FrostBombCount}",
                     IconClass = "frost-icon",
                     Action = () => demo.ToggleFrostBombAim(),
                     Enabled = demo.FrostBombCount > 0

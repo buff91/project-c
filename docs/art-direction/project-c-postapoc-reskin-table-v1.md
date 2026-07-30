@@ -96,6 +96,11 @@ SF냐 유기냐를 **세계 전체로 못 박지 않는다.** "이상 미궁"은
 | `item-blast-powder` | 폭발 가루 → **뇌관 화약** | 폭발 조합 재료 |
 | `item-frost-shard` | 서리 결정 → **냉매 결정** | 빙결 조합 재료 |
 
+> **집행 확정(2026-07-30, `Items.cs` 반영)**: 복수 후보였던 항목은 다음으로 확정했다 —
+> `item-oil-flask` **연료통** · `item-throwing-knife` **투척 볼트** · `item-gemstone` **코어 파편**
+> (탄약 에너지 셀과 분리, §4-b 주석) · `item-relic` **이상 유물** · `item-herb` **정화 균사**.
+> 짧은 코드 라벨은 MEDKIT/BOMB/FROST/FUEL/BOLT/RECALL/SCRAP/CORE/RELIC/SPORE/POWDER/SHARD.
+
 ### 4-b. 장비 (v0.3.3 신설 — 사이버펑크 리스킨)
 
 출처: `Scripts/Core/Equipment.cs`(`EquipmentCatalog.All` 표시명·설명), `Scripts/Core/Items.cs`
