@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Build the polished Collapsed Transit prop slice."""
+"""Build the polished prop slice (v0.3.3 — arcade tower restyle).
+
+2026-07-30: 소스를 `arcade-props-source-v1`(arcade-props-neon-v1 레시피, C04 채택)로
+교체 — 구판 페인터리 소품 4종을 §1-d 플랫 클러스터 문법으로 재마감한다. 셀 배치·
+출력 계약은 collapsed-transit 구판과 동일해 SPECS는 그대로다.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
 
-from torchstone_palette import lock_to_palette
+from torchstone_palette import despeckle, lock_to_palette
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "docs/art-direction/project-c-collapsed-transit-props-source-v2.png"
+SOURCE = ROOT / "docs/art-direction/project-c-arcade-props-source-v1.png"
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime"
 CELL_SIZE = 627
 ALPHA_CUTOFF = 80
@@ -80,7 +85,8 @@ def reduce_colors(image: Image.Image) -> Image.Image:
     rgb.paste(image, mask=alpha)
     reduced = lock_to_palette(rgb).convert("RGBA")  # 공용 .gpl 팔레트 잠금
     reduced.putalpha(alpha)
-    return reduced
+    # 잠금 직후 despeckle — 렌더링 문법 계약 §1-d(plan v2): 고립 1px 노이즈 금지.
+    return despeckle(reduced)
 
 
 def build_prop(source: Image.Image, spec: PropSpec) -> Image.Image:

@@ -21,9 +21,11 @@ SOURCE = (
     ROOT
     / "docs/art-direction/project-c-collapsed-transit-environment-source-v4.png"
 )
+# 2026-07-30: 하행 계단 특수 소스를 environment-neon-stairs-v1(C04 채택)로 교체 —
+# v3 채택 라운드에서 빠졌던 마지막 병원판 소스다. 상행 셀은 스타일 참조용이라 소비하지 않는다.
 STAIRS_SOURCE = (
     ROOT
-    / "docs/art-direction/project-c-collapsed-transit-stairs-source-v2.png"
+    / "docs/art-direction/project-c-arcade-stairs-source-v1.png"
 )
 OUTPUT = ROOT / "Assets/_Project/Art/Environment"
 CELL_SIZE = (512, 512)

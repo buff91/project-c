@@ -9,7 +9,9 @@ from torchstone_palette import lock_to_palette
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "docs/art-direction/project-c-main-menu-backdrop-source-v1.png"
+# 2026-07-30: v2 — 구 병원 복도 소스를 ui-menu-backdrop-v2 레시피(C02 채택)의
+# 네온 스카이라인으로 교체(마지막 구테마 유저 노출 자산 소거, M5 잔여 마감).
+SOURCE = ROOT / "docs/art-direction/project-c-main-menu-backdrop-source-v2.png"
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime/ui-main-menu-backdrop.png"
 WORKING_SIZE = (480, 270)
 RUNTIME_SIZE = (960, 540)

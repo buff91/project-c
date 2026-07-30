@@ -43,9 +43,20 @@
     `environment-neon-dressing-v1` 레시피(C03 채택, §1-d 라이더 합성 게이트)로 아케이드
     어휘(자판기·꺼진 홀로 패널·상태 패널 + 그레이트/전단지 균열/서비스 패널 바닥)로 교체 —
     슬롯명·파일명 계약은 구판 유지. 캡처 `docs/captures/arcade-dressing-live-v1.png`.
-  - [ ] **잔여 범위**: 계단 특수 소스(stairs-source-v2) · 소품 재발주 · **메인 메뉴 배경 재발주**
-    (`ui-main-menu-backdrop.png` — 현재 소스가 구 병원 복도
-    `project-c-main-menu-backdrop-source-v1.prompt.md`라 잔여 목록에서 빠져 있던 구판 자산).
+  - [x] **3차 슬라이스(2026-07-30)**: 기존 소품 4종(모닥불·폭발 배럴·포탈·은닉처)을
+    `arcade-props-neon-v1` 레시피(C04 채택)로 §1-d 플랫 클러스터 문법 재마감 — 실루엣·
+    역할색(토치 골드/틸/hazard) 보존, `Art/Runtime/prop-*.png` 교체. 같은 날 드레싱
+    정합 패스(벽 웜 리매핑·바닥 명도 하향)도 프로세서에 반영. 캡처
+    `docs/captures/arcade-dressing-live-v3.png` · `arcade-props-hub-live-v1.png`.
+  - [x] **4차 슬라이스(2026-07-30)**: 하행 계단 특수 소스를 `environment-neon-stairs-v1`
+    레시피(C04 채택 — C01은 피트 틸 광이 Hole 신호와 충돌해 기각)로 교체,
+    `env-stairs-down-rising-*` 2종 재마감. 마지막 병원판 환경 소스가 소거됐다.
+    판정 근거 `docs/captures/arcade-stairs-conform-v1.png`,
+    출처 `project-c-arcade-stairs-source-v1.prompt.md`.
+  - [x] **5차 슬라이스(2026-07-30)**: 메인 메뉴 배경을 `ui-menu-backdrop-v2` 레시피
+    (C02 채택, job ART-20260730-070942-2c2580)의 네온 스카이라인으로 교체 —
+    구 병원 복도 소스(`project-c-main-menu-backdrop-source-v1`)를 대체해
+    **마지막 구테마 유저 노출 자산이 소거됐다. M5 재발주 범위 종료.**
 - [ ] **아케이드 소품 추가** (v0.3.3 개정 — 구 "병원 소품" 발주는 집행 전 폐기) — 자판기·네온 간판·
   홀로 패널·셔터 내린 점포. 확정된 환경 세트(콘크리트·비상등·방폭문·서비스 계단)는 그대로 쓰고
   **지상층부터 덧붙인다**(리스킨 표 §5 주석). 기존 `hospitalFloor*`/`hospitalWall*` 9슬롯은

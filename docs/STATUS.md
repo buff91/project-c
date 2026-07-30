@@ -229,6 +229,25 @@
       웜 시프트 → tile-* 램프 유도, 바닥 오버레이 명도 ×0.92)을 넣어 재마감했다 —
       스크린·간판 악센트와 청보라 암부는 건드리지 않는다(회귀 테스트 포함).
       캡처: `docs/captures/arcade-dressing-live-v2.png` (v1은 정합 전 비교본).
+  - **M5 3차 슬라이스 반영됨(2026-07-30)** — 기존 소품 4종(모닥불 드럼·폭발 배럴·
+    포탈·은닉처)을 `arcade-props-neon-v1` 레시피(C04 채택, 라이더 합성 게이트)로
+    §1-d 플랫 클러스터 문법으로 재마감했다. 실루엣·역할색(모닥불 토치 골드 = 허브 웜
+    디오라마 조항, 포탈 틸, 배럴 hazard+해골 데칼) 보존, `process_postapoc_props_v2.py`
+    소스 교체 + despeckle 추가로 `Art/Runtime/prop-*.png` 4종 교체. 생성 배경이
+    불투명하게 나와 승격 시 플러드 알파 전처리를 거쳤다(소스 prompt.md 참조).
+    캡처: 던전 `docs/captures/arcade-dressing-live-v3.png` ·
+    허브 `docs/captures/arcade-props-hub-live-v1.png`.
+  - **M5 4차 슬라이스 반영됨(2026-07-30)** — 하행 계단 특수 소스를
+    `environment-neon-stairs-v1`(C04 채택)로 교체해 `env-stairs-down-rising-*` 2종
+    재마감 — 마지막 병원판 환경 소스 소거. 판정은 최종 크기 드라이런 비교
+    (`docs/captures/arcade-stairs-conform-v1.png`)로 했고, 피트 내부 틸 광 후보는
+    Hole=틸 신호 예약과 충돌해 기각했다(안전 계단=앰버 유지, §1-c).
+    잔여는 메인 메뉴 배경 재발주뿐이다(SSOT: ROADMAP M5 잔여 범위).
+  - **M5 5차 슬라이스 반영됨(2026-07-30)** — 메인 메뉴 배경을 `ui-menu-backdrop-v2`
+    레시피(C02 채택)의 네온 스카이라인 소스
+    (`project-c-main-menu-backdrop-source-v2.png`)로 교체하고
+    `process_ui_backdrops_v1.py`로 재마감(`ui-main-menu-backdrop.png`, 960×540 규격
+    불변). **마지막 구테마 유저 노출 자산이 소거돼 M5 재발주 범위가 닫혔다.**
   이전 확정(유지): 테마를 **포스트 아포칼립스/이상 미궁**으로 전환(GDD §10 v0.3).
   - **밝기 완화 패스 적용됨(v0.3.3)** — 탐색 잔상·심층 앰비언트·높이차 틴트·수직 미리보기의
     어둡기 하한을 일괄 상향해 "판독 가능한 어둠"으로 옮겼다(FOV 3상태 구분은 유지). 값은
