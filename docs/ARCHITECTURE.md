@@ -184,7 +184,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 `System.Random(seed)`가 모든 치수를 흔든다. 같은 seed = 같은 던전(그리기 순서가 고정이라 재현 보장).
 
 뒤쪽 인자 넷이 던전별 정체성이다: `direction`·`region`은 §7.5, `firstBuildingFloor`는 첫 층의 공간 층
-인덱스(폐병원 −2 = 지하 2층 시작), `meta`(`DungeonMetaContext`)는 미구출 NPC 층 같은 **판 간 상태를
+인덱스(폐 아케이드 복합타워 −2 = 지하 2층 시작), `meta`(`DungeonMetaContext`)는 미구출 NPC 층 같은 **판 간 상태를
 생성에 주입**한다. `meta`의 기본값은 "아무것도 해금 안 됨"이 아니라 **"제약 없음"**이라 테스트·미리보기가
 메타 없이 옛 던전을 그대로 낸다. 코드는 파셜 넷이고 경계 기준은 한 줄이다 — **타일을 바꾸면
 `.Carving`, 좌표만 고르면 `.Placement`**(치수 뽑기는 `.Planning`, 층을 엮는 `Generate` 본체는
@@ -202,7 +202,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - 층 전환 샤프트는 depth 홀짝에 따라 좌/우 컬럼을 번갈아 놓는다(같은 타일에 겹치지 않게).
   연결 축은 공간이 아니라 **진행**이다 — `FloorPlan.Onward`↔다음 층 `Back`을 `map.Connect`로 잇고,
   **마지막 진행 층의 `Onward`만 링크가 없다 = 원정지 출구**다. 하강 던전에서는 그 층이 최하층이고
-  **상승 던전(폐병원)에서는 최상층**이라 "바닥 층"이 아니다. `DungeonFloorInfo`가 방향을 보고
+  **상승 던전(폐 아케이드 복합타워)에서는 최상층**이라 "바닥 층"이 아니다. `DungeonFloorInfo`가 방향을 보고
   `Onward`/`Back`을 다시 `UpStairs`/`DownStairs`(공간 이름)로 되돌려 놓인 타일 종류와 맞춘다.
 
 ### 7.2 생성 파이프라인 (순서 중요 — 뒤 패스가 앞 타일 상태를 읽음)
@@ -237,7 +237,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - **DungeonBossArenaRules** — 아레나 층 판정(`IsArenaFloor`)과 전조 문구(`TryApproachCue`). 전조는
   **진행 방향을 인자로 받는다**(상승/하강/`Inward`가 각각 다른 문구, 원문은 `SYSTEMS.md`) —
   예전에는 "한 층 아래"로 고정이라 상승 던전에서 화면이 거짓말을 했다.
-- **DungeonCatalog** — `폐병원`(`forgotten-catacombs`, Ascend, 보스 감시자, region 기본값 Facility)과
+- **DungeonCatalog** — `폐 아케이드 복합타워`(`forgotten-catacombs`, Ascend, 보스 감시자, region 기본값 Facility)와
   `침수된 금고`(`flooded-vault`, Inward, 보스 없음, region Flooded)가 available이고
   `잿불 성채`(`ember-keep`, region Ember)만 `isAvailable: false`다. 코드 ID는 세이브 호환을 위해
   리스킨 전 이름을 유지하고, `ById`는 없으면 `All[0]` 폴백이다.
@@ -525,7 +525,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 SSOT다. 배치 관점으로 남길 것은 하나 — **EditMode 테스트가 규칙 클래스와 1:1로 매핑**되고
 (`ShadowcastFovTests`·`ProceduralDungeonTests`·`FallRulesTests`…) 그중 `ProceduralDungeonTests`가
 생성기 구현과 무관한 **불변식 계약**을 진다(§7.4). PlayMode는 격리 개발 프로필에서
-`MainMenu→Hub→폐병원→보스 처치→옥상 출구 정복` 전 구간 스모크다.
+`MainMenu→Hub→폐 아케이드 복합타워→보스 처치→옥상 출구 정복` 전 구간 스모크다.
 
 ---
 

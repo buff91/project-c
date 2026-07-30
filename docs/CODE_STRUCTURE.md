@@ -53,7 +53,7 @@
 | `IsoPrototypeDemo.BossArena.cs` | 최심층 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | FOV·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림 |
-| `IsoPrototypeDemo.Lighting.cs` | 지하 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
+| `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
 | `IsoPrototypeDemo.Sprites.cs` | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
 ## 절차 생성 임시 아트 — `IsoPrototypeDemo` **밖의** 독립 클래스
@@ -267,7 +267,7 @@
 | 던전 → 지역 매핑 | `DungeonDefinition.Region` → `DungeonLayout.Region` (생성기·런타임 스폰 공용) |
 | 생성기 출력 회귀 | `DungeonGeneratorGoldenTests` 지문 (불변식 테스트가 못 잡는 배치 변화용) |
 | 텔레메트리 구간 롤업 | `RunTelemetry.RefreshBands` (파생 값 — 저장·요약 직전 재계산) |
-| 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` — **진행 방향을 인자로 받는다.** 예전에는 "한 층 아래"로 고정이라 상승 던전(폐병원)에서 정반대를 가리켰다 |
+| 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` — **진행 방향을 인자로 받는다.** 예전에는 "한 층 아래"로 고정이라 상승 던전(폐 아케이드 복합타워)에서 정반대를 가리켰다 |
 | 장비 정의·효과 | `EquipmentCatalog` (전투 보정은 `CombatLoadout`) |
 | 장비 제작·장착 | `ForgeRules` (+ `MetaSaveData.equippedWeaponId/GearId`) |
 | 아이템 백팩 면적 | `ItemCatalog.For(kind).Footprint` (`BackpackRules.Footprint`은 호환 위임) |
