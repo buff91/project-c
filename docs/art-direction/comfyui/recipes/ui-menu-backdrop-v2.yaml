@@ -1,0 +1,89 @@
+schema_version: 1
+id: ui-menu-backdrop-v2
+name: 메인 메뉴 네온 스카이라인 배경 v2 (M5 잔여 — 구 병원 복도 대체)
+# 현행 ui-main-menu-backdrop.png 의 소스가 구 폐병원 복도
+# (project-c-main-menu-backdrop-source-v1)라 마지막 남은 구테마 유저 노출 자산이다.
+# 방향 타깃 project-c-menu-skyline-target-v1(2026-07-30 승격)의 재현값을 그대로
+# 레시피화했다 — 채택 후보는 project-c-main-menu-backdrop-source-v2.png 로 저장하고
+# process_ui_backdrops_v1.py 의 SOURCE 를 v2 로 올려 마감한다(ui-* 960×540 / PPU 64 규격).
+purpose:
+  category: environment
+  asset_type: concept
+  slot: ui-main-menu-backdrop-source
+  use: mood-backdrop-source
+  readability_goal: >-
+    옥상에서 내려다본 붕괴 네온 메가시티 스카이라인 — 메인 메뉴 카피(아케이드
+    타워의 봉쇄선·B2 출발)와 같은 세계를 보여 준다. 텍스트·인물 없이 무드만,
+    960×540 크롭·팔레트 잠금 후에도 실루엣과 광원 웅덩이가 읽혀야 한다.
+  animation_scope: static-source
+output:
+  canvas:
+  - 1344
+  - 768
+  pivot:
+  - 0.5
+  - 0.5
+  fit: strict
+  anchor: center
+  padding: 0
+  alpha_cutoff: 0
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_ui_backdrops_v1.py
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    denoise: 6.denoise
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 도트 클러스터와 하드 에지 (스카이라인 타깃 v1 채택값)
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1344
+  height: 768
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  positive: >-
+    Pixel Art, PixArFK, cinematic wide pixel art matte painting, ruined
+    cyberpunk megacity skyline at night seen from a rooftop, rain haze,
+    half-broken holographic billboards, magenta and cyan neon glow pools,
+    amber emergency lights, dark blue-black sky, abandoned overgrown towers,
+    moody atmospheric lighting, crisp hard pixel clusters, restrained palette
+  negative: >-
+    text, letters, words, signage text, watermark, logo, photorealism,
+    smooth 3d render, vector art, anti-aliasing haze, blurry, low quality,
+    fantasy, medieval, characters, people, portrait
+quality_gates:
+  exact_dimensions:
+  - 1344
+  - 768
+  reject_if:
+  - readable-text
+  - characters
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review

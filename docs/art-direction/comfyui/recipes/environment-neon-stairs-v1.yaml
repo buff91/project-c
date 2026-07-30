@@ -1,0 +1,114 @@
+schema_version: 1
+id: environment-neon-stairs-v1
+name: 아케이드 타워 계단 스타일 트랜스퍼 v1 (M5 잔여 — stairs-source-v2 재발주)
+# environment-neon-style-v1과 같은 문법으로 하행 계단 특수 소스(2×2 시트)만 재발주한다.
+# v3 환경 시트 채택 라운드에서 빠졌던 소스라 본 시트와 톤 격차가 남아 있다
+# (project-c-collapsed-transit-environment-source-v3.prompt.md 주의 조항).
+# 채택 시 소스는 project-c-arcade-stairs-source-v1.png 로 저장하고
+# process_postapoc_environment_v2.py 의 STAIRS_SOURCE 를 함께 갱신한다(셀 627px 계약 유지).
+purpose:
+  category: environment
+  asset_type: environment
+  slot: env-collapsed-transit-stairs-source
+  use: gameplay-source-sheet
+  readability_goal: >-
+    2×2 시트의 점유된 상단 두 셀(하행 계단 마커·상행 서비스 계단)의 실루엣·아이소
+    각도·발밑 접지·마젠타 크로마 배경을 보존하면서 재료만 아케이드 타워(콘크리트+
+    시안 에지 라이팅)로 바꾼다. 64×56 축소 후에도 계단 단이 읽혀야 한다.
+  animation_scope: static-source-sheet
+output:
+  canvas:
+  - 1254
+  - 1254
+  pivot:
+  - 0.5
+  - 0.0
+  fit: strict
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_postapoc_environment_v2.py
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  uploads:
+    7.image: docs/art-direction/project-c-collapsed-transit-stairs-source-v2.png
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 2:1 아이소메트릭 형태 유지
+  attribution: Civitai model 149080 / version 166425
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.15
+  clip_strength: 0.15
+  purpose: 녹·폐허 재질 — 네온 채도를 먹지 않게 본 시트(v3 채택값)와 동일하게 낮춘다
+  attribution: Civitai model 233573 / version 263472
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 하드 픽셀 에지 + 큰 클러스터 강조 (§1-d 렌더링 문법 계약)
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1254
+  height: 1254
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 0.45
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  positive: >-
+    Pixel Art, PixArFK, polished chunky isometric pixel art, exact isometric
+    modular stair game assets, clean flat color planes, large deliberate pixel
+    clusters, abandoned neon shopping arcade tower service stairs, chipped
+    cool-gray concrete steps in dark desaturated tones, soot-dark recesses,
+    sparse rusted steel rails, thin cyan edge lighting along step sides,
+    saturated amber only for one small emergency light, crisp stepped hard
+    edges, blue-black charcoal shadows, preserve exact source sheet cell
+    positions, scale, camera angle, silhouettes, grounding, spacing, keep
+    both bottom cells empty, and flat magenta background
+  negative: >-
+    pink stairs, magenta stairs, saturated steps, neon flood, speckle, fine
+    grain noise, gritty texture, dust specks, fantasy masonry, wood planks,
+    medieval iron straps, torches, arches, runes, excessive dithering, white
+    outline noise, photorealism, smooth 3d, vector look, text, letters,
+    labels, watermark, overlapping cells, changed layout, changed camera,
+    extra objects, filled bottom cells, missing assets
+quality_gates:
+  exact_dimensions:
+  - 1254
+  - 1254
+  preserve_layout: true
+  preserve_projection: isometric
+  reject_if:
+  - overlapping-cells
+  - missing-cell
+  - fantasy-materials
+  - filled-empty-cells
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review
