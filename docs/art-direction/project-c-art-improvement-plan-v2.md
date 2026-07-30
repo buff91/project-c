@@ -113,9 +113,11 @@ ControlNet은 기존 게임 캡처/기존 스프라이트의 라인아트. 소�
 2. **전투 공간 정체성** — "CP2077의 전투 장소가 턴제 아이소가 된" 느낌. 층 밴드마다
    **장소성 있는 아레나 어휘**를 정한다: B2~B1 주차장(기둥·폐차·웅덩이 엄폐) →
    1F~5F 아케이드 홀(자판기·셔터 점포·에스컬레이터 잔해) → 6F~ 오피스/주거(파티션·
-   케이블 트레이) → 옥상. 어휘는 **타일+소품 조합**으로 구현하고 별도 씬을 만들지 않는다 —
-   방향 타깃: `comfyui/output/backdrop-targets-v1/combat-*` → 승인본을
-   `project-c-combat-space-target-v1.png`로 승격.
+   케이블 트레이) → 옥상. 어휘는 **타일+소품 조합**으로 구현하고 별도 씬을 만들지 않는다.
+   - 승격됨(2026-07-30): `project-c-combat-space-parking-target-v1.png`(지하 밴드),
+     `project-c-menu-skyline-target-v1.png`(무드 백드롭). 아케이드 홀 타깃은 v3 재추출 중.
+   - 환경 시트 재생성 레시피: `comfyui/recipes/environment-neon-style-v1.yaml`
+     (병원판 계보 승계 — Junkworld 0.15로 하향, 바닥 저채도 게이트 추가).
 3. **무드 백드롭** — 비(非)타일 분위기 배경: 메인 메뉴(네온 시티 스카이라인 v2 —
    구 `main-menu-backdrop-source-v1` 교체), 허브 원경, 결과 화면, 층 진입 인터스티셜.
    `ui-*` 960×540/PPU 64 규격, 신호색 판독 규칙의 적용을 받지 않는 유일한 층위
