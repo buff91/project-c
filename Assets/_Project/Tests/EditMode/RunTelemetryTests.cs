@@ -154,7 +154,7 @@ namespace ProjectC.Tests
             RunTelemetry telemetry = RunTelemetry.Begin(
                 "derelict-hospital", 9, -1, DateTime.UtcNow);
 
-            // 폐병원: B2(진행 0) → 1F(진행 2) → 5F(진행 6) → 8F(진행 9, 보스).
+            // 아케이드 타워: B2(진행 0) → 1F(진행 2) → 5F(진행 6) → 8F(진행 9, 보스).
             telemetry.RecordTurn(-1);
             telemetry.RecordFloorEntered(1, 2);
             telemetry.RecordTurn(1);

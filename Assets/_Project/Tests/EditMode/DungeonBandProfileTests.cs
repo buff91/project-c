@@ -10,7 +10,7 @@ namespace ProjectC.Tests
     /// <para>
     /// 두 종류의 테스트가 있다. ① <b>지역 불변식</b> — 어떤 지역을 추가해도 지켜야 하는 성질
     /// (도입 구간엔 원거리·드론·캐치워크가 없다, 깊어질수록 어둡고 밀도가 는다). 새 지역이
-    /// 늘어도 자동으로 검사 대상이 된다. ② <b>기준 지역 골든</b> — 폐병원의 실제 수치.
+    /// 늘어도 자동으로 검사 대상이 된다. ② <b>기준 지역 골든</b> — 아케이드 타워의 실제 수치.
     /// 지역 축을 도입하며 기존 던전이 바뀌지 않았음을 값으로 못박는다.
     /// </para>
     /// </summary>
@@ -194,7 +194,7 @@ namespace ProjectC.Tests
             // 던전을 추가하며 지역을 빠뜨리면 조용히 기준 지역이 된다 — 목록으로 대조해 둔다.
             Assert.AreEqual(
                 DungeonRegionProfile.Facility,
-                DungeonCatalog.ById(DungeonCatalog.DefaultId).Region, "폐병원 = 기계·시설");
+                DungeonCatalog.ById(DungeonCatalog.DefaultId).Region, "아케이드 타워 = 기계·시설");
             Assert.AreEqual(
                 DungeonRegionProfile.Flooded,
                 DungeonCatalog.ById("flooded-vault").Region, "침수된 금고 = 침수·냉각");
@@ -207,7 +207,7 @@ namespace ProjectC.Tests
                     DungeonBandProfiles.ForDepth(dungeon.Region, 0).TotalWeight, 0, dungeon.Id);
         }
 
-        // ── 기준 지역(폐병원) 골든 ─────────────────────────────────────────────
+        // ── 기준 지역(아케이드 타워) 골든 ─────────────────────────────────────────────
 
         [TestCase(DungeonDepthBand.Shallow, 50, 50, 0, 0, 0, 50, 50, 0, 5)]
         [TestCase(DungeonDepthBand.Mid, 15, 40, 30, 15, 1, 60, 50, 1, 6)]
@@ -217,7 +217,7 @@ namespace ProjectC.Tests
             DungeonDepthBand band, int slime, int goblin, int skeleton, int slinger,
             int extraEnemies, int branch, int puddle, int catwalk, int sconce)
         {
-            // 지역 축 도입이 폐병원의 밸런스를 건드리지 않았음을 값으로 못박는다.
+            // 지역 축 도입이 아케이드 타워의 밸런스를 건드리지 않았음을 값으로 못박는다.
             // (배치가 안 바뀌었다는 증명은 DungeonGeneratorGoldenTests 의 지문이 맡는다.)
             DungeonBandProfile profile =
                 DungeonBandProfiles.ForBand(DungeonRegionProfile.Facility, band);
@@ -226,7 +226,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(goblin, profile.GoblinWeight, "GoblinWeight");
             Assert.AreEqual(skeleton, profile.SkeletonWeight, "SkeletonWeight");
             Assert.AreEqual(slinger, profile.SlingerWeight, "SlingerWeight");
-            Assert.AreEqual(0, profile.ArcDroneWeight, "폐병원 RNG에 지역 전용 적을 섞지 않는다");
+            Assert.AreEqual(0, profile.ArcDroneWeight, "아케이드 타워 RNG에 지역 전용 적을 섞지 않는다");
             Assert.AreEqual(extraEnemies, profile.ExtraEnemies, "ExtraEnemies");
             Assert.AreEqual(branch, profile.BranchChancePercent, "BranchChancePercent");
             Assert.AreEqual(puddle, profile.PuddleChancePercent, "PuddleChancePercent");

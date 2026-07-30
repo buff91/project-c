@@ -114,7 +114,7 @@ namespace ProjectC.Tests
             Assert.IsFalse(DungeonDirectionRules.FallAdvancesProgress(DungeonProgressDirection.Ascend));
         }
 
-        /// <summary>폐병원: B2 → B1 → 1F → … → 8F. 건물에는 0층이 없다.</summary>
+        /// <summary>아케이드 타워: B2 → B1 → 1F → … → 8F. 건물에는 0층이 없다.</summary>
         [TestCase(0, "B2")]
         [TestCase(1, "B1")]
         [TestCase(2, "1F")]
@@ -164,7 +164,7 @@ namespace ProjectC.Tests
         {
             DungeonDefinition hospital = DungeonCatalog.ById(DungeonCatalog.DefaultId);
             Assert.AreEqual(DungeonProgressDirection.Ascend, hospital.Direction);
-            Assert.AreEqual(-2, hospital.FirstBuildingFloor, "폐병원은 B2에서 시작한다");
+            Assert.AreEqual(-2, hospital.FirstBuildingFloor, "아케이드 타워은 B2에서 시작한다");
 
             DungeonDefinition vault = DungeonCatalog.ById("flooded-vault");
             Assert.AreEqual(DungeonProgressDirection.Inward, vault.Direction,
@@ -203,7 +203,7 @@ namespace ProjectC.Tests
         [Test]
         public void Ascend_CrossingFromB1ToGroundFloor_IsAnnounced()
         {
-            // 폐병원: B2(진행 0) -> B1(1) -> 1F(2). 전환은 1 -> 2 에서만 일어난다.
+            // 아케이드 타워: B2(진행 0) -> B1(1) -> 1F(2). 전환은 1 -> 2 에서만 일어난다.
             const DungeonProgressDirection dir = DungeonProgressDirection.Ascend;
             const int first = -2;
 

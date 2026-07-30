@@ -22,7 +22,7 @@ namespace ProjectC.Tests
     /// </summary>
     public class DungeonGeneratorGoldenTests
     {
-        /// <summary>폐병원(상승·10층)의 실제 운영 형상. seed 는 카탈로그 값을 포함한다.</summary>
+        /// <summary>아케이드 타워(상승·10층)의 실제 운영 형상. seed 는 카탈로그 값을 포함한다.</summary>
         private static readonly int[] Seeds = { 1, 7, 23, 1977 };
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(
                 "8fbf82c8067b1cb3",
                 Fingerprint(DungeonProgressDirection.Ascend, floorCount: 10, firstBuildingFloor: -2),
-                "폐병원 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
+                "아케이드 타워 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
         }
 
         [Test]

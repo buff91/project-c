@@ -155,7 +155,7 @@ namespace ProjectC.Core
         public DungeonProgressDirection Direction { get; }
 
         /// <summary>
-        /// 이 던전이 시작하는 <b>건물 층 번호</b>(폐병원 = −2 → B2, 지하 던전 = −1 → B1).
+        /// 이 던전이 시작하는 <b>건물 층 번호</b>(아케이드 타워 = −2 → B2, 지하 던전 = −1 → B1).
         /// 층 라벨을 만들 때 <see cref="Direction"/>과 함께 쓴다.
         /// <para>
         /// <b>레이아웃이 직접 들고 있어야 한다.</b> 전역 선택(`DungeonSelection`)에서 읽으면

@@ -36,7 +36,7 @@ namespace ProjectC.Tests
         public void ReadMetric_DeepestDepth_ReadsProgressIndex_NotElevationSign()
         {
             // 진행 지수를 그대로 읽는다. 예전에는 -deepestFloorIndex 로 역산했는데,
-            // 상승 던전(폐병원)은 층 인덱스가 양수라 값이 음수가 되어 의뢰가 영원히 미완이었다.
+            // 상승 던전(아케이드 타워)은 층 인덱스가 양수라 값이 음수가 되어 의뢰가 영원히 미완이었다.
             // "진행 지수 ≠ 고도"는 docs/STATUS.md·GDD §5.1 의 규약이다.
             var descending = new RunTelemetry { deepestFloorIndex = -4, deepestProgressIndex = 4 };
             Assert.AreEqual(4, BountyRules.ReadMetric(BountyMetric.DeepestDepth, descending));

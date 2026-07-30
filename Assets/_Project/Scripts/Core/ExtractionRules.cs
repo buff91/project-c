@@ -14,7 +14,7 @@ namespace ProjectC.Core
         /// 잦으면 판돈이 사라지고, 없으면 최심층까지 한 번의 결정이 된다.
         /// 사이 구간(1~3 / 5~7 / 9~10번째)이 곧 물러설 수 없는 구간이다.
         /// <para>
-        /// <b>층 라벨로 쓰지 않는다</b> — 폐병원은 상승이라 "B4"가 아니라 2F 다.
+        /// <b>층 라벨로 쓰지 않는다</b> — 아케이드 타워은 상승이라 "B4"가 아니라 2F 다.
         /// 표시는 <see cref="DungeonDirectionRules.FloorLabelFor"/>가 만든다.
         /// </para>
         /// </summary>

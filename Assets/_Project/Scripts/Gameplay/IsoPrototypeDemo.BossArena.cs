@@ -155,7 +155,7 @@ namespace ProjectC.Gameplay
 
             // 진행 지수는 레이아웃에서 받는다 — 예전의 `-_activeFloorIndex` 는 상승 던전에서
             // 음수가 되어 전조가 아예 뜨지 않았다(GDD §5.1).
-            // 방향도 함께 넘긴다 — 문구가 "한 층 아래" 로 고정이던 시절 상승 던전(폐병원)에서
+            // 방향도 함께 넘긴다 — 문구가 "한 층 아래" 로 고정이던 시절 상승 던전(아케이드 타워)에서
             // 정반대를 가리켰다. 레이아웃이 실제 생성에 쓴 값이라 표시와 구조가 어긋나지 않는다.
             if (!DungeonBossArenaRules.TryApproachCue(
                     boss.DisplayName,

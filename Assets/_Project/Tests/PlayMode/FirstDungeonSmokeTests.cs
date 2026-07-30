@@ -56,7 +56,7 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsFalse(dungeon.hubMode);
             Assert.AreEqual(DungeonCatalog.DefaultId, dungeon.DungeonId);
             Assert.AreEqual(10, dungeon.FloorCount);
-            // 첫 던전은 폐병원(상승) — 지하 기계실 B2 에서 시작해 8F 옥상으로 올라간다.
+            // 첫 던전은 아케이드 타워(상승) — 지하 기계실 B2 에서 시작해 8F 옥상으로 올라간다.
             // 출처: DungeonCatalog(direction: Ascend, firstBuildingFloor: -2, "B2 → 8F + 옥상"),
             // docs/STATUS.md "첫 던전/보스", GDD §10.1.
             Assert.AreEqual("B2", dungeon.ActiveFloorLabel);

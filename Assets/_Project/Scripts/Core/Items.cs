@@ -168,7 +168,7 @@ namespace ProjectC.Core
                 "조합 재료. 2개를 뭉치면 폭탄이 된다.", shopPrice: 8),
             Define(ItemKind.FrostShard, ItemCategory.Material, "서리 수정", "SHARD",
                 "조합 재료. 폭탄에 섞으면 냉기 폭탄이 된다.", shopPrice: 5),
-            DefineEquipment(ItemKind.PipeSpear, "SPEAR", Tall),
+            DefineEquipment(ItemKind.PipeSpear, "LANCE", Tall),
             DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
             DefineEquipment(ItemKind.PaddedBoots, "BOOTS", OneCell),

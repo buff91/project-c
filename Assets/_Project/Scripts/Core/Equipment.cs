@@ -100,28 +100,30 @@ namespace ProjectC.Core
     {
         public static readonly IReadOnlyList<EquipmentDefinition> All = new[]
         {
+            // 표시명은 리스킨 표 §4-b(사이버펑크)를 따른다. 새 이름도 행동 규칙을 설명해야 한다 —
+            // 규칙(사거리·넉백·감산·낙하 보너스)과 코드 ID·craftCost 는 불변.
             new EquipmentDefinition(
                 "pipe-spear", ItemKind.PipeSpear, EquipmentSlot.Weapon,
-                "긴 파이프",
-                "한 칸 떨어져서 직선으로 찌른다. 사수와 슬러지를 붙기 전에 다룬다.",
+                "빔 랜스",
+                "빔 날이 한 칸을 더 뻗는다 — 떨어져서 직선으로 찌른다. 사수와 슬러지를 붙기 전에 다룬다.",
                 craftCost: 105,
                 meleeReach: 2),
             new EquipmentDefinition(
                 "heavy-wrench", ItemKind.HeavyWrench, EquipmentSlot.Weapon,
-                "대형 렌치",
-                "때린 대상을 한 칸 밀어낸다. 구멍·창문 앞에서는 그 자체가 처형이다.",
+                "임팩트 렌치",
+                "동력 충격이 때린 대상을 한 칸 밀어낸다. 구멍·창문 앞에서는 그 자체가 처형이다.",
                 craftCost: 125,
                 knockbackOnHit: true),
             new EquipmentDefinition(
                 "sign-shield", ItemKind.SignShield, EquipmentSlot.Gear,
-                "표지판 방패",
-                "받는 물리 피해 -1. 대신 백팩을 2×2나 차지한다.",
+                "전광판 방패",
+                "뜯어낸 전광판 패널. 받는 물리 피해 -1. 대신 백팩을 2×2나 차지한다.",
                 craftCost: 95,
                 armor: 1),
             new EquipmentDefinition(
                 "padded-boots", ItemKind.PaddedBoots, EquipmentSlot.Gear,
-                "완충 부츠",
-                "안전 낙하 높이 +2. 높은 곳에서 뛰어내려도 버틴다 — 지름길로도, 후퇴로도 쓴다.",
+                "서스펜션 부츠",
+                "유압 완충으로 안전 낙하 높이 +2. 높은 곳에서 뛰어내려도 버틴다 — 지름길로도, 후퇴로도 쓴다.",
                 craftCost: 85,
                 safeFallBonus: 2)
         };

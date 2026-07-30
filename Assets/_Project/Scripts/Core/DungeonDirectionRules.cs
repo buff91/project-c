@@ -14,7 +14,7 @@ namespace ProjectC.Core
         /// <summary>아래로 파고든다(지하 시설·지하묘지). 층 인덱스가 음수로 간다.</summary>
         Descend = 0,
 
-        /// <summary>위로 올라간다(폐병원·탑). 층 인덱스가 양수로 간다.</summary>
+        /// <summary>위로 올라간다(아케이드 타워·탑). 층 인덱스가 양수로 간다.</summary>
         Ascend = 1,
 
         /// <summary>
@@ -126,7 +126,7 @@ namespace ProjectC.Core
 
         // ── 건물 층 번호 ──────────────────────────────────────────────
         // 실제 건물에는 0층이 없다: … B2, B1, 1F, 2F … 라서 부호만 뒤집어서는
-        // 라벨이 안 나온다(폐병원은 B2 → B1 → 1F 로 0을 건너뛰며 올라간다).
+        // 라벨이 안 나온다(아케이드 타워은 B2 → B1 → 1F 로 0을 건너뛰며 올라간다).
         // 그래서 표시용 건물 층 번호와, 계산용 연속 지수를 따로 둔다.
 
         /// <summary>건물 층 번호(0 없음) → 연속 지수. B1=−1, 1F=0, 2F=1 …</summary>
@@ -139,7 +139,7 @@ namespace ProjectC.Core
 
         /// <summary>
         /// 진행 지수 → 표시용 건물 층 번호. <paramref name="firstBuildingFloor"/>는
-        /// 던전이 시작하는 건물 층이다(폐병원 = −2 → B2, 지하 던전 = −1 → B1).
+        /// 던전이 시작하는 건물 층이다(아케이드 타워 = −2 → B2, 지하 던전 = −1 → B1).
         /// <c>Inward</c> 던전에는 건물 층 개념이 없다 — <see cref="FloorLabelFor"/>를 쓴다.
         /// </summary>
         public static int BuildingFloorFor(

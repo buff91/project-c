@@ -40,7 +40,7 @@ namespace ProjectC.Core
         /// <para>
         /// 예전에는 <c>B1~B3</c>처럼 지하 층 표기를 썼는데, 던전이 상승·평면일 수도 있으므로
         /// (GDD §10.1) 화면에 거짓이 된다. 진행 순서는 방향과 무관하므로 "몇 번째 층"으로 쓴다 —
-        /// 폐병원에서 1~3번째는 B2·B1·1F이고, 하강 던전에서는 B1~B3이다.
+        /// 아케이드 타워에서 1~3번째는 B2·B1·1F이고, 하강 던전에서는 B1~B3이다.
         /// </para>
         /// </summary>
         public static string RangeLabel(DungeonDepthBand band)

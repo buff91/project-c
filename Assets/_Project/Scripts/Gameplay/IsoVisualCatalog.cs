@@ -65,7 +65,7 @@ namespace ProjectC.Gameplay
         [Tooltip("B10 단차 바닥")]
         public Sprite bossRaisedFloor;
 
-        [Header("폐병원 바닥 드레싱")]
+        [Header("Facility 바닥 드레싱 (슬롯명은 구 폐병원 hospital* 유지 — 아케이드 재발주 예정)")]
         [Tooltip("Facility 지역의 희소 바닥 변주 — 서비스 그레이트")]
         public Sprite hospitalFloorGrate;
         [Tooltip("Facility 지역의 희소 바닥 변주 — 균열과 오염")]
@@ -419,7 +419,7 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 벽 등잔이 없는 Facility 후면 벽 일부만 폐병원 드레싱으로 교체한다.
+        /// 벽 등잔이 없는 Facility 후면 벽 일부만 드레싱으로 교체한다(hospital* 슬롯명은 구판 유지).
         /// decoration은 월드 좌표와 시점으로 만든 0..7 해시라 같은 화면에서는 결정론적이다.
         /// </summary>
         public Sprite RearWallFor(bool torch, bool risesRight, int decoration)

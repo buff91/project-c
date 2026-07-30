@@ -16,7 +16,7 @@ namespace ProjectC.Core
     /// </summary>
     public enum DungeonRegionProfile
     {
-        /// <summary>기계·시설 (폐병원). 감전·폭발이 강조되는 기준 지역.</summary>
+        /// <summary>기계·시설 (아케이드 타워). 감전·폭발이 강조되는 기준 지역.</summary>
         Facility = 0,
 
         /// <summary>침수·냉각 (침수된 금고). 물 웅덩이가 도처에 있어 빙결·감전의 무대가 넓다.</summary>
@@ -105,7 +105,7 @@ namespace ProjectC.Core
     /// </summary>
     public static class DungeonBandProfiles
     {
-        // ── Facility (폐병원 · 기계·시설) ─────────────────────────────────────
+        // ── Facility (아케이드 타워 · 기계·시설) ─────────────────────────────────────
         // 기준 지역. 다른 지역은 이 값을 기준선으로 두고 정체성 다이얼만 돌린다.
 
         // Shallow(1~3번째): 경비 드론(Skeleton) 없음 — 도입 구간을 확실히 구분한다.
