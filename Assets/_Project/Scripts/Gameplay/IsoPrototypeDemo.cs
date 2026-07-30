@@ -117,8 +117,8 @@ namespace ProjectC.Gameplay
         // 플레이어 시야(6)보다 짧게 둔다 — 개구부 너머는 "엿보는" 정보여야지
         // 그 층을 통째로 아는 수단이 되면 기둥 3(제한된 시야)이 무너진다.
         [Range(1, 6)] public int verticalPreviewRadius = 4;
-        [Range(0.05f, 0.4f)] public float exploredAlpha = 0.16f;
-        [Range(0.1f, 0.7f)] public float verticalPreviewAlpha = 0.54f;
+        [Range(0.05f, 0.55f)] public float exploredAlpha = 0.4f;
+        [Range(0.1f, 0.8f)] public float verticalPreviewAlpha = 0.62f;
         [Range(0.2f, 1.2f)] public float playAdjacentFloorSeparation = 0.6f;
         [Range(0.8f, 3f)] public float debugFloorSeparation = 1.6f;
         [Range(0.15f, 0.8f)] public float debugAdjacentAlpha = 0.48f;
@@ -137,13 +137,13 @@ namespace ProjectC.Gameplay
         [Tooltip("가장 얕은 층의 앰비언트 밝기(지상에 가까움). 1이면 어둠 없음.")]
         [Range(0.3f, 1f)] public float surfaceLightLevel = 0.5f;
         [Tooltip("최심층의 앰비언트 밝기. 낮을수록 광원 밖이 짙은 어둠에 잠긴다.")]
-        [Range(0.02f, 0.6f)] public float deepLightLevel = 0.14f;
+        [Range(0.02f, 0.6f)] public float deepLightLevel = 0.22f;
         [Tooltip("플레이어가 든 광원의 반경(타일). 이 안이 빛 웅덩이가 된다.")]
         [Range(2, 8)] public int carriedLightRadius = 2;
         [Tooltip("플레이어 광원의 세기 — 웅덩이 중심 밝기.")]
         [Range(0.3f, 1f)] public float carriedLightIntensity = 0.95f;
         [Tooltip("완전한 어둠에서도 실루엣이 읽히도록 남기는 최소 밝기(순검정 방지).")]
-        [Range(0.03f, 0.4f)] public float darknessFloor = 0.08f;
+        [Range(0.03f, 0.4f)] public float darknessFloor = 0.15f;
 
         [Header("정적 광원 (모닥불 / 벽 등잔 / 개구부)")]
         [Tooltip("모닥불·벽 등잔·Hole이 주변을 밝히고 벽 뒤에 그림자를 드리운다(차폐 계산, 층당 캐시).")]

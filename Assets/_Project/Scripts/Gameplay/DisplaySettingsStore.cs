@@ -16,8 +16,8 @@ namespace ProjectC.Gameplay
             FadePlayerOccluders = true,
             ShowRearWalls = true,
             PlayerOccluderAlpha = 0.3f,
-            VerticalPreviewAlpha = 0.54f,
-            ExploredAlpha = 0.16f
+            VerticalPreviewAlpha = 0.62f,
+            ExploredAlpha = 0.4f
         };
 
         public DisplaySettingsData Clamped()
@@ -25,7 +25,7 @@ namespace ProjectC.Gameplay
             DisplaySettingsData value = this;
             value.PlayerOccluderAlpha = Mathf.Clamp(value.PlayerOccluderAlpha, 0.12f, 0.7f);
             value.VerticalPreviewAlpha = Mathf.Clamp(value.VerticalPreviewAlpha, 0.1f, 0.8f);
-            value.ExploredAlpha = Mathf.Clamp(value.ExploredAlpha, 0.05f, 0.4f);
+            value.ExploredAlpha = Mathf.Clamp(value.ExploredAlpha, 0.05f, 0.55f);
             return value;
         }
     }
@@ -45,10 +45,12 @@ namespace ProjectC.Gameplay
                     Prefix + "rear-walls", defaults.ShowRearWalls ? 1 : 0) != 0,
                 PlayerOccluderAlpha = PlayerPrefs.GetFloat(
                     Prefix + "occluder-alpha", defaults.PlayerOccluderAlpha),
+                // 키에 -v2를 붙인 이유: 밝기 완화(v0.3.3)로 기본값이 바뀌었는데, 구 키에 저장된
+                // 예전 값이 새 기본값을 영원히 덮어쓰는 것을 끊는다. 구 키는 마이그레이션 없이 방치한다.
                 VerticalPreviewAlpha = PlayerPrefs.GetFloat(
-                    Prefix + "vertical-alpha", defaults.VerticalPreviewAlpha),
+                    Prefix + "vertical-alpha-v2", defaults.VerticalPreviewAlpha),
                 ExploredAlpha = PlayerPrefs.GetFloat(
-                    Prefix + "explored-alpha", defaults.ExploredAlpha)
+                    Prefix + "explored-alpha-v2", defaults.ExploredAlpha)
             }.Clamped();
         }
 
@@ -58,8 +60,8 @@ namespace ProjectC.Gameplay
             PlayerPrefs.SetInt(Prefix + "fade-occluders", value.FadePlayerOccluders ? 1 : 0);
             PlayerPrefs.SetInt(Prefix + "rear-walls", value.ShowRearWalls ? 1 : 0);
             PlayerPrefs.SetFloat(Prefix + "occluder-alpha", value.PlayerOccluderAlpha);
-            PlayerPrefs.SetFloat(Prefix + "vertical-alpha", value.VerticalPreviewAlpha);
-            PlayerPrefs.SetFloat(Prefix + "explored-alpha", value.ExploredAlpha);
+            PlayerPrefs.SetFloat(Prefix + "vertical-alpha-v2", value.VerticalPreviewAlpha);
+            PlayerPrefs.SetFloat(Prefix + "explored-alpha-v2", value.ExploredAlpha);
             PlayerPrefs.Save();
         }
 

@@ -177,8 +177,8 @@ MonoBehaviour:
   viewMode: 0
   fieldOfViewRadius: 6
   verticalPreviewRadius: 4
-  exploredAlpha: 0.16
-  verticalPreviewAlpha: 0.54
+  exploredAlpha: 0.4
+  verticalPreviewAlpha: 0.62
   playAdjacentFloorSeparation: 0.6
   debugFloorSeparation: 1.6
   debugAdjacentAlpha: 0.48
@@ -192,10 +192,10 @@ MonoBehaviour:
     rgba: 3826982687
   dungeonDarkness: 1
   surfaceLightLevel: 0.5
-  deepLightLevel: 0.12
+  deepLightLevel: 0.22
   carriedLightRadius: 2
   carriedLightIntensity: 1
-  darknessFloor: 0.08
+  darknessFloor: 0.15
   staticLights: 1
   restLightRadius: 5
   restLightIntensity: 0.9

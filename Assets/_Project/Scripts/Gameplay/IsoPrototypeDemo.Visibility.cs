@@ -1193,7 +1193,7 @@ namespace ProjectC.Gameplay
         }
 
         private static readonly Color ActiveTint = Color.white;
-        private static readonly Color InactiveTint = new Color(0.50f, 0.55f, 0.70f); // 차가운 비활성 톤
+        private static readonly Color InactiveTint = new Color(0.64f, 0.68f, 0.80f); // 차가운 비활성 톤 — 색상은 유지, 명도만 완화(v0.3.3 밝기 패스)
 
         /// <summary>
         /// 내 높이(플레이어와 같은 elevation)만 원색, 그 외(같은 층 다른 높이·다른 층 잔상)는

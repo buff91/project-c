@@ -26,7 +26,7 @@
                             <ui:Label text="인접 층 밝기" class="setting-label" />
                             <ui:Label text="계단과 낙하 연결부 미리보기" class="setting-help" />
                         </ui:VisualElement>
-                        <ui:Slider name="vertical-alpha" low-value="0.1" high-value="0.8" value="0.54" class="setting-slider" />
+                        <ui:Slider name="vertical-alpha" low-value="0.1" high-value="0.8" value="0.62" class="setting-slider" />
                     </ui:VisualElement>
 
                     <ui:VisualElement class="setting-row">
@@ -34,7 +34,7 @@
                             <ui:Label text="탐색 지역 밝기" class="setting-label" />
                             <ui:Label text="현재 시야 밖의 방문한 타일" class="setting-help" />
                         </ui:VisualElement>
-                        <ui:Slider name="explored-alpha" low-value="0.05" high-value="0.4" value="0.16" class="setting-slider" />
+                        <ui:Slider name="explored-alpha" low-value="0.05" high-value="0.55" value="0.4" class="setting-slider" />
                     </ui:VisualElement>
 
                     <ui:Toggle name="rear-walls-toggle" label="방향별 외곽 벽 표시" value="true" class="settings-toggle" />
