@@ -77,6 +77,56 @@ def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
     return cell.crop(bounds)
 
 
+# 2026-07-30 정합 패스 — 드레싱이 1차 슬라이스 기본 셀과 갈라진 두 지점을 conform에서 잡는다:
+# 벽은 grey-* 램프(청회색)로 잠겨 웜 브라운 기본 벽과 색온도가 어긋났고, 바닥 오버레이는
+# 기본 바닥(V≈0.40)보다 밝아 드레싱 타일이 체커보드 얼룩으로 떴다.
+WARM_BAND = (40, 235)  # 웜 시프트 적용 명도 대역 — 청보라 암부·순백 하이라이트는 남긴다(.gpl 원리)
+WARM_SAT_MAX = 0.28  # 저채도 몸통만 민다 — 스크린·간판 악센트는 제 색을 지킨다
+WARM_GAIN = (1.18, 1.00, 0.78)  # grey-* 최근접을 tile-* 최근접으로 뒤집는 실측 최소 게인
+FLOOR_VALUE_SCALE = 0.92
+
+
+def warm_shift_walls(cell: Image.Image) -> Image.Image:
+    """벽 몸통(저채도 콘크리트)을 기본 벽이 잠긴 웜 스톤(tile-*) 램프 쪽으로 민다."""
+    shifted = cell.copy()
+    pixels = shifted.load()
+    for py in range(shifted.height):
+        for px in range(shifted.width):
+            red, green, blue, alpha_value = pixels[px, py]
+            if alpha_value == 0:
+                continue
+            peak = max(red, green, blue)
+            if not WARM_BAND[0] <= peak <= WARM_BAND[1]:
+                continue
+            if peak and (peak - min(red, green, blue)) / peak > WARM_SAT_MAX:
+                continue
+            pixels[px, py] = (
+                min(255, round(red * WARM_GAIN[0])),
+                green,
+                min(255, round(blue * WARM_GAIN[2])),
+                alpha_value,
+            )
+    return shifted
+
+
+def dim_floor_overlay(cell: Image.Image) -> Image.Image:
+    """바닥 드레싱 오버레이를 기본 바닥 명도대로 눌러 타일 간 얼룩을 없앤다."""
+    dimmed = cell.copy()
+    pixels = dimmed.load()
+    for py in range(dimmed.height):
+        for px in range(dimmed.width):
+            red, green, blue, alpha_value = pixels[px, py]
+            if alpha_value == 0:
+                continue
+            pixels[px, py] = (
+                round(red * FLOOR_VALUE_SCALE),
+                round(green * FLOOR_VALUE_SCALE),
+                round(blue * FLOOR_VALUE_SCALE),
+                alpha_value,
+            )
+    return dimmed
+
+
 def build_sprite(source: Image.Image, size: tuple[int, int]) -> Image.Image:
     resized = source.resize(size, Image.Resampling.BOX)
     alpha = resized.getchannel("A").point(
@@ -98,7 +148,9 @@ def build_outputs(
 
     outputs: dict[str, Image.Image] = {}
     for spec in SPECS:
-        sprite = build_sprite(extract_cell(sheet, spec.cell_index), spec.size)
+        cell = extract_cell(sheet, spec.cell_index)
+        cell = dim_floor_overlay(cell) if spec.size == (128, 64) else warm_shift_walls(cell)
+        sprite = build_sprite(cell, spec.size)
         if spec.size == (128, 64):
             # 생성 소스의 바닥은 장식 주변에 의도적인 빈 공간이 있다. 이 이미지를
             # 기본 타일과 교체하면 빈 공간이 void로 뚫리므로, 승인된 공용 바닥 위에

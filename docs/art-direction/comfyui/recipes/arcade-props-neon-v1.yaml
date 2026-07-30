@@ -1,0 +1,112 @@
+schema_version: 1
+id: arcade-props-neon-v1
+name: 아케이드 타워 소품 스타일 트랜스퍼 v1 (구판 페인터리 → §1-d 플랫 클러스터)
+# environment-neon-dressing-v1 계보 — 소스를 collapsed-transit 소품 보드(2×2, 627px 셀)로
+# 바꾼다. 목적은 어휘 교체가 아니라 **문법 교체**다: 구판 소품 4종(모닥불 드럼·연료통·
+# 이상 게이트·보관함)이 페인터리 고채도(잔점 노이즈)라 §1-d 플랫 클러스터 환경과 세대가
+# 갈라진다. 실루엣·2:2 셀 배치·역할색은 보존한다 — 모닥불 토치 골드(허브 웜 디오라마
+# 조항), 포탈 틸(출구 신호), 배럴 hazard 소량.
+purpose:
+  category: environment
+  asset_type: prop
+  slot: prop-board-collapsed-transit
+  use: gameplay-source-sheet
+  readability_goal: >-
+    소품 4종의 재질을 §1-d 플랫 클러스터 문법으로 재마감한다. 실루엣·접지·역할색
+    (토치 골드/틸/hazard) 유지, 잔점 노이즈·페인터리 텍스처 제거.
+  animation_scope: static-source-sheet
+output:
+  canvas:
+  - 1254
+  - 1254
+  pivot:
+  - 0.5
+  - 0.0
+  fit: strict
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_postapoc_props_v2.py
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  uploads:
+    7.image: docs/art-direction/project-c-collapsed-transit-props-source-v2.png
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 아이소메트릭 형태 유지
+  attribution: Civitai model 149080 / version 166425
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.15
+  clip_strength: 0.15
+  purpose: 녹·폐허 재질 소량
+  attribution: Civitai model 233573 / version 263472
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 하드 픽셀 에지 + 큰 클러스터 — §1-d 문법 강제
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1254
+  height: 1254
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 0.5
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  positive: >-
+    Pixel Art, PixArFK, polished chunky isometric pixel art, four standalone
+    game props on flat magenta background, clean flat color planes, large
+    deliberate pixel clusters, top-left a rusted metal drum brazier with warm
+    torch-gold fire, top-right a battered red fuel canister drum with one small
+    hazard stripe, bottom-left a teal glowing anomaly gate frame, bottom-right
+    a scuffed grey utility locker crate, crisp hard edges, blue-black charcoal
+    shadows, muted desaturated bodies with one accent color each, preserve
+    exact source cell positions, scale, perspective, silhouettes, spacing,
+    and flat magenta background
+  negative: >-
+    speckle, fine grain noise, gritty texture, dust specks, painterly brush
+    strokes, soft gradients, photorealism, smooth 3d, vector look, fantasy
+    masonry, wood planks, torches on walls, text, letters, labels, watermark,
+    overlapping cells, changed layout, changed projection, missing props,
+    extra objects, human figures
+quality_gates:
+  exact_dimensions:
+  - 1254
+  - 1254
+  preserve_layout: true
+  preserve_projection: "2:1"
+  reject_if:
+  - overlapping-cells
+  - missing-cell
+  - changed-silhouette
+  - speckle-noise
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review
