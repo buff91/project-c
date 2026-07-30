@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from torchstone_palette import lock_to_palette
+from torchstone_palette import despeckle, lock_to_palette
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -136,6 +136,8 @@ def reduce_colors(image: Image.Image) -> Image.Image:
 
     Was an independent MEDIANCUT-32 quantize; now every sheet shares the master
     .gpl indices so environment/props/actors/UI cohere. See torchstone_palette.
+    잠금 직후 despeckle 패스가 고립 1px 스펙클을 병합한다 — 렌더링 문법 계약
+    §1-d(plan v2): 스타일 트랜스퍼의 잔점 노이즈가 최종 산출물에 남지 않는다.
     """
     alpha = image.getchannel("A").point(
         lambda value: 255 if value >= ALPHA_CUTOFF else 0
@@ -144,7 +146,7 @@ def reduce_colors(image: Image.Image) -> Image.Image:
     rgb.paste(image, mask=alpha)
     reduced = lock_to_palette(rgb).convert("RGBA")
     reduced.putalpha(alpha)
-    return reduced
+    return despeckle(reduced)
 
 
 def build_sprite(source: Image.Image, size: tuple[int, int]) -> Image.Image:
