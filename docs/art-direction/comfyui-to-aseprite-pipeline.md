@@ -78,7 +78,7 @@
   saturated amber only for emergency light, one very subtle desaturated teal service stripe,
   crisp hard edges, blue-black charcoal shadows`
 - **Negative**: `fantasy masonry, wood planks, medieval iron straps, torches, arches, runes,
-  cyberpunk neon overload, excessive dithering, white outline noise, photorealism,
+  neon overload, excessive dithering, white outline noise, photorealism,
   smooth 3D/vector look, text, watermark`
 
 ### 카테고리별 가이드
