@@ -82,8 +82,10 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 5. **아케이드 소품/낙하 연출** (v0.3.3 개정 — 구 병원 소품 발주는 집행 전 폐기,
    `docs/ROADMAP.md` 「아트」와 동기): 자판기, 죽은 네온 간판, 홀로 패널, 셔터 내린 점포,
    엘리베이터 통로, 구멍 깊이 표현.
-6. **아이템 12종**: 64×64 포스트아포 리스킨. fallback vertical slice는 완료했으며
-   `item-sources-v3/`의 항목별 단일 소스를 `process_items_v3.py`로 마감한다.
+6. **아이템 12종**: 64×64 포스트아포 리스킨. 12종 중 11종은 ComfyUI `item-static-v1` 재발주로
+   교체됐고(`item-frost-shard`만 ImageGen 잔존), `item-sources-v3/`의 항목별 단일 소스를
+   `process_items_v3.py`로 마감한다. 채택 표·프롬프트 실측 교훈은
+   `item-sources-v3/README.md`가 소유한다.
    이후 Aseprite 원본으로 승격할 때도 파일명·피벗 계약은 유지한다.
 7. **액터 애니메이션**: 기본 스프라이트가 승인된 액터부터
    `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.

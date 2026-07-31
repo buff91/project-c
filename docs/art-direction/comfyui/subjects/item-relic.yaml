@@ -1,0 +1,23 @@
+schema_version: 1
+id: item-relic
+name: 미상 장치
+slot: item-relic
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 붕괴 이전의 미상 장치로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one unidentified pre-collapse device kept by a survivor,
+    palm-sized sealed instrument, cracked ceramic face plate, recessed teal
+    lens, copper coil along one edge, red retention strap, believable
+    pre-collapse engineering
+  negative: >-
+    ancient relic, stone idol, rune, totem, treasure chest, ornate
+    gold, fantasy artifact,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

@@ -1,0 +1,27 @@
+schema_version: 1
+id: item-coin-pouch
+name: 스크랩 파우치
+slot: item-coin-pouch
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 고철·토큰 재화 주머니로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one small palm-sized drawstring barter pouch, round bulging cloth sack
+    cinched with a cord near the top, mouth gaping open, a heap of tarnished
+    brass game tokens and small machine parts spilling out of the mouth and
+    piling beside it, tokens clearly readable as currency, worn dark canvas,
+    believable scavenged construction
+  negative: >-
+    gold coins, treasure, velvet purse, gems, ornate embroidery,
+    fantasy loot,
+    backpack, rucksack, duffel bag, satchel, luggage, suitcase,
+    shoulder strap, buckles, carry handle, large bag,
+    shadow on the ground, glow under the object, red pool under the object,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

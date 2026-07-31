@@ -1,0 +1,23 @@
+schema_version: 1
+id: item-oil-flask
+name: 인화 젤 연료통
+slot: item-oil-flask
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 뿌리는 인화성 연료통으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one dented fuel canister of flammable gel carried by a survivor,
+    small steel jerrycan silhouette, short pour spout with chained cap, greasy
+    smudged sides, worn orange warning diamond, believable scavenged
+    construction
+  negative: >-
+    glass bottle, wine bottle, cork, molotov rag, fantasy oil lamp,
+    amphora, ornate flask,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass
