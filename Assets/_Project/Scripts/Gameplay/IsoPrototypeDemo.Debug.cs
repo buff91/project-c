@@ -131,6 +131,44 @@ namespace ProjectC.Gameplay
             return TryRequestExitChoice();
         }
 
+        /// <summary>
+        /// 현재 층의 비상 탈출구 옆으로 이동해 실제 탭 상호작용 경로를 실행한다.
+        /// 중간 생환 모달과 접근 완료 조건을 에디터/스모크에서 검증하는 용도다.
+        /// </summary>
+        public bool DebugRequestExtractionPoint()
+        {
+            if (!Application.isPlaying || hubMode || _dungeon == null || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive ||
+                !_dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo floor) ||
+                !floor.ExtractionPoint.HasValue)
+                return false;
+
+            GridPos target = floor.ExtractionPoint.Value;
+            GridPos destination = default;
+            bool found = false;
+            foreach (GridPos candidate in new[]
+                     {
+                         target.North,
+                         target.East,
+                         target.South,
+                         target.West
+                     })
+            {
+                if (!_grid.Map.IsWalkable(candidate) || IsLivingEnemyAt(candidate)) continue;
+                destination = candidate;
+                found = true;
+                break;
+            }
+            if (!found) return false;
+
+            MarkTelemetryCheat();
+            _playerState.MoveTo(destination);
+            _player.transform.position = _grid.GridToWorld(destination);
+            SyncPlayerView(destination, floorChanged: false);
+            HandleTileTapped(target, tileExists: true);
+            return true;
+        }
+
         public void DebugJumpFloor(int delta)
         {
             if (!Application.isPlaying || _dungeon == null || _resolvingAction ||

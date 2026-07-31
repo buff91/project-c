@@ -204,6 +204,41 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void RangedRepositioning_LadderLink_UsesArchetypeClimbPolicy()
+        {
+            var map = new GridMap();
+            var lowerLadder = new GridPos(0, 0, 0);
+            var upperLadder = new GridPos(0, 0, 2);
+            var playerPos = new GridPos(3, 0, 2);
+            map.Set(lowerLadder, TileKind.Ladder);
+            map.Set(upperLadder, TileKind.Ladder);
+            for (int x = 1; x <= playerPos.x; x++)
+                map.Set(new GridPos(x, 0, 2), TileKind.Floor);
+            map.Connect(lowerLadder, upperLadder);
+
+            var player = new CombatantState("p", playerPos, 10, 3);
+            var drone = new CombatantState("arc", lowerLadder, 5, 1);
+            var slinger = new CombatantState("slinger", lowerLadder, 4, 1);
+
+            MonsterAction droneAction = new MonsterBrain(
+                MonsterRoster.ArcDrone, lowerLadder, seed: 2).Decide(
+                Context(map, drone, player));
+            MonsterAction slingerAction = new MonsterBrain(
+                MonsterRoster.Slinger, lowerLadder, seed: 2).Decide(
+                Context(map, slinger, player));
+
+            Assert.AreEqual(
+                MonsterActionKind.Wait,
+                droneAction.Kind,
+                "기계 원거리 적은 사격 자리를 찾기 위해 사다리를 타면 안 된다.");
+            Assert.AreEqual(MonsterActionKind.Step, slingerAction.Kind);
+            Assert.AreEqual(
+                upperLadder,
+                slingerAction.Target,
+                "등반 가능한 인간형 사수는 같은 사다리 링크를 사격 경로로 쓴다.");
+        }
+
+        [Test]
         public void MeleeArchetype_IsUnaffectedByRangedBranch()
         {
             GridMap map = Flat(11);

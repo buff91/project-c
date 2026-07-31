@@ -39,6 +39,26 @@ namespace ProjectC.Core
         public static RangedChargeState Full(CombatLoadout loadout) =>
             new RangedChargeState(loadout.RangedCapacity);
 
+        /// <summary>
+        /// 체크포인트·던전 전환용 값 복사. 런타임 상태와 저장 스냅샷이 같은 인스턴스를
+        /// 공유하면 저장 뒤 진행한 턴이 과거 체크포인트까지 바꾸므로 반드시 복제한다.
+        /// </summary>
+        public RangedChargeState Snapshot() =>
+            new RangedChargeState(charges) { turnsSinceGain = turnsSinceGain };
+
+        /// <summary>
+        /// 저장 상태를 현재 장비 규격으로 복원한다. 이 필드가 없던 구세이브(null)는
+        /// 만충으로 시작하며, 저장 객체 자체는 수정하지 않는다.
+        /// </summary>
+        public static RangedChargeState Restore(
+            RangedChargeState saved,
+            CombatLoadout loadout)
+        {
+            RangedChargeState restored = saved?.Snapshot() ?? Full(loadout);
+            restored.ClampTo(loadout);
+            return restored;
+        }
+
         public bool IsFull(CombatLoadout loadout) => charges >= loadout.RangedCapacity;
 
         /// <summary>
@@ -72,6 +92,7 @@ namespace ProjectC.Core
         {
             if (charges > loadout.RangedCapacity) charges = loadout.RangedCapacity;
             if (charges < 0) charges = 0;
+            if (turnsSinceGain < 0 || IsFull(loadout)) turnsSinceGain = 0;
         }
 
         /// <summary>에너지 셀 등으로 즉시 만충. 이미 가득이면 false(셀을 낭비하지 않는다).</summary>

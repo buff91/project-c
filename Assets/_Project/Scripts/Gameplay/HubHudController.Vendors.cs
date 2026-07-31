@@ -73,7 +73,7 @@ namespace ProjectC.Gameplay
             if (_shopDesc != null) _shopDesc.text = ItemCatalog.Description(kind);
             if (_shopBuy != null)
             {
-                _shopBuy.SetEnabled(_meta.gold >= price);
+                _shopBuy.SetEnabled(MetaStore.CanWrite && _meta.gold >= price);
                 _shopBuy.text = $"구매 ({ItemCatalog.FormatGold(price)})";
             }
             if (_shopFeedback != null) _shopFeedback.text = "";
@@ -81,6 +81,7 @@ namespace ProjectC.Gameplay
 
         private void BuySelected()
         {
+            if (!EnsureMetaWritable()) return;
             int price = ItemCatalog.ShopPrice(_shopSelected);
             if (!_meta.TrySpend(price))
             {
@@ -91,7 +92,7 @@ namespace ProjectC.Gameplay
                 return;
             }
             _meta.AddCount(_shopSelected, 1);
-            MetaStore.Save(_meta);
+            if (!SaveMetaOrReload()) return;
             if (_shopFeedback != null)
                 _shopFeedback.text = $"{ItemCatalog.DisplayName(_shopSelected)} 구매 완료";
             RefreshShop();
@@ -121,6 +122,7 @@ namespace ProjectC.Gameplay
         {
             if (_smithList == null) return;
             _smithList.Clear();
+            bool metaWritable = MetaStore.CanWrite;
 
             foreach (EquipmentDefinition equipment in EquipmentCatalog.All)
             {
@@ -152,7 +154,8 @@ namespace ProjectC.Gameplay
                 };
                 action.AddToClassList("settings-done");
                 action.AddToClassList("hub-smith-buy");
-                action.SetEnabled(owned || _meta.gold >= equipment.CraftCost);
+                action.SetEnabled(
+                    metaWritable && (owned || _meta.gold >= equipment.CraftCost));
                 row.Add(action);
 
                 _smithList.Add(row);
@@ -162,6 +165,7 @@ namespace ProjectC.Gameplay
         /// <summary>보유 전이면 제작, 보유 후면 장착/해제 토글 — 버튼 하나로 장비를 관리한다.</summary>
         private void ForgeAction(string equipmentId)
         {
+            if (!EnsureMetaWritable()) return;
             EquipmentDefinition equipment = EquipmentCatalog.ById(equipmentId);
             string label = equipment != null ? equipment.DisplayName : equipmentId;
 
@@ -169,7 +173,7 @@ namespace ProjectC.Gameplay
             {
                 if (ForgeRules.TryToggleEquip(_meta, equipmentId))
                 {
-                    MetaStore.Save(_meta);
+                    if (!SaveMetaOrReload()) return;
                     if (_smithFeedback != null)
                         _smithFeedback.text = ForgeRules.IsEquipped(_meta, equipment)
                             ? $"{label} 장착"
@@ -181,7 +185,7 @@ namespace ProjectC.Gameplay
                 switch (ForgeRules.TryCraft(_meta, equipmentId))
                 {
                     case ForgeResult.Crafted:
-                        MetaStore.Save(_meta);
+                        if (!SaveMetaOrReload()) return;
                         if (_smithFeedback != null) _smithFeedback.text = $"{label} 제작 완료 — 장착했다";
                         break;
                     case ForgeResult.InsufficientGold:
@@ -206,8 +210,11 @@ namespace ProjectC.Gameplay
             _meta = MetaStore.LoadOrNew();
             if (!BountyRules.HasActiveBounties(_meta))
             {
-                BountyRules.AssignOffers(_meta, System.Environment.TickCount);
-                MetaStore.Save(_meta);
+                if (EnsureMetaWritable())
+                {
+                    BountyRules.AssignOffers(_meta, System.Environment.TickCount);
+                    SaveMetaOrReload();
+                }
             }
             RefreshBounty();
             _bountyModal?.BringToFront();
@@ -273,11 +280,12 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void InvestInCondition(ItemUnlockCondition condition)
         {
+            if (!EnsureMetaWritable()) return;
             int spent = ItemUnlockRules.InvestRecords(
                 _meta, condition, ItemUnlockRules.RemainingFor(_meta, condition));
             if (spent <= 0) return;
 
-            MetaStore.Save(_meta);
+            if (!SaveMetaOrReload()) return;
             RefreshCodex();
         }
 
@@ -372,7 +380,7 @@ namespace ProjectC.Gameplay
             button.AddToClassList("settings-done");
             button.AddToClassList("hub-codex-invest");
             button.text = pay > 0 ? $"기록 {pay} 투입" : "기록 없음";
-            button.SetEnabled(pay > 0);
+            button.SetEnabled(MetaStore.CanWrite && pay > 0);
             button.clicked += () => InvestInCondition(condition);
             return button;
         }

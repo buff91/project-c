@@ -190,4 +190,43 @@ namespace ProjectC.Core
             return from < 0 && to > 0;
         }
     }
+
+    /// <summary>
+    /// 던전 탈출 지점에서 보여 주는 짧은 문구의 단일 출처. 던전은 상승·하강·진입 깊이가
+    /// 공존하므로 <c>최심부</c>/<c>최심층</c>처럼 하강을 전제하는 어휘를 쓰지 않는다.
+    /// </summary>
+    public static class DungeonEndCopy
+    {
+        public static string IntermediateExtractionDescription(string treasureValue) =>
+            $"여기서 나가면 들고 있는 것을 지킨다 · 전리품 가치 {treasureValue ?? ""} · " +
+            "더 나아가면 되돌아올 길이 멀어진다";
+
+        public static string ArrivalMessage(bool hasBoss, bool exitUnlocked, string bossName)
+        {
+            if (!hasBoss) return "최종 구역 도달 — 출구로 향하라";
+            if (exitUnlocked) return "출구의 봉인이 풀렸다 — 출구로 향하라";
+
+            string name = string.IsNullOrWhiteSpace(bossName) ? "보스" : bossName;
+            return $"보스 구역 도달 — {name}를 쓰러뜨려 출구를 열어라";
+        }
+
+        public static string FinalExitTitle(bool hasBoss) =>
+            hasBoss ? "봉인 해제된 출구" : "최종 구역 출구";
+
+        public static string FinalExitDescription(
+            bool hasBoss,
+            string bossName,
+            string treasureValue)
+        {
+            string value = treasureValue ?? "";
+            if (!hasBoss)
+                return $"최종 구역 도달 · 전리품 가치 {value} · 정복을 확정할 수 있다";
+
+            string name = string.IsNullOrWhiteSpace(bossName) ? "보스" : bossName;
+            return $"{name} 처치 완료 · 전리품 가치 {value} · 정복을 확정할 수 있다";
+        }
+
+        public static string FurthestReached(string floorLabel) =>
+            $"최고 도달 {floorLabel ?? ""}";
+    }
 }

@@ -175,6 +175,171 @@ namespace ProjectC.Tests
             Assert.AreEqual(9, telemetry.deepestProgressIndex);
         }
 
+        [Test]
+        public void FloorLabels_UseDungeonDirection_ForAscendingAndInwardRuns()
+        {
+            RunTelemetry tower = RunTelemetry.Begin(
+                DungeonCatalog.DefaultId, 9, 0, DateTime.UtcNow);
+            tower.RecordFloorEntered(9, 9);
+
+            Assert.AreEqual("B2", tower.floors[0].floorLabel);
+            Assert.AreEqual("8F", tower.floors[1].floorLabel);
+            Assert.AreEqual("8F", tower.currentFloorLabel);
+            Assert.AreEqual("8F", tower.deepestFloorLabel);
+            StringAssert.Contains("8F (최고 도달 8F)", tower.FormatCompactSummary());
+            StringAssert.Contains("- B2 ", tower.FormatDetailedSummary());
+
+            RunTelemetry vault = RunTelemetry.Begin(
+                "flooded-vault", 9, 0, DateTime.UtcNow);
+            vault.RecordFloorEntered(-9, 9);
+
+            Assert.AreEqual("1구역", vault.floors[0].floorLabel);
+            Assert.AreEqual("10구역", vault.floors[1].floorLabel);
+            StringAssert.Contains("10구역 (최고 도달 10구역)", vault.FormatCompactSummary());
+            StringAssert.Contains("- 1구역 ", vault.FormatDetailedSummary());
+        }
+
+        [Test]
+        public void LegacyMissingFloorLabels_UseCatalogOrNeutralSectionFallback()
+        {
+            var legacy = new RunTelemetry
+            {
+                dungeonId = DungeonCatalog.DefaultId,
+                currentFloorIndex = 9,
+                deepestFloorIndex = 9,
+                currentProgressIndex = 9,
+                deepestProgressIndex = 9
+            };
+            legacy.floors.Add(new RunFloorTelemetry
+            {
+                floorIndex = 9,
+                progressIndex = 9,
+                visits = 1
+            });
+
+            StringAssert.Contains("8F (최고 도달 8F)", legacy.FormatCompactSummary(),
+                "구 리포트도 현재 상승 던전 규칙으로 읽혀야 한다");
+
+            legacy.dungeonId = "removed-dungeon";
+            StringAssert.Contains("10구역 (최고 도달 10구역)", legacy.FormatCompactSummary(),
+                "불명 ID를 기본 던전으로 오인해 B/F 라벨을 붙이면 안 된다");
+        }
+
+        [Test]
+        public void FreezeFloorLabels_BackfillsLegacyReportOnceAndKeepsThatInterpretation()
+        {
+            var legacy = new RunTelemetry
+            {
+                schemaVersion = 5,
+                dungeonId = DungeonCatalog.DefaultId,
+                currentFloorIndex = 9,
+                deepestFloorIndex = 9,
+                currentProgressIndex = 9,
+                deepestProgressIndex = 9
+            };
+            legacy.floors.Add(new RunFloorTelemetry
+            {
+                floorIndex = 0,
+                progressIndex = 0,
+                visits = 1
+            });
+            legacy.floors.Add(new RunFloorTelemetry
+            {
+                floorIndex = 9,
+                progressIndex = 9,
+                visits = 1
+            });
+
+            Assert.IsTrue(legacy.FreezeFloorLabels());
+            Assert.AreEqual(RunTelemetry.CurrentSchemaVersion, legacy.schemaVersion);
+            Assert.AreEqual("B2", legacy.floors[0].floorLabel);
+            Assert.AreEqual("8F", legacy.floors[1].floorLabel);
+            Assert.AreEqual("8F", legacy.currentFloorLabel);
+            Assert.AreEqual("8F", legacy.deepestFloorLabel);
+
+            // 최초 백필 뒤에는 카탈로그 해석을 바꿔도 저장 문자열이 우선한다.
+            legacy.dungeonId = "flooded-vault";
+            Assert.IsFalse(legacy.FreezeFloorLabels());
+            StringAssert.Contains("8F (최고 도달 8F)", legacy.FormatCompactSummary());
+        }
+
+        [Test]
+        public void FreezeFloorLabels_RepairsEarlyV6DataThatWasStampedWithoutLabels()
+        {
+            var incompleteV6 = new RunTelemetry
+            {
+                schemaVersion = RunTelemetry.CurrentSchemaVersion,
+                dungeonId = "removed-dungeon",
+                currentFloorIndex = -3,
+                deepestFloorIndex = -3,
+                currentProgressIndex = 3,
+                deepestProgressIndex = 3
+            };
+            incompleteV6.floors.Add(new RunFloorTelemetry
+            {
+                floorIndex = -3,
+                progressIndex = 3,
+                visits = 1
+            });
+
+            Assert.IsTrue(incompleteV6.FreezeFloorLabels());
+            Assert.AreEqual("4구역", incompleteV6.floors[0].floorLabel);
+            Assert.AreEqual("4구역", incompleteV6.currentFloorLabel);
+            Assert.AreEqual("4구역", incompleteV6.deepestFloorLabel);
+        }
+
+        [Test]
+        public void FreezeFloorLabels_V1ToV4_ReconstructsProgressFromLegacyFloorIndex()
+        {
+            var legacyV4 = new RunTelemetry
+            {
+                schemaVersion = 4,
+                dungeonId = DungeonCatalog.DefaultId,
+                currentFloorIndex = -4,
+                deepestFloorIndex = -9
+            };
+            legacyV4.floors.Add(new RunFloorTelemetry { floorIndex = 0, visits = 1 });
+            legacyV4.floors.Add(new RunFloorTelemetry { floorIndex = -4, visits = 1 });
+            legacyV4.floors.Add(new RunFloorTelemetry { floorIndex = -9, visits = 1 });
+
+            Assert.IsTrue(legacyV4.FreezeFloorLabels());
+
+            CollectionAssert.AreEqual(
+                new[] { 0, 4, 9 },
+                legacyV4.floors.ConvertAll(floor => floor.progressIndex));
+            CollectionAssert.AreEqual(
+                new[] { "B2", "3F", "8F" },
+                legacyV4.floors.ConvertAll(floor => floor.floorLabel));
+            Assert.AreEqual(4, legacyV4.currentProgressIndex);
+            Assert.AreEqual(9, legacyV4.deepestProgressIndex);
+            Assert.AreEqual("3F", legacyV4.currentFloorLabel);
+            Assert.AreEqual("8F", legacyV4.deepestFloorLabel);
+        }
+
+        [Test]
+        public void FreezeFloorLabels_DoesNotRewriteFutureSchema()
+        {
+            var future = new RunTelemetry
+            {
+                schemaVersion = RunTelemetry.CurrentSchemaVersion + 1,
+                dungeonId = DungeonCatalog.DefaultId,
+                currentFloorIndex = 9,
+                deepestFloorIndex = 9,
+                currentProgressIndex = 9,
+                deepestProgressIndex = 9
+            };
+            future.floors.Add(new RunFloorTelemetry
+            {
+                floorIndex = 9,
+                progressIndex = 9
+            });
+
+            Assert.IsFalse(future.FreezeFloorLabels());
+            Assert.AreEqual(RunTelemetry.CurrentSchemaVersion + 1, future.schemaVersion);
+            Assert.IsNull(future.currentFloorLabel);
+            Assert.IsNull(future.floors[0].floorLabel);
+        }
+
         /// <summary>층 목록은 고도가 아니라 방문 순서로 정렬된다(상승·비단조 공용).</summary>
         [Test]
         public void Floors_AreOrderedByProgress_NotByElevation()
@@ -254,6 +419,67 @@ namespace ProjectC.Tests
             Assert.AreEqual(-2, restored.telemetry.currentFloorIndex);
             Assert.AreEqual(ItemKind.FrostShard.ToString(), restored.telemetry.items[0].itemId);
             CollectionAssert.AreEqual(new[] { -3, -6 }, restored.usedRestFloorIndices);
+        }
+
+        [Test]
+        public void RunSaveJson_RoundTripsFrozenFloorLabels()
+        {
+            RunTelemetry telemetry = RunTelemetry.Begin(
+                DungeonCatalog.DefaultId,
+                77,
+                0,
+                DateTime.UtcNow);
+            telemetry.RecordFloorEntered(9, 9);
+            var save = new RunSaveData { telemetry = telemetry };
+
+            string json = JsonUtility.ToJson(save);
+            RunSaveData restored = JsonUtility.FromJson<RunSaveData>(json);
+
+            Assert.AreEqual(RunTelemetry.CurrentSchemaVersion, restored.telemetry.schemaVersion);
+            Assert.AreEqual("B2", restored.telemetry.floors[0].floorLabel);
+            Assert.AreEqual("8F", restored.telemetry.floors[1].floorLabel);
+            Assert.AreEqual("8F", restored.telemetry.currentFloorLabel);
+            Assert.AreEqual("8F", restored.telemetry.deepestFloorLabel);
+
+            // 카탈로그 해석이 달라져도 저장된 당시 라벨이 우선한다.
+            restored.telemetry.dungeonId = "flooded-vault";
+            StringAssert.Contains("8F (최고 도달 8F)",
+                restored.telemetry.FormatCompactSummary());
+        }
+
+        [Test]
+        public void RunSaveJson_RoundTripsRangedChargeRhythm()
+        {
+            var save = new RunSaveData
+            {
+                rangedCharges = new RangedChargeState(1) { turnsSinceGain = 3 }
+            };
+
+            string json = JsonUtility.ToJson(save);
+            RunSaveData restored = JsonUtility.FromJson<RunSaveData>(json);
+
+            Assert.IsNotNull(restored.rangedCharges);
+            Assert.AreEqual(1, restored.rangedCharges.charges);
+            Assert.AreEqual(3, restored.rangedCharges.turnsSinceGain);
+        }
+
+        [Test]
+        public void LegacyRunSaveJson_WithoutRangedCharges_MigratesToRestorePolicy()
+        {
+            const string json =
+                "{\"schemaVersion\":1,\"dungeonId\":\"forgotten-catacombs\"}";
+            RunSaveData restored = JsonUtility.FromJson<RunSaveData>(json);
+
+            Assert.IsNotNull(
+                restored.rangedCharges,
+                "JsonUtility는 누락된 중첩 필드도 빈 객체로 만들므로 마이그레이션이 필요하다");
+            Assert.IsTrue(SaveMigration.Migrate(
+                restored,
+                ItemCatalog.ChargesPerItem,
+                SaveMigration.HasSerializedRangedCharges(json)));
+            Assert.IsNull(
+                restored.rangedCharges,
+                "v2 변환 뒤에는 Restore의 만충 호환 경로를 타야 한다");
         }
     }
 }

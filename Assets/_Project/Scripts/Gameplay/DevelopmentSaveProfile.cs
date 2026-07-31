@@ -52,8 +52,8 @@ namespace ProjectC.Gameplay
             if (!IsAvailable) return;
 
             string root = DevelopmentRootPath;
-            DeleteIfPresent(Path.Combine(root, MetaFileName));
-            DeleteIfPresent(Path.Combine(root, RunFileName));
+            AtomicJsonStore.Clear(Path.Combine(root, MetaFileName));
+            AtomicJsonStore.Clear(Path.Combine(root, RunFileName));
             if (Directory.Exists(RunTelemetryStore.ReportDirectoryPath))
                 Directory.Delete(RunTelemetryStore.ReportDirectoryPath, recursive: true);
 
@@ -82,12 +82,6 @@ namespace ProjectC.Gameplay
                 throw new ArgumentException("저장 파일명만 허용합니다.", nameof(fileName));
 
             return Path.Combine(ResolveRoot(persistentRoot, useDevelopmentProfile), fileName);
-        }
-
-        private static void DeleteIfPresent(string path)
-        {
-            if (File.Exists(path))
-                File.Delete(path);
         }
     }
 }

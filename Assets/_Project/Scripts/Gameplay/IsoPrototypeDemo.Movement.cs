@@ -38,7 +38,10 @@ namespace ProjectC.Gameplay
         {
             yield return MovePlayerPath(path);
 
-            if (!_playerState.IsAlive || !IsRescueNpcAt(npcPos)) yield break;
+            if (!_playerState.IsAlive ||
+                !IsPlayerAdjacentTo(npcPos) ||
+                !IsRescueNpcAt(npcPos))
+                yield break;
 
             TryRescueNpcAt(npcPos);
             RefreshFloorVisibility();
@@ -282,7 +285,9 @@ namespace ProjectC.Gameplay
                     int previousFloor = _activeFloorIndex;
                     _activeFloorIndex = nextFloor;
                     _runTelemetry?.RecordFloorEntered(
-                        GlobalFloorIndex(_activeFloorIndex), GlobalDepth(_activeFloorIndex));
+                        GlobalFloorIndex(_activeFloorIndex),
+                        GlobalDepth(_activeFloorIndex),
+                        FloorLabel(_activeFloorIndex));
                     AnnounceBossApproachIfNeeded();
                     AnnounceSurfaceCrossingIfNeeded(previousFloor);
                     UpdateInputFloorRange();

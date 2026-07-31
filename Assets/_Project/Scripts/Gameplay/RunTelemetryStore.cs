@@ -22,6 +22,8 @@ namespace ProjectC.Gameplay
         {
             if (!IsAvailable || telemetry == null) return null;
 
+            // 구 체크포인트에서 이어진 리포트도 저장 순간부터 당시 표기를 동결한다.
+            telemetry.FreezeFloorLabels();
             // 구간 롤업은 파생 값이라 저장 직전에 다시 계산한다 — 리포트만 봐도 구간 비교가 된다.
             telemetry.RefreshBands();
 

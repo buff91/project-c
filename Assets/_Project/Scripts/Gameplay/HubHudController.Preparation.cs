@@ -19,11 +19,14 @@ namespace ProjectC.Gameplay
         {
             CloseModals();
             _meta = MetaStore.LoadOrNew();
-            int returned = ExpeditionLoadoutRules.Reconcile(_meta);
-            if (returned > 0) MetaStore.Save(_meta);
-            RefreshPreparation(returned > 0
-                ? $"영웅 기본 지급품 공간 확보 · {returned}개 창고 복귀"
-                : "");
+            bool metaWritable = MetaStore.CanWrite;
+            int returned = metaWritable ? ExpeditionLoadoutRules.Reconcile(_meta) : 0;
+            if (returned > 0 && !SaveMetaOrReload()) returned = 0;
+            RefreshPreparation(!metaWritable
+                ? MetaReadOnlyMessage
+                : returned > 0
+                    ? $"영웅 기본 지급품 공간 확보 · {returned}개 창고 복귀"
+                    : "");
             _stashModal?.BringToFront();
             _stashModal?.AddToClassList("is-open");
         }
@@ -233,9 +236,10 @@ namespace ProjectC.Gameplay
 
             bool fromStash = _preparationSource == PreparationSelectionSource.Stash;
             bool fromLoadout = _preparationSource == PreparationSelectionSource.Loadout;
+            bool metaWritable = MetaStore.CanWrite;
             if (_toLoadout != null)
             {
-                _toLoadout.SetEnabled(fromStash);
+                _toLoadout.SetEnabled(metaWritable && fromStash);
                 // 버튼이 옮길 양을 스스로 말한다 — 이동 단위가 칸이라는 사실은
                 // 격자만 봐서는 안 읽히고, 안 읽히면 여섯 번 누르던 습관이 남는다.
                 int unit = fromStash
@@ -247,7 +251,7 @@ namespace ProjectC.Gameplay
             }
             if (_toStash != null)
             {
-                _toStash.SetEnabled(fromLoadout);
+                _toStash.SetEnabled(metaWritable && fromLoadout);
                 _toStash.text = fromLoadout && ItemCatalog.IsCharged(kind)
                     ? $"← 창고로 ({SelectedCellCharges()}회분)"
                     : "← 창고로";
@@ -308,6 +312,7 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void MoveKindToLoadout(ItemKind kind)
         {
+            if (!EnsureMetaWritable()) return;
             int charges = ExpeditionLoadoutRules.UnitChargesInStash(_meta, kind);
             if (charges <= 0)
             {
@@ -323,7 +328,7 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            MetaStore.Save(_meta);
+            if (!SaveMetaOrReload()) return;
             _stashSelected = kind;
             _preparationSource = PreparationSelectionSource.Loadout;
             _selectedPreparationSlot = null;
@@ -333,6 +338,7 @@ namespace ProjectC.Gameplay
 
         private void MoveKindToStash(ItemKind kind, int charges)
         {
+            if (!EnsureMetaWritable()) return;
             LoadoutTransferResult result =
                 ExpeditionLoadoutRules.TryMoveToStash(_meta, kind, charges);
             if (result != LoadoutTransferResult.Success)
@@ -341,7 +347,7 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            MetaStore.Save(_meta);
+            if (!SaveMetaOrReload()) return;
             _stashSelected = kind;
             _preparationSource = PreparationSelectionSource.Stash;
             _selectedPreparationSlot = null;

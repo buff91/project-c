@@ -86,6 +86,35 @@ namespace ProjectC.Tests
             Assert.IsTrue(CombatRules.CanFireFrom(map, firing, target, 2));
         }
 
+        [TestCase(true, true)]
+        [TestCase(false, false)]
+        public void LadderFiringPosition_RespectsClimbPolicy(bool canClimb, bool expected)
+        {
+            var map = new GridMap();
+            var lowerLadder = new GridPos(0, 0, 0);
+            var upperLadder = new GridPos(0, 0, 2);
+            var target = new GridPos(3, 0, 2);
+            map.Set(lowerLadder, TileKind.Ladder);
+            map.Set(upperLadder, TileKind.Ladder);
+            for (int x = 1; x <= target.x; x++)
+                map.Set(new GridPos(x, 0, 2), TileKind.Floor);
+            map.Connect(lowerLadder, upperLadder);
+
+            bool ok = CombatRules.FindFiringPosition(
+                map,
+                lowerLadder,
+                target,
+                maxRange: 4,
+                out List<GridPos> path,
+                canClimb: canClimb);
+
+            Assert.AreEqual(expected, ok);
+            if (expected)
+                CollectionAssert.AreEqual(new[] { lowerLadder, upperLadder }, path);
+            else
+                Assert.AreEqual(0, path.Count);
+        }
+
         [Test]
         public void UnreachableTarget_ReturnsFalse()
         {

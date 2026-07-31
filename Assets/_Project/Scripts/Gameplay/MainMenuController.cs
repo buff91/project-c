@@ -33,7 +33,8 @@ namespace ProjectC.Gameplay
             if (_resumeButton != null)
             {
                 // 비활성 회색이 아니라 아예 없앤다 — 누를 수 없는 버튼은 노이즈다.
-                _resumeButton.style.display = TitleEntryRouting.ShowsResume(RunSaveStore.HasSave)
+                _resumeButton.style.display = TitleEntryRouting.ShowsResume(
+                        MetaStore.CanWrite && RunSaveStore.CanResume)
                     ? DisplayStyle.Flex
                     : DisplayStyle.None;
                 _resumeButton.clicked += ResumeRun;
@@ -71,7 +72,7 @@ namespace ProjectC.Gameplay
         private static void ResumeRun()
         {
             // 세이브가 사라진 채로 눌렸다면(프로필 전환 등) 캠프로 흘려보낸다.
-            if (!RunSaveStore.HasSave)
+            if (!MetaStore.CanWrite || !RunSaveStore.CanResume)
             {
                 EnterCamp();
                 return;

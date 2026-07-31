@@ -343,6 +343,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   플레이어에게 지각이 끊기지 않게 하려는 의도적 비대칭이다.
 - 경로 판단은 전부 `GridPathfinder`에 위임하고(추격 중에만 닫힌 문 개방 플래그, 종별 `CanClimb`),
   **약한 바닥은 자진 회피**한다 — 낙하는 플레이어의 밀기/넉백으로 유도하는 것이 정석이라서다.
+  원거리의 사격 자리 재탐색도 `CombatRules.FindFiringPosition(..., canClimb)`을 통해 같은
+  아키타입 정책을 전달한다. 플레이어 도달성의 기본값(true)을 몬스터가 암묵적으로 물려받지 않는다.
 
 ### 9.5 로스터·활성화
 - **MonsterRoster** — 일반 5종(Goblin/Skeleton/Slime/Slinger/**ArcDrone**) + 보스 GraveWarden.
@@ -401,13 +403,35 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   이어하기는 "현재 층을 층 입구에서 다시 시작"이다. 계약은 `dungeonId`/`stageCount`/`bossDefeated` +
   `currentProgressIndex`·`deepestProgressIndex`(고도로 역산할 수 없어 **진행 지수를 직접 저장** — §4.5) +
   `carriedWeaponId`/`carriedGearId`(반입 장비는 죽으면 잃으므로 런 상태) + `hunger`(층·던전을 넘어 이어진다) +
-  `usedRestFloorIndices` + `items`(전리품 포함 — 아직 환금 전).
+  `rangedCharges`(남은 충전+회복 턴, 저장/던전 전환 시 복제) + `usedRestFloorIndices` +
+  `items`(전리품 포함 — 아직 환금 전).
   `RunStartRules.ResolvePreviewDepth`: 새 판=0, 이어하기=저장된 `currentProgressIndex`.
+- **SaveMigration v3** — v0→v1의 아이템 개수→회분 변환, v1→v2의 원거리 충전 호환,
+  v2→v3의 종료 정산 영수증 도입을 단계별로 실행한다. v3의 구세이브 초기값은 빈 영수증
+  목록이라 별도 값 변환은 없다. 공유 버전이 올랐다고 v1 창고를 다시 곱하지 않는다. `JsonUtility`가
+  누락된 중첩 객체를 0/0으로 만들기 때문에 `AtomicJsonStore`가 실제로 읽은 원문도 돌려주고,
+  `RunSaveStore`가 `rangedCharges` 키 존재를 마이그레이션에 전달한다. 키가 없는 구 저장만
+  null→만충으로 복원하며, 키가 있는 실제 0/0 방전 상태는 보존한다. JSON 키 비교는 루트 속성만
+  디코딩해 `ranged\u0043harges` 같은 합법적인 이스케이프도 같은 키로 본다.
+- **미래 스키마는 읽기 전용이다.** `RunSaveStore`는 런 루트나 중첩 텔레메트리 중 하나라도 현재보다
+  새로우면 이어하기와 자동 저장을 모두 거부하고, `MetaStore`도 알려진 필드는 읽되 같은 경로에
+  다시 쓰지 않는다. 버전 숫자만 보존해도 `JsonUtility`가 모르는 필드는 재직렬화 때 사라지므로,
+  저장 전 주 파일과 `.bak`을 모두 검사한다. `MetaStore.CanWrite`가 false인 동안 타이틀/허브/던전
+  진입 게이트가 이어하기·구매·제작·창고 이동·기록 투입·출정을 막고, 런 도중 외부에서 미래 파일로
+  바뀌어도 `TryFinalizeRun`이 메타 저장에 성공하기 전에는 인벤토리와 체크포인트를 지우지
+  않는다. 새 원정에서 `RunSaveStore.Clear`를 명시적으로 호출한 뒤에만 미래 체크포인트를 현재
+  형식으로 교체할 수 있다.
+- **종료 정산은 runId로 멱등이다.** `TryFinalizeRun`이 전리품·소모품·장비 반환/소실·의뢰·
+  기록·해금과 `RunSettlementEntry` 영수증을 한 `MetaStore.Save`에 넣는다. 그 뒤에만 런
+  체크포인트를 지운다. 메타 저장 직후 앱이 종료돼 체크포인트가 남아도, 재개 정산은 영수증을
+  먼저 찾아 비멱등인 `ForgeRules.ReturnFromExpedition`을 포함한 모든 보상 변경을 건너뛴다.
+  `RunSaveStore.CanResume`도 같은 영수증을 검사해 이미 끝난 잔여 체크포인트를 메뉴에 노출하지 않는다.
 - **MetaSaveData**(`[Serializable]`) — 판 종료(사망 포함)에도 유지되는 은행. `gold`·`stash`/`loadout`·
   장비 슬롯·`activeBountyIds`·`unlockedItems`·`unlockProgress`(조건별 역대 최고, 단조 증가)·
   `unlockInvested`(투입분 — 출처가 달라 따로 둔다: 하나는 달성한 값, 하나는 산 값)·`rescuedNpcs`·
-  `records`·`deepestFloorsEver`. `AddCount`가 전리품을 걸러 창고에 남기지 않는다(생환 정산에서 골드가
-  되므로 남으면 이중 계산). 옛 `unlockedHeroes`/`heroId`는 **제거** — 무시하고 로드되어 마이그레이션 없음.
+  `records`·`deepestFloorsEver`·최근 `settledRuns` 영수증. `AddCount`가 전리품을 걸러 창고에
+  남기지 않는다(생환 정산에서 골드가 되므로 남으면 이중 계산). 옛 `unlockedHeroes`/`heroId`는
+  **제거** — 무시하고 로드되어 마이그레이션 없음.
 - **SurvivorProfile** — 원정자 기본값 상수 **하나**. 직업도 프리셋도 없다(정체성은 캐릭터가 아니라
   장비가 진다) — 옛 `HeroRoster`/`HeroSelection`을 대체한 자리다.
 - **Equipment / ForgeRules** — 무기 1 + 보조 1 슬롯. 장비는 **공격력을 올리지 않고 규칙만 바꾸며**
@@ -419,6 +443,13 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - 순수 데이터/집계(Unity 시간·파일 모름). 스키마 버전은 `RunTelemetry.CurrentSchemaVersion`이 단일
   출처이고 기록 항목은 [`SYSTEMS.md` — 텔레메트리](SYSTEMS.md)가 소유한다.
 - **사중 기록**: 런 총계 + 층별(`RunFloorTelemetry`) + 구간별(`RunBandTelemetry`) + 소스별/아이템별.
+- **층 라벨은 v6부터 최초 진입 값으로 동결한다.** 저장된 `floorLabel`을 리포트 표시에 우선해
+  카탈로그가 바뀌어도 과거 표기가 변하지 않는다. `FreezeFloorLabels`는 라벨 없는 구 리포트를
+  현재 던전 방향 규칙으로 한 번 복원해 필드에 물질화하고, 알 수 없는 던전은 `N구역`으로 폴백한다.
+  초기 v6에서 버전만 찍히고 라벨이 비었던 체크포인트도 버전과 무관하게 같은 경로로 수선한다.
+  v1~v4의 누락 진행 지수는 당시 `GlobalDepth = -floorIndex` 계약으로 먼저 복원하며, 현재 Gameplay
+  기록부는 모든 `RecordFloorEntered` 호출에 실제 로컬 화면 라벨을 전달한다. 그래야 2단계 시작
+  `B2`가 누적 진행 지수 10을 통해 `9F`로 잘못 동결되지 않는다.
 - **구간(밴드) 롤업은 파생 값이다** — `RefreshBands()`가 층별 기록을 `DungeonDepthBandRules` 경계로
   다시 묶고 따로 기록하지 않는다. 경계를 바꾸면 과거 리포트도 같은 규칙으로 다시 묶인다.
   **경계와 사람이 읽는 라벨의 SSOT도 `DungeonDepthBandRules`**이며 라벨은 진행 순서 기준이다 —
@@ -477,6 +508,9 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 11.3 UI (UI Toolkit 화면 HUD)
 - 컨트롤러: `PrototypeHudController`(던전 HUD·액션 휠) · `HubHudController` ·
   `InventoryPanelController`(6×4 백팩+조합) · `DisplaySettingsPanelController` · `DebugPanelController`.
+- `HubHudController`의 버튼·포인터 콜백은 `HubUiBindingRegistry`가 정확한 delegate를 보관하고
+  `OnDisable` 및 재바인딩 전에 대칭 해제한다. `OnEnable`마다 람다를 새로 더하면 허브 재진입 횟수만큼
+  구매·이동·씬 전환이 중복 실행되므로 직접 `clicked +=`를 흩뿌리지 않는다.
 - **ResponsiveUiLayout** — UI Toolkit엔 런타임 미디어쿼리가 없어 패널 논리 크기를 USS 클래스로 바꾸고
   `Screen.safeArea`를 패널 좌표로 환산해 노치에 대응한다. 임계값은 `UI_ARCHITECTURE.md`가 소유.
 - 개발 PC 기본 프리셋은 16:9 QHD(2560×1440)다. 같은 비율 해상도는 같은 논리 레이아웃으로

@@ -90,7 +90,7 @@ namespace ProjectC.Gameplay
             IReadOnlyList<GridPos> path, ExtractionAgent point)
         {
             yield return MovePlayerPath(path);
-            if (!_playerState.IsAlive || _playerPos != point.Position) yield break;
+            if (!_playerState.IsAlive || !IsPlayerAdjacentTo(point.Position)) yield break;
 
             AtExtractionPoint = true;
             InteractionFeedback?.Invoke("비상 탈출구 — 여기서 나가면 지금까지 챙긴 것을 지킨다");

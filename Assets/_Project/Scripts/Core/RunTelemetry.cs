@@ -24,6 +24,13 @@ namespace ProjectC.Core
         /// </summary>
         public int progressIndex;
 
+        /// <summary>
+        /// 이 층에 처음 들어갔을 때 실제 화면에 쓰던 라벨. 카탈로그 표시 규칙이 나중에
+        /// 바뀌어도 과거 리포트는 당시의 <c>B2</c>/<c>1구역</c> 표기를 유지한다.
+        /// 구 리포트에는 없으므로 비어 있을 수 있으며, 그때만 현재 카탈로그로 복원한다.
+        /// </summary>
+        public string floorLabel;
+
         public int visits;
         public int turns;
         public float elapsedSeconds;
@@ -95,7 +102,8 @@ namespace ProjectC.Core
     [Serializable]
     public sealed class RunTelemetry
     {
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
+        private const int ProgressIndexSchemaVersion = 5;
 
         /// <summary>구간 롤업을 항상 얕은 곳부터 깊은 곳 순으로 낸다.</summary>
         private static readonly DungeonDepthBand[] BandOrder =
@@ -106,7 +114,12 @@ namespace ProjectC.Core
             DungeonDepthBand.Boss
         };
 
-        public int schemaVersion = CurrentSchemaVersion;
+        /// <summary>
+        /// 리포트 스키마 버전. 이니셜라이저를 두지 않는다 — 필드가 없는 구 JSON은
+        /// 0으로 남아야 <see cref="FreezeFloorLabels"/>가 구 리포트임을 식별할 수 있다.
+        /// 새 런은 <see cref="Begin"/>이 현재 버전을 명시한다.
+        /// </summary>
+        public int schemaVersion;
         public string runId;
         public string dungeonId;
         public int seed;
@@ -117,6 +130,8 @@ namespace ProjectC.Core
         public string endCause;
         public int currentFloorIndex;
         public int deepestFloorIndex;
+        public string currentFloorLabel;
+        public string deepestFloorLabel;
 
         /// <summary>현재/최대 진행 지수. 구간 롤업과 "얼마나 나아갔나"의 출처다.</summary>
         public int currentProgressIndex;
@@ -164,10 +179,12 @@ namespace ProjectC.Core
             int seed,
             int floorIndex,
             DateTime utcNow,
-            int progressIndex = 0)
+            int progressIndex = 0,
+            string floorLabel = null)
         {
             var telemetry = new RunTelemetry
             {
+                schemaVersion = CurrentSchemaVersion,
                 runId = $"{utcNow:yyyyMMddTHHmmssfffZ}-{seed}",
                 dungeonId = dungeonId ?? "",
                 seed = seed,
@@ -179,8 +196,76 @@ namespace ProjectC.Core
                 currentProgressIndex = progressIndex,
                 deepestProgressIndex = progressIndex
             };
-            telemetry.RecordFloorEntered(floorIndex, progressIndex);
+            telemetry.RecordFloorEntered(floorIndex, progressIndex, floorLabel);
             return telemetry;
+        }
+
+        /// <summary>
+        /// v6 이전 리포트의 표시 라벨을 현재 카탈로그로 한 번 해석해 데이터에 물질화한다.
+        /// 그 뒤에는 저장된 문자열이 우선하므로 카탈로그가 바뀌어도 이 리포트의 당시 표기가
+        /// 다시 변하지 않는다. 초기 v6 빌드가 버전만 올리고 라벨을 비워 둔 경우도 함께
+        /// 복구하므로, 버전이 최신이어도 비어 있는 라벨은 채운다.
+        /// </summary>
+        /// <returns>버전 또는 라벨을 하나라도 고쳤으면 true.</returns>
+        public bool FreezeFloorLabels()
+        {
+            // 더 새 코드가 만든 데이터의 의미를 현재 코드가 추측해 덮어쓰지 않는다.
+            if (schemaVersion > CurrentSchemaVersion) return false;
+
+            bool changed = false;
+            if (floors == null)
+            {
+                floors = new List<RunFloorTelemetry>();
+                changed = true;
+            }
+
+            // v1~v4의 진행 축은 하강 전용 전역 floorIndex였다. 당시 GlobalDepth 계약이
+            // 곧 -floorIndex였으므로, v5 필드가 없는 데이터는 그 역사적 규칙으로 먼저
+            // 진행 지수를 복원한 뒤 현재 카탈로그 라벨을 한 번 해석한다.
+            if (schemaVersion < ProgressIndexSchemaVersion)
+            {
+                currentProgressIndex = LegacyProgressFor(currentFloorIndex);
+                deepestProgressIndex = LegacyProgressFor(deepestFloorIndex);
+                foreach (RunFloorTelemetry floor in floors)
+                    floor.progressIndex = LegacyProgressFor(floor.floorIndex);
+                floors.Sort((a, b) => a.progressIndex.CompareTo(b.progressIndex));
+                changed = true;
+            }
+
+            foreach (RunFloorTelemetry floor in floors)
+            {
+                if (!string.IsNullOrWhiteSpace(floor.floorLabel)) continue;
+                floor.floorLabel = ResolveFloorLabel(null, floor.progressIndex);
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(currentFloorLabel))
+            {
+                currentFloorLabel = DisplayFloorLabel(
+                    null, currentFloorIndex, currentProgressIndex);
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(deepestFloorLabel))
+            {
+                deepestFloorLabel = DisplayFloorLabel(
+                    null, deepestFloorIndex, deepestProgressIndex);
+                changed = true;
+            }
+
+            if (schemaVersion < CurrentSchemaVersion)
+            {
+                schemaVersion = CurrentSchemaVersion;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        private static int LegacyProgressFor(int floorIndex)
+        {
+            if (floorIndex >= 0) return 0;
+            return floorIndex == int.MinValue ? int.MaxValue : -floorIndex;
         }
 
         public void RecordElapsed(float seconds, int floorIndex)
@@ -199,21 +284,32 @@ namespace ProjectC.Core
             Floor(floorIndex).turns++;
         }
 
-        public void RecordFloorEntered(int floorIndex, int progressIndex)
+        public void RecordFloorEntered(
+            int floorIndex,
+            int progressIndex,
+            string floorLabel = null)
         {
             if (Ended) return;
             currentFloorIndex = floorIndex;
             currentProgressIndex = progressIndex;
+
+            RunFloorTelemetry floor = Floor(floorIndex);
+            floor.progressIndex = progressIndex;
+            // 최초 기록을 동결한다. 이어하기 뒤 카탈로그 문구가 바뀌었더라도 이미 저장된
+            // 라벨을 새 규칙으로 덮어쓰지 않는다.
+            if (string.IsNullOrWhiteSpace(floor.floorLabel))
+                floor.floorLabel = ResolveFloorLabel(floorLabel, progressIndex);
+            currentFloorLabel = floor.floorLabel;
+
             // 가장 멀리 간 층은 진행 지수로 고른다 — 층 인덱스 최솟값을 쓰면 상승 던전에서
             // 시작 층이 영원히 "최심층"으로 남고, 비단조 경로에서도 답이 아니다.
             if (progressIndex >= deepestProgressIndex)
             {
                 deepestProgressIndex = progressIndex;
                 deepestFloorIndex = floorIndex;
+                deepestFloorLabel = floor.floorLabel;
             }
 
-            RunFloorTelemetry floor = Floor(floorIndex);
-            floor.progressIndex = progressIndex;
             floor.visits++;
         }
 
@@ -392,9 +488,13 @@ namespace ProjectC.Core
         {
             string source = TopIncomingDamageSource();
             string sourceText = string.IsNullOrEmpty(source) ? "--" : source;
+            string currentLabel = DisplayFloorLabel(
+                currentFloorLabel, currentFloorIndex, currentProgressIndex);
+            string deepestLabel = DisplayFloorLabel(
+                deepestFloorLabel, deepestFloorIndex, deepestProgressIndex);
             return
                 $"RUN {FormatDuration(elapsedSeconds)} · 턴 {totalTurns} · " +
-                $"{FormatFloor(currentFloorIndex)} (최고 도달 {FormatFloor(deepestFloorIndex)})\n" +
+                $"{currentLabel} (최고 도달 {deepestLabel})\n" +
                 $"피해 {totalDamageTaken} ({sourceText}) · 가한 피해 {totalDamageDealt} · 처치 {kills}\n" +
                 $"획득 {itemsCollected} · 사용 {itemsUsed} · 조합 {itemsCrafted} · " +
                 $"낙하 P{playerFalls}/E{enemyFalls}\n" +
@@ -413,7 +513,9 @@ namespace ProjectC.Core
             text.Append("\n층별:");
             foreach (RunFloorTelemetry floor in floors)
             {
-                text.Append($"\n- {FormatFloor(floor.floorIndex)} " +
+                string label = DisplayFloorLabel(
+                    floor.floorLabel, floor.floorIndex, floor.progressIndex);
+                text.Append($"\n- {label} " +
                             $"{FormatDuration(floor.elapsedSeconds)} / {floor.turns}턴 / " +
                             $"피해 {floor.damageTaken} / 처치 {floor.kills} / 획득 {floor.itemsCollected}");
             }
@@ -487,6 +589,41 @@ namespace ProjectC.Core
             // 상승 던전에서는 순서가 뒤집힌다. 진행 지수는 방향과 무관하게 항상 방문 순서다.
             floors.Sort((a, b) => a.progressIndex.CompareTo(b.progressIndex));
             return created;
+        }
+
+        /// <summary>
+        /// 저장된 라벨을 우선하고, 구 스키마처럼 비어 있을 때만 현재 카탈로그 규칙으로 복원한다.
+        /// 불명 던전을 기본 던전으로 오인하면 B/F 표기가 거짓이 되므로 그 경우에는 방향 중립
+        /// 구역 번호를 쓴다.
+        /// </summary>
+        private string DisplayFloorLabel(string stored, int floorIndex, int progressIndex)
+        {
+            if (!string.IsNullOrWhiteSpace(stored)) return stored;
+
+            foreach (RunFloorTelemetry floor in floors)
+            {
+                if (floor.floorIndex == floorIndex &&
+                    !string.IsNullOrWhiteSpace(floor.floorLabel))
+                    return floor.floorLabel;
+            }
+
+            return ResolveFloorLabel(null, progressIndex);
+        }
+
+        private string ResolveFloorLabel(string provided, int progressIndex)
+        {
+            if (!string.IsNullOrWhiteSpace(provided)) return provided;
+
+            foreach (DungeonDefinition dungeon in DungeonCatalog.All)
+            {
+                if (!string.Equals(dungeon.Id, dungeonId, StringComparison.Ordinal)) continue;
+                return DungeonDirectionRules.FloorLabelFor(
+                    dungeon.Direction,
+                    dungeon.FirstBuildingFloor,
+                    progressIndex);
+            }
+
+            return $"{Math.Max(0, progressIndex) + 1}구역";
         }
 
         private RunDamageTelemetry Damage(string source)

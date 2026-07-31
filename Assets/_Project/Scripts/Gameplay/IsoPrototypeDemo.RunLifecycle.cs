@@ -51,24 +51,6 @@ namespace ProjectC.Gameplay
             return true;
         }
 
-        /// <summary>
-        /// 사망·포기: 반입한 장비를 잃는다. 창고에서 이미 꺼냈으므로 되돌리지 않고 슬롯만 비운다 —
-        /// 창고에 남겨둔 예비 장비는 안전하다(익스트랙션: 들고 나간 것만 위험하다).
-        /// </summary>
-        private void LoseCarriedEquipment()
-        {
-            if (string.IsNullOrEmpty(_carriedWeaponId) && string.IsNullOrEmpty(_carriedGearId))
-                return;
-
-            MetaSaveData meta = MetaStore.LoadOrNew();
-            ForgeRules.LoseExpeditionEquipment(meta, _carriedWeaponId, _carriedGearId);
-            MetaStore.Save(meta);
-            Debug.Log($"[Run] 반입 장비 소실: {_carriedWeaponId} / {_carriedGearId}");
-            _carriedWeaponId = "";
-            _carriedGearId = "";
-            SetPlayerLoadout(CombatLoadout.Unarmed);
-        }
-
         /// <summary>이어하기와 던전 전환이 공유하는 상태 이월(HP·인벤토리·전적).</summary>
         private void ApplyCarriedState(RunSaveData data, string feedback)
         {
@@ -89,8 +71,7 @@ namespace ProjectC.Gameplay
             // 배고픔도 이월된다 — 모닥불에서 쉬어도 배는 채워지지 않는다.
             _hunger = data.hunger ?? new HungerState();
             // 사격 충전도 같은 경로로 이월한다. 옛 세이브(null)는 만충으로 시작한다.
-            _rangedCharges = data.rangedCharges ?? RangedChargeState.Full(_playerLoadout);
-            _rangedCharges.ClampTo(_playerLoadout);
+            _rangedCharges = RangedChargeState.Restore(data.rangedCharges, _playerLoadout);
             _lastHungerStage = _hunger.Stage;
 
             _runSummary = new RunSummary(
@@ -103,7 +84,7 @@ namespace ProjectC.Gameplay
             if (data.telemetry != null)
             {
                 _runTelemetry = data.telemetry;
-                _runTelemetry.schemaVersion = RunTelemetry.CurrentSchemaVersion;
+                _runTelemetry.FreezeFloorLabels();
             }
             RestoreUsedRestSites(data.usedRestFloorIndices);
             InteractionFeedback?.Invoke(feedback);
@@ -137,7 +118,7 @@ namespace ProjectC.Gameplay
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
                 hunger = _hunger.Clone(),
-                rangedCharges = _rangedCharges,
+                rangedCharges = _rangedCharges.Snapshot(),
                 telemetry = _runTelemetry
             };
             data.WriteItems(_inventory);
@@ -148,6 +129,12 @@ namespace ProjectC.Gameplay
         public void BeginSelectedDungeon()
         {
             if (!Application.isPlaying || !hubMode) return;
+            if (!MetaStore.CanWrite)
+            {
+                InteractionFeedback?.Invoke(
+                    "더 최신 버전에서 만든 저장입니다 — 이 버전에서는 출정할 수 없습니다");
+                return;
+            }
             RunSaveStore.Clear();
             RunSaveStore.ContinueRequested = false;
             InteractionFeedback?.Invoke($"{DungeonSelection.Selected.DisplayName}(으)로 출발");
@@ -162,21 +149,21 @@ namespace ProjectC.Gameplay
             (_stageIndex - 1) * floorCount +
             (_dungeon != null ? _dungeon.ProgressIndexFor(floorIndex) : 0);
 
-        /// <summary>스테이지 누적 층 인덱스(기록/표시용, 아래로 갈수록 음수).</summary>
+        /// <summary>
+        /// 스테이지를 가로질러 중복되지 않는 역사적 층 키. v4까지의 하강형 저장과 호환하려고
+        /// 스테이지 오프셋을 음수 방향으로 붙인다. 표시 라벨은 이 값에서 만들지 않고 실제
+        /// <see cref="FloorLabel(int)"/> 문자열을 텔레메트리에 함께 저장한다.
+        /// </summary>
         private int GlobalFloorIndex(int floorIndex) => floorIndex - (_stageIndex - 1) * floorCount;
 
-        /// <summary>최심부 도착은 최종 출구를 안내할 뿐, 즉시 승리시키지 않는다.</summary>
+        /// <summary>최종 구역 도착은 출구를 안내할 뿐, 즉시 승리시키지 않는다.</summary>
         private void TryDeclareVictory()
         {
             if (hubMode || _runSummary.Ended || _playerState == null || !_playerState.IsAlive) return;
             if (_activeFloorIndex != _dungeon.FinalFloorIndex) return;
 
             InteractionFeedback?.Invoke(
-                !HasBoss
-                    ? "최심부 도달 — 출구(▼)로 향하라"
-                    : BossExitUnlocked
-                        ? "출구의 봉인이 풀렸다 — 출구(▼)로 향하라"
-                        : $"최심층 도달 — {BossName}를 쓰러뜨려 출구를 열어라");
+                DungeonEndCopy.ArrivalMessage(HasBoss, BossExitUnlocked, BossName));
             BossStateChanged?.Invoke();
         }
 
@@ -228,6 +215,12 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive)
                 return;
             if (!BossExitUnlocked) return;
+            if (!MetaStore.CanWrite)
+            {
+                InteractionFeedback?.Invoke(
+                    "메타 저장이 더 최신 버전이라 진행을 확정할 수 없습니다 — 체크포인트를 보존했습니다");
+                return;
+            }
 
             if (HasNextStage)
             {
@@ -235,14 +228,18 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            int victoryGold = BankInventoryToStash();
+            if (!TryFinalizeRun(RunTelemetryOutcome.Victory, "", out int victoryGold))
+            {
+                InteractionFeedback?.Invoke(
+                    "메타 저장이 더 최신 버전이라 정산할 수 없습니다 — 체크포인트를 보존했습니다");
+                return;
+            }
             RunSaveStore.Clear();
             _runSummary.EndInVictory(victoryGold);
-            FinishRunTelemetry(RunTelemetryOutcome.Victory, "");
             InteractionFeedback?.Invoke("DUNGEON CONQUERED!");
             Debug.Log(
                 $"[Run] {DungeonSelection.Selected.DisplayName} 정복 — " +
-                $"{FloorLabel(GlobalFloorIndex(_activeFloorIndex))}, " +
+                $"{ActiveFloorLabel}, " +
                 $"+{ItemCatalog.FormatGold(victoryGold)}");
             RunEnded?.Invoke(_runSummary);
         }
@@ -254,14 +251,19 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive)
                 return;
 
-            int gold = BankInventoryToStash();
+            if (!TryFinalizeRun(RunTelemetryOutcome.Extraction, "", out int gold))
+            {
+                InteractionFeedback?.Invoke(
+                    "메타 저장이 더 최신 버전이라 정산할 수 없습니다 — 체크포인트를 보존했습니다");
+                return;
+            }
             RunSaveStore.Clear();
             _runSummary.EndInExtraction(gold);
-            FinishRunTelemetry(RunTelemetryOutcome.Extraction, "");
             InteractionFeedback?.Invoke($"생환 — +{ItemCatalog.FormatGold(gold)} 적립");
             Debug.Log(
                 $"[Run] 생환: +{ItemCatalog.FormatGold(gold)}, " +
-                $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
+                DungeonEndCopy.FurthestReached(
+                    ReachedFloorLabel));
             RunEnded?.Invoke(_runSummary);
         }
 
@@ -286,30 +288,130 @@ namespace ProjectC.Gameplay
         private readonly List<string> _lastRunUnlocks = new List<string>();
 
         /// <summary>
-        /// 판 종료 시 해금을 판정하고 즉시 저장한다. 네 경로(생환·승리·사망·포기)가 모두
-        /// <see cref="FinishRunTelemetry"/>로 모이므로 여기 한 곳이면 된다.
-        ///
-        /// <para>
-        /// <b>죽어도 남는다</b> — 실패한 판도 전진이어야 하므로 정산(BankInventoryToStash)과
-        /// 무관하게 저장한다. 사망은 소지품을 전부 잃지만 해금은 잃지 않는다.
-        /// </para>
+        /// 판 종료의 모든 메타 효과를 한 번에 저장한다. 전리품·장비·의뢰뿐 아니라 실패해도
+        /// 남는 기록과 해금, 그리고 같은 런의 정산 영수증까지 <b>같은 원자적 JSON 교체</b>에
+        /// 넣는다. 저장 성공 뒤 체크포인트 삭제 전에 앱이 종료되어도 영수증이 재정산을 막는다.
         /// </summary>
-        private void ResolveUnlocks()
+        private bool TryFinalizeRun(
+            RunTelemetryOutcome outcome,
+            string cause,
+            out int payout)
         {
+            payout = 0;
             _lastRunUnlocks.Clear();
             NextUnlockHint = null;
             RecordsGainedThisRun = 0;
-            if (_runTelemetry == null) return;
 
+            if (_runTelemetry == null || _runTelemetry.Ended ||
+                outcome == RunTelemetryOutcome.InProgress || !MetaStore.CanWrite)
+                return false;
+
+            string runId = ResolveSettlementRunId();
             MetaSaveData meta = MetaStore.LoadOrNew();
+            bool survived =
+                outcome == RunTelemetryOutcome.Extraction ||
+                outcome == RunTelemetryOutcome.Victory;
 
-            // 1) 기록을 먼저 적립한다 — 죽음이 먹이는 유일한 축이라 정산과 무관하게 항상 준다.
-            RecordsGainedThisRun = meta.AwardRecords(
+            if (meta.TryGetRunSettlement(runId, out RunSettlementEntry existing))
+            {
+                if (existing.outcome != (int)outcome)
+                {
+                    Debug.LogError(
+                        $"[Run] 정산 영수증 outcome 불일치: {runId} " +
+                        $"{(RunTelemetryOutcome)existing.outcome} != {outcome}");
+                    return false;
+                }
+
+                RestoreSettlementPresentation(meta, existing);
+                payout = existing.payout;
+                Debug.Log($"[Run] 이미 완료된 정산 복구: {runId}");
+            }
+            else
+            {
+                var settlement = new RunSettlementEntry
+                {
+                    runId = runId,
+                    outcome = (int)outcome
+                };
+                BountyClaimResult bounties = new BountyClaimResult();
+
+                if (survived)
+                {
+                    // 살아 나왔으니 반입 장비도 창고로 돌아온다(장착 상태 유지).
+                    ForgeRules.ReturnFromExpedition(
+                        meta, _carriedWeaponId, _carriedGearId);
+                    int treasureGold = 0;
+                    foreach (ItemKind kind in ItemCatalog.AllKinds)
+                    {
+                        int count = _inventory.Count(kind);
+                        if (count <= 0) continue;
+                        if (ItemCatalog.IsTreasure(kind))
+                            treasureGold += ItemCatalog.GoldValue(kind) * count;
+                        else
+                            meta.AddCount(kind, count);
+                    }
+                    meta.gold += treasureGold;
+
+                    // 무사 귀환한 계약만 평가한다. 완료·미완료 의뢰는 모두 이 판에서 만료된다.
+                    bounties = BountyRules.Settle(meta, _runTelemetry);
+                    settlement.payout = treasureGold + bounties.TotalReward;
+                }
+                else
+                {
+                    // 사망·포기한 장비는 창고에서 이미 빠졌으므로 슬롯만 비운다.
+                    ForgeRules.LoseExpeditionEquipment(
+                        meta, _carriedWeaponId, _carriedGearId);
+                }
+
+                ApplyRunProgress(meta, settlement);
+                if (!meta.RecordRunSettlement(settlement) || !MetaStore.Save(meta))
+                {
+                    _lastRunUnlocks.Clear();
+                    NextUnlockHint = null;
+                    RecordsGainedThisRun = 0;
+                    return false;
+                }
+
+                payout = settlement.payout;
+                if (bounties.CompletedCount > 0)
+                    Debug.Log(
+                        $"[Bounty] 의뢰 완료 {bounties.CompletedCount}건 · " +
+                        $"+{ItemCatalog.FormatGold(bounties.TotalReward)}");
+            }
+
+            _carriedWeaponId = "";
+            _carriedGearId = "";
+            _inventory.Clear();
+            SetPlayerLoadout(CombatLoadout.Unarmed);
+            InventoryChanged?.Invoke();
+
+            _runTelemetry.End(outcome, cause, System.DateTime.UtcNow);
+            string path = RunTelemetryStore.Save(_runTelemetry);
+            Debug.Log(
+                string.IsNullOrEmpty(path)
+                    ? $"[Telemetry] {outcome} · 개발 리포트 저장 생략"
+                    : $"[Telemetry] {outcome} 리포트 저장: {path}");
+            return true;
+        }
+
+        private string ResolveSettlementRunId()
+        {
+            _runTelemetry.runId = RunSettlementIdentity.Resolve(
+                _runTelemetry,
+                DungeonSelection.Selected?.Id,
+                dungeonSeed);
+            return _runTelemetry.runId;
+        }
+
+        private void ApplyRunProgress(
+            MetaSaveData meta,
+            RunSettlementEntry settlement)
+        {
+            settlement.recordsGained = meta.AwardRecords(
                 RunRecordRules.ReachedFloors(_runTelemetry.deepestProgressIndex),
                 _runTelemetry.secretRoomsFound);
 
-            // 2) 최고 기록을 갱신한다. **판정보다 먼저**여야 한다 — 판정이 이 값을 읽으므로,
-            //    순서가 뒤집히면 이번 판에 목표를 채우고도 다음 판까지 안 열린다.
+            // 최고 기록을 판정보다 먼저 올려야 이번 판에 채운 목표가 즉시 열린다.
             foreach (ItemUnlockCondition condition in ItemUnlockRules.Conditions)
             {
                 if (meta.IsItemUnlocked(condition.Kind)) continue;
@@ -317,79 +419,41 @@ namespace ProjectC.Gameplay
                     condition.Kind, BountyRules.ReadMetric(condition.Metric, _runTelemetry));
             }
 
-            // 3) 역대 최고 + 투입 기록으로 판정한다(이번 판 값만 보지 않는다).
             List<ItemUnlockCondition> opened = ItemUnlockRules.EvaluateUnlocks(
                 meta.UnlockedItemKinds(), meta.BestUnlockProgress, meta.InvestedRecords);
-
+            var unlockedKinds = new List<int>();
             foreach (ItemUnlockCondition condition in opened)
             {
                 if (!meta.UnlockItem(condition.Kind)) continue;
-                _lastRunUnlocks.Add(ItemCatalog.DisplayName(condition.Kind));
+                unlockedKinds.Add((int)condition.Kind);
                 Debug.Log($"[Unlock] {condition.Kind} 해금 — {condition.Requirement}");
             }
-
-            // 기록은 판마다 반드시 늘어나므로 항상 저장한다.
-            MetaStore.Save(meta);
-
-            if (_lastRunUnlocks.Count == 0)
-            {
-                // 기록실과 같은 축(역대 최고 + 투입 기록)으로 잰다 — 이번 판 계측으로 재면
-                // 나쁜 판 뒤에 안내가 0 으로 돌아가고 투입한 기록이 안 잡힌다.
-                ItemUnlockCondition next = ItemUnlockRules.ClosestPending(meta);
-                if (next != null)
-                {
-                    int current = next.Target - ItemUnlockRules.RemainingFor(meta, next);
-                    NextUnlockHint =
-                        $"{ItemCatalog.DisplayName(next.Kind)} — {next.Requirement} " +
-                        $"({current}/{next.Target})";
-                }
-            }
+            settlement.unlockedItemKinds = unlockedKinds.ToArray();
+            RestoreSettlementPresentation(meta, settlement);
         }
 
-        private void FinishRunTelemetry(RunTelemetryOutcome outcome, string cause)
+        private void RestoreSettlementPresentation(
+            MetaSaveData meta,
+            RunSettlementEntry settlement)
         {
-            if (_runTelemetry == null || _runTelemetry.Ended) return;
-
-            _runTelemetry.End(outcome, cause, System.DateTime.UtcNow);
-            ResolveUnlocks();
-            string path = RunTelemetryStore.Save(_runTelemetry);
-            Debug.Log(
-                string.IsNullOrEmpty(path)
-                    ? $"[Telemetry] {outcome} · 개발 리포트 저장 생략"
-                    : $"[Telemetry] {outcome} 리포트 저장: {path}");
-        }
-
-        /// <summary>
-        /// 정산: 전리품은 골드로 환산, 소모품은 창고에 보관한다.
-        /// 살아 나갈 때(생환/승리)만 불린다 — 사망은 전부 소실. (extraction 규칙)
-        /// </summary>
-        private int BankInventoryToStash()
-        {
-            MetaSaveData meta = MetaStore.LoadOrNew();
-            // 살아 나왔으니 반입 장비도 창고로 돌아온다(장착 상태 유지).
-            ForgeRules.ReturnFromExpedition(meta, _carriedWeaponId, _carriedGearId);
-            _carriedWeaponId = "";
-            _carriedGearId = "";
-            int gold = 0;
-            foreach (ItemKind kind in ItemCatalog.AllKinds)
+            _lastRunUnlocks.Clear();
+            RecordsGainedThisRun = Mathf.Max(0, settlement.recordsGained);
+            if (settlement.unlockedItemKinds != null)
             {
-                int count = _inventory.Count(kind);
-                if (count <= 0) continue;
-                if (ItemCatalog.IsTreasure(kind)) gold += ItemCatalog.GoldValue(kind) * count;
-                else meta.AddCount(kind, count);
+                foreach (int kind in settlement.unlockedItemKinds)
+                    _lastRunUnlocks.Add(ItemCatalog.DisplayName((ItemKind)kind));
             }
-            meta.gold += gold;
 
-            // 의뢰 정산: 무사 귀환한 계약의 완료분 보상을 지급한다 (활성 의뢰가 없으면 무동작).
-            BountyClaimResult bounties = BountyRules.Settle(meta, _runTelemetry);
-            MetaStore.Save(meta);
-            _inventory.Clear();
-            InventoryChanged?.Invoke();
-            if (bounties.CompletedCount > 0)
-                Debug.Log(
-                    $"[Bounty] 의뢰 완료 {bounties.CompletedCount}건 · " +
-                    $"+{ItemCatalog.FormatGold(bounties.TotalReward)}");
-            return gold + bounties.TotalReward;
+            NextUnlockHint = null;
+            if (_lastRunUnlocks.Count != 0) return;
+
+            // 기록실과 같은 축(역대 최고 + 투입 기록)으로 다음 목표를 안내한다.
+            ItemUnlockCondition next = ItemUnlockRules.ClosestPending(meta);
+            if (next == null) return;
+            int current = next.Target - ItemUnlockRules.RemainingFor(meta, next);
+            NextUnlockHint =
+                $"{ItemCatalog.DisplayName(next.Kind)} — {next.Requirement} " +
+                $"({current}/{next.Target})";
         }
 
         /// <summary>
@@ -414,7 +478,7 @@ namespace ProjectC.Gameplay
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
                 hunger = _hunger.Clone(),
-                rangedCharges = _rangedCharges,
+                rangedCharges = _rangedCharges.Snapshot(),
                 telemetry = _runTelemetry
             };
             carry.WriteItems(_inventory);

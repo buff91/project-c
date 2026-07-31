@@ -41,12 +41,15 @@ namespace ProjectC.Tests
             bool loaded = AtomicJsonStore.TryLoad(
                 _path,
                 out TestData data,
-                out bool recovered);
+                out bool recovered,
+                out string serializedData);
 
             Assert.IsTrue(loaded);
             Assert.IsFalse(recovered);
             Assert.AreEqual(7, data.value);
             Assert.AreEqual("primary", data.label);
+            StringAssert.Contains("\"value\":7", serializedData);
+            StringAssert.Contains("\"label\":\"primary\"", serializedData);
             Assert.IsFalse(File.Exists(AtomicJsonStore.TemporaryPathFor(_path)));
         }
 
@@ -77,12 +80,15 @@ namespace ProjectC.Tests
             bool loaded = AtomicJsonStore.TryLoad(
                 _path,
                 out TestData recoveredData,
-                out bool recovered);
+                out bool recovered,
+                out string serializedData);
 
             Assert.IsTrue(loaded);
             Assert.IsTrue(recovered);
             Assert.AreEqual(1, recoveredData.value);
             Assert.AreEqual("safe", recoveredData.label);
+            StringAssert.Contains("\"label\":\"safe\"", serializedData,
+                "복구 때도 손상된 주 파일이 아니라 실제로 읽은 백업 원문을 돌려줘야 한다");
 
             Assert.IsTrue(AtomicJsonStore.TryLoad(
                 _path,

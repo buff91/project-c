@@ -245,9 +245,16 @@ namespace ProjectC.Gameplay
         public void AbandonRun()
         {
             if (!Application.isPlaying || hubMode) return;
-            FinishRunTelemetry(RunTelemetryOutcome.Abandoned, "Abandoned");
+            if (!TryFinalizeRun(
+                    RunTelemetryOutcome.Abandoned,
+                    "Abandoned",
+                    out _))
+            {
+                InteractionFeedback?.Invoke(
+                    "메타 저장을 확정할 수 없어 포기를 취소했습니다 — 체크포인트를 보존했습니다");
+                return;
+            }
             RunSaveStore.Clear();
-            LoseCarriedEquipment();
             Debug.Log("[Run] 게임 포기 — 소지품·반입 장비 소실, 허브 복귀");
             UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
         }

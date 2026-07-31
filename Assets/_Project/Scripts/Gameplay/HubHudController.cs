@@ -17,6 +17,9 @@ namespace ProjectC.Gameplay
     [RequireComponent(typeof(UIDocument))]
     public partial class HubHudController : MonoBehaviour
     {
+        private const string MetaReadOnlyMessage =
+            "더 최신 버전에서 만든 저장입니다 — 이 버전에서는 조회만 가능하며 출정·변경은 막힙니다";
+
         private enum PreparationSelectionSource
         {
             None = 0,
@@ -108,10 +111,13 @@ namespace ProjectC.Gameplay
         private IsoTapInput _tapInput;
         private ResponsiveUiLayout _responsiveLayout;
         private DisplaySettingsPanelController _displaySettings;
+        private readonly HubUiBindingRegistry _uiBindings = new HubUiBindingRegistry();
 
         private void OnEnable()
         {
+            _uiBindings.Clear();
             _meta = MetaStore.LoadOrNew();
+            bool metaWritable = MetaStore.CanWrite;
 
             UIDocument document = GetComponent<UIDocument>();
             VisualElement root = document.rootVisualElement;
@@ -184,12 +190,13 @@ namespace ProjectC.Gameplay
                 root, demo, "hub-settings-button", CloseModals);
 
             if (_continueButton != null)
-                _continueButton.EnableInClassList("is-available", RunSaveStore.HasSave);
+                _continueButton.EnableInClassList(
+                    "is-available", metaWritable && RunSaveStore.CanResume);
             ConfigureDungeonOption(_catacombsDungeonOption, DungeonCatalog.DefaultId);
             ConfigureDungeonOption(_floodedDungeonOption, "flooded-vault");
             ConfigureDungeonOption(_emberDungeonOption, "ember-keep");
-            _stashGrid?.RegisterCallback<PointerUpEvent>(HandleStashGridPointerUp);
-            _loadoutGrid?.RegisterCallback<PointerUpEvent>(HandleLoadoutGridPointerUp);
+            Bind<PointerUpEvent>(_stashGrid, HandleStashGridPointerUp);
+            Bind<PointerUpEvent>(_loadoutGrid, HandleLoadoutGridPointerUp);
 
             BuildShop();
             UpdateGoldLabel();
@@ -202,7 +209,11 @@ namespace ProjectC.Gameplay
                 if (_tapInput != null) _tapInput.UiBlocker = IsPointerOverHud;
             }
 
-            ShowStatus("상인·대장간·의뢰·기록실·창고를 탭하고, 포탈로 걸어가면 출발");
+            if (_dungeonEnter != null && !metaWritable)
+                _dungeonEnter.SetEnabled(false);
+            ShowStatus(metaWritable
+                ? "상인·대장간·의뢰·기록실·창고를 탭하고, 포탈로 걸어가면 출발"
+                : MetaReadOnlyMessage);
         }
 
         private void OnDisable()
@@ -214,8 +225,7 @@ namespace ProjectC.Gameplay
             }
             _statusChip?.RemoveFromClassList("is-open");
             CancelPreparationDrag();
-            _stashGrid?.UnregisterCallback<PointerUpEvent>(HandleStashGridPointerUp);
-            _loadoutGrid?.UnregisterCallback<PointerUpEvent>(HandleLoadoutGridPointerUp);
+            _uiBindings.Clear();
             _responsiveLayout?.Dispose();
             _responsiveLayout = null;
             _displaySettings?.Dispose();
@@ -230,9 +240,15 @@ namespace ProjectC.Gameplay
             _tapInput = null;
         }
 
-        private static void Bind(Button button, System.Action onClick)
+        private void Bind(Button button, System.Action onClick)
         {
-            if (button != null) button.clicked += () => onClick();
+            _uiBindings.Bind(button, onClick);
+        }
+
+        private void Bind<TEvent>(VisualElement element, EventCallback<TEvent> callback)
+            where TEvent : EventBase<TEvent>, new()
+        {
+            _uiBindings.Bind(element, callback);
         }
 
         private bool IsPointerOverHud(Vector2 screenPoint)
@@ -318,6 +334,22 @@ namespace ProjectC.Gameplay
 
         private void HandleFeedback(string message) => ShowStatus(message);
 
+        private bool EnsureMetaWritable()
+        {
+            if (MetaStore.CanWrite) return true;
+            ShowStatus(MetaReadOnlyMessage);
+            return false;
+        }
+
+        private bool SaveMetaOrReload()
+        {
+            if (MetaStore.Save(_meta)) return true;
+            _meta = MetaStore.LoadOrNew();
+            UpdateGoldLabel();
+            ShowStatus(MetaReadOnlyMessage);
+            return false;
+        }
+
         private void CloseModals()
         {
             CancelPreparationDrag();
@@ -363,7 +395,7 @@ namespace ProjectC.Gameplay
             if (_dungeonEnter != null)
             {
                 _dungeonEnter.text = $"{dungeon.DisplayName} 진입";
-                _dungeonEnter.SetEnabled(true);
+                _dungeonEnter.SetEnabled(MetaStore.CanWrite);
             }
         }
 
@@ -388,10 +420,11 @@ namespace ProjectC.Gameplay
 
         private void EnterSelectedDungeon()
         {
+            if (!EnsureMetaWritable()) return;
             DungeonDefinition dungeon = DungeonCatalog.ById(_selectedDungeonId);
             if (!dungeon.IsAvailable) return;
             int returned = ExpeditionLoadoutRules.Reconcile(_meta);
-            MetaStore.Save(_meta);
+            if (!SaveMetaOrReload()) return;
             if (returned > 0)
                 ShowStatus($"기본 지급품 공간 확보 · {returned}개 창고 복귀");
             DungeonSelection.SelectedId = dungeon.Id;
@@ -407,8 +440,39 @@ namespace ProjectC.Gameplay
 
         private void ContinueRun()
         {
+            if (!EnsureMetaWritable() || !RunSaveStore.CanResume) return;
             RunSaveStore.ContinueRequested = true;
             SceneManager.LoadScene(FrontEndFlow.DungeonScene);
+        }
+    }
+
+    internal sealed class HubUiBindingRegistry
+    {
+        private readonly List<System.Action> _unbinders = new List<System.Action>();
+
+        internal void Bind(Button button, System.Action callback)
+        {
+            if (button == null || callback == null) return;
+
+            button.clicked += callback;
+            _unbinders.Add(() => button.clicked -= callback);
+        }
+
+        internal void Bind<TEvent>(VisualElement element, EventCallback<TEvent> callback)
+            where TEvent : EventBase<TEvent>, new()
+        {
+            if (element == null || callback == null) return;
+
+            element.RegisterCallback(callback);
+            _unbinders.Add(() => element.UnregisterCallback(callback));
+        }
+
+        internal void Clear()
+        {
+            for (int i = _unbinders.Count - 1; i >= 0; i--)
+                _unbinders[i]();
+
+            _unbinders.Clear();
         }
     }
 }

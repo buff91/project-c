@@ -158,6 +158,49 @@ namespace ProjectC.Tests
                     progressIndex));
         }
 
+        [Test]
+        public void EndCopy_UsesDirectionNeutralFinalAndBossAreaTerms()
+        {
+            Assert.AreEqual(
+                "여기서 나가면 들고 있는 것을 지킨다 · 전리품 가치 $42 · " +
+                "더 나아가면 되돌아올 길이 멀어진다",
+                DungeonEndCopy.IntermediateExtractionDescription("$42"));
+            Assert.AreEqual(
+                "최종 구역 도달 — 출구로 향하라",
+                DungeonEndCopy.ArrivalMessage(
+                    hasBoss: false, exitUnlocked: true, bossName: null));
+            Assert.AreEqual(
+                "보스 구역 도달 — 감시자를 쓰러뜨려 출구를 열어라",
+                DungeonEndCopy.ArrivalMessage(
+                    hasBoss: true, exitUnlocked: false, bossName: "감시자"));
+            Assert.AreEqual(
+                "출구의 봉인이 풀렸다 — 출구로 향하라",
+                DungeonEndCopy.ArrivalMessage(
+                    hasBoss: true, exitUnlocked: true, bossName: "감시자"));
+            Assert.AreEqual("최종 구역 출구", DungeonEndCopy.FinalExitTitle(hasBoss: false));
+            Assert.AreEqual(
+                "최종 구역 도달 · 전리품 가치 $42 · 정복을 확정할 수 있다",
+                DungeonEndCopy.FinalExitDescription(
+                    hasBoss: false, bossName: null, treasureValue: "$42"));
+
+            string[] copies =
+            {
+                DungeonEndCopy.IntermediateExtractionDescription("$42"),
+                DungeonEndCopy.ArrivalMessage(false, true, null),
+                DungeonEndCopy.ArrivalMessage(true, false, "감시자"),
+                DungeonEndCopy.FinalExitTitle(false),
+                DungeonEndCopy.FinalExitDescription(false, null, "$42"),
+                DungeonEndCopy.FurthestReached("8F")
+            };
+            foreach (string copy in copies)
+            {
+                StringAssert.DoesNotContain("최심", copy,
+                    "상승·진입 깊이 던전에도 노출되는 문구는 하강 전용 어휘를 쓰면 안 된다");
+                StringAssert.DoesNotContain("내려", copy,
+                    "상승·진입 깊이 던전에도 노출되는 문구는 하강 전용 동사를 쓰면 안 된다");
+            }
+        }
+
         /// <summary>카탈로그가 방향을 실제로 들고 있어야 생성기가 읽을 수 있다.</summary>
         [Test]
         public void Catalog_DeclaresDirectionPerDungeon()

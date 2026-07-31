@@ -136,11 +136,55 @@ namespace ProjectC.Tests
         public void SwappingToASmallerWeapon_ClampsOverflowCharges()
         {
             RangedChargeState charges = RangedChargeState.Full(ArcCaster());
+            charges.charges--;
+            charges.turnsSinceGain = 3;
             CombatLoadout emitter = Emitter();
 
             charges.ClampTo(emitter);
 
             Assert.AreEqual(emitter.RangedCapacity, charges.charges);
+            Assert.AreEqual(
+                0,
+                charges.turnsSinceGain,
+                "용량 축소로 만충이 됐는데 이전 무기의 회복 턴을 비축했다");
+        }
+
+        [Test]
+        public void Snapshot_IsIndependentFromLiveState()
+        {
+            var live = new RangedChargeState(1) { turnsSinceGain = 3 };
+
+            RangedChargeState snapshot = live.Snapshot();
+            live.Tick(Emitter(), 3);
+
+            Assert.AreEqual(1, snapshot.charges);
+            Assert.AreEqual(3, snapshot.turnsSinceGain);
+            Assert.AreNotSame(live, snapshot);
+        }
+
+        [Test]
+        public void Restore_LegacyNullStartsFull()
+        {
+            CombatLoadout loadout = ArcCaster();
+
+            RangedChargeState restored = RangedChargeState.Restore(null, loadout);
+
+            Assert.AreEqual(loadout.RangedCapacity, restored.charges);
+            Assert.AreEqual(0, restored.turnsSinceGain);
+        }
+
+        [Test]
+        public void Restore_ClampsACopyWithoutMutatingSavedState()
+        {
+            var saved = new RangedChargeState(3) { turnsSinceGain = 2 };
+
+            RangedChargeState restored = RangedChargeState.Restore(saved, Emitter());
+
+            Assert.AreEqual(2, restored.charges);
+            Assert.AreEqual(0, restored.turnsSinceGain);
+            Assert.AreEqual(3, saved.charges);
+            Assert.AreEqual(2, saved.turnsSinceGain);
+            Assert.AreNotSame(saved, restored);
         }
     }
 }

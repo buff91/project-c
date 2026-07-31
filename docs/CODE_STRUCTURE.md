@@ -50,7 +50,7 @@
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
 | `IsoPrototypeDemo.Extraction.cs` | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.Rescue.cs` | 갇힌 동료 프롭 렌더·구출 처리. 배치·판정은 Core(`ShelterNpcRoster`·`DungeonFloorInfo.RescueNpc`)가 소유한다 — `BossArena`와 같은 모양. 한 판에 동료가 여럿이라 **상태를 목록으로 든다**(스칼라 한 벌이면 뒤 NPC가 앞 것을 덮어써 참조 잃은 GameObject 가 씬에 남았다) |
-| `IsoPrototypeDemo.BossArena.cs` | 최심층 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
+| `IsoPrototypeDemo.BossArena.cs` | 보스 아레나 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | FOV·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림 |
 | `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
@@ -80,7 +80,7 @@
 
 | 파일 | 담당 |
 |------|------|
-| `HubHudController.cs` | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 (`hero:` 라우팅 없음) |
+| `HubHudController.cs` | 수명주기·라우팅·메뉴/던전 선택·골드/이어하기 + `HubUiBindingRegistry`(버튼/포인터 콜백 대칭 해제, `hero:` 라우팅 없음) |
 | `HubHudController.Vendors.cs` | 상점·대장간·현상금·기록실 모달(기록 투입 포함) |
 | `HubHudController.Preparation.cs` | 창고·출정 백팩·드래그드롭 엔진 |
 | `PrototypeHudController.cs` | 수명주기·문서 바인딩·컨트롤 콜백·Update·입력·메뉴 |
@@ -114,11 +114,11 @@
 | `DevelopmentViewportService.cs` | 에디터/개발 빌드에서 HUD 프레젠테이션 모드와 Game View 해상도를 즉시 바꾼다(`DevelopmentViewportPreset`). 릴리스 빌드는 저장된 오버라이드를 무시한다 |
 | `ResponsiveUiLayout.cs` | UI Toolkit에 런타임 미디어 쿼리가 없어서, 패널 논리 크기를 USS 클래스로 변환하고 Safe Area를 같은 논리 좌표로 환산한다 |
 | `HudPresentation.cs` | `HudPresentationMode`(Auto/Mobile/Desktop) 해석 한 함수 |
-| `MainMenuController.cs` | 타이틀 씬의 얇은 라우터. `게임 시작`은 항상 캠프로, `이어하기`는 던전 중간 저장이 있을 때만 |
+| `MainMenuController.cs` | 타이틀 씬의 얇은 라우터. `게임 시작`은 항상 캠프로, `이어하기`는 현재 빌드와 호환되는 던전 중간 저장이 있을 때만 |
 | `FrontEndFlow.cs` | 씬 이름 상수와 씬을 넘나드는 최소 static 상태 + 그 리셋. **도메인 리로드를 끈 채 Play 하기 때문에** 필드 초기화자에만 맡기면 이전 Play 값이 남는다 |
-| `AtomicJsonStore.cs` | JSON을 임시 파일에 먼저 쓰고 교체, 이전 파일은 `.bak`으로. 중단된 쓰기·손상 JSON에서 복구한다 |
-| `MetaStore.cs` | 메타 창고(`MetaSaveData`) 파일 입출력. 판 종료(사망 포함)에도 유지 |
-| `RunSaveStore.cs` | 층 체크포인트(`RunSaveData`) 입출력 + `ContinueRequested` 플래그. 판 종료 시 삭제 |
+| `AtomicJsonStore.cs` | JSON을 임시 파일에 먼저 쓰고 교체, 이전 파일은 `.bak`으로. 중단된 쓰기·손상 JSON에서 복구하며, 호환성 검사는 복구 부작용 없는 단일 파일 읽기를 쓴다 |
+| `MetaStore.cs` | 메타 창고(`MetaSaveData`) 파일 입출력. 판 종료(사망 포함)에도 유지하며, 미래 스키마 주 파일/백업은 `CanWrite=false`로 노출해 게임 변경과 재저장을 함께 막는다. 런 종료 효과와 `runId` 영수증은 한 번의 원자 저장으로 확정한다 |
+| `RunSaveStore.cs` | 층 체크포인트(`RunSaveData`) 입출력 + `ContinueRequested` 플래그. 판 종료 시 삭제. 미래 런/중첩 텔레메트리는 이어하기·덮어쓰기를 막는다 |
 | `RunTelemetryStore.cs` | 플레이테스트 리포트를 `development-profile/telemetry` 아래 사람이 읽을 JSON으로. 에디터/개발 빌드에서만 동작 |
 | `DevelopmentSaveProfile.cs` | 개발 저장 루트를 실제 플레이 저장과 분리한다. 선택값만 `PlayerPrefs`, 데이터는 별도 디렉터리 |
 | `OrthographicCameraFraming.cs` | 허브/던전 플레이의 동일 직교 배율과 던전 DebugAll 예외를 고정하는 순수 계산 |
@@ -166,6 +166,7 @@
 |------|------|
 | `CombatantState.cs` | 전투 참가자 엔티티(위치·HP·공격력)**만**. 연출은 Gameplay |
 | `CombatRules.cs` | 사거리·피해·`RangedBlockReason`·방어 감산(최소 1은 남긴다). 도달 기하 자체는 `SightRules`에 위임 |
+| `InteractionApproachRules.cs` | 밟지 않고 옆에서 쓰는 대상까지의 접근 경로. 적 점유 칸을 A*의 차단 조건으로 넣어 실제 우회로를 찾고, 완료 조건(같은 높이의 상하좌우 인접)을 생산자·소비자가 공유한다 |
 | `TurnManager.cs` | 플레이어 행동 1회 + 적 전체를 한 턴으로 묶는 상태 머신(`TurnPhase`) |
 | `StatusEffects.cs` | `StatusKind`(화상·빙결·중독)와 부여/상쇄. 중독은 화염·빙결과 무관하게 독립 지속 |
 | `FallRules.cs` | **모든 낙하 트리거의 수렴점 `TryFall`**. 낙하 칸수 → 낙뎀 곡선 → 착지 충돌을 한 곳에서. 플레이어와 몬스터가 같은 경로 |
@@ -200,12 +201,12 @@
 | `DungeonBandProfile.cs` | 지역 프로파일(`DungeonRegionProfile`) × 깊이의 콘텐츠 변주. **스탯·AI는 지역을 타지 않는다** — 지역이 가르는 것은 혼합·밀도·무대 확률(SSOT 표 참조) |
 | `DungeonVisualContext.cs` | `DungeonDepthBand`(초반/중반/후반/보스)와 `DungeonDepthBandRules`(SSOT 표 참조) |
 | `DungeonLootRules.cs` | 지역별 일반 드롭 편성. **모든 지역이 같은 23칸 롤을 소비**해 지역을 바꿔도 생성기 RNG 스트림이 흔들리지 않는다 |
-| `DungeonBossRules.cs` | 보스 스폰 칸 선택과 최심층 출구 봉인. 보스가 없는 던전은 출구가 상시 개방 |
+| `DungeonBossRules.cs` | 보스 스폰 칸 선택과 최종 진행 층 출구 봉인. 보스가 없는 던전은 출구가 상시 개방 |
 | `DungeonBossArenaRules.cs` | 아레나 층 판정(상대 깊이 = 마지막 층)과 접근 전조(SSOT 표 참조). 시각용 `DungeonDepthBand.Boss`와는 **다른 축** |
 | `DungeonRestRules.cs` | 던전 내부 제한 휴식처의 배치 간격과 회복량 |
 | `DungeonPropPlacementRules.cs` | 위험 프롭이 입구·필수 점유 좌표를 덮지 않도록 안전한 일반 바닥 후보를 고른다 |
 | `SecretRoomRules.cs` | 비밀문 개수와 발견 판정. 공개 전에는 벽처럼 막고 공개되면 열린 문이 된다 |
-| `ExtractionRules.cs` | 중간 생환 층. 잦으면 판돈이 사라지고 없으면 최심층까지 한 번의 결정이라 **정해진 층에만** 둔다 — 배고픔과 짝을 이룬다 |
+| `ExtractionRules.cs` | 중간 생환 층. 잦으면 판돈이 사라지고 없으면 최종 구역까지 한 번의 결정이라 **정해진 층에만** 둔다 — 배고픔과 짝을 이룬다 |
 | `ElevatorShaftRules.cs` | 보스를 잡아 전원이 들어온 뒤에야 움직이는 복귀 수단. GDD의 "통로로 뛰어내려 하강"을 **수치가 막아서**(낙뎀 곡선 vs HP) 낙하가 아니라 탑승이 됐다 |
 | `HubLayout.cs` | 허브 캠프의 고정 레이아웃. 기존 던전 렌더러를 그대로 태우려고 층 1개짜리 `DungeonLayout` 형태로 만든다 |
 
@@ -227,10 +228,11 @@
 | 파일 | 담당 |
 |------|------|
 | `SurvivorProfile.cs` | 원정자 기본값(HP·공격력·근접 사거리·기본 지급품). **직업도 프리셋도 없다** — 정체성은 장비가 지고, 옛 영웅 3종은 숫자만 달라 난이도 선택에 가까웠다 |
-| `MetaSaveData.cs` | 판 사이에 유지되는 창고·골드·해금 목록·해금 최고 기록·장착 슬롯. 해금은 **죽어도 남는다** |
-| `RunSaveData.cs` | 층 단위 체크포인트. 던전은 seed로 재생성하므로 지형·적·아이템 배치를 저장하지 않는다 — 이어하기 = "현재 층을 층 입구에서 다시 시작" |
+| `MetaSaveData.cs` | 판 사이에 유지되는 창고·골드·해금 목록·해금 최고 기록·장착 슬롯 + 최근 `RunSettlementEntry` 영수증. 해금은 **죽어도 남고**, 같은 `runId` 종료 효과는 한 번만 반영된다 |
+| `RunSaveData.cs` | 층 단위 체크포인트. 던전은 seed로 재생성하므로 지형·적·아이템 배치를 저장하지 않는다 — 이어하기 = "현재 층을 층 입구에서 다시 시작". 원거리 충전과 회복 턴도 판 전체 상태로 저장한다 |
+| `SaveMigration.cs` | 메타/런 공유 스키마의 단계별 변환. v0→v1 아이템 회분, v1→v2 원거리 충전 구세이브 호환, v2→v3 종료 정산 영수증 도입을 각각 한 번만 실행하고 미래 루트/중첩 스키마를 판정한다 |
 | `RunSummary.cs` | 한 판의 결과. "가장 멀리 간 층"을 **진행 지수**로 잰다 — 예전에는 층 인덱스 최솟값이었는데 상승 던전에서 시작 층이 영원히 최솟값이라 도달 층이 첫 층에 붙어 있었다 |
-| `RunTelemetry.cs` | 한 판의 플레이테스트 계측(층별·구간별·피해·아이템). Unity 시간·파일 API는 모르고 Gameplay가 값을 넣는다. 구간 롤업은 파생 값(SSOT 표 참조) |
+| `RunTelemetry.cs` | 한 판의 플레이테스트 계측(층별·구간별·피해·아이템). Unity 시간·파일 API는 모르고 Gameplay가 값을 넣는다. 구간 롤업은 파생 값이고 층 라벨은 최초 진입 값으로 동결한다(SSOT 표 참조) |
 | `RunRecordRules.cs` | **기록** — 죽음이 먹이는 유일한 축. 세 진행 축이 전부 성공을 요구해서 초반에 죽으면 아무것도 안 남던 문제의 답이다(SSOT 표 참조) |
 | `BountyRules.cs` | 의뢰(현상금). 완료 판정 축 `BountyMetric`은 전부 `RunTelemetry` 누적값에 매핑되고 해금 조건도 같은 열거를 쓴다 |
 

@@ -41,13 +41,38 @@ namespace ProjectC.Gameplay
         public static bool TryLoad<T>(string path, out T data, out bool recoveredFromBackup)
             where T : class
         {
+            return TryLoad(path, out data, out recoveredFromBackup, out _);
+        }
+
+        /// <summary>
+        /// 지정한 파일 하나만 읽는다. 백업 복구 같은 쓰기 부작용 없이 주 파일과 백업의
+        /// 스키마를 각각 검사해야 하는 호환성 게이트에서 사용한다.
+        /// </summary>
+        internal static bool TryLoadExact<T>(string path, out T data)
+            where T : class
+        {
+            return TryRead(path, out data, out _);
+        }
+
+        /// <summary>
+        /// 역직렬화 결과와 실제로 읽은 원문을 함께 돌려준다. JsonUtility가 "필드 없음"과
+        /// "기본값 필드"를 같은 객체로 만드는 스키마 이행에서 원문 판별에 쓴다.
+        /// </summary>
+        public static bool TryLoad<T>(
+            string path,
+            out T data,
+            out bool recoveredFromBackup,
+            out string serializedData)
+            where T : class
+        {
             data = null;
             recoveredFromBackup = false;
+            serializedData = null;
 
-            if (TryRead(path, out data)) return true;
+            if (TryRead(path, out data, out serializedData)) return true;
 
             string backupPath = BackupPathFor(path);
-            if (!TryRead(backupPath, out data)) return false;
+            if (!TryRead(backupPath, out data, out serializedData)) return false;
 
             RestorePrimary(path, backupPath);
             recoveredFromBackup = true;
@@ -61,18 +86,25 @@ namespace ProjectC.Gameplay
             DeleteIfExists(TemporaryPathFor(path));
         }
 
-        private static bool TryRead<T>(string path, out T data) where T : class
+        private static bool TryRead<T>(
+            string path,
+            out T data,
+            out string serializedData)
+            where T : class
         {
             data = null;
+            serializedData = null;
             if (!File.Exists(path)) return false;
 
             try
             {
-                data = JsonUtility.FromJson<T>(File.ReadAllText(path));
+                serializedData = File.ReadAllText(path);
+                data = JsonUtility.FromJson<T>(serializedData);
                 return data != null;
             }
             catch (Exception)
             {
+                serializedData = null;
                 return false;
             }
         }

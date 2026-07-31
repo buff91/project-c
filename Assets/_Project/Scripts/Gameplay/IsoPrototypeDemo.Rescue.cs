@@ -120,11 +120,17 @@ namespace ProjectC.Gameplay
 
             ShelterNpcDefinition npc = ShelterNpcRoster.ById(agent.Id);
             if (npc == null) return false;
+            if (!MetaStore.CanWrite)
+            {
+                InteractionFeedback?.Invoke(
+                    "더 최신 버전의 메타 저장을 보호하는 중이라 구출 진행을 저장할 수 없다");
+                return false;
+            }
 
             MetaSaveData meta = MetaStore.LoadOrNew();
             if (meta.RescueNpc(npc.Id))
             {
-                MetaStore.Save(meta);
+                if (!MetaStore.Save(meta)) return false;
                 Debug.Log($"[Rescue] {npc.Id} 구출 — {npc.Facility} 해금");
             }
 

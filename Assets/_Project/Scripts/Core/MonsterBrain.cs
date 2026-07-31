@@ -258,7 +258,8 @@ namespace ProjectC.Core
                     out List<GridPos> path,
                     pos => pos != self &&
                            (IsFallHazard(context.Map, pos) ||
-                            (context.IsOccupied != null && context.IsOccupied(pos)))) &&
+                            (context.IsOccupied != null && context.IsOccupied(pos))),
+                    canClimb: _archetype.CanClimb) &&
                 path.Count >= 2 &&
                 context.Height.SameFloor(self, path[1]))
                 return MonsterAction.Step(path[1]);

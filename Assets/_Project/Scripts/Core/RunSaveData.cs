@@ -16,8 +16,7 @@ namespace ProjectC.Core
         /// <c>JsonUtility.FromJson</c>은 JSON에 <b>있는</b> 필드만 덮어쓰므로,
         /// <c>= 1</c>로 두면 이 필드가 없는 구세이브가 <b>자기를 최신이라고 선언</b>하고
         /// 마이그레이션이 통째로 건너뛰어진다. 기본값 0이 곧 "변환 전"이다.
-        /// (<c>RunTelemetry.schemaVersion</c>은 이니셜라이저를 쓰지만 그건 쓰기 전용이라
-        /// 무해하다 — 그 패턴을 여기 복사하면 안 된다.)
+        /// 중첩된 <c>RunTelemetry.schemaVersion</c>도 같은 이유로 기본값 0을 쓴다.
         /// 스탬프는 저장 직전에 <see cref="SaveMigration.Stamp"/>가 찍는다.
         /// </summary>
         public int schemaVersion;
@@ -59,7 +58,8 @@ namespace ProjectC.Core
         /// <summary>
         /// 사격 충전도 판을 관통한다. 층 전환마다 만충으로 리셋되면 계단 앞에서 기다렸다
         /// 내려가는 것이 최적해가 되고, 재충전을 기다리게 만든 이유가 사라진다.
-        /// (옛 세이브에는 없다 — null 이면 만충으로 시작한다)
+        /// (v2 이전 세이브에는 없다 — <see cref="SaveMigration"/>이 원문 JSON의 필드
+        /// 존재 여부를 확인해 복원용 null로 바꾸고, null 이면 만충으로 시작한다)
         /// </summary>
         public RangedChargeState rangedCharges;
         public List<int> usedRestFloorIndices = new List<int>();

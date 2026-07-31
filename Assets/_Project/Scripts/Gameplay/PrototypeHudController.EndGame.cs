@@ -23,9 +23,8 @@ namespace ProjectC.Gameplay
                 int carried = demo.CarriedTreasureGold();
                 if (_exitTitle != null) _exitTitle.text = "비상 탈출구";
                 if (_exitDesc != null)
-                    _exitDesc.text =
-                        $"여기서 나가면 들고 있는 것을 지킨다 · 전리품 가치 " +
-                        $"{ItemCatalog.FormatGold(carried)} · 더 내려가면 되돌아올 길이 멀어진다";
+                    _exitDesc.text = DungeonEndCopy.IntermediateExtractionDescription(
+                        ItemCatalog.FormatGold(carried));
                 if (_exitAdvance != null) _exitAdvance.text = "계속 탐색";
                 _exitModal.BringToFront();
                 _exitModal.AddToClassList("is-open");
@@ -35,19 +34,17 @@ namespace ProjectC.Gameplay
             bool finalExit = !demo.HasNextStage;
             if (_exitTitle != null)
                 _exitTitle.text = finalExit
-                    ? demo.HasBoss ? "봉인 해제된 출구" : "최심부 출구"
+                    ? DungeonEndCopy.FinalExitTitle(demo.HasBoss)
                     : "던전 출구";
             if (_exitDesc != null)
             {
                 int gold = demo.CarriedTreasureGold();
+                string value = ItemCatalog.FormatGold(gold);
                 _exitDesc.text =
                     finalExit
-                        ? demo.HasBoss
-                            ? $"{demo.BossName} 처치 완료 · 전리품 가치 " +
-                              $"{ItemCatalog.FormatGold(gold)} · 정복을 확정할 수 있다"
-                            : $"최심부 도달 · 전리품 가치 {ItemCatalog.FormatGold(gold)} · " +
-                              "정복을 확정할 수 있다"
-                        : $"들고 있는 전리품 가치: {ItemCatalog.FormatGold(gold)} · " +
+                        ? DungeonEndCopy.FinalExitDescription(
+                            demo.HasBoss, demo.BossName, value)
+                        : $"들고 있는 전리품 가치: {value} · " +
                           $"다음은 던전 {demo.StageIndex + 1}";
             }
             if (_exitAdvance != null)
@@ -83,7 +80,10 @@ namespace ProjectC.Gameplay
                 _bossHealthValue.text = demo.BossDefeated ? "EXIT UNSEALED" : $"{hp} / {maxHp}";
             if (_bossObjective != null)
                 _bossObjective.text = demo.BossDefeated
-                    ? "출구의 붉은 봉인이 청록빛으로 변했다 — 출구(▼)로 향하라"
+                    ? DungeonEndCopy.ArrivalMessage(
+                        hasBoss: true,
+                        exitUnlocked: true,
+                        bossName: demo.BossName)
                     : "보스를 쓰러뜨려 출구의 봉인을 해제하라";
         }
 

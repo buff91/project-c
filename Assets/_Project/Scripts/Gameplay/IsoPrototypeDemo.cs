@@ -266,10 +266,15 @@ namespace ProjectC.Gameplay
 
         /// <summary>
         /// 이번 판에 가장 멀리 간 층의 라벨(게임오버 화면용). 방향을 아는 경로를 타므로
-        /// 상승 던전에서도 "8F"가 나온다 — 정적 폴백은 하강 표기라 "F10"이 된다.
+        /// 상승 던전에서도 "8F"가 나오고, 여러 스테이지가 같은 로컬 라벨을 다시 써도
+        /// 실제 진입 때 동결한 문자열을 유지한다. 구 데이터에 라벨이 없을 때만 층 키 폴백을 쓴다.
         /// </summary>
         public string ReachedFloorLabel =>
-            _runSummary != null ? FloorLabel(_runSummary.DeepestFloorIndex) : ActiveFloorLabel;
+            !string.IsNullOrWhiteSpace(_runTelemetry?.deepestFloorLabel)
+                ? _runTelemetry.deepestFloorLabel
+                : _runSummary != null
+                    ? FloorLabel(_runSummary.DeepestFloorIndex)
+                    : ActiveFloorLabel;
         public string AboveFloorLabel => _dungeon != null && _dungeon.TryGetFloor(_activeFloorIndex + 1, out _)
             ? FloorLabel(_activeFloorIndex + 1)
             : "--";
@@ -515,6 +520,14 @@ namespace ProjectC.Gameplay
         {
             if (_grid == null) _grid = GetComponent<GridManager>();
             if (_input == null) _input = GetComponent<IsoTapInput>();
+            if (Application.isPlaying && !hubMode && !MetaStore.CanWrite)
+            {
+                RunSaveStore.ContinueRequested = false;
+                Debug.LogWarning(
+                    "[Meta] 미래 버전 메타 저장을 보호하기 위해 던전 진입을 중단하고 허브로 돌아간다.");
+                UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
+                return;
+            }
             RunTelemetry previousTelemetry = _runTelemetry;
 
             // 이전 8×8 프로토타입 씬을 열어도 세 방 레이아웃의 최소 규격으로 자동 이행한다.
@@ -571,7 +584,11 @@ namespace ProjectC.Gameplay
                     MetaSaveData departure = MetaStore.LoadOrNew();
                     ForgeRules.TakeIntoExpedition(
                         departure, out _carriedWeaponId, out _carriedGearId);
-                    MetaStore.Save(departure);
+                    if (!MetaStore.Save(departure))
+                    {
+                        UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
+                        return;
+                    }
                 }
                 SetPlayerLoadout(EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId));
                 if (continueData == null && _stageIndex == 1)
@@ -643,11 +660,24 @@ namespace ProjectC.Gameplay
                         dungeonSeed,
                         floorIndex,
                         System.DateTime.UtcNow,
-                        GlobalDepth(_activeFloorIndex));
+                        GlobalDepth(_activeFloorIndex),
+                        FloorLabel(_activeFloorIndex));
+                    if (continueData != null)
+                    {
+                        // 텔레메트리 도입 전 체크포인트는 재개할 때마다 새 시각 ID를 만들면
+                        // 메타 정산 영수증과 매칭되지 않는다. 저장에 있던 값만으로 안정화한다.
+                        _runTelemetry.runId = RunSettlementIdentity.Resolve(
+                            null,
+                            continueData.dungeonId,
+                            continueData.seed);
+                    }
                 }
 
                 if (_runTelemetry.currentFloorIndex != floorIndex)
-                    _runTelemetry.RecordFloorEntered(floorIndex, GlobalDepth(_activeFloorIndex));
+                    _runTelemetry.RecordFloorEntered(
+                        floorIndex,
+                        GlobalDepth(_activeFloorIndex),
+                        FloorLabel(_activeFloorIndex));
             }
             if (continueData != null)
                 ApplyContinueData(continueData);
@@ -669,7 +699,11 @@ namespace ProjectC.Gameplay
                 int carried = ExpeditionLoadoutRules.ConsumeLoadout(meta, _inventory);
                 if (selected > 0)
                 {
-                    MetaStore.Save(meta);
+                    if (!MetaStore.Save(meta))
+                    {
+                        UnityEngine.SceneManagement.SceneManager.LoadScene(FrontEndFlow.HubScene);
+                        return;
+                    }
                     int returned = selected - carried;
                     string leftover = returned > 0 ? $" · {returned}개는 창고 복귀" : "";
                     InteractionFeedback?.Invoke(
@@ -1198,11 +1232,14 @@ namespace ProjectC.Gameplay
                 _playerAnimator?.PlayDeath();
                 _playerRenderer.color = new Color32(120, 42, 42, 220);
                 _runSummary.EndInDefeat(source);
-                FinishRunTelemetry(RunTelemetryOutcome.Defeat, source);
-                RunSaveStore.Clear();
-                LoseCarriedEquipment();
+                if (TryFinalizeRun(RunTelemetryOutcome.Defeat, source, out _))
+                    RunSaveStore.Clear();
+                else
+                    Debug.LogWarning(
+                        "[Run] 패배 정산을 저장하지 못해 체크포인트를 보존했다.");
                 Debug.Log($"[Combat] 플레이어 사망 — 사인 {source}, " +
-                          $"최심층 {FloorLabel(_runSummary.DeepestFloorIndex)}");
+                          DungeonEndCopy.FurthestReached(
+                              ReachedFloorLabel));
                 RunEnded?.Invoke(_runSummary);
             }
         }
@@ -1231,24 +1268,11 @@ namespace ProjectC.Gameplay
 
         private List<GridPos> FindPathToAdjacent(GridPos target)
         {
-            var candidates = new[] { target.North, target.East, target.South, target.West };
-            List<GridPos> best = null;
-
-            foreach (GridPos candidate in candidates)
-            {
-                if (candidate.elevation != target.elevation || !_grid.Map.IsWalkable(candidate))
-                    continue;
-                if (IsLivingEnemyAt(candidate))
-                    continue;
-
-                List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, candidate);
-                if (path.Exists(step => IsLivingEnemyAt(step)))
-                    continue;
-                if (path.Count > 0 && (best == null || path.Count < best.Count))
-                    best = path;
-            }
-
-            return best ?? new List<GridPos>();
+            return InteractionApproachRules.FindPathToAdjacent(
+                _grid.Map,
+                _playerPos,
+                target,
+                IsLivingEnemyAt);
         }
 
         private Transform CreateHealthBar(GameObject owner, string objectName)
@@ -1348,7 +1372,7 @@ namespace ProjectC.Gameplay
 
         /// <summary>접근 후 실행 직전 재검증: 같은 elevation의 상하좌우 인접인가.</summary>
         private bool IsPlayerAdjacentTo(GridPos pos) =>
-            _playerPos.elevation == pos.elevation && _playerPos.ManhattanTo(pos) == 1;
+            InteractionApproachRules.IsAdjacent(_playerPos, pos);
 
         /// <summary>플레이어가 밟은 칸의 아이템을 줍는다.</summary>
         private void TryCollectItemAt(GridPos pos)

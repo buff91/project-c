@@ -57,6 +57,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DisplaySettingsDataTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubUiBindingRegistryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudVisualTreeContractTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoGridTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoVisualCatalogTests.cs" />
@@ -66,6 +67,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/PrototypeEnvironmentSpriteScaleTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ResponsiveUiLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RunTelemetryTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SaveStoreCompatibilityTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RuntimeSpriteGroundingTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteOcclusionTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/TitleEntryRoutingTests.cs" />

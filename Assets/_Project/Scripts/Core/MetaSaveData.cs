@@ -19,16 +19,49 @@ namespace ProjectC.Core
         public int best;
     }
 
+    /// <summary>
+    /// 종료 정산 영수증. 메타 보상과 이 항목을 같은 JSON 교체로 저장하면, 그 직후 앱이
+    /// 종료되어 런 체크포인트가 남더라도 같은 <see cref="runId"/>를 다시 정산하지 않는다.
+    /// </summary>
+    [Serializable]
+    public sealed class RunSettlementEntry
+    {
+        public string runId = "";
+        public int outcome;
+        public int payout;
+        public int recordsGained;
+        public int[] unlockedItemKinds = new int[0];
+    }
+
+    /// <summary>현행·레거시 체크포인트가 같은 종료 정산 키를 계산하는 단일 출처.</summary>
+    public static class RunSettlementIdentity
+    {
+        public static string Resolve(
+            RunTelemetry telemetry,
+            string dungeonId,
+            int seed)
+        {
+            if (!string.IsNullOrWhiteSpace(telemetry?.runId))
+                return telemetry.runId;
+
+            // 텔레메트리 도입 전 체크포인트에는 runId가 없다. 던전·seed·가능하면 시작 시각으로
+            // 현재 열려 있는 단 하나의 레거시 체크포인트에 안정적인 키를 준다. 현행 새 런은
+            // RunTelemetry.Begin의 시간 기반 ID라 이 접두사와 충돌하지 않는다.
+            return $"legacy:{dungeonId ?? ""}:{seed}:{telemetry?.startedAtUtc ?? ""}";
+        }
+    }
+
     [Serializable]
     public class MetaSaveData
     {
+        private const int MaxSettlementHistory = 32;
+
         /// <summary>
         /// 세이브 스키마 버전. <b>이니셜라이저를 붙이지 않는다</b> —
         /// <c>JsonUtility.FromJson</c>은 JSON에 <b>있는</b> 필드만 덮어쓰므로,
         /// <c>= 1</c>로 두면 이 필드가 없는 구세이브가 <b>자기를 최신이라고 선언</b>하고
         /// 마이그레이션이 통째로 건너뛰어진다. 기본값 0이 곧 "변환 전"이다.
-        /// (<c>RunTelemetry.schemaVersion</c>은 이니셜라이저를 쓰지만 그건 쓰기 전용이라
-        /// 무해하다 — 그 패턴을 여기 복사하면 안 된다.)
+        /// 중첩된 <c>RunTelemetry.schemaVersion</c>도 같은 이유로 기본값 0을 쓴다.
         /// 스탬프는 저장 직전에 <see cref="SaveMigration.Stamp"/>가 찍는다.
         /// </summary>
         public int schemaVersion;
@@ -86,6 +119,12 @@ namespace ProjectC.Core
         /// 이 값이 없으면 1~3층 왕복이 최적 파밍이 된다.
         /// </summary>
         public int deepestFloorsEver;
+
+        /// <summary>
+        /// 최근 종료 정산 영수증. 체크포인트는 하나뿐이라 바로 이전 항목만 있어도 되지만,
+        /// 백업 복구와 개발 프로필 전환까지 견디도록 작은 유한 목록으로 보존한다.
+        /// </summary>
+        public List<RunSettlementEntry> settledRuns = new List<RunSettlementEntry>();
 
         /// <summary>
         /// 조건별로 <b>투입한</b> 기록. 최고 기록(<see cref="unlockProgress"/>)에 더해져
@@ -227,6 +266,38 @@ namespace ProjectC.Core
             records += gained;
             if (reachedFloors > deepestFloorsEver) deepestFloorsEver = reachedFloors;
             return gained;
+        }
+
+        /// <summary>이 런의 종료 정산이 이미 메타 파일에 반영됐는지 찾는다.</summary>
+        public bool TryGetRunSettlement(string runId, out RunSettlementEntry settlement)
+        {
+            settlement = null;
+            if (string.IsNullOrWhiteSpace(runId) || settledRuns == null) return false;
+
+            foreach (RunSettlementEntry entry in settledRuns)
+            {
+                if (entry == null || entry.runId != runId) continue;
+                settlement = entry;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 새 종료 정산 영수증을 기록한다. 같은 런은 false를 반환하며 목록을 바꾸지 않는다.
+        /// 오래된 항목은 체크포인트보다 훨씬 긴 32회 창 뒤에만 버려 세이브가 무한히 자라지 않게 한다.
+        /// </summary>
+        public bool RecordRunSettlement(RunSettlementEntry settlement)
+        {
+            if (settlement == null || string.IsNullOrWhiteSpace(settlement.runId))
+                return false;
+            if (TryGetRunSettlement(settlement.runId, out _)) return false;
+
+            settledRuns ??= new List<RunSettlementEntry>();
+            while (settledRuns.Count >= MaxSettlementHistory)
+                settledRuns.RemoveAt(0);
+            settledRuns.Add(settlement);
+            return true;
         }
 
         public bool IsNpcRescued(string npcId)

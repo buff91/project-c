@@ -131,13 +131,18 @@ namespace ProjectC.Core
         /// 후보는 target 주변 사거리 다이아몬드(같은 elevation·시야선·걷기 가능)로 한정하고,
         /// 동률이면 target 근접 → x → y 순으로 결정적으로 고른다.
         /// </summary>
+        /// <param name="canClimb">
+        /// 사격 위치까지 가는 경로에서 사다리 링크를 탈 수 있는가.
+        /// 플레이어 도달성의 정상값은 true지만 몬스터 호출부는 아키타입 값을 명시해야 한다.
+        /// </param>
         public static bool FindFiringPosition(
             GridMap map,
             GridPos shooter,
             GridPos target,
             int maxRange,
             out List<GridPos> firingPath,
-            Func<GridPos, bool> isBlocked = null)
+            Func<GridPos, bool> isBlocked = null,
+            bool canClimb = true)
         {
             firingPath = new List<GridPos>();
             if (map == null || maxRange < 1) return false;
@@ -154,7 +159,12 @@ namespace ProjectC.Core
                 if (isBlocked != null && isBlocked(candidate)) continue;
                 if (!CanFireFrom(map, candidate, target, maxRange)) continue;
 
-                List<GridPos> path = GridPathfinder.FindPath(map, shooter, candidate, isBlocked);
+                List<GridPos> path = GridPathfinder.FindPath(
+                    map,
+                    shooter,
+                    candidate,
+                    isBlocked,
+                    canClimb: canClimb);
                 if (path.Count < 2) continue;
 
                 bool better = best == null ||
