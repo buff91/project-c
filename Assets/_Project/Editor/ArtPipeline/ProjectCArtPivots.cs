@@ -33,6 +33,8 @@ namespace ProjectC.EditorTools
                 { "env-floor-grate", Centered },
                 { "env-floor-cracked", Centered },
                 { "env-floor-service", Centered },
+                { "env-floor-b2-parking-stop", Centered },
+                { "env-floor-b2-fallen-sign", Centered },
                 // hole/weak-floor는 바닥 다이아 경로(GetMappedTileSprite)가 피벗을 재지정하지만,
                 // 임포트 규격과 스펙 시트 표기가 어긋나지 않게 중앙으로 명시 등록한다.
                 { "env-hole", Centered },

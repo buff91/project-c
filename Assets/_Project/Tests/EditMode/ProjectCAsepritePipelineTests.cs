@@ -121,6 +121,26 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void CatalogSlot_MapsB2FloorDressing_WithCenteredPivots()
+        {
+            var expected = new (string fileName, string slot)[]
+            {
+                ("env-floor-b2-parking-stop", "b2ParkingWheelStopFloor"),
+                ("env-floor-b2-fallen-sign", "b2FallenWayfindingFloor"),
+            };
+
+            foreach ((string fileName, string slot) in expected)
+            {
+                string path = $"Assets/_Project/Art/Source/Aseprite/{fileName}.aseprite";
+                Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(path, out string actual));
+                Assert.AreEqual(slot, actual);
+                Assert.AreEqual(
+                    new Vector2(0.5f, 0.5f),
+                    ProjectCAsepritePipeline.ResolvePivotNormalized(path));
+            }
+        }
+
+        [Test]
         public void ResolvePivot_UsesStableCanvasAnchors()
         {
             Assert.AreEqual(

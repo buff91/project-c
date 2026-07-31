@@ -33,6 +33,11 @@ namespace ProjectC.EditorTools
             var demo = root.AddComponent<IsoPrototypeDemo>();
             demo.buildOnStart = true;
             demo.configureMainCamera = true;
+            demo.visualCatalog = AssetDatabase.LoadAssetAtPath<IsoVisualCatalog>(
+                ProjectCAsepritePipeline.CatalogPath);
+            if (demo.visualCatalog == null)
+                throw new System.InvalidOperationException(
+                    $"환경 카탈로그를 찾을 수 없습니다: {ProjectCAsepritePipeline.CatalogPath}");
 
             CreateHud(demo);
 

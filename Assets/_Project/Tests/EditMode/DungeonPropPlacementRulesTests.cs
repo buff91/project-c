@@ -76,6 +76,66 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TrySelectSafePosition_PrefersPushableWallEdgeOverEarlierCenterCandidate()
+        {
+            var map = new GridMap();
+            var entry = new GridPos(1, 2);
+            var center = new GridPos(3, 2);
+            var wallEdge = new GridPos(5, 2);
+            for (int x = 0; x <= 6; x++)
+            for (int y = 0; y <= 4; y++)
+                map.Set(new GridPos(x, y), TileKind.Floor);
+            map.Set(wallEdge.North, TileKind.Wall);
+
+            bool found = DungeonPropPlacementRules.TrySelectSafePosition(
+                map,
+                entry,
+                new[] { center, wallEdge },
+                null,
+                out GridPos selected);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(
+                wallEdge,
+                selected,
+                "중앙의 더 이른 안전 후보보다 접근·밀기가 가능한 벽 가장자리를 우선해야 합니다.");
+        }
+
+        [Test]
+        public void TrySelectSafePosition_SkipsEdgeWithoutReachablePushLane()
+        {
+            var map = new GridMap();
+            var entry = new GridPos(0, 0);
+            var trappedEdge = new GridPos(3, 0);
+            var pushableEdge = new GridPos(0, 3);
+            map.Set(entry, TileKind.Floor);
+            map.Set(new GridPos(1, 0), TileKind.Floor);
+            map.Set(new GridPos(2, 0), TileKind.Floor);
+            map.Set(trappedEdge, TileKind.Floor);
+            map.Set(trappedEdge.East, TileKind.Wall);
+            map.Set(trappedEdge.North, TileKind.Wall);
+            map.Set(trappedEdge.South, TileKind.Wall);
+            map.Set(new GridPos(0, 1), TileKind.Floor);
+            map.Set(new GridPos(0, 2), TileKind.Floor);
+            map.Set(pushableEdge, TileKind.Floor);
+            map.Set(new GridPos(0, 4), TileKind.Floor);
+            map.Set(pushableEdge.East, TileKind.Wall);
+
+            bool found = DungeonPropPlacementRules.TrySelectSafePosition(
+                map,
+                entry,
+                new[] { trappedEdge, pushableEdge },
+                null,
+                out GridPos selected);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(
+                pushableEdge,
+                selected,
+                "가장자리라도 플레이어가 접근해 밀 수 없다면 우선 후보가 아니어야 합니다.");
+        }
+
+        [Test]
         public void GeneratedStartingFloors_AlwaysOfferSeparatedSafePropPosition(
             [Range(1, 30)] int seed)
         {

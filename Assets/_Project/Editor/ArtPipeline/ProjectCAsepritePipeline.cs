@@ -40,6 +40,8 @@ namespace ProjectC.EditorTools
                 { "env-floor-grate", "hospitalFloorGrate" },
                 { "env-floor-cracked", "hospitalFloorCracked" },
                 { "env-floor-service", "hospitalFloorService" },
+                { "env-floor-b2-parking-stop", "b2ParkingWheelStopFloor" },
+                { "env-floor-b2-fallen-sign", "b2FallenWayfindingFloor" },
                 { "env-stairs", "stairs" },
                 { "env-ladder", "ladder" },
                 { "env-stairs-up", "stairsUp" },

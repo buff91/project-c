@@ -620,6 +620,7 @@ namespace ProjectC.Gameplay
             ResetBossArenaForBuild();
             ResetRescueForBuild();
             ResetExtractionPointsForBuild();
+            ResetDungeonDressingForBuild();
             _inventory.Clear();
             _boss = null;
             _bossExitSeal = null;
@@ -952,11 +953,16 @@ namespace ProjectC.Gameplay
                     barrelSprite,
                     _barrelPos,
                     out _barrelRenderer);
+                // 격자 점유·밀기·폭발 판정은 그대로 두고, 화면 위계만 액터와 맞춘다.
+                // 128px 원화를 1:1로 두면 시작방에서 플레이어보다 큰 탱크처럼 보인다.
+                _barrel.transform.localScale = Vector3.one * actorVisualScale;
             }
             else
             {
                 _barrelExploded = true;
             }
+
+            PrepareDungeonDressing();
 
             _playerHpFill = CreateHealthBar(_player, "Player HP");
             UpdateHealthBar(_playerHpFill, _playerState);

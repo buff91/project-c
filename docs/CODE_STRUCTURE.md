@@ -24,7 +24,7 @@
 
 ---
 
-## `IsoPrototypeDemo` — 관심사별 19개 파셜
+## `IsoPrototypeDemo` — 관심사별 20개 파셜
 
 한 `partial class IsoPrototypeDemo`(MonoBehaviour)를 다음 파일들이 나눠 소유한다.
 상태(필드·프로퍼티·이벤트)와 방 빌드·수명주기는 본체에, 나머지는 관심사별 파셜에 있다.
@@ -48,6 +48,7 @@
 | `IsoPrototypeDemo.Enemies.cs` | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
+| `IsoPrototypeDemo.DungeonDressing.cs` | 첫 던전 B2의 비충돌 완성형 바닥 드레싱 후보·예약 좌표·스프라이트 매핑. 선택 판정은 Core `DungeonDressingPlacementRules`가 소유한다 |
 | `IsoPrototypeDemo.Extraction.cs` | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.Rescue.cs` | 갇힌 동료 프롭 렌더·구출 처리. 배치·판정은 Core(`ShelterNpcRoster`·`DungeonFloorInfo.RescueNpc`)가 소유한다 — `BossArena`와 같은 모양. 한 판에 동료가 여럿이라 **상태를 목록으로 든다**(스칼라 한 벌이면 뒤 NPC가 앞 것을 덮어써 참조 잃은 GameObject 가 씬에 남았다) |
 | `IsoPrototypeDemo.BossArena.cs` | 보스 아레나 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
@@ -205,6 +206,7 @@
 | `DungeonBossArenaRules.cs` | 아레나 층 판정(상대 깊이 = 마지막 층)과 접근 전조(SSOT 표 참조). 시각용 `DungeonDepthBand.Boss`와는 **다른 축** |
 | `DungeonRestRules.cs` | 던전 내부 제한 휴식처의 배치 간격과 회복량 |
 | `DungeonPropPlacementRules.cs` | 위험 프롭이 입구·필수 점유 좌표를 덮지 않도록 안전한 일반 바닥 후보를 고른다 |
+| `DungeonDressingPlacementRules.cs` | B2 완성형 바닥 장식을 입구·주요 동선·점유 좌표와 겹치지 않는 도달 가능한 외곽 일반 바닥에 결정론적으로 고른다 |
 | `SecretRoomRules.cs` | 비밀문 개수와 발견 판정. 공개 전에는 벽처럼 막고 공개되면 열린 문이 된다 |
 | `ExtractionRules.cs` | 중간 생환 층. 잦으면 판돈이 사라지고 없으면 최종 구역까지 한 번의 결정이라 **정해진 층에만** 둔다 — 배고픔과 짝을 이룬다 |
 | `ElevatorShaftRules.cs` | 보스를 잡아 전원이 들어온 뒤에야 움직이는 복귀 수단. GDD의 "통로로 뛰어내려 하강"을 **수치가 막아서**(낙뎀 곡선 vs HP) 낙하가 아니라 탑승이 됐다 |

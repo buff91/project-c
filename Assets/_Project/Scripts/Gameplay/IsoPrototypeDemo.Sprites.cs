@@ -54,8 +54,16 @@ namespace ProjectC.Gameplay
                 PrototypeEnvironmentSprites.EnvironmentAccentMode.None) =>
             EnvironmentSprites.GetToneMappedEnvironmentSprite(sourceSprite, target, accentMode);
 
-        private Sprite GetTileSprite(TileKind kind, GridPos pos) =>
-            EnvironmentSprites.GetTileSprite(kind, pos, TileFactsFor(kind, pos));
+        private Sprite GetTileSprite(TileKind kind, GridPos pos)
+        {
+            // B2의 낮은 장식은 바닥까지 합성된 완성형 타일이다. 이 경로로 들어와야
+            // 기존 FOV·조명·높이 틴트·회전·정렬을 전부 그대로 공유한다.
+            if (kind == TileKind.Floor &&
+                TryGetDungeonFloorDressing(pos, out Sprite dressing))
+                return dressing;
+
+            return EnvironmentSprites.GetTileSprite(kind, pos, TileFactsFor(kind, pos));
+        }
 
         /// <summary>
         /// 격자 질의를 종류에 맞게 골라 답만 채운다.

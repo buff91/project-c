@@ -79,6 +79,8 @@ MonoBehaviour:
   hospitalFloorGrate: {fileID: 21300000, guid: 9cddb697874684333b190001f1e01a65, type: 3}
   hospitalFloorCracked: {fileID: 21300000, guid: 413813368492348acb0a020a0352e122, type: 3}
   hospitalFloorService: {fileID: 21300000, guid: a22b47113a83945b18a8c36f7b1418f6, type: 3}
+  b2ParkingWheelStopFloor: {fileID: 21300000, guid: 673f679c9db88471bb4773e9dd1cf875, type: 3}
+  b2FallenWayfindingFloor: {fileID: 21300000, guid: 8e05213acfebb450598cb3681c3da8f1, type: 3}
   stairs: {fileID: 0}
   ladder: {fileID: 0}
   stairsUp: {fileID: 0}

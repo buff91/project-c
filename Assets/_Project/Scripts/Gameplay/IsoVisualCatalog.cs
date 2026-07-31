@@ -73,6 +73,12 @@ namespace ProjectC.Gameplay
         [Tooltip("Facility 지역의 희소 바닥 변주 — 열린 서비스 패널")]
         public Sprite hospitalFloorService;
 
+        [Header("B2 주차·서비스 구역 바닥 드레싱")]
+        [Tooltip("기본 바닥과 합성된 낮은 주차 범퍼 — 비충돌 장식")]
+        public Sprite b2ParkingWheelStopFloor;
+        [Tooltip("기본 바닥과 합성된 쓰러진 아케이드 안내판 — 비충돌 장식")]
+        public Sprite b2FallenWayfindingFloor;
+
         public Sprite stairs;
         public Sprite ladder;
         public Sprite stairsUp;
