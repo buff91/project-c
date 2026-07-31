@@ -33,6 +33,13 @@ namespace ProjectC.Core
         /// <summary>안전 낙하 높이 보정. 낙하 전술을 여는 값이다(<see cref="FallRules"/>).</summary>
         public int SafeFallBonus { get; }
 
+        /// <summary>
+        /// 원거리 사거리(<see cref="CombatRules.RangedReachCost"/> 예산). <b>0이면 원거리가 없다</b> —
+        /// 원거리는 기본 능력이 아니라 이 값을 가진 무기를 껴야 열리는 선택지다.
+        /// 발사에는 탄약도 필요하다(<see cref="RangedWeaponRules"/>).
+        /// </summary>
+        public int RangedRange { get; }
+
         /// <summary>대장간 제작 비용(골드).</summary>
         public int CraftCost { get; }
 
@@ -46,7 +53,8 @@ namespace ProjectC.Core
             int meleeReach = 1,
             bool knockbackOnHit = false,
             int armor = 0,
-            int safeFallBonus = 0)
+            int safeFallBonus = 0,
+            int rangedRange = 0)
         {
             Id = id;
             Item = item;
@@ -58,6 +66,7 @@ namespace ProjectC.Core
             KnockbackOnHit = knockbackOnHit;
             Armor = armor;
             SafeFallBonus = safeFallBonus;
+            RangedRange = rangedRange < 0 ? 0 : rangedRange;
         }
     }
 
@@ -72,12 +81,24 @@ namespace ProjectC.Core
         public int Armor { get; }
         public int SafeFallHeight { get; }
 
-        public CombatLoadout(int meleeReach, bool knockbackOnHit, int armor, int safeFallHeight)
+        /// <summary>원거리 사거리. 0이면 원거리 자체가 없다(맨손 기본값).</summary>
+        public int RangedRange { get; }
+
+        /// <summary>이 조합으로 원거리를 쏠 수 있는가 — 탄약 보유는 별도다.</summary>
+        public bool HasRanged => RangedRange > 0;
+
+        public CombatLoadout(
+            int meleeReach,
+            bool knockbackOnHit,
+            int armor,
+            int safeFallHeight,
+            int rangedRange = 0)
         {
             MeleeReach = meleeReach < 1 ? 1 : meleeReach;
             KnockbackOnHit = knockbackOnHit;
             Armor = armor < 0 ? 0 : armor;
             SafeFallHeight = safeFallHeight < 0 ? 0 : safeFallHeight;
+            RangedRange = rangedRange < 0 ? 0 : rangedRange;
         }
 
         /// <summary>맨손 기본값 — 장비가 없을 때의 규칙은 지금까지와 완전히 같다.</summary>
@@ -125,7 +146,16 @@ namespace ProjectC.Core
                 "서스펜션 부츠",
                 "유압 완충으로 안전 낙하 높이 +2. 높은 곳에서 뛰어내려도 버틴다 — 지름길로도, 후퇴로도 쓴다.",
                 craftCost: 85,
-                safeFallBonus: 2)
+                safeFallBonus: 2),
+            // 유일한 원거리 열쇠. 사거리는 길지만 근접 사거리를 늘리지 않고 탄약을 먹는다 —
+            // "붙을까 떨어질까"가 장비 선택으로 올라온다. 제작비가 제일 비싼 이유는
+            // 이 무기만 새로운 행동(사선·고지대 활용)을 통째로 여는 값이라서다.
+            new EquipmentDefinition(
+                "arc-caster", ItemKind.ArcCaster, EquipmentSlot.Weapon,
+                "아크 캐스터",
+                "충전을 태워 먼 적을 친다 — 사거리 5, 사선이 필요하다. 에너지 셀이 없으면 쏘지 못한다.",
+                craftCost: 145,
+                rangedRange: 5)
         };
 
         public static EquipmentDefinition ById(string id)
@@ -209,7 +239,8 @@ namespace ProjectC.Core
                 weapon?.MeleeReach ?? 1,
                 weapon?.KnockbackOnHit ?? false,
                 gear?.Armor ?? 0,
-                FallRules.DefaultSafeFallHeight + (gear?.SafeFallBonus ?? 0));
+                FallRules.DefaultSafeFallHeight + (gear?.SafeFallBonus ?? 0),
+                weapon?.RangedRange ?? 0);
         }
 
         private static EquipmentDefinition SlotOrNull(string id, EquipmentSlot slot)

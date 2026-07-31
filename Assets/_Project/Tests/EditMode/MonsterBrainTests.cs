@@ -527,5 +527,45 @@ namespace ProjectC.Tests
             Assert.AreEqual(MonsterMood.Patrol, brain.Mood);
             Assert.AreEqual(lastSeen, self.Position, "마지막 목격 지점까지 이동했어야 함");
         }
+
+        /// <summary>
+        /// 원거리 무기가 생긴 뒤(M4) 지각 반경 밖 저격이 무저항 처형이 되지 않아야 한다 —
+        /// 맞으면 쏜 자리를 향해 추격으로 전환한다.
+        /// </summary>
+        [Test]
+        public void OnDamaged_FromOutsideAggro_SwitchesToChaseTowardTheShooter()
+        {
+            var brain = new MonsterBrain(Goblin(), new GridPos(0, 0, 0), seed: 5);
+            Assert.AreEqual(MonsterMood.Patrol, brain.Mood);
+
+            var shooter = new GridPos(9, 0, 0); // aggroRange 6 밖
+            brain.OnDamaged(shooter);
+
+            Assert.AreEqual(MonsterMood.Chase, brain.Mood);
+            Assert.AreEqual(shooter, brain.LastSeenPlayerAt);
+        }
+
+        /// <summary>
+        /// 도주 중에는 덮어쓰지 않는다 — 한 대 맞고 되돌아서면 도주 규칙(GDD §5.7)이 죽는다.
+        /// </summary>
+        [Test]
+        public void OnDamaged_WhileFleeing_KeepsFleeing()
+        {
+            GridMap map = Flat(11);
+            // HP를 도주 임계 아래로 두고 플레이어를 보여 Flee 로 진입시킨다.
+            var self = new CombatantState("s", new GridPos(5, 0, 0), 10, 1);
+            self.TakeDamage(8);
+            var player = new CombatantState("p", new GridPos(4, 0, 0), 10, 3);
+            var archetype = new MonsterArchetype(
+                "Coward", 10, 1, aggroRange: 6, patrolRadius: 2, fleeThreshold: 0.5f);
+            var brain = new MonsterBrain(archetype, self.Position, seed: 3);
+
+            brain.Decide(Context(map, self, player));
+            Assert.AreEqual(MonsterMood.Flee, brain.Mood, "도주 상태 전제가 성립하지 않았다");
+
+            brain.OnDamaged(new GridPos(9, 0, 0));
+
+            Assert.AreEqual(MonsterMood.Flee, brain.Mood);
+        }
     }
 }

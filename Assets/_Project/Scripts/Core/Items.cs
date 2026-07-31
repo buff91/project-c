@@ -27,7 +27,9 @@ namespace ProjectC.Core
         SignShield = 14,   // 전광판 방패: 받는 물리 피해 -1. 2×2 점유.
         PaddedBoots = 15,  // 서스펜션 부츠: 안전 낙하 높이 +2.
         CannedFood = 16,   // 통조림: 배고픔을 채운다. (HungerRules)
-        ExtractionBeacon = 17 // 비상 송출기: 어디서든 즉시 생환. (ExtractionRules)
+        ExtractionBeacon = 17, // 비상 송출기: 어디서든 즉시 생환. (ExtractionRules)
+        ArcCaster = 18,    // 아크 캐스터: 원거리 사격을 여는 무기. 셀이 있어야 쏜다.
+        EnergyCell = 19    // 에너지 셀: 아크 캐스터 탄약. 1발당 1충전. (RangedWeaponRules)
     }
 
     /// <summary>
@@ -173,6 +175,13 @@ namespace ProjectC.Core
             DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
             DefineEquipment(ItemKind.PaddedBoots, "BOOTS", OneCell),
+            DefineEquipment(ItemKind.ArcCaster, "CASTER", Tall),
+            // 칸당 4회분. 아크 캐스터는 무기지 소모품이 아니라서, 탄약이 칸을 많이 먹으면
+            // "무기를 낄까"가 아니라 "탄을 들고 갈까"가 결정이 돼 버린다. 투척 볼트(3)보다
+            // 큰 이유는 볼트가 그 자체로 한 발이지만 셀은 장비가 있어야 의미가 생겨서다.
+            Define(ItemKind.EnergyCell, ItemCategory.Consumable, "에너지 셀", "CELL",
+                "아크 캐스터의 탄약. 사격 1회에 1충전을 쓴다. 셀이 없으면 쏠 수 없다.",
+                shopPrice: 12, chargesPerItem: 4),
             // 칸당 3회분. 배고픔은 판 전체를 관통하는 상시 압박이라(가득 찬 배 100턴)
             // 통조림은 "한 번 챙기고 잊는 것"이 아니라 계속 다시 채우는 소모품이고,
             // 1회분 = 1칸이던 시절엔 그 리듬이 백팩 상시 점유로 나타났다.

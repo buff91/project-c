@@ -118,5 +118,29 @@ namespace ProjectC.Tests
                 Assert.IsFalse(ItemCatalog.IsTreasure(recipe.Output), recipe.ToString());
             }
         }
+
+        /// <summary>
+        /// 에너지 셀은 전리품(코어 파편)을 태워야 나온다 — 생환 시 $25가 될 물건을 지금
+        /// 쏘는 데 쓸지가 판돈이라야 원거리가 공짜 최적해로 돌아가지 않는다(M4).
+        /// </summary>
+        [Test]
+        public void EnergyCell_IsCraftedFromTreasureAndPowder()
+        {
+            Assert.IsTrue(
+                CraftingRules.TryFindRecipe(
+                    ItemKind.Gemstone, ItemKind.BlastPowder, out Recipe recipe));
+            Assert.AreEqual(ItemKind.EnergyCell, recipe.Output);
+
+            var inventory = new Inventory();
+            inventory.Add(ItemKind.Gemstone);
+            inventory.Add(ItemKind.BlastPowder);
+
+            Assert.IsTrue(CraftingRules.TryCraft(inventory, recipe));
+            Assert.AreEqual(0, inventory.Count(ItemKind.Gemstone));
+            Assert.AreEqual(0, inventory.Count(ItemKind.BlastPowder));
+            // 칸당 4충전 = 사격 4회분.
+            Assert.AreEqual(1, inventory.Count(ItemKind.EnergyCell));
+            Assert.AreEqual(4, ItemCatalog.ChargesPerItem(ItemKind.EnergyCell));
+        }
     }
 }

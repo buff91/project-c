@@ -217,6 +217,24 @@ namespace ProjectC.Gameplay
         public DungeonViewMode ViewMode => viewMode;
         public CombatActionMode CombatMode => combatMode;
         public int RangedAttackRange => rangedAttackRange;
+
+        /// <summary>원거리 무기를 꼈는가 — 액션 휠이 원거리 토글을 열지 결정한다(M4).</summary>
+        public bool HasRangedWeapon => _playerLoadout.HasRanged;
+
+        /// <summary>
+        /// 장착 조합을 갈아끼운다. 원거리가 사라지면 전투 모드를 근접으로 되돌린다 —
+        /// 그러지 않으면 토글이 비활성인 채로 원거리 모드에 갇혀 탭이 전부 실패한다(M4).
+        /// </summary>
+        private void SetPlayerLoadout(CombatLoadout loadout)
+        {
+            _playerLoadout = loadout;
+            if (_playerLoadout.HasRanged || combatMode != CombatActionMode.Ranged) return;
+            combatMode = CombatActionMode.Melee;
+            CombatModeChanged?.Invoke(combatMode);
+        }
+
+        /// <summary>남은 에너지 셀 충전(= 남은 사격 횟수).</summary>
+        public int EnergyCellCharges => _inventory?.Count(ItemKind.EnergyCell) ?? 0;
         public string VerticalHintLabel => BuildVerticalHintLabel();
         public string HudHeightLabel => _dungeon == null
             ? "--"
@@ -544,7 +562,7 @@ namespace ProjectC.Gameplay
                         departure, out _carriedWeaponId, out _carriedGearId);
                     MetaStore.Save(departure);
                 }
-                _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+                SetPlayerLoadout(EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId));
                 if (continueData == null && _stageIndex == 1)
                     _hunger = new HungerState(); // 새 원정은 배부른 상태로 출발한다
                 _lastHungerStage = _hunger.Stage;
@@ -1094,6 +1112,9 @@ namespace ProjectC.Gameplay
                 source,
                 damage,
                 GlobalFloorIndex(_activeFloorIndex));
+            // 맞은 쪽은 지각 반경 밖이었더라도 반응한다 — 모든 피해원이 이 경로를 지나므로
+            // 여기 한 곳이면 원거리 저격도, 폭발 유폭도 무저항으로 끝나지 않는다.
+            enemy.Brain?.OnDamaged(_playerPos);
             UpdateHealthBar(enemy.HpFill, enemy.State);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);

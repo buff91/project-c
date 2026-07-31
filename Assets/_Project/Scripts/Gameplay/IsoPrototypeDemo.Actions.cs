@@ -150,25 +150,37 @@ namespace ProjectC.Gameplay
             }
         }
 
+        /// <summary>
+        /// 아크 캐스터 사격. 장비·탄약 게이트는 <see cref="RangedWeaponRules"/>가 소유하고
+        /// 여기서는 접근·연출만 한다 — 판정과 셀 소비가 갈라지지 않게(M4).
+        /// </summary>
         private IEnumerator RangedAttack(EnemyAgent enemy)
         {
-            if (CombatRules.TryRanged(
-                    _playerState,
-                    enemy.State,
-                    _grid.Map,
-                    rangedAttackRange,
-                    out int damage,
-                    rangedAttackDamage))
+            RangedFireBlock gate = RangedWeaponRules.Diagnose(_playerLoadout, _inventory);
+            if (gate != RangedFireBlock.None)
             {
+                InteractionFeedback?.Invoke(gate == RangedFireBlock.NoWeapon
+                    ? "원거리 무기가 없다 — 아크 캐스터를 장착해야 한다"
+                    : "에너지 셀이 없다 — 코어 파편과 뇌관 화약으로 만든다");
+                yield break;
+            }
+
+            int range = _playerLoadout.RangedRange;
+            if (RangedWeaponRules.TryFire(
+                    _playerState, enemy.State, _grid.Map, _playerLoadout, _inventory,
+                    out int damage, out _, rangedAttackDamage))
+            {
+                InventoryChanged?.Invoke();
                 yield return FireRanged(enemy, damage);
             }
             else
             {
                 // 쏠 수 없으면 사격 가능 위치까지 접근한다 (SPD식). 탭당 1스텝 규칙 유지.
+                // 셀은 아직 안 썼다 — 접근만으로 탄이 줄면 이동이 곧 손해가 된다.
                 RangedBlockReason reason = CombatRules.DiagnoseRanged(
-                    _grid.Map, _playerPos, enemy.State.Position, rangedAttackRange);
+                    _grid.Map, _playerPos, enemy.State.Position, range);
                 if (!CombatRules.FindFiringPosition(
-                        _grid.Map, _playerPos, enemy.State.Position, rangedAttackRange,
+                        _grid.Map, _playerPos, enemy.State.Position, range,
                         out List<GridPos> firingPath,
                         pos => pos != _playerPos &&
                                (IsLivingEnemyAt(pos) || _grid.Map.Get(pos)?.kind == TileKind.WeakFloor)))
@@ -181,7 +193,7 @@ namespace ProjectC.Gameplay
                 {
                     RangedBlockReason.ElevationMismatch => "높이가 다르다 — 계단으로 접근한다",
                     RangedBlockReason.Blocked => "사선이 막혔다 — 접근한다",
-                    _ => $"사거리 밖(MAX {rangedAttackRange}) — 접근한다"
+                    _ => $"사거리 밖(MAX {range}) — 접근한다"
                 });
 
                 int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), firingPath.Count - 1);
@@ -191,10 +203,11 @@ namespace ProjectC.Gameplay
 
                 // 접근이 끝난 그 탭에서 조건이 갖춰졌으면 즉시 발사.
                 if (_playerState.IsAlive && enemy.State.IsAlive &&
-                    CombatRules.TryRanged(
-                        _playerState, enemy.State, _grid.Map, rangedAttackRange,
-                        out int approachDamage, rangedAttackDamage))
+                    RangedWeaponRules.TryFire(
+                        _playerState, enemy.State, _grid.Map, _playerLoadout, _inventory,
+                        out int approachDamage, out _, rangedAttackDamage))
                 {
+                    InventoryChanged?.Invoke();
                     yield return FireRanged(enemy, approachDamage);
                 }
             }

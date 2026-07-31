@@ -36,7 +36,11 @@ namespace ProjectC.Core
         {
             new Recipe(ItemKind.Herb, ItemKind.Herb, ItemKind.Potion),
             new Recipe(ItemKind.BlastPowder, ItemKind.BlastPowder, ItemKind.Bomb),
-            new Recipe(ItemKind.Bomb, ItemKind.FrostShard, ItemKind.FrostBomb)
+            new Recipe(ItemKind.Bomb, ItemKind.FrostShard, ItemKind.FrostBomb),
+            // 아크 캐스터 탄약. 전리품인 코어 파편을 태워야 만들어진다 — 생환 시 $25가 될
+            // 물건을 지금 쏘는 데 쓸지가 판돈이 되고, 그래서 원거리가 "공짜 최적해"로
+            // 돌아가지 않는다.
+            new Recipe(ItemKind.Gemstone, ItemKind.BlastPowder, ItemKind.EnergyCell)
         };
 
         /// <summary>재료 두 개(순서 무관)에 맞는 레시피를 찾는다. 없으면 false.</summary>

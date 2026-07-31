@@ -128,6 +128,21 @@ namespace ProjectC.Core
         /// </summary>
         public void Rehome(GridPos home) => _home = home;
 
+        /// <summary>
+        /// 맞았다 — 시야 밖에서 날아온 사격에도 반응한다. 원거리 무기가 생긴 뒤로
+        /// 이게 없으면 지각 반경 밖에서 쏘는 저격이 무저항 처형이 된다(카이팅 최적해 부활).
+        /// <para>
+        /// 도주 중이면 기분을 덮어쓰지 않는다 — 낮은 HP로 도망치던 개체가 한 대 맞고
+        /// 되돌아서면 도주 규칙(GDD §5.7)이 무의미해진다.
+        /// </para>
+        /// </summary>
+        public void OnDamaged(GridPos attackerAt)
+        {
+            if (Mood == MonsterMood.Flee) return;
+            Mood = MonsterMood.Chase;
+            LastSeenPlayerAt = attackerAt;
+        }
+
         public MonsterAction Decide(MonsterBrainContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));

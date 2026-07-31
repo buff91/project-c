@@ -43,7 +43,7 @@ namespace ProjectC.Gameplay
             if (!_inventory.TryUse(kind)) return false; // 방금 넣었으므로 실패할 일은 없다
             if (weaponSlot) _carriedWeaponId = definition.Id;
             else _carriedGearId = definition.Id;
-            _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+            SetPlayerLoadout(EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId));
             InventoryChanged?.Invoke();
 
             InteractionFeedback?.Invoke($"{definition.DisplayName} 장착 — {definition.Description}");
@@ -66,7 +66,7 @@ namespace ProjectC.Gameplay
             Debug.Log($"[Run] 반입 장비 소실: {_carriedWeaponId} / {_carriedGearId}");
             _carriedWeaponId = "";
             _carriedGearId = "";
-            _playerLoadout = CombatLoadout.Unarmed;
+            SetPlayerLoadout(CombatLoadout.Unarmed);
         }
 
         /// <summary>이어하기와 던전 전환이 공유하는 상태 이월(HP·인벤토리·전적).</summary>
@@ -84,7 +84,7 @@ namespace ProjectC.Gameplay
             // 반입 장비는 인벤토리와 같은 이월 경로를 탄다(이어하기·던전 체인 공용).
             _carriedWeaponId = data.carriedWeaponId ?? "";
             _carriedGearId = data.carriedGearId ?? "";
-            _playerLoadout = EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId);
+            SetPlayerLoadout(EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId));
 
             // 배고픔도 이월된다 — 모닥불에서 쉬어도 배는 채워지지 않는다.
             _hunger = data.hunger ?? new HungerState();
