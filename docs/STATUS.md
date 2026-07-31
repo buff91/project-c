@@ -217,6 +217,13 @@
     `Art/Environment` 16종이 교체됐다. 원정자도 치비 라이더(`actor-knight.aseprite` 자동
     조립 초안)로 교체 완료. 캡처: `docs/captures/neon-environment-live-v1.png` ·
     `rider-ingame-live-v1.png`.
+  - **원정자 정식 디자인 채택·초안 교체(2026-07-31)** — 필드 메딕 생존자(블론드+주황 팁
+    포니테일)를 정식 컨셉으로 채택하고 `actor-knight.aseprite`를 라이더 초안 → **메딕 자동
+    조립 초안**(11프레임/6태그, 4방향 기본 C01 + 액션 키포즈 9종, seed 2130163433 계보)으로
+    교체했다. 팔레트에 `hair-blonde-1/2` append(절도 검사 통과). 채택 근거·게이트 기록은
+    액터 계약 §4-c와 `reference/ref-cyberpunk-05-expeditioner-medic-concept.prompt.md` 소유.
+    **Unity 재임포트·화면 승인 미완** — 에디터에서 `Validate Sources` + PC Game View 캡처가
+    다음 검증 지점이다.
   - **M5 2차 슬라이스 반영됨(2026-07-30)** — hospital* 드레싱 9슬롯(바닥 그레이트/균열/
     서비스 + 상승 벽 3종×좌우)이 `environment-neon-dressing-v1` 레시피(C03 채택)로
     아케이드 어휘(자판기·꺼진 홀로 패널·상태 패널, 바닥은 균열선+전단지)로 교체됐다 —

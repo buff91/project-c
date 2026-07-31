@@ -1,0 +1,161 @@
+schema_version: 1
+id: actor-knight-medic-anim-v1
+name: 원정자 메딕 액션 키포즈 9종 v1 · 필드 메딕 정체성
+# actor-knight-medic-base-v1(4방향 기본, C01 채택)의 후속 스테이지. 라이더 초안이 검증한
+# 액션 레인을 그대로 탄다 — 동일 그래프, 포즈별 치비 BODY_18 가이드, 포즈 접미사,
+# 그리고 기본 스프라이트 승인 seed(2130163433)를 --seed로 고정해 정체성을 잇는다.
+# 기본 레시피와 달리 positive에 'standing'을 넣지 않는다 — death/fall 키포즈와 충돌한다.
+purpose:
+  category: actor
+  asset_type: concept
+  slot: actor-concept
+  use: concept
+  readability_goal: 승인된 메딕 정체성(포니테일·주황 팁·흰 재킷·사첼)이 9개 액션 키포즈에서 유지되고, 각 포즈의 상태 실루엣이 96×128에서 구분돼야 한다.
+  animation_scope: action-keyframes
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  normalize_rows:
+    crown: 8
+    feet: 122
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img-openpose
+  workflow: docs/art-direction/comfyui/actor-chibi-openpose-sdxl.api.json
+  checkpoint: animagine-xl-4.0-opt.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  shots:
+  - id: walk-contact-a
+    label: walk · contact A (왼발 앞)
+    seed_offset: 0
+    prompt_suffix: ', walking pose, wide stride contact, left leg forward'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-walk-contact-a.png
+  - id: walk-pass
+    label: walk · pass (교차)
+    seed_offset: 0
+    prompt_suffix: ', walking pose, passing step, body slightly raised'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-walk-pass.png
+  - id: walk-contact-b
+    label: walk · contact B (오른발 앞)
+    seed_offset: 0
+    prompt_suffix: ', walking pose, wide stride contact, right leg forward'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-walk-contact-b.png
+  - id: attack-windup
+    label: attack · windup
+    seed_offset: 0
+    prompt_suffix: ', attack windup pose, arm raised behind'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-attack-windup.png
+  - id: attack-impact
+    label: attack · impact
+    seed_offset: 0
+    prompt_suffix: ', attack swing pose, arm extended forward forcefully'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-attack-impact.png
+  - id: attack-recovery
+    label: attack · recovery
+    seed_offset: 0
+    prompt_suffix: ', attack recovery pose, weight returning to stance'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-attack-recovery.png
+  - id: hit
+    label: hit (피격)
+    seed_offset: 0
+    prompt_suffix: ', recoiling from a hit, backward body bend'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-hit.png
+  - id: fall
+    label: fall (낙하)
+    seed_offset: 0
+    prompt_suffix: ', falling sideways toward the floor, off balance'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-fall.png
+  - id: death
+    label: death (쓰러짐)
+    seed_offset: 0
+    prompt_suffix: ', collapsed on the ground, lying key pose'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-death.png
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 도트 클러스터와 하드 에지
+  attribution: Civitai model 144684 / version 160844
+controlnets:
+- model: controlnet-openpose-sdxl-xinsir.safetensors
+  loader_node: 6
+  apply_node: 7
+  strength: 0.9
+  purpose: 치비 골격으로 비율·포즈 고정 (end_percent 0.8)
+generation:
+  width: 1024
+  height: 1024
+  sampler: euler_ancestral
+  scheduler: karras
+  steps: 28
+  cfg: 5.0
+  denoise: 1.0
+  candidates: 1
+  seed_strategy: sequential-random-base
+prompt:
+  positive: 1girl, solo, chibi, pixel art, full body, field medic survivor, blonde messy short
+    ponytail with orange tint tips, determined kind eyes, reworked white coat as patched short jacket
+    with rolled sleeves, gray utility shirt, medical pouch on hip belt, shoulder satchel, fingerless gloves,
+    dark charcoal leggings, sturdy boots, visible face, large bright expressive eyes, isolated character,
+    simple gray background, flat color, clean pixel clusters, safe, masterpiece, high score, great score,
+    absurdres
+  negative: lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped,
+    worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry,
+    realistic proportions, tall body, small head, half-closed eyes, sleepy eyes, multiple views, multiple
+    characters, gradient background, scenery, photorealistic, 3d, neon overload, fully glowing outfit,
+    covered face, covered eyes, hidden eyes, mask over mouth, gas mask worn on face, weapon, baseball
+    bat, cyan outfit, glowing weapon, navy jacket, blue jacket
+quality_gates:
+  require_transparency_after_prepare: true
+  silhouette_tags:
+  - grounded-feet
+  - readable-face
+  - consistent-rows
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - malformed-anatomy
+  - realistic-proportions
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
+  reaction_legend:
+    thumbsup: style-fit
+    thumbsdown: reject
+    art: palette
+    bone: anatomy
+    soap: cleanup
+    triangular_ruler: scale-pivot
+    arrows_counterclockwise: variation

@@ -39,16 +39,24 @@ fully glowing outfit, covered eyes, hidden eyes, mask over mouth, covered face, 
 baseball bat
 ```
 
-## 승격 전 남은 게이트 (액터 계약 v2 기준)
+## 게이트 진행 기록 (2026-07-31 초안 승격까지)
 
-1. **팔레트 append** — `.gpl`에 블론드 헤어 램프가 없다(§3에서 skin 3단·hair-pink 2단만
-   append됨). `hair-blonde` 2단(base/light)을 같은 원칙으로 append해야 conform에서 머리가
-   fabric/tan 진흙색으로 양자화되지 않는다.
-2. **주황 팁 ↔ 앰버 광원 간섭**(§2.4) — 팁의 주황이 환경 앰버 광원과 혼동되지 않게
-   채도·명도 분리를 conform/Aseprite 마감에서 확인한다. 흰 재킷의 잔여 주황 얼룩은
-   소스 노이즈이므로 마감에서 제거.
-3. **정면 컨셉은 게임 투입 불가**(§4-b) — 3/4 부감 + 4방향 기본 스프라이트를
-   `actor-chibi-base-v1` 레인(OpenPose `guides/openpose/actor-chibi-*`, strength 0.9/end 0.8)
-   으로 재생성하고, 이 이미지는 그 잡의 정체성 레퍼런스로만 쓴다.
-4. 기본 슬롯 `allow_replace: false` — 4방향 승인 전 `actor-knight.aseprite`(치비 라이더
-   초안)를 교체하지 않는다.
+1. ~~팔레트 append~~ — **완료.** `hair-blonde-1/2`(#E0B94F/#F5E288) append.
+   기존 세트 재-conform 절도 검사에서 **블론드로 이동한 픽셀 0** 확인
+   (같은 검사에서 드러난 skin 램프의 기존 잠재 절도 632px은 별개 이슈로 분리).
+2. **4방향 기본 스프라이트** — `actor-knight-medic-base-v1` 잡
+   `ART-20260730-054450-dc29b2` **C01 채택**(south/west/north 정체성·얼굴 판독 성립,
+   C02는 방향 간 머리색 불일치로 거절). east 재롤(`ART-20260730-112626-6eb7bf`)은
+   두 후보 모두 정면 뷰로 나와 **거절** — C01 east를 유지하고 헤어 드리프트는 마감 몫.
+3. **액션 키포즈 9종** — `actor-knight-medic-anim-v1` 잡 `ART-20260730-113516-1f1d1c`
+   C01 채택(seed 2130163433 고정으로 기본 스프라이트와 정체성 연결).
+4. **초안 조립·승격** — conform 사본에 sig-ice→grey-6 일괄 재매핑(재킷 틸 오염 처방,
+   §3 실측과 같은 계열) 후 `medic-anim/animation-manifest.json` + Lua 조립기로
+   11프레임/6태그 `actor-knight-medic-draft.aseprite`를 만들어
+   `Art/Source/Aseprite/actor-knight.aseprite`(라이더 초안 자리)에 승격했다.
+
+## Aseprite 마감 잔여 항목 (사람 몫)
+
+- east 방향 헤어 볼륨·올리브 톤 재매핑 (기본 4방향 소스 세트 한정 — 초안 타임라인은 south만 쓴다)
+- walk-pass 포니테일 소실·fall 잔상 노이즈·death 핏자국 축소, 프레임 간 발 기준선 고정
+- 주황 팁 ↔ 앰버 광원 채도 분리 확인(§2.4), north 발밑 바닥선 제거
