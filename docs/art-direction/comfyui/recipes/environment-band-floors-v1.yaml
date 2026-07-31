@@ -1,0 +1,125 @@
+schema_version: 1
+id: environment-band-floors-v1
+name: 깊이 밴드 바닥 6종 스타일 트랜스퍼 v1 (플랜 v2 배치 1-1)
+# 소스 보드는 현행 승인 env-floor를 6셀에 깔고 셀마다 밴드 오염 어휘의 조악한 힌트를
+# 미리 그려 넣은 합성본(스크립트 합성 — stairs-source-v2의 "crude marker 교체" 방식).
+# 열 = mid/deep/boss (subjects/env-floor-*.yaml 어휘 준수), 행 = 기본/raised(얕은 전면 립).
+# §1-c: 석재 기본색은 깊이와 무관해야 한다 — 오염 어휘만 변하고 바탕색은 유지.
+# 채택 시 process_band_floors_v1.py 로 마감 — env-floor-{mid,deep,boss}(-raised).png
+# 정식 파일명 계약(ProjectCArtPivots Centered)으로 카탈로그 자동 연결, 절차
+# BandOverlay 는 슬롯이 채워지면 자동 비활성(BandFloorFallsBackToShared).
+purpose:
+  category: environment
+  asset_type: environment
+  slot: env-floor-band-source
+  use: gameplay-source-sheet
+  readability_goal: >-
+    기본 바닥과 같은 2:1 외곽·석재색을 유지하면서 열별 오염 어휘만 변주한다 —
+    mid 냉각수 얼룩(절제), deep 균열+철근+물때, boss hazard 조각+작은 틸 이상 심.
+    아랫줄은 얕은 전면 립의 raised 변형. 3×3 타일링에서 밴드가 바닥만으로 구분돼야 한다.
+  animation_scope: static-source-sheet
+output:
+  canvas:
+  - 1536
+  - 1024
+  pivot:
+  - 0.5
+  - 0.5
+  fit: strict
+  anchor: center
+  padding: 0
+  alpha_cutoff: 80
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: manual-processor
+  processor: Tools/ArtPipeline/process_band_floors_v1.py
+  allow_replace: false
+pipeline:
+  type: sdxl-img2img
+  workflow: docs/art-direction/comfyui/environment-styletransfer.api.json
+  checkpoint: zavychromaxl_v100.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 5.text
+    negative: 6.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    denoise: 9.denoise
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  uploads:
+    7.image: docs/art-direction/project-c-band-floors-source-board-v1.png
+loras:
+- name: project-c-isopixel-sdxl-v1.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.3
+  clip_strength: 0.3
+  purpose: 2:1 아이소메트릭 형태 유지
+  attribution: Civitai model 149080 / version 166425
+- name: project-c-envy-junkworld-xl01.safetensors
+  node: 3
+  base_model: SDXL
+  model_strength: 0.15
+  clip_strength: 0.15
+  purpose: 균열·마모 재질 소량 — 바탕 저채도 유지
+  attribution: Civitai model 233573 / version 263472
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 4
+  base_model: SDXL
+  model_strength: 0.55
+  clip_strength: 0.55
+  purpose: 하드 픽셀 에지 + 큰 클러스터 (§1-d 렌더링 문법 계약)
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1536
+  height: 1024
+  sampler: dpmpp_2m
+  scheduler: karras
+  steps: 28
+  cfg: 6.0
+  denoise: 0.5
+  candidates: 4
+  seed_strategy: sequential-random-base
+# 1라운드(denoise 0.55) 기각 메모: 석재색이 웜 그레이 → 한색 세이지로 드리프트했고
+# (§1-c 위반), boss 셀의 hazard/틸 힌트가 지워져 밴드 식별이 무너졌다. 2라운드는
+# 소스 힌트를 키우고 denoise를 내리며, 프롬프트가 틸을 오른쪽 열 심 하나로 제한한다.
+# conform(process_band_floors_v1)의 웜 가드가 잔여 색 드리프트를 결정론적으로 잡는다.
+prompt:
+  positive: >-
+    Pixel Art, PixArFK, polished chunky isometric pixel art, exact 2:1 dimetric
+    modular floor tiles, clean flat color planes, large deliberate pixel
+    clusters, six abandoned arcade tower concrete floor tiles all sharing the
+    same warm gray concrete base color as the source, left column tiles nearly
+    clean with a few sparse dried gray-green coolant stains, middle column
+    tiles with dense dark cracks, one thick exposed rusty rebar line and a wide
+    old water tide ring, right column tiles with crushed dark patches, one bold
+    chipped yellow-black hazard stripe fragment and exactly one short glowing
+    teal seam, teal appears only on right column tiles, bottom row tiles with
+    one readable shallow dark concrete front lip, crisp hard edges, blue-black
+    charcoal shadows, preserve exact source sheet cell positions, scale,
+    perspective, silhouettes, spacing, and flat magenta background
+  negative: >-
+    cool sage green concrete, olive concrete, changed base color per tile,
+    teal on left or middle column, colorful floor, saturated floor, neon flood,
+    glowing full rune, magic circle, complete hazard border, speckle, fine
+    grain noise, gritty texture, dust specks, fantasy masonry, wood planks,
+    torches, arches, runes, excessive dithering, white outline noise,
+    photorealism, smooth 3d, vector look, text, letters, labels, watermark,
+    overlapping cells, changed layout, changed projection, missing tiles,
+    tall block, floating platform, hole, stairs, wall, object pile
+quality_gates:
+  exact_dimensions:
+  - 1536
+  - 1024
+  preserve_layout: true
+  preserve_projection: "2:1"
+  reject_if:
+  - overlapping-cells
+  - missing-cell
+  - changed-base-color
+  - neon-flooded-floor
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: processor-review

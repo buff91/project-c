@@ -70,12 +70,12 @@ MonoBehaviour:
   floor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   raisedFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   lowerFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
-  midFloor: {fileID: 0}
-  midRaisedFloor: {fileID: 0}
-  deepFloor: {fileID: 0}
-  deepRaisedFloor: {fileID: 0}
-  bossFloor: {fileID: 0}
-  bossRaisedFloor: {fileID: 0}
+  midFloor: {fileID: 21300000, guid: 782e561a473964c5eade17c04b1ba452, type: 3}
+  midRaisedFloor: {fileID: 21300000, guid: 9a44a289e3c9f4d14b4670dca2f8970f, type: 3}
+  deepFloor: {fileID: 21300000, guid: be28eb0f8bdde488b8f2efeb1cbcf526, type: 3}
+  deepRaisedFloor: {fileID: 21300000, guid: cec597534c8cb41cda842316be9f2812, type: 3}
+  bossFloor: {fileID: 21300000, guid: f5986403e3a8146d59dbe6d972984567, type: 3}
+  bossRaisedFloor: {fileID: 21300000, guid: 740aed733bda842798dc07aa04563c73, type: 3}
   hospitalFloorGrate: {fileID: 21300000, guid: 9cddb697874684333b190001f1e01a65, type: 3}
   hospitalFloorCracked: {fileID: 21300000, guid: 413813368492348acb0a020a0352e122, type: 3}
   hospitalFloorService: {fileID: 21300000, guid: a22b47113a83945b18a8c36f7b1418f6, type: 3}
