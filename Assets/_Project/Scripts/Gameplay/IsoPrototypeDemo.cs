@@ -228,12 +228,18 @@ namespace ProjectC.Gameplay
         private void SetPlayerLoadout(CombatLoadout loadout)
         {
             _playerLoadout = loadout;
+            // 용량이 줄어드는 교체(아크 캐스터 → 근접 무기)에서 넘치는 충전을 깎는다.
+            _rangedCharges?.ClampTo(_playerLoadout);
             if (_playerLoadout.HasRanged || combatMode != CombatActionMode.Ranged) return;
             combatMode = CombatActionMode.Melee;
             CombatModeChanged?.Invoke(combatMode);
         }
 
-        /// <summary>남은 에너지 셀 충전(= 남은 사격 횟수).</summary>
+        /// <summary>남은 사격 충전과 최대치 — HUD·액션 휠이 "지금 몇 발 남았나"를 보여 준다.</summary>
+        public int RangedCharges => _rangedCharges?.charges ?? 0;
+        public int RangedChargeCapacity => _playerLoadout.RangedCapacity;
+
+        /// <summary>급속 충전재(에너지 셀) 보유 회분.</summary>
         public int EnergyCellCharges => _inventory?.Count(ItemKind.EnergyCell) ?? 0;
         public string VerticalHintLabel => BuildVerticalHintLabel();
         public string HudHeightLabel => _dungeon == null
@@ -343,6 +349,8 @@ namespace ProjectC.Gameplay
         public event System.Action PlayerPositionChanged;
         public event System.Action VerticalContextChanged;
         public event System.Action InventoryChanged;
+        /// <summary>사격 충전이 줄거나 찼다 — HUD·액션 휠 라벨이 남은 발수를 다시 그린다.</summary>
+        public event System.Action RangedChargesChanged;
         public event System.Action<bool> BombAimingChanged;
         public event System.Action PlayerHpChanged;
         public event System.Action BossStateChanged;
@@ -397,6 +405,9 @@ namespace ProjectC.Gameplay
 
         /// <summary>배고픔 — 판 전체를 관통하는 부드러운 시계. 층·던전이 바뀌어도 이어진다.</summary>
         private HungerState _hunger = new HungerState();
+
+        /// <summary>원거리 충전 — 쏘면 줄고 턴이 지나면 스스로 찬다(<see cref="RangedChargeState"/>).</summary>
+        private RangedChargeState _rangedCharges = new RangedChargeState();
         private HungerStage _lastHungerStage = HungerStage.Fed;
 
         public HungerStage HungerStage => _hunger.Stage;
@@ -564,7 +575,11 @@ namespace ProjectC.Gameplay
                 }
                 SetPlayerLoadout(EquipmentRules.LoadoutFor(_carriedWeaponId, _carriedGearId));
                 if (continueData == null && _stageIndex == 1)
+                {
                     _hunger = new HungerState(); // 새 원정은 배부른 상태로 출발한다
+                    // 사격도 만충으로 출발한다 — 첫 교전에서 이 축을 한 번은 써 보게 한다.
+                    _rangedCharges = RangedChargeState.Full(_playerLoadout);
+                }
                 _lastHungerStage = _hunger.Stage;
             }
 

@@ -176,12 +176,12 @@ namespace ProjectC.Core
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
             DefineEquipment(ItemKind.PaddedBoots, "BOOTS", OneCell),
             DefineEquipment(ItemKind.ArcCaster, "CASTER", Tall),
-            // 칸당 4회분. 아크 캐스터는 무기지 소모품이 아니라서, 탄약이 칸을 많이 먹으면
-            // "무기를 낄까"가 아니라 "탄을 들고 갈까"가 결정이 돼 버린다. 투척 볼트(3)보다
-            // 큰 이유는 볼트가 그 자체로 한 발이지만 셀은 장비가 있어야 의미가 생겨서다.
+            // 칸당 2회분. 사격은 기다리면 공짜로 차므로 셀은 "쏠 수 있게 하는 것"이 아니라
+            // **기다리지 않게 하는 것**이다 — 교전 중 한 번에 만충시키는 급속 충전재다.
+            // 그래서 상시 휴대품이 아니라 결정적인 순간에 한두 번 쓰는 물건으로 둔다.
             Define(ItemKind.EnergyCell, ItemCategory.Consumable, "에너지 셀", "CELL",
-                "아크 캐스터의 탄약. 사격 1회에 1충전을 쓴다. 셀이 없으면 쏠 수 없다.",
-                shopPrice: 12, chargesPerItem: 4),
+                "쓰면 사격 충전이 즉시 가득 찬다. 기다릴 수 없을 때의 급속 충전재다.",
+                shopPrice: 12, chargesPerItem: 2),
             // 칸당 3회분. 배고픔은 판 전체를 관통하는 상시 압박이라(가득 찬 배 100턴)
             // 통조림은 "한 번 챙기고 잊는 것"이 아니라 계속 다시 채우는 소모품이고,
             // 1회분 = 1칸이던 시절엔 그 리듬이 백팩 상시 점유로 나타났다.

@@ -4,9 +4,9 @@ using ProjectC.Core;
 namespace ProjectC.Tests
 {
     /// <summary>
-    /// 원거리는 기본 능력이 아니라 무기(사거리)와 탄약(에너지 셀)이 함께 있을 때만 열린다.
-    /// 이 계약이 깨지면 무료 원거리로 돌아가 카이팅이 언제나 최적해가 된다(M4의 이유).
-    /// 판정과 소비가 갈라지지 않는 것도 여기서 고정한다 — 빗나간 사격은 탄을 먹지 않는다.
+    /// 원거리는 <b>기본으로 쥐어 주되 연사할 수 없다</b>. 무제한이면 카이팅이 항상 정답이 되고,
+    /// 탄약 아이템만으로 막으면 다 쓴 판은 그 축이 통째로 사라져 저울질 자체가 불가능해진다.
+    /// 그 사이를 잡는 것이 충전·재충전이며, 판정과 소비가 갈라지지 않는 것도 여기서 고정한다.
     /// </summary>
     public class RangedWeaponRulesTests
     {
@@ -17,111 +17,130 @@ namespace ProjectC.Tests
             return map;
         }
 
-        private static CombatLoadout ArcCaster() =>
-            EquipmentRules.LoadoutFor("arc-caster", "");
-
-        private static Inventory WithCells(int charges)
-        {
-            var inventory = new Inventory();
-            if (charges > 0) inventory.Add(ItemKind.EnergyCell, charges);
-            return inventory;
-        }
+        private static CombatLoadout Emitter() => CombatLoadout.Unarmed;
+        private static CombatLoadout ArcCaster() => EquipmentRules.LoadoutFor("arc-caster", "");
 
         [Test]
-        public void Unarmed_HasNoRanged_AndDiagnosesNoWeapon()
+        public void EveryLoadout_KeepsRanged_SoThePlayerAlwaysSeesTheAxis()
         {
-            Assert.IsFalse(CombatLoadout.Unarmed.HasRanged);
-            Assert.AreEqual(
-                RangedFireBlock.NoWeapon,
-                RangedWeaponRules.Diagnose(CombatLoadout.Unarmed, WithCells(4)));
-        }
-
-        [Test]
-        public void ArcCaster_WithoutCells_DiagnosesNoAmmo()
-        {
+            Assert.IsTrue(Emitter().HasRanged, "내장 이미터가 없으면 초반에 원거리를 볼 수 없다");
             Assert.IsTrue(ArcCaster().HasRanged);
+            // 근접 무기를 골라도 원거리 축은 남는다(기본형으로 내려갈 뿐).
+            CombatLoadout lance = EquipmentRules.LoadoutFor("pipe-spear", "");
+            Assert.IsTrue(lance.HasRanged);
+            Assert.AreEqual(RangedWeaponRules.Baseline.Range, lance.RangedRange);
+        }
+
+        [Test]
+        public void ArcCaster_DeepensTheAxis_WithoutTouchingMeleeReach()
+        {
+            CombatLoadout caster = ArcCaster();
+            Assert.Greater(caster.RangedRange, Emitter().RangedRange);
+            Assert.Greater(caster.RangedCapacity, Emitter().RangedCapacity);
+            Assert.Less(caster.RangedRechargeTurns, Emitter().RangedRechargeTurns);
+            // 원거리 무기가 근접까지 늘리면 "붙을까 떨어질까"가 선택이 아니게 된다.
+            Assert.AreEqual(1, caster.MeleeReach);
+        }
+
+        [Test]
+        public void EmptyCharges_DiagnoseNoCharge()
+        {
+            var charges = new RangedChargeState(0);
             Assert.AreEqual(
-                RangedFireBlock.NoAmmo,
-                RangedWeaponRules.Diagnose(ArcCaster(), WithCells(0)));
+                RangedFireBlock.NoCharge,
+                RangedWeaponRules.Diagnose(Emitter(), charges));
         }
 
         [Test]
-        public void Fire_ConsumesExactlyOneCharge_PerHit()
-        {
-            GridMap map = Corridor(6);
-            var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
-            var target = new CombatantState("e", new GridPos(4, 0, 0), 20, 1);
-            Inventory inventory = WithCells(2);
-
-            Assert.IsTrue(RangedWeaponRules.TryFire(
-                attacker, target, map, ArcCaster(), inventory,
-                out int damage, out RangedFireBlock block, attackPower: 1));
-
-            Assert.AreEqual(RangedFireBlock.None, block);
-            Assert.Greater(damage, 0);
-            Assert.AreEqual(1, inventory.Count(ItemKind.EnergyCell));
-        }
-
-        [Test]
-        public void Fire_OutOfRange_KeepsAmmo_AndReportsNoShot()
-        {
-            // 아크 캐스터 사거리 5 — 6칸 밖은 닿지 않는다.
-            GridMap map = Corridor(8);
-            var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
-            var target = new CombatantState("e", new GridPos(7, 0, 0), 20, 1);
-            Inventory inventory = WithCells(3);
-
-            Assert.IsFalse(RangedWeaponRules.TryFire(
-                attacker, target, map, ArcCaster(), inventory,
-                out int damage, out RangedFireBlock block, attackPower: 1));
-
-            Assert.AreEqual(RangedFireBlock.NoShot, block);
-            Assert.AreEqual(0, damage);
-            Assert.AreEqual(3, inventory.Count(ItemKind.EnergyCell), "빗나간 사격이 탄을 먹었다");
-        }
-
-        [Test]
-        public void Fire_WithoutWeapon_NeverTouchesAmmo()
+        public void Fire_SpendsExactlyOneCharge_PerHit()
         {
             GridMap map = Corridor(4);
             var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
             var target = new CombatantState("e", new GridPos(2, 0, 0), 20, 1);
-            Inventory inventory = WithCells(4);
-
-            Assert.IsFalse(RangedWeaponRules.TryFire(
-                attacker, target, map, CombatLoadout.Unarmed, inventory,
-                out _, out RangedFireBlock block));
-
-            Assert.AreEqual(RangedFireBlock.NoWeapon, block);
-            Assert.AreEqual(4, inventory.Count(ItemKind.EnergyCell));
-        }
-
-        [Test]
-        public void Fire_DrainsToEmpty_ThenBlocksOnAmmo()
-        {
-            GridMap map = Corridor(6);
-            var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
-            var target = new CombatantState("e", new GridPos(3, 0, 0), 99, 1);
-            Inventory inventory = WithCells(1);
+            CombatLoadout loadout = Emitter();
+            RangedChargeState charges = RangedChargeState.Full(loadout);
+            int before = charges.charges;
 
             Assert.IsTrue(RangedWeaponRules.TryFire(
-                attacker, target, map, ArcCaster(), inventory, out _, out _, attackPower: 1));
-            Assert.AreEqual(0, inventory.Count(ItemKind.EnergyCell));
+                attacker, target, map, loadout, charges,
+                out int damage, out RangedFireBlock block, attackPower: 1));
 
-            Assert.IsFalse(RangedWeaponRules.TryFire(
-                attacker, target, map, ArcCaster(), inventory,
-                out _, out RangedFireBlock block, attackPower: 1));
-            Assert.AreEqual(RangedFireBlock.NoAmmo, block);
+            Assert.AreEqual(RangedFireBlock.None, block);
+            Assert.Greater(damage, 0);
+            Assert.AreEqual(before - 1, charges.charges);
         }
 
         [Test]
-        public void ArcCaster_OpensRange_WithoutTouchingMeleeReach()
+        public void Fire_OutOfRange_KeepsCharges_AndReportsNoShot()
+        {
+            // 내장 이미터 사거리 3 — 그 밖은 닿지 않는다.
+            GridMap map = Corridor(9);
+            var attacker = new CombatantState("p", new GridPos(0, 0, 0), 10, 3);
+            var target = new CombatantState("e", new GridPos(8, 0, 0), 20, 1);
+            CombatLoadout loadout = Emitter();
+            RangedChargeState charges = RangedChargeState.Full(loadout);
+
+            Assert.IsFalse(RangedWeaponRules.TryFire(
+                attacker, target, map, loadout, charges,
+                out int damage, out RangedFireBlock block, attackPower: 1));
+
+            Assert.AreEqual(RangedFireBlock.NoShot, block);
+            Assert.AreEqual(0, damage);
+            Assert.AreEqual(loadout.RangedCapacity, charges.charges, "빗나간 사격이 충전을 먹었다");
+        }
+
+        [Test]
+        public void Charges_RefillOverTurns_ButNeverPastCapacity()
+        {
+            CombatLoadout loadout = Emitter();
+            var charges = new RangedChargeState(0);
+
+            Assert.IsFalse(charges.Tick(loadout, RangedWeaponRules.Baseline.RechargeTurns - 1));
+            Assert.AreEqual(0, charges.charges);
+
+            Assert.IsTrue(charges.Tick(loadout));
+            Assert.AreEqual(1, charges.charges);
+
+            charges.Tick(loadout, RangedWeaponRules.Baseline.RechargeTurns * 10);
+            Assert.AreEqual(loadout.RangedCapacity, charges.charges);
+        }
+
+        [Test]
+        public void FullCharges_DoNotBankTurns_ForAFreeInstantShot()
+        {
+            CombatLoadout loadout = Emitter();
+            RangedChargeState charges = RangedChargeState.Full(loadout);
+
+            // 만충인 채로 오래 서 있어도 회복 카운터가 쌓이면 안 된다.
+            charges.Tick(loadout, RangedWeaponRules.Baseline.RechargeTurns * 5);
+            charges.charges--; // 한 발 쏜 셈
+
+            Assert.IsFalse(
+                charges.Tick(loadout),
+                "만충 중 쌓인 턴이 사격 직후 공짜 재충전으로 터졌다");
+        }
+
+        [Test]
+        public void Cell_RefillsToFull_ButIsRefusedWhenAlreadyFull()
         {
             CombatLoadout loadout = ArcCaster();
-            Assert.AreEqual(5, loadout.RangedRange);
-            // 원거리 무기가 근접까지 늘리면 "붙을까 떨어질까"가 선택이 아니게 된다.
-            Assert.AreEqual(1, loadout.MeleeReach);
-            Assert.AreEqual(0, EquipmentRules.LoadoutFor("pipe-spear", "").RangedRange);
+            var charges = new RangedChargeState(1);
+
+            Assert.IsTrue(charges.TryRefill(loadout));
+            Assert.AreEqual(loadout.RangedCapacity, charges.charges);
+            // 가득이면 셀을 낭비하지 않는다.
+            Assert.IsFalse(charges.TryRefill(loadout));
+        }
+
+        [Test]
+        public void SwappingToASmallerWeapon_ClampsOverflowCharges()
+        {
+            RangedChargeState charges = RangedChargeState.Full(ArcCaster());
+            CombatLoadout emitter = Emitter();
+
+            charges.ClampTo(emitter);
+
+            Assert.AreEqual(emitter.RangedCapacity, charges.charges);
         }
     }
 }

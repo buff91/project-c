@@ -33,11 +33,9 @@ namespace ProjectC.Gameplay
 
         public void ToggleCombatMode()
         {
-            // 원거리는 무기를 껴야 열린다 — 없는 모드로 들어가 놓고 탭할 때마다
-            // 실패 메시지를 보게 하지 않는다(M4: 무료 원거리 폐지).
             if (combatMode == CombatActionMode.Melee && !_playerLoadout.HasRanged)
             {
-                InteractionFeedback?.Invoke("원거리 무기가 없다 — 아크 캐스터를 장착해야 한다");
+                InteractionFeedback?.Invoke("원거리 장비가 없다");
                 return;
             }
 
@@ -47,7 +45,7 @@ namespace ProjectC.Gameplay
             CombatModeChanged?.Invoke(combatMode);
             InteractionFeedback?.Invoke(combatMode == CombatActionMode.Melee
                 ? "MELEE: 적을 탭해 접근 공격"
-                : $"RANGED: 사거리 {_playerLoadout.RangedRange}, 셀 {_inventory?.Count(ItemKind.EnergyCell) ?? 0}발");
+                : $"RANGED: 사거리 {_playerLoadout.RangedRange} · 충전 {RangedCharges}/{RangedChargeCapacity}");
         }
 
         public void ApplyVisualSettings()

@@ -80,18 +80,16 @@ namespace ProjectC.Gameplay
                     Action = () => demo.ToggleFrostBombAim(),
                     Enabled = demo.FrostBombCount > 0
                 },
-                // 원거리 토글은 아크 캐스터를 껴야 열린다(M4) — 없는 모드로 들어가 놓고
-                // 탭할 때마다 실패를 보게 하지 않는다. 셀은 남은 사격 횟수로 보여 준다.
+                // 원거리는 누구나 쓰지만 연사할 수 없다 — 라벨이 남은 충전을 이고 있어야
+                // "지금 쏠까, 붙을까"를 휠에서 바로 판단한다.
                 new WheelSlot
                 {
                     Label = demo.CombatMode == CombatActionMode.Melee
-                        ? (demo.HasRangedWeapon ? $"사격 ×{demo.EnergyCellCharges}" : "원거리")
+                        ? $"사격 {demo.RangedCharges}/{demo.RangedChargeCapacity}"
                         : "근접",
-                    Tooltip = !demo.HasRangedWeapon
-                        ? "원거리 무기 없음 — 아크 캐스터를 장착해야 한다"
-                        : demo.CombatMode == CombatActionMode.Melee
-                            ? $"아크 캐스터로 전환 · 남은 셀 {demo.EnergyCellCharges}발"
-                            : "근접 전투로 전환",
+                    Tooltip = demo.CombatMode == CombatActionMode.Melee
+                        ? $"사격으로 전환 · 충전 {demo.RangedCharges}/{demo.RangedChargeCapacity}"
+                        : "근접 전투로 전환",
                     IconClass = demo.CombatMode == CombatActionMode.Melee
                         ? "ui-ranged-icon"
                         : "ui-melee-icon",

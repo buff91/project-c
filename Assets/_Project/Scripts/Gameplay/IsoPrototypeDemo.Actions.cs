@@ -156,21 +156,21 @@ namespace ProjectC.Gameplay
         /// </summary>
         private IEnumerator RangedAttack(EnemyAgent enemy)
         {
-            RangedFireBlock gate = RangedWeaponRules.Diagnose(_playerLoadout, _inventory);
+            RangedFireBlock gate = RangedWeaponRules.Diagnose(_playerLoadout, _rangedCharges);
             if (gate != RangedFireBlock.None)
             {
                 InteractionFeedback?.Invoke(gate == RangedFireBlock.NoWeapon
-                    ? "원거리 무기가 없다 — 아크 캐스터를 장착해야 한다"
-                    : "에너지 셀이 없다 — 코어 파편과 뇌관 화약으로 만든다");
+                    ? "원거리 장비가 없다"
+                    : $"충전 없음 — {_playerLoadout.RangedRechargeTurns}턴마다 1칸 찬다 (에너지 셀로 즉시 충전)");
                 yield break;
             }
 
             int range = _playerLoadout.RangedRange;
             if (RangedWeaponRules.TryFire(
-                    _playerState, enemy.State, _grid.Map, _playerLoadout, _inventory,
+                    _playerState, enemy.State, _grid.Map, _playerLoadout, _rangedCharges,
                     out int damage, out _, rangedAttackDamage))
             {
-                InventoryChanged?.Invoke();
+                RangedChargesChanged?.Invoke();
                 yield return FireRanged(enemy, damage);
             }
             else
@@ -204,10 +204,10 @@ namespace ProjectC.Gameplay
                 // 접근이 끝난 그 탭에서 조건이 갖춰졌으면 즉시 발사.
                 if (_playerState.IsAlive && enemy.State.IsAlive &&
                     RangedWeaponRules.TryFire(
-                        _playerState, enemy.State, _grid.Map, _playerLoadout, _inventory,
+                        _playerState, enemy.State, _grid.Map, _playerLoadout, _rangedCharges,
                         out int approachDamage, out _, rangedAttackDamage))
                 {
-                    InventoryChanged?.Invoke();
+                    RangedChargesChanged?.Invoke();
                     yield return FireRanged(enemy, approachDamage);
                 }
             }
@@ -228,6 +228,16 @@ namespace ProjectC.Gameplay
         /// 배고픔 한 턴. 굶고 있으면 주기마다 HP를 깎고, 단계가 바뀔 때만 알린다 —
         /// 매 턴 경고하면 소음이 되고, 아무 말도 없으면 조용히 죽는다.
         /// </summary>
+        /// <summary>
+        /// 턴당 사격 충전 회복. 배고픔과 같은 적 페이즈 진입점에서 돈다 — 재충전을
+        /// "기다림"으로 느끼게 하려면 시간의 단위가 다른 소모 규칙과 같아야 한다.
+        /// </summary>
+        private void TickRangedCharges()
+        {
+            if (hubMode || _rangedCharges == null) return;
+            if (_rangedCharges.Tick(_playerLoadout)) RangedChargesChanged?.Invoke();
+        }
+
         private IEnumerator TickHunger()
         {
             if (hubMode || _playerState == null || !_playerState.IsAlive) yield break;
@@ -264,6 +274,44 @@ namespace ProjectC.Gameplay
 
             SetBombAiming(false);
             _moveRoutine = StartCoroutine(RunPlayerAction(EatFoodAction()));
+        }
+
+        /// <summary>에너지 셀로 사격 충전을 즉시 채운다. 행동 1회를 소비한다.</summary>
+        public void UseEnergyCell()
+        {
+            if (!Application.isPlaying || _resolvingAction ||
+                _playerState == null || !_playerState.IsAlive)
+                return;
+            if (_inventory.Count(ItemKind.EnergyCell) <= 0)
+            {
+                InteractionFeedback?.Invoke("에너지 셀이 없다");
+                return;
+            }
+            // 가득이면 쓰지 않는다 — 셀은 사격 횟수가 아니라 기다림을 사는 물건이라
+            // 만충일 때 소비하면 아무것도 사지 않고 버리는 셈이 된다.
+            if (_rangedCharges.IsFull(_playerLoadout))
+            {
+                InteractionFeedback?.Invoke("충전이 이미 가득하다");
+                return;
+            }
+
+            SetBombAiming(false);
+            _moveRoutine = StartCoroutine(RunPlayerAction(UseEnergyCellAction()));
+        }
+
+        private IEnumerator UseEnergyCellAction()
+        {
+            _inventory.TryUse(ItemKind.EnergyCell);
+            _runTelemetry?.RecordItemUsed(ItemKind.EnergyCell, GlobalFloorIndex(_activeFloorIndex));
+            InventoryChanged?.Invoke();
+
+            _rangedCharges.TryRefill(_playerLoadout);
+            RangedChargesChanged?.Invoke();
+            InteractionFeedback?.Invoke($"급속 충전 — 사격 {_rangedCharges.charges}발");
+            Debug.Log($"[Ranged] 에너지 셀 사용 → 충전 {_rangedCharges.charges}");
+            yield return FlashColor(_playerRenderer, new Color32(61, 225, 232, 255));
+
+            yield return ResolveEnemyPhase();
         }
 
         private IEnumerator EatFoodAction()

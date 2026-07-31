@@ -37,6 +37,7 @@ namespace ProjectC.Gameplay
             _runTelemetry?.RecordTurn(GlobalFloorIndex(_activeFloorIndex));
             _enemyPhaseMapChanged = false;
 
+            TickRangedCharges();
             yield return TickHunger();
             if (!_playerState.IsAlive)
             {

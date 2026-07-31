@@ -55,6 +55,13 @@ namespace ProjectC.Core
 
         /// <summary>배고픔은 판 전체를 관통한다 — 층·던전이 바뀌어도 이어진다.</summary>
         public HungerState hunger = new HungerState();
+
+        /// <summary>
+        /// 사격 충전도 판을 관통한다. 층 전환마다 만충으로 리셋되면 계단 앞에서 기다렸다
+        /// 내려가는 것이 최적해가 되고, 재충전을 기다리게 만든 이유가 사라진다.
+        /// (옛 세이브에는 없다 — null 이면 만충으로 시작한다)
+        /// </summary>
+        public RangedChargeState rangedCharges;
         public List<int> usedRestFloorIndices = new List<int>();
         public RunTelemetry telemetry;
 

@@ -120,8 +120,9 @@ namespace ProjectC.Tests
         }
 
         /// <summary>
-        /// 에너지 셀은 전리품(코어 파편)을 태워야 나온다 — 생환 시 $25가 될 물건을 지금
-        /// 쏘는 데 쓸지가 판돈이라야 원거리가 공짜 최적해로 돌아가지 않는다(M4).
+        /// 에너지 셀은 전리품(코어 파편)을 태워야 나온다. 사격 자체는 기다리면 공짜로 차므로
+        /// 셀이 사는 것은 <b>사격 횟수가 아니라 시간</b>이다 — 급할 때 즉시 만충시키는 값으로
+        /// 생환 시 $25가 될 물건을 태우는 게 맞는지가 판단거리가 된다.
         /// </summary>
         [Test]
         public void EnergyCell_IsCraftedFromTreasureAndPowder()
@@ -138,9 +139,9 @@ namespace ProjectC.Tests
             Assert.IsTrue(CraftingRules.TryCraft(inventory, recipe));
             Assert.AreEqual(0, inventory.Count(ItemKind.Gemstone));
             Assert.AreEqual(0, inventory.Count(ItemKind.BlastPowder));
-            // 칸당 4충전 = 사격 4회분.
             Assert.AreEqual(1, inventory.Count(ItemKind.EnergyCell));
-            Assert.AreEqual(4, ItemCatalog.ChargesPerItem(ItemKind.EnergyCell));
+            // 급속 충전재라 상시 휴대품이 아니다 — 칸당 회분을 적게 둔다.
+            Assert.AreEqual(2, ItemCatalog.ChargesPerItem(ItemKind.EnergyCell));
         }
     }
 }

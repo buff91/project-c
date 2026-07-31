@@ -88,6 +88,9 @@ namespace ProjectC.Gameplay
 
             // 배고픔도 이월된다 — 모닥불에서 쉬어도 배는 채워지지 않는다.
             _hunger = data.hunger ?? new HungerState();
+            // 사격 충전도 같은 경로로 이월한다. 옛 세이브(null)는 만충으로 시작한다.
+            _rangedCharges = data.rangedCharges ?? RangedChargeState.Full(_playerLoadout);
+            _rangedCharges.ClampTo(_playerLoadout);
             _lastHungerStage = _hunger.Stage;
 
             _runSummary = new RunSummary(
@@ -134,6 +137,7 @@ namespace ProjectC.Gameplay
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
                 hunger = _hunger.Clone(),
+                rangedCharges = _rangedCharges,
                 telemetry = _runTelemetry
             };
             data.WriteItems(_inventory);
@@ -410,6 +414,7 @@ namespace ProjectC.Gameplay
                 carriedWeaponId = _carriedWeaponId,
                 carriedGearId = _carriedGearId,
                 hunger = _hunger.Clone(),
+                rangedCharges = _rangedCharges,
                 telemetry = _runTelemetry
             };
             carry.WriteItems(_inventory);
