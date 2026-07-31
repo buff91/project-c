@@ -1,0 +1,98 @@
+schema_version: 1
+id: actor-arc-drone-chibi-base-v1
+name: 합선 드론 치비 기본 스프라이트 v1 · 비인간형
+# 치비 레인 파생이지만 드론은 비인간형이라 openpose 골격을 쓰지 않는다(txt2img).
+# 출력·팔레트·리뷰 계약은 레인과 동일. §1-b 계열 실루엣: 각진 몸통 + 안테나(경비 드론
+# 어휘 승계) + 노출된 아크 코일. §1-a warning 포인트는 붉은 램프 1개.
+# 절차 폴백(월드 0.59×0.66)보다 작게 렌더되는 결손 해소가 목적 — 96×96 캔버스.
+purpose:
+  category: actor
+  asset_type: concept
+  slot: actor-concept
+  use: concept
+  readability_goal: >-
+    각진 부유 드론 + 안테나 + 아크 코일이 게임 스케일에서 즉시 드론으로 읽혀야
+    한다. 익명(얼굴 없음), 신호색은 붉은 램프 한 곳. 인간형 금지.
+  animation_scope: base-single
+output:
+  canvas:
+  - 96
+  - 96
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img
+  workflow: docs/art-direction/comfyui/actor-idle.api.json
+  checkpoint: animagine-xl-4.0-opt.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    width: 5.width
+    height: 5.height
+    seed: 6.seed
+    steps: 6.steps
+    cfg: 6.cfg
+    sampler: 6.sampler_name
+    scheduler: 6.scheduler
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 도트 클러스터와 하드 에지
+  attribution: Civitai model 144684 / version 160844
+controlnets: []
+generation:
+  width: 1024
+  height: 1024
+  sampler: euler_ancestral
+  scheduler: karras
+  steps: 28
+  cfg: 5.0
+  denoise: 1.0
+  candidates: 4
+  seed_strategy: sequential-random-base
+prompt:
+  positive: >-
+    solo, chibi, pixel art, small hovering security drone, angular boxy
+    gray metal shell, dented panels, one short bent antenna mast, exposed
+    sparking arc coil underneath, single red glowing warning lamp, short
+    electric arc crackling between coil prongs, no face, no limbs, no human,
+    floating slightly above the ground with a small shadow, muted desaturated
+    gray-brown metal, three-quarter isometric view, isolated object, simple
+    gray background, flat color, clean pixel clusters, safe, masterpiece,
+    high score, great score, absurdres
+  negative: >-
+    lowres, text, error, cropped, worst quality, low quality, low score,
+    bad score, average score, signature, watermark, username, blurry,
+    multiple views, multiple objects, gradient background, scenery,
+    photorealistic, 3d render, neon overload, humanoid, human, face, eyes,
+    girl, boy, arms, legs, wings, propeller blades spinning blur, quadcopter,
+    sleek white drone, round smooth body, cute mascot
+quality_gates:
+  require_transparency_after_prepare: true
+  silhouette_tags:
+  - angular-shell
+  - antenna
+  - arc-coil
+  - single-red-lamp
+  reject_if:
+  - humanoid-shape
+  - multiple-objects
+  - cropped-body
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button

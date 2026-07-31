@@ -63,10 +63,20 @@
   슬롯명 유지, 위 M5 재발주에서 아케이드 어휘로 교체.
 - [ ] **아트풍 개선 2차 — ComfyUI 생성 배치 1~4** (플랜 v2 §3): ① 깊이 밴드 바닥 6종과
   hole/weak-floor/ladder ② 액터 96×128 재생성 + `actor-arc-drone`/`actor-grave-warden` 전용 아트
+  - [x] **배치 ① 깊이 밴드 바닥 6종(2026-07-30)**: `environment-band-floors-v1`
+    (2라운드 C04 채택 — 1라운드는 색 드리프트·밴드 식별 실패로 폐기)로
+    `env-floor-{mid,deep,boss}(-raised)` 마감, 카탈로그 밴드 슬롯 연결로 절차
+    `BandOverlayColor` 임시 대행 자동 비활성. conform에 웜 가드·non-boss 틸 억제·
+    §1-c 명도 게이트. 잔여 배치 ① 범위는 hole/weak-floor/ladder(규격 결정 포함).
   ③ 아케이드 소품(위 "아케이드 소품 추가"와 합류 — 구 병원 소품 발주는 집행 전 폐기) + 낙하 연출 ④ 아이템 12종 리스킨. 소스시트가 리포에 들어오면
   `process_postapoc_*` 재실행으로 마감한다. **코드 선행분은 이미 완료**돼 있다(아카이브).
   - `actor-slinger.aseprite`가 투석 약탈자 슬롯을 채워 인간형 배율 결손은 해소됐다.
     남은 절차 폴백은 합선 드론(0.59×0.66)과 전용 원본이 없는 감시자다.
+  - [ ] **적 액터 치비 레인 — 1라운드 채택 없음(2026-07-31)**: 레시피 3종
+    (`actor-{slinger,grave-warden,arc-drone}-chibi-base-v1`)을 신설하고 감시자를 생성했으나,
+    배경이 액자 패널로 구워지고 가슴 코어가 플레이어 정체색(마젠타)과 겹쳐 **기각·되돌림**.
+    비율·접지는 계약을 지켰다 — 고칠 것은 프롬프트 2줄이다. 소견·다음 라운드 지시는
+    `docs/art-direction/enemy-chibi-lane-round1-findings.md`.
   - [x] **배치 ② vertical slice — 메인 원정자**: 현재 Game View를 identity anchor로 삼아
     96×128 원정자와 `idle/walk/attack/hit/fall/death` 태그를
     `actor-knight.aseprite`로 Unity에 연결했다. 후속 화면 검수에서 의상 teal을 중립 재질로

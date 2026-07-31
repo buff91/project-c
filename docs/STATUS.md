@@ -254,7 +254,10 @@
     레시피(C02 채택)의 네온 스카이라인 소스
     (`project-c-main-menu-backdrop-source-v2.png`)로 교체하고
     `process_ui_backdrops_v1.py`로 재마감(`ui-main-menu-backdrop.png`, 960×540 규격
-    불변). **마지막 구테마 유저 노출 자산이 소거돼 M5 재발주 범위가 닫혔다.**
+    불변, off-palette 0). 4후보는 실제 conform 경로(480×270 팔레트 잠금)로 마감해
+    비교했고, 타이틀·카피 자리가 사는 어두운 중앙 협곡 구도를 골랐다.
+    실화면 `docs/captures/main-menu-backdrop-v2-live.png`.
+    **마지막 구테마 유저 노출 자산이 소거돼 M5 재발주 범위가 닫혔다.**
   이전 확정(유지): 테마를 **포스트 아포칼립스/이상 미궁**으로 전환(GDD §10 v0.3).
   - **밝기 완화 패스 적용됨(v0.3.3)** — 탐색 잔상·심층 앰비언트·높이차 틴트·수직 미리보기의
     어둡기 하한을 일괄 상향해 "판독 가능한 어둠"으로 옮겼다(FOV 3상태 구분은 유지). 값은
@@ -288,8 +291,13 @@
   깊이별 변주는 이 공통 톤 위에서만
   제한적으로 적용하며, 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도와 전면 두께로 구분한다.
   **깊이 변주의 통로는 세 가지뿐이다** — 밴드 스프라이트 슬롯, 구조(캐치워크 길이), 광원 밀도(등잔 희소도).
-  단 밴드 바닥 아트가 도착하기 전까지는 절차 오버레이(`BandOverlayColor`)가 밴드 슬롯을 **임시 대행**한다 —
-  역할색 안에서 패턴 밀도만 변주하며, 전용 슬롯이 채워지는 순간 자동 비활성(임시 조치, 아트 도착 시 제거 대상).
+  **밴드 바닥 6종이 도착했다(2026-07-30, 플랜 v2 배치 1-1)** — `env-floor-{mid,deep,boss}(-raised)`가
+  `environment-band-floors-v1` 레시피(2라운드 C04 채택)로 마감돼 카탈로그 밴드 슬롯 6개에
+  연결됐고, 절차 오버레이(`BandOverlayColor`) 임시 대행은 자동 비활성됐다
+  (`BandFloorFallsBackToShared` — 오버레이 코드는 폴백 방어선으로 남는다). 어휘는
+  mid 냉각수 얼룩 / deep 균열+철근+물때 / boss hazard 조각+틸 심 하나. conform이
+  웜 가드·non-boss 틸 억제·명도 게이트(§1-c)를 강제한다 — 판정·마감 근거는
+  `docs/captures/band-floors-{gate,conform}-v1.png` · 소스 prompt.md.
   `DungeonSurfaceFor`의 석재색은 모든 깊이에서 같아야 한다(테스트로 고정). 값은 `DungeonBandProfile`.
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
   최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.

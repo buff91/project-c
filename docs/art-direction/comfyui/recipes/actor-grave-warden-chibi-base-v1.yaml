@@ -1,0 +1,133 @@
+schema_version: 1
+id: actor-grave-warden-chibi-base-v1
+name: 감시자 치비 기본 스프라이트 4방향 v1 · 보스 실루엣
+# actor-chibi-base-v1 파생 — 비율·포즈·리뷰 계약 동일, 정체성 블록만 교체.
+# §1-b 보스 실루엣: 일반 몹 ~1.3배 덩치(폭/부피로 표현 — 행 계약은 유지) +
+# 센서 마스트 + 붉은 네온 외눈 1개(§1-a warning 포인트). subjects/actor-grave-warden.yaml
+# 어휘(콘크리트 회색 라이엇 셸·산화 강철·비대칭 어깨·가슴 균열 틈의 유기체 코어) 승계.
+purpose:
+  category: actor
+  asset_type: concept
+  slot: actor-concept
+  use: concept
+  readability_goal: >-
+    96×128에서도 보스로 즉시 구분: 일반 몹보다 넓은 부피, 센서 마스트,
+    붉은 외눈 1개. 익명(얼굴 없음), 신호색은 외눈 한 곳.
+  animation_scope: base-4dir
+output:
+  canvas:
+  - 96
+  - 128
+  pivot:
+  - 0.5
+  - 0.04
+  fit: contain
+  anchor: bottom
+  padding: 2
+  alpha_cutoff: 80
+  key_color: auto
+  key_tolerance: 48
+  trim_detached: true
+  palette: Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl
+  normalize_rows:
+    crown: 8
+    feet: 122
+  promotion: concept-only
+  allow_replace: false
+pipeline:
+  type: sdxl-txt2img-openpose
+  workflow: docs/art-direction/comfyui/actor-chibi-openpose-sdxl.api.json
+  checkpoint: animagine-xl-4.0-opt.safetensors
+  bindings:
+    checkpoint: 1.ckpt_name
+    positive: 3.text
+    negative: 4.text
+    seed: 9.seed
+    steps: 9.steps
+    cfg: 9.cfg
+    sampler: 9.sampler_name
+    scheduler: 9.scheduler
+  shots:
+  - id: idle-south
+    label: idle · south (정면 3/4)
+    seed_offset: 0
+    prompt_suffix: ', facing viewer, three-quarter front view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle.png
+  - id: idle-east
+    label: idle · east (우향)
+    seed_offset: 0
+    prompt_suffix: ', facing right, three-quarter side view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-east.png
+  - id: idle-west
+    label: idle · west (좌향)
+    seed_offset: 0
+    prompt_suffix: ', facing left, three-quarter side view'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-west.png
+  - id: idle-north
+    label: idle · north (등면)
+    seed_offset: 0
+    prompt_suffix: ', from behind, back view, back of shell visible'
+    uploads:
+      5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-north.png
+loras:
+- name: project-c-pixelart-redmond-sdxl-v1-lite64.safetensors
+  node: 2
+  base_model: SDXL
+  model_strength: 0.45
+  clip_strength: 0.45
+  purpose: 도트 클러스터와 하드 에지
+  attribution: Civitai model 144684 / version 160844
+controlnets:
+- model: controlnet-openpose-sdxl-xinsir.safetensors
+  loader_node: 6
+  apply_node: 7
+  strength: 0.85
+  purpose: 치비 골격으로 접지·비율 고정 — 덩치는 실루엣 폭으로 표현
+generation:
+  width: 1024
+  height: 1024
+  sampler: euler_ancestral
+  scheduler: karras
+  steps: 28
+  cfg: 5.0
+  denoise: 1.0
+  candidates: 2
+  seed_strategy: sequential-random-base
+prompt:
+  positive: >-
+    solo, chibi, pixel art, full body, standing, hulking arcade tower security
+    warden robot boss, wide bulky silhouette, repurposed concrete-gray riot
+    shell, oxidized steel braces, exposed cables, asymmetrical shoulder
+    plating, short broken sensor mast above the shoulder, single intense red
+    glowing warning eye, no face, heavy grounded legs, anomalous dark organic
+    core barely visible through one cracked chest seam, muted desaturated
+    gray-brown armor, isolated character, simple gray background, flat color,
+    clean pixel clusters, safe, masterpiece, high score, great score, absurdres
+  negative: >-
+    lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low
+    quality, low score, bad score, average score, signature, watermark,
+    username, blurry, realistic proportions, tall body, small head, multiple
+    views, multiple characters, gradient background, scenery, photorealistic,
+    3d, neon overload, fully glowing outfit, human face, visible eyes,
+    cute face, medieval knight, fantasy armor, robe, scythe, sword, shield,
+    sleek android, pristine white robot, symmetrical mecha, multiple eyes,
+    slim body
+quality_gates:
+  require_transparency_after_prepare: true
+  silhouette_tags:
+  - grounded-feet
+  - boss-bulk
+  - sensor-mast
+  - single-red-eye
+  reject_if:
+  - cropped-feet
+  - extra-limbs
+  - malformed-anatomy
+  - human-face
+  - multiple-eyes
+review:
+  slack_channel_env: SLACK_ART_CHANNEL_ID
+  publish_requires: explicit-button
