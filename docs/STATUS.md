@@ -61,7 +61,9 @@
   `hospitalWall{Pipes,Window,Cabinet}Rising*` 9개 교체 슬롯을 seed 고정으로 희소 배치한다.
   바닥 드레싱은 공용 바닥 위에 합성한 완전한 타일이라 장식의 투명 여백이 void 구멍으로 뚫리지 않는다.
   얕은 층 앰비언트 0.5·플레이어 광원 반경 2·벽 등잔 세기 0.8로 중앙 광원 웅덩이와 어두운 벽을
-  분리하며, `actorVisualScale` 0.72는 액터 그림만 줄이고 HP·마커·접촉 그림자는 격자 크기에 남긴다.
+  분리하며, 적·소품의 `actorVisualScale`은 0.72를 유지한다. 메인 원정자만
+  `playerVisualScale` 0.80으로 키워 회색 벽 앞에서도 실루엣을 읽히게 하고, HP·마커·접촉 그림자는
+  격자 크기에 남긴다.
   메인 원정자는 정식 `actor-knight.aseprite`의 호흡기·폐허 방호구 실루엣이며
   `idle/walk/attack/hit/fall/death` 태그가 카탈로그에 연결돼 있다. 액터 레시피는 conform 뒤
   불투명 픽셀 기준 teal 4%·warning 2% 상한을 자동 검사한다.
@@ -243,8 +245,11 @@
     조립 초안**(11프레임/6태그, 4방향 기본 C01 + 액션 키포즈 9종, seed 2130163433 계보)으로
     교체했다. 팔레트에 `hair-blonde-1/2` append(절도 검사 통과). 채택 근거·게이트 기록은
     액터 계약 §4-c와 `reference/ref-cyberpunk-05-expeditioner-medic-concept.prompt.md` 소유.
-    **Unity 재임포트·화면 승인 미완** — 에디터에서 `Validate Sources` + PC Game View 캡처가
-    다음 검증 지점이다.
+    Unity 임포트·카탈로그 연결은 완료됐지만, 프레임 사이 해부·실루엣이 깨져 멀티프레임 재생은
+    승인하지 않았다. 정식 방향별 Aseprite 타임라인이 화면 승인을 받을 때까지
+    `SurvivorAnimationApproved=false`로 플레이어 `SpriteClipAnimator`를 붙이지 않고 카탈로그
+    첫 Sprite `Frame_0`에 정지한다. 임시 런타임 오버레이 `PlayerCyberAccent`도 제거했으며,
+    흉부 트리아지 화면·비대칭 의료 리그는 승인 프레임 자체에 흡수해야 한다.
   - **M5 2차 슬라이스 반영됨(2026-07-30)** — hospital* 드레싱 9슬롯(바닥 그레이트/균열/
     서비스 + 상승 벽 3종×좌우)이 `environment-neon-dressing-v1` 레시피(C03 채택)로
     아케이드 어휘(자판기·꺼진 홀로 패널·상태 패널, 바닥은 균열선+전단지)로 교체됐다 —
@@ -269,7 +274,11 @@
     연쇄를 잇는 위험 프롭으로 유지하되, 접근해서 일반 바닥으로 밀 수 있는 벽/외곽 후보를
     우선하고 액터와 같은 시각 스케일을 적용했다. 주차 범퍼와 쓰러진 안내판은 기본 바닥에
     합성한 비충돌 완성형 타일로 추가했으며, 입구·계단·주요 동선·적·아이템·폭발통 주변을
-    예약해 결정론적으로 배치한다. 캡처: `docs/captures/b2-dressing-placement-v1.png`.
+    예약해 결정론적으로 배치한다. 두 드레싱은 각각 `view-0..3` 네 방향 슬롯을 가지며 완전
+    세트일 때 현재 시점의 90도 회전 수로 선택한다. 부분 세트는 기존 무방향 슬롯을 전 시점에
+    쓰고, 그것도 없으면 같은 화면축 parity → 첫 존재 슬롯 순으로 내려가 사라지지 않는다.
+    캡처: `docs/captures/b2-dressing-placement-v1.png`,
+    `docs/captures/b2-aseprite-axis-q0-v1.png`, `docs/captures/b2-aseprite-axis-q1-v1.png`.
   - **M5 4차 슬라이스 반영됨(2026-07-30)** — 하행 계단 특수 소스를
     `environment-neon-stairs-v1`(C04 채택)로 교체해 `env-stairs-down-rising-*` 2종
     재마감 — 마지막 병원판 환경 소스 소거. 판정은 최종 크기 드라이런 비교
@@ -328,7 +337,12 @@
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
   최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.
   `ProjectCAsepritePipeline`이 Point/PPU 128/Canvas Pivot/무압축/AnimationClip을 강제하고
-  정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다.
+  정식 파일명의 첫 프레임을 공용 `ProjectCEnvironmentCatalog`에 자동 연결한다. 이 폴더에
+  원본을 저장하면 Unity의 전처리에서 임포트 규격을 적용하고, 후처리 지연 콜백에서 카탈로그와
+  애니메이션 세트를 동기화하므로 평소 PNG export나 수동 재연결은 필요 없다. 바닥은 128×64
+  중앙 피봇, 액터는 96×128 캔버스를 검증하며 `env-floor*`/`env-wall-*`은 런타임 톤매핑을 위해
+  Read/Write를 자동 활성화한다. `e0c0967`(2026-08-01)의
+  `Validate Sources`는 Aseprite 원본 **28개**(`env-*` 26개 + 액터 2개)를 통과했다.
   나아가 임포터가 만든 AnimationClip에서 **sprite 커브만** 뽑아 태그 클립으로 굽고
   액터는 `catalog.actorAnimations`, 환경 루프는 `catalog.environmentAnimations`에 싣는다 —
   transform/color 커브는 의도적으로 버린다(액터 루트의
@@ -339,16 +353,25 @@
   유지한다. 허브·휴식 지점·가시 벽 소품은 같은 `SpriteClipAnimator` 계약으로 자동 재생한다.
   로컬 제작 쪽은 ComfyUI `127.0.0.1:8188` REST → YAML 레시피/SQLite 큐 → 샷별
   Aseprite conform → Lua 타임라인·1×/8× GIF 초안 → Slack Socket Mode 리뷰로 연결돼 있다.
+  모든 실행 그래프는 `NAME.workflow.json`(편집 SSOT) + `NAME.api.json`(실행본) 쌍으로
+  보존되고 `comfy_batch.py validate`가 계약을 검사한다. 발주는 `_runs/<prompt-id>/`에
+  그래프·이벤트·진행을 남기고 생성 PNG에 캔버스를 심는다.
+  **발주 비용의 지배 요인은 체크포인트 재로드다** — 배치 드라이버들이 서로를 모른 채 같은
+  큐에 교대 발주하면 매 장 6.9GB를 다시 읽어 장당 221초가 381초가 된다(`e0c0967`, 2026-08-01
+  실측 n=21 vs 37). `execute_prompt`가 `CheckpointLease`로 큐를 체크포인트 단위(기본 4잡)로
+  점유해 막으며 드라이버는 수정할 게 없다. 아이템은 64px로 끝나므로 `item-static-v2`가
+  768/20으로 발주해 2.1배 빠르다(213초 → 99.7초). 메모리 확보와 `--lowvram`은 둘 다 효과가
+  없었고 후자는 오히려 느렸다 — 실측 표와 측정 함정은 `art-direction/comfyui/README.md`
+  §7-a-1이 소유한다.
   Slack 생성 폼은 기본 화풍·세계관을 자동 선택하고 새 작업에서는 승인 소스 없는 컨셉 방법만
   보여준다. 승인 후보 카드의 `다음 단계 생성`은 대상·화풍·세계관·후보 ID와 권장 후속 방법을
   자동 계승한다. 기본 화면은 대상·이번 내용·결과 다양성만 받고 모델·전체 프롬프트·seed·Steps·
   CFG·denoise는 `고급 설정`에서만 편집한다. 메인 원정자 `actor-knight`, 정적 환경 9슬롯,
   환경 idle 루프 4슬롯이 이 합성 레지스트리에 등록돼 있다.
-  **메인 원정자 vertical slice는 2026-07-28 Unity 반영까지 완료했다.**
-  `character-runtime-base-v2`로 현재 Game View 비율을 보존한 기본형을 승인하고,
-  표준 OpenPose BODY_18 가이드의 `character-action-keyframes-v6`로 11개 키포즈를 만든 뒤
-  정식 `actor-knight.aseprite` 13프레임/6태그로 승격했다. `knight` 카탈로그 슬롯과
-  `actorAnimations`가 같은 원본을 보며, 전후 화면과 생성 판정 기록은
+  **메인 원정자 vertical slice의 Unity 연결은 2026-07-28 완료했지만 현재 초안이 이를
+  대체했다.** `knight` 카탈로그 슬롯과 `actorAnimations`는 같은 `actor-knight.aseprite`를
+  보되, 2026-07-31의 11프레임 메딕 자동 조립 초안은 방향·프레임 일관성 승인을 받지 못했다.
+  그래서 현재 플레이어는 `Frame_0` 정적 Sprite만 사용한다. 생성·판정 이력은
   `docs/art-direction/player-character-vertical-slice.md`가 소유한다.
   `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
   실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
@@ -383,6 +406,9 @@
     그래서 재동기화 코드가 없고, 안 보이는 액터의 Update가 이른 반환으로 끝난다.
   - 클립 없는 태그 요청은 전부 no-op이라 PNG 폴백(정지 1프레임) 액터와 그대로 공존한다.
     현재 재생 트리거는 walk·attack·hit·death에 붙어 있고 `fall`은 태그만 예약된 상태다.
+  - 플레이어는 승인 게이트의 예외 경로다. `SurvivorAnimationApproved=false`인 동안 애니메이션
+    세트가 있어도 재생기를 붙이지 않고 `Frame_0`에 정지한다. 정식 방향별 타임라인의 수작업·
+    PC 화면 승인이 끝난 뒤에만 게이트를 연다. 적 재생 경로에는 영향을 주지 않는다.
 - **배고픔/중간 생환**: `HungerRules`가 포만→배고픔(경고)→굶주림(주기적 HP 감소)을 소유한다.
   주기가 짧아(가득 찬 배 100턴) 중간중간 통조림을 먹는 리듬이며, 판 전체를 관통하고 모닥불로는
   배가 차지 않는다. `ExtractionRules`의 비상 탈출구는 **4번째·8번째 층**(진행 지수 3·7 —
@@ -452,6 +478,11 @@
   `IsoPrototypeDemo.Sprites.cs`는 그 변환만 하는 123줄 어댑터다 — 픽셀을 다시 이 파일로
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
+- **허브 월드 생성과 공유 상태도 실제 타입 경계를 얻었다**: `HubWorldPresenter`가 시설 개방 불변
+  스냅샷과 주입된 씬/비주얼 의존성만 받아 프롭·광원을 만들고, 상호작용과 재투영 앵커를
+  `HubWorldRegistry`에 함께 등록한다. Hub 파셜에는 `MetaStore → HubFacilitySnapshot` 변환과
+  `ApplySurvivorStats`만 남는다. Registry는 공용 빌드 초기화에서 참조만 비우며, 오브젝트 수명은
+  기존 `Generated Visuals` 루트가 계속 소유한다. Interaction/View 파셜은 조회·재투영만 요청한다.
 - **해금 축 (진행 중)**: 도구 5종이 **조건 달성으로 열리고 다음 판부터** 드랍 풀에 들어온다
   (`ItemUnlockRules`). 계측은 `RunTelemetry` + `BountyMetric`을 재사용하며 새로 만들지 않았다.
   판정은 `FinishRunTelemetry` 한 곳이고 **사망에도 저장한다**(실패한 판도 전진).
@@ -498,14 +529,18 @@
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준** — **숫자에는 반드시 기준 커밋 해시를 함께 적는다.** 해시 없는 개수는
   언제 잰 것인지 알 수 없어 검증이 아니라 소문이 되고, 실제로 낡은 채 여러 세션을 살아남았다.
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **1068/1068 통과** (`cf1c7d7` + 미커밋 작업 트리,
-    2026-07-31 실측, 5s).
-  - ArtPipeline Python 회귀 **106/106 통과** (`fa6c90e` + 미커밋 작업 트리, 2026-07-28 실측).
-  - Unity EditMode `ProjectC.Tests.EditMode` **1247/1247 통과** (`cf1c7d7` + 미커밋 작업 트리,
-    2026-07-31 에디터 실측, 4.8s).
-  - Unity PlayMode `ProjectC.Tests.PlayMode` **9/9 통과** (`cf1c7d7` + 미커밋 작업 트리,
-    같은 세션, 17.4s) —
-    ① 폐 아케이드 복합타워 B2 → 8F 보스 → 출구(치트 훅과 SPACE 경로 양쪽)
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **1080/1080 통과** (`e0c0967`,
+    2026-08-01 실측, 5s).
+  - ArtPipeline Python 회귀 **168/168 통과** (`e0c0967`, 2026-08-01 실측, 27s).
+    `COMFY_LEASE_CHUNK=0` 으로 돌린다 — 리스가 켜져 있으면 실제 발주가 쥔 락에 걸린다.
+  - B2 방향축 + 공용 바닥 후처리 Python 회귀 **7/7 통과** (`e0c0967`,
+    2026-08-01 실측, 0.1s).
+  - Unity EditMode `ProjectC.Tests.EditMode` **1291/1291 통과** (`e0c0967` 직전 작업 트리,
+    2026-08-01 에디터 실측, 7.4s).
+  - Unity PlayMode `ProjectC.Tests.PlayMode` **10/10 통과** (`e0c0967` 직전 작업 트리,
+    같은 세션, 12.5s) —
+    ① 허브 시설 생성·회전 재투영·상인 id/라벨 배선 → 폐 아케이드 복합타워 B2 → 8F 보스 →
+    출구(치트 훅과 SPACE 경로 양쪽)
     ② 침수된 금고 1구역 → 보스 없는 최종 구역 출구
     ③ 원거리 충전/회복 턴 체크포인트·던전 전환 이월
     ④ v1 구세이브의 누락 원거리 충전 만충 복원
@@ -514,7 +549,9 @@
     ⑦ 미래 메타가 새 원정 진입을 막고 원문을 보존
     ⑧ 런 도중 미래 메타가 나타난 정산은 인벤토리·체크포인트를 보존
     ⑨ 메타 정산 성공 뒤 체크포인트가 남은 크래시 재현 → 같은 `runId`의 전리품·반입 장비·
-    완료 의뢰·기록을 재지급하지 않음.
+    완료 의뢰·기록을 재지급하지 않음
+    ⑩ 같은 허브 인스턴스에서 시설 잠금→개방→재잠금을 재빌드해 최신 메타·프롭·상호작용·
+    광원 수와 `Generated Visuals` 단일 루트를 보존.
   - 128-레짐 전환(`4ab4438`) 뒤 재임포트·컴파일도 현재 세션에서 **에러 0**을 다시 확인했다.
     최초 확인 기준은 `9d6a37e`였고, 그 전 세 커밋(`4ab4438`·`581445a`·`fa6ac29`)은 에디터
     검증 없이 shim만 돌았던 구간이다.
@@ -567,15 +604,18 @@
     에서 0으로 내려 같은 칸·같은 깊이에서 액터가 항상 이긴다, ② 표지가 플레이어보다 앞칸이라
     정렬상 정당하게 이기는 경우는 벽과 같은 가림 페이드에 넣었다(`fadePlayerOccluders` 토글을
     그대로 따른다). 층 전환 아치는 58×72px = 타일 두 장이 넘는 불투명 기둥이라 둘 다 필요하다.
-  - ⚠️ **미해결 — `sortingOrder` 가 int16을 넘쳐 한 층 안에서 깊이 순서가 뒤집힌다.**
-    `SortingOrder(pos,micro) = (elevation·1000 + (x+y)·16)·8 + micro`는 elevation 4 부터
-    32767을 넘는데 `SpriteRenderer.sortingOrder`는 int16이다. 에디터에서 실측(B1, e4):
-    표지 `(1,1,e4)` = 32256(정상)인데 **`(11,1,e4)`는 raw 33536 → 읽어보면 −32000**.
-    앞칸이 맨 뒤로 간다. 층 10개가 e0..e36 이라 **e4·e12·… 여러 층이 걸린다.**
-    위 두 수정은 같은 칸 동률과 페이드를 고칠 뿐 이 뒤집힘은 못 고친다 —
-    남은 신고 증상이 있다면 이쪽이다. 고치려면 `DepthResolution`·`elevationSortBand`를 줄이거나
-    활성 층 기준으로 원점을 옮겨야 하는데, **정렬 SSOT 전체를 건드리는 변경이라 분리한다**
-    (`DepthResolution`=16은 반정수 뷰 피벗에서 `RoundToInt` 동률을 막는 값이라 그냥 못 줄인다).
+  - ✅ **`sortingOrder` int16 뒤집힘 해소(2026-08-01).** 예전
+    `(elevation·1000 + (x+y)·16)·8 + micro`는 e4에서 32767을 넘어 앞칸을 맨 뒤로
+    보냈다. `IsoGrid` 하나에서 정수 깊이만 보존하도록 값을 1·39·5
+    (`DepthResolution`·`ElevationSortBand`·`MicroResolution`)로 압축했다. elevation →
+    회전된 (x+y) → micro(-2..+2) 우선순위는 그대로고, 현재 인스펙터 상한
+    20층·층당 elevation 6·20×20 지원 범위의 4방향 전체가 int16 안에 든다.
+  - ✅ **이동 중 목적지 정렬 선적용 해소(2026-08-01).** 예전에는 트윈을 시작하기 전에
+    목적지 `sortingOrder`를 넣어, 뒤쪽 칸으로 걷는 캐릭터가 발을 떼자마자 앞 타일 아래로
+    들어갔다. 이제 발 피벗이 두 칸의 경계를 넘는 eased progress 0.5에서만 출발→목적지
+    정렬을 전환한다. 플레이어·보이는 적·넉백·낙하가 같은 `IsoGrid` 규칙을 쓰며, 층 전환과
+    귀환도 위치와 정렬을 함께 갱신한다. PC Game View의 뒤쪽 이동 중첩 확인본은
+    `docs/captures/player-sorting-backward-mid-v1.png`다(플레이어 전용 0.80 배율 포함).
 - **화면 확인 결과 (2026-07-26 `59c5f80` 에디터 세션)** — 규칙은 살아 있는 던전에서 확인했고,
   아트 쪽에서 결손 둘이 드러났다.
   - **개구부 차폐 — 확정.** 실제 미리보기 **36칸** vs 옛 박스 방식이었다면 42칸이고, 가려진 6칸이
