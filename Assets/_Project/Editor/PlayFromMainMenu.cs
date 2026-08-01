@@ -11,7 +11,7 @@ namespace ProjectC.EditorTools
     [InitializeOnLoad]
     public static class PlayFromMainMenu
     {
-        private const string MenuPath = "ProjectC/Play From Main Menu";
+        private const string MenuPath = "Project-C/Play From Main Menu";
         private const string PrefKey = "ProjectC.PlayFromMainMenu";
         private const string MenuScenePath = "Assets/_Project/Scenes/MainMenu.unity";
 
