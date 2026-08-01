@@ -488,6 +488,12 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 > 파셜이 아니라 별 타입으로 뺀다(§2) — `IsoPrototypeDemo.Sprites.cs`가 픽셀을 직접 그리지 않고
 > 격자 사실만 스프라이트 팩토리에 넘기는 어댑터인 것이 그 형태다.
 
+- `HubWorldPresenter`는 대장간·의뢰 게시판의 개방 여부만 담은 `HubFacilitySnapshot`과 주입된
+  씬 컨텍스트/비주얼 해석기를 받아 허브 프롭·광원을 만들고 상호작용과 재투영 앵커를 함께 등록한다.
+  `MetaStore`·플레이어 상태·`Generated Visuals` 초기화는 알지 않는다.
+- `HubWorldRegistry`는 허브 시설의 `GridPos → (id, label)`과 지속 프롭/광원 앵커를 소유하고,
+  `Interaction`/`View`에 조회·재투영 API만 제공한다. 오브젝트를 파괴하지 않으며 공용 빌드 초기화에서
+  참조만 비운다. 위치 투영은 호스트의 `VisualPosition`, 정렬값은 `IsoGrid.SortingOrder`를 따른다.
 - 내부 에이전트(경량 뷰 홀더) `EnemyAgent`/`ItemAgent`/`RestSiteAgent`/`VerticalLandmarkAgent`와
   이벤트(`PlayerHpChanged`·`ActiveFloorChanged`·`ExitChoiceRequested`…)로 HUD와 느슨 결합한다.
 - `IsoPrototypeDemo.Targeting`은 투척 조준 상태를 실제 유효 칸의 낮은 알파 월드 데칼로 번역한다.

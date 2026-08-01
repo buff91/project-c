@@ -448,6 +448,11 @@
   `IsoPrototypeDemo.Sprites.cs`는 그 변환만 하는 123줄 어댑터다 — 픽셀을 다시 이 파일로
   들이지 말 것. 그리기 코드를 손댈 때는 테스트가 아니라 **씬 렌더 지문**으로 확인한다
   (`docs/CODE_STRUCTURE.md` "절차 생성 임시 아트" 참조).
+- **허브 월드 생성과 공유 상태도 실제 타입 경계를 얻었다**: `HubWorldPresenter`가 시설 개방 불변
+  스냅샷과 주입된 씬/비주얼 의존성만 받아 프롭·광원을 만들고, 상호작용과 재투영 앵커를
+  `HubWorldRegistry`에 함께 등록한다. Hub 파셜에는 `MetaStore → HubFacilitySnapshot` 변환과
+  `ApplySurvivorStats`만 남는다. Registry는 공용 빌드 초기화에서 참조만 비우며, 오브젝트 수명은
+  기존 `Generated Visuals` 루트가 계속 소유한다. Interaction/View 파셜은 조회·재투영만 요청한다.
 - **해금 축 (진행 중)**: 도구 5종이 **조건 달성으로 열리고 다음 판부터** 드랍 풀에 들어온다
   (`ItemUnlockRules`). 계측은 `RunTelemetry` + `BountyMetric`을 재사용하며 새로 만들지 않았다.
   판정은 `FinishRunTelemetry` 한 곳이고 **사망에도 저장한다**(실패한 판도 전진).

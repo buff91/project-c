@@ -7,6 +7,7 @@ namespace ProjectC.Gameplay
 {
     public partial class IsoPrototypeDemo
     {
+        private readonly HubWorldPresenter _hubWorldPresenter = new HubWorldPresenter();
 
         // ── 허브 캠프 ─────────────────────────────────────────
 
@@ -16,107 +17,30 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void CreateHubProps()
         {
-            _hubInteractables.Clear();
-            _hubPropPositions.Clear();
-            _hubLightPositions.Clear();
-
-            Sprite campfire = visualCatalog != null ? visualCatalog.hubCampfire : null;
-            Sprite portal = visualCatalog != null ? visualCatalog.hubPortal : null;
-            Sprite merchantSprite = visualCatalog != null ? visualCatalog.merchant : null;
-            Sprite stash = visualCatalog != null ? visualCatalog.hubStash : null;
-
-            CreateHubLightPatch("campfire", HubLayout.Campfire, 2);
-            CreateHubLightPatch("portal", HubLayout.Portal, 1);
-
-            CreateHubProp(
-                "Campfire",
-                campfire != null ? campfire : ActorSprites.GetHubPropSprite("campfire"),
-                HubLayout.Campfire,
-                "hubCampfire");
-            CreateHubProp(
-                "Portal",
-                portal != null ? portal : ActorSprites.GetHubPropSprite("portal"),
-                HubLayout.Portal,
-                "hubPortal");
-
-            CreateHubProp(
-                "Merchant",
-                merchantSprite != null ? merchantSprite : ActorSprites.GetCharacterSprite(true),
-                HubLayout.Merchant);
-            _hubInteractables[HubLayout.Merchant] = "merchant";
-
-            CreateHubProp("Stash", stash != null ? stash : ActorSprites.GetHubPropSprite("stash"), HubLayout.Stash);
-            _hubInteractables[HubLayout.Stash] = "stash";
-
-            // 구출로 열리는 시설은 동료가 합류한 뒤에만 존재한다 — 프롭도 상호작용도 없다.
-            // 빈 모달을 보여주는 것보다 "아직 없다"가 정직하고, 구출이 사건이 된다.
             MetaSaveData shelterMeta = MetaStore.LoadOrNew();
+            var facilities = new HubFacilitySnapshot(
+                shelterMeta.IsFacilityOpen(ShelterFacility.Forge),
+                shelterMeta.IsFacilityOpen(ShelterFacility.BountyBoard));
+            var context = new HubWorldPresentationContext(
+                _grid.Map,
+                _grid.iso,
+                _visualRoot,
+                VisualPosition,
+                (owner, renderer, animation) =>
+                    AttachEnvironmentAnimator(owner, renderer, animation));
+            var visuals = new HubWorldVisuals(
+                visualCatalog,
+                ActorSprites.GetHubPropSprite,
+                ActorSprites.GetCharacterSprite,
+                GetHubLightTileSprite);
 
-            if (shelterMeta.IsFacilityOpen(ShelterFacility.Forge))
-            {
-                CreateHubProp("Smith", ActorSprites.GetHubPropSprite("smith"), HubLayout.Smith);
-                _hubInteractables[HubLayout.Smith] = "smith";
-            }
-
-            if (shelterMeta.IsFacilityOpen(ShelterFacility.BountyBoard))
-            {
-                CreateHubProp(
-                    "BountyBoard", ActorSprites.GetHubPropSprite("bounty"), HubLayout.BountyBoard);
-                _hubInteractables[HubLayout.BountyBoard] = "bounty";
-            }
-
-            // 기록실은 항상 열려 있다 — 해금 조건을 배우는 유일한 창구이고, 그 안내를
-            // 의뢰로 줄 수 없기 때문이다(의뢰 게시판은 잠기는 시설이라 순환이 된다).
-            CreateHubProp("Codex", ActorSprites.GetHubPropSprite("codex"), HubLayout.Codex);
-            _hubInteractables[HubLayout.Codex] = "codex";
+            _hubWorldPresenter.Present(
+                facilities,
+                context,
+                visuals,
+                _hubWorld);
 
             ApplySurvivorStats();
-        }
-
-        private void CreateHubLightPatch(string kind, GridPos origin, int radius)
-        {
-            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
-            {
-                GridPos pos = pair.Key;
-                if (!pair.Value.IsWalkable || pos.elevation != origin.elevation)
-                    continue;
-
-                int distance = pos.ManhattanTo(origin);
-                if (distance > radius) continue;
-
-                int strength = distance == 0 ? 3 : distance == 1 ? 2 : 1;
-                var lightTile = new GameObject($"{kind} Light {pos.x},{pos.y}");
-                lightTile.transform.SetParent(_visualRoot, false);
-                lightTile.transform.position = VisualPosition(pos);
-                var renderer = lightTile.AddComponent<SpriteRenderer>();
-                renderer.sprite = GetHubLightTileSprite(kind, strength);
-                renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
-                _hubLightPositions[renderer] = pos;
-            }
-        }
-
-        private SpriteRenderer CreateHubProp(
-            string objectName,
-            Sprite sprite,
-            GridPos pos,
-            string animationKey = null)
-        {
-            GameObject root = CreateStandingSprite(
-                objectName,
-                sprite,
-                pos,
-                out SpriteRenderer renderer);
-            if (!string.IsNullOrEmpty(animationKey))
-            {
-                AttachEnvironmentAnimator(
-                    root,
-                    renderer,
-                    visualCatalog != null
-                        ? visualCatalog.EnvironmentAnimationsFor(animationKey)
-                        : null);
-            }
-            _hubPropPositions[renderer] = pos;
-            return renderer;
         }
 
         /// <summary>

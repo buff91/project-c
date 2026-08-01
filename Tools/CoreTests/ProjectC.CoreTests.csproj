@@ -58,6 +58,8 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubUiBindingRegistryTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubWorldRegistryTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubWorldPresenterTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudVisualTreeContractTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoGridTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoVisualCatalogTests.cs" />

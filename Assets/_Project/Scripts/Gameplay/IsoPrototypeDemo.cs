@@ -420,12 +420,7 @@ namespace ProjectC.Gameplay
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
-        private readonly Dictionary<GridPos, string> _hubInteractables =
-            new Dictionary<GridPos, string>();
-        private readonly Dictionary<SpriteRenderer, GridPos> _hubPropPositions =
-            new Dictionary<SpriteRenderer, GridPos>();
-        private readonly Dictionary<SpriteRenderer, GridPos> _hubLightPositions =
-            new Dictionary<SpriteRenderer, GridPos>();
+        private readonly HubWorldRegistry _hubWorld = new HubWorldRegistry();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -616,6 +611,7 @@ namespace ProjectC.Gameplay
             _throwRangeMarkers.Clear();
             _blastPreviewCells.Clear();
             _aimHoverCell = null;
+            _hubWorld.Reset();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
             ResetRescueForBuild();
