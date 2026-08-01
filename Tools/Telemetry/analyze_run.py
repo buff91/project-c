@@ -336,6 +336,129 @@ def section_pillars(report: dict[str, Any]) -> list[str]:
     ]
 
 
+def median(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def aggregate(reports: list[tuple[Path, dict[str, Any]]]) -> str:
+    """여러 판을 묶어 중앙값으로 본다.
+
+    한 판은 표본 1이다 — 배경 부하가 아니라 플레이 방식만으로도 사격 횟수가 두 배씩
+    흔들린다. 수치를 확정하려면 판이 여러 개여야 하고, 이 절이 그 판단을 강제한다.
+    """
+    clean = [(path, doc) for path, doc in reports if not get(doc, "cheatsUsed", False)]
+    cheated = len(reports) - len(clean)
+    if not clean:
+        raise AnalysisError(
+            f"치트가 섞이지 않은 리포트가 없다(전체 {len(reports)}건) — "
+            "밸런스 표본으로 쓸 수 없다"
+        )
+
+    def values(field: str) -> list[float]:
+        return [float(get(doc, field, 0)) for _, doc in clean]
+
+    def med(field: str) -> float:
+        return median(values(field))
+
+    count = len(clean)
+    out = [f"# 집계 — 판 {count}건"]
+    if cheated:
+        out.append(f"  (치트 {cheated}건 제외)")
+    if count < 3:
+        out.append(
+            "  ⚠ 표본이 적다 — 방향은 읽어도 **수치는 확정하지 않는다**. 3판 이상 권장."
+        )
+
+    outcomes: dict[str, int] = {}
+    for _, doc in clean:
+        label = str(get(doc, "outcomeLabel", "?"))
+        outcomes[label] = outcomes.get(label, 0) + 1
+    out.append("")
+    out.append("## 결과 분포")
+    for label, times in sorted(outcomes.items(), key=lambda kv: -kv[1]):
+        out.append(line(label, f"{times}판"))
+    out.append(line("턴(중앙값)", f"{med('totalTurns'):.0f}"))
+    out.append(
+        line(
+            "도달 진행지수",
+            f"중앙 {med('deepestProgressIndex'):.0f} · "
+            f"최고 {max(values('deepestProgressIndex')):.0f}",
+        )
+    )
+
+    out.append("")
+    out.append("## 원거리")
+    shots = med("rangedAttacks")
+    turns = med("totalTurns")
+    out.append(line("사격(중앙값)", f"{shots:.0f}발", f"근접 {med('meleeAttacks'):.0f}"))
+    if shots > 0:
+        out.append(line("실측 사격 간격", f"{turns / shots:.1f}턴/발"))
+    else:
+        out.append(line("실측 사격 간격", "— (사격 0)"))
+    for tier in ranged_tiers():
+        ceiling = tier["capacity"] + turns // tier["recharge"]
+        if ceiling <= 0:
+            continue
+        out.append(
+            line(
+                tier["name"],
+                f"재충전 상한 {ceiling:.0f}발",
+                f"실제 {shots:.0f}발 = {shots / ceiling * 100:.0f}%",
+            )
+        )
+
+    fields = metric_fields()
+    out.append("")
+    out.append("## 해금 조건 (판당 중앙값)")
+    for condition in unlock_conditions():
+        field = fields.get(condition["metric"])
+        if field is None:
+            continue
+        value = med(field)
+        threshold = condition["threshold"]
+        ratio = value / threshold if threshold else 0
+        if ratio >= 1:
+            verdict = "매 판 달성 — 조건이 느슨하다"
+        elif ratio == 0:
+            verdict = "0 — 이 축이 판에서 일어나지 않는다"
+        else:
+            verdict = f"{1 / ratio:.1f}판 필요"
+        out.append(
+            line(condition["item"], f"{value:.1f}/{threshold}", verdict)
+        )
+
+    dead = [
+        metric
+        for metric, field in sorted(fields.items())
+        if med(field) == 0
+    ]
+    out.append("")
+    out.append("## 의뢰 지표")
+    out.append(
+        line("항상 0", ", ".join(dead) if dead else "없음", "← 의뢰를 만들 수 없다")
+    )
+
+    fatal: dict[str, int] = {}
+    for _, doc in clean:
+        for source in get(doc, "damageSources", []) or []:
+            hits = int(source.get("fatalHits", 0))
+            if hits:
+                name = str(source.get("source", "?"))
+                fatal[name] = fatal.get(name, 0) + hits
+    if fatal:
+        out.append("")
+        out.append("## 무엇에 죽었나")
+        for name, hits in sorted(fatal.items(), key=lambda kv: -kv[1]):
+            out.append(line(name, f"{hits}회"))
+    return "\n".join(out)
+
+
 def analyze(report: dict[str, Any], path: Path) -> str:
     blocks = [f"# {path.name}  (스키마 v{get(report, 'schemaVersion', '?')})"]
     blocks += section_summary(report)
@@ -361,11 +484,19 @@ def main() -> int:
         action="store_true",
         help="찾은 리포트를 전부 분석한다 (기본은 가장 최근 것 하나)",
     )
+    parser.add_argument(
+        "--aggregate",
+        action="store_true",
+        help="여러 판을 중앙값으로 묶는다 — 수치 조정은 이 값으로 판단한다",
+    )
     parser.add_argument("--json", action="store_true", help="원본 리포트를 그대로 낸다")
     args = parser.parse_args()
 
     try:
         reports = find_reports(args.report)
+        if args.aggregate:
+            print(aggregate([(path, load_report(path)) for path in reports]))
+            return 0
         if not args.all:
             reports = reports[-1:]
         for index, path in enumerate(reports):

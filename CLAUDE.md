@@ -84,7 +84,8 @@ docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction
 
 ## 스킬 (반복 절차는 여기에 있다)
 
-`/test`(테스트 실행·실패 판정) · `/feature-done`(기능 마감 체크리스트) · `/art-conform`(아트 시안 → 에셋 마감).
+`/test`(테스트 실행·실패 판정) · `/feature-done`(기능 마감 체크리스트) · `/art-conform`(아트 시안 → 에셋 마감) ·
+`/playtest`(플레이테스트 리포트 → 밸런스 조정안).
 정의는 `.claude/skills/<이름>/SKILL.md`. 절차를 산문으로 재현하지 말고 이걸 쓰며, 바뀌면 **스킬을 고친다.**
 
 ## 작업 컨벤션

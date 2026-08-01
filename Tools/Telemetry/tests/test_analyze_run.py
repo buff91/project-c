@@ -116,6 +116,57 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("## 구간 곡선", text)
 
 
+class AggregateTests(unittest.TestCase):
+    """수치 조정은 한 판으로 하지 않는다 — 집계가 그 판단을 강제한다."""
+
+    @staticmethod
+    def runs(*reports) -> list:
+        return [(Path(f"run-{i}.json"), r) for i, r in enumerate(reports)]
+
+    def test_median_is_used_not_the_last_run(self) -> None:
+        text = analyze_run.aggregate(
+            self.runs(
+                fixture_report(rangedAttacks=4),
+                fixture_report(rangedAttacks=10),
+                fixture_report(rangedAttacks=100),
+            )
+        )
+        self.assertIn("10발", text, "중앙값이어야 한 판의 극단이 끌고 가지 않는다")
+
+    def test_cheated_runs_are_excluded_and_counted(self) -> None:
+        text = analyze_run.aggregate(
+            self.runs(
+                fixture_report(),
+                fixture_report(cheatsUsed=True),
+            )
+        )
+        self.assertIn("판 1건", text)
+        self.assertIn("치트 1건 제외", text)
+
+    def test_all_cheated_is_refused(self) -> None:
+        with self.assertRaisesRegex(analyze_run.AnalysisError, "치트"):
+            analyze_run.aggregate(self.runs(fixture_report(cheatsUsed=True)))
+
+    def test_small_sample_blocks_number_setting(self) -> None:
+        thin = analyze_run.aggregate(self.runs(fixture_report()))
+        self.assertIn("수치는 확정하지 않는다", thin)
+        thick = analyze_run.aggregate(
+            self.runs(fixture_report(), fixture_report(), fixture_report())
+        )
+        self.assertNotIn("수치는 확정하지 않는다", thick)
+
+    def test_always_zero_metrics_are_named(self) -> None:
+        text = analyze_run.aggregate(
+            self.runs(fixture_report(barrelPushes=0), fixture_report(barrelPushes=0))
+        )
+        self.assertIn("BarrelPushes", text.split("## 의뢰 지표")[1])
+
+    def test_median_helper(self) -> None:
+        self.assertEqual(0.0, analyze_run.median([]))
+        self.assertEqual(2, analyze_run.median([3, 1, 2]))
+        self.assertEqual(2.5, analyze_run.median([1, 2, 3, 4]))
+
+
 class ReportDiscoveryTests(unittest.TestCase):
     def test_explicit_directory_is_scanned(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
