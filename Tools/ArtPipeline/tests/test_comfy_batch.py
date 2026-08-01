@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import struct
 import sys
@@ -18,6 +19,7 @@ from comfy_batch import (
     DEFAULT_LEASE_CHUNK,
     CheckpointLease,
     ComfyError,
+    command_validate,
     RunObserver,
     _binary_preview,
     execute_prompt,
@@ -29,6 +31,7 @@ from comfy_batch import (
     ui_workflow_path,
     validate_workflow_pair,
     websocket_url,
+    workflow_pair_paths,
 )
 
 
@@ -115,6 +118,63 @@ class WorkflowPairTests(unittest.TestCase):
             self.assertEqual(prompt_document(), prompt)
             self.assertEqual(ui_workflow_path(api_path), canvas_path)
             self.assertEqual(workflow_document(), workflow)
+
+    def write_pair(self, root: Path, name: str) -> Path:
+        api_path = root / f"{name}.api.json"
+        api_path.write_text(json.dumps(prompt_document()), encoding="utf-8")
+        ui_workflow_path(api_path).write_text(
+            json.dumps(workflow_document()),
+            encoding="utf-8",
+        )
+        return api_path
+
+    def test_pair_paths_fold_canvas_input_into_its_api_sibling(self) -> None:
+        """편집 훅은 사용자가 만진 파일만 안다 — 어느 쪽이든 같은 쌍을 봐야 한다."""
+        self.assertEqual(
+            [Path("a.api.json")],
+            workflow_pair_paths(
+                [Path("a.workflow.json"), Path("a.api.json")]
+            ),
+        )
+
+    def test_pair_paths_sweep_the_workflow_folder_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_pair(root, "b")
+            self.write_pair(root, "a")
+            self.assertEqual(
+                ["a.api.json", "b.api.json"],
+                [
+                    path.name
+                    for path in workflow_pair_paths([], workflow_dir=root)
+                ],
+            )
+
+    def test_validate_reports_every_drifted_pair_before_failing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            good = self.write_pair(root, "good")
+            bad = self.write_pair(root, "bad")
+            drifted = json.loads(bad.read_text())
+            drifted["1"]["class_type"] = "BogusNodeType"
+            bad.write_text(json.dumps(drifted), encoding="utf-8")
+
+            printed: list[str] = []
+            with unittest.mock.patch(
+                "builtins.print",
+                lambda value: printed.append(value),
+            ):
+                with self.assertRaisesRegex(ComfyError, "1/2"):
+                    command_validate(
+                        argparse.Namespace(workflow=[good, bad])
+                    )
+            results = json.loads(printed[0])
+            by_api = {Path(item["api"]).name: item for item in results}
+            self.assertNotIn("error", by_api["good.api.json"])
+            self.assertIn(
+                "BogusNodeType",
+                by_api["bad.api.json"]["error"],
+            )
 
     def test_publish_workflows_writes_comfyui_userdata(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

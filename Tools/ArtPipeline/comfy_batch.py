@@ -529,21 +529,61 @@ def load_prompt(path: Path) -> dict[str, Any]:
     return prompt
 
 
+def workflow_pair_paths(
+    inputs: list[Path],
+    *,
+    workflow_dir: Path = DEFAULT_WORKFLOW_DIR,
+) -> list[Path]:
+    """검사할 API 워크플로 목록.
+
+    캔버스 파일을 넘겨도 짝인 `.api.json`으로 바꾼다 — 편집 훅은 사용자가 방금
+    건드린 파일만 알기 때문이다. 인자가 없으면 워크플로 폴더 전체를 훑는다.
+    """
+    if not inputs:
+        return sorted(workflow_dir.glob("*.api.json"))
+    resolved: list[Path] = []
+    for path in inputs:
+        name = path.name
+        if name.endswith(".workflow.json"):
+            path = path.with_name(
+                name.removesuffix(".workflow.json") + ".api.json"
+            )
+        if path not in resolved:
+            resolved.append(path)
+    return resolved
+
+
 def command_validate(args: argparse.Namespace) -> None:
-    prompt, canvas_path, workflow = validate_workflow_pair(args.workflow)
-    print(
-        json.dumps(
+    paths = workflow_pair_paths(args.workflow)
+    if not paths:
+        raise ComfyError(
+            f"No ComfyUI API workflows found in {DEFAULT_WORKFLOW_DIR}"
+        )
+    results: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for path in paths:
+        try:
+            prompt, canvas_path, workflow = validate_workflow_pair(path)
+        except (ComfyError, OSError) as exc:
+            failures.append(str(exc))
+            results.append({"api": str(path), "error": str(exc)})
+            continue
+        results.append(
             {
-                "api": str(args.workflow),
+                "api": str(path),
                 "canvas": str(canvas_path),
                 "nodes": len(prompt),
                 "api_sha256": json_digest(prompt),
                 "canvas_sha256": json_digest(workflow),
-            },
-            ensure_ascii=False,
-            indent=2,
+            }
         )
-    )
+    payload: Any = results[0] if len(paths) == 1 else results
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    if failures:
+        raise ComfyError(
+            f"{len(failures)}/{len(paths)} workflow pairs are out of sync:\n"
+            + "\n".join(failures)
+        )
 
 
 def command_sync_workflows(args: argparse.Namespace) -> None:
@@ -1333,7 +1373,7 @@ def build_parser() -> argparse.ArgumentParser:
         "validate",
         help="Validate a paired API and canvas workflow",
     )
-    validate.add_argument("workflow", type=Path)
+    validate.add_argument("workflow", type=Path, nargs="*")
     validate.set_defaults(handler=command_validate)
 
     sync_workflows = subparsers.add_parser(

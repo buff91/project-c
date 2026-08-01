@@ -70,7 +70,9 @@ docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction
 - 테스트 경로는 **두 개**다 — Unity 없이 도는 **Core shim**(`./Tools/CoreTests/run-core-tests.sh`)과 에디터의 **전체
   회귀**(EditMode + PlayMode 둘 다). 절차·한계·보고 형식은 `/test` 스킬이 소유한다. shim은 회귀를 대체하지 않는다
   (씬·스프라이트·HUD·UI Toolkit 계약은 에디터에서만 검증된다). **돌리지 않은 것을 "테스트 통과"라고 쓰지 않는다.**
-- **로컬 훅**(`.claude/settings.json` → `Tools/Hooks/`, 모든 브랜치) — `PostToolUse`(`check-cs-edit.sh`)는
+- **로컬 훅**(`.claude/settings.json` → `Tools/Hooks/`, 모든 브랜치) — `PostToolUse`(`check-comfy-workflow.sh`)는
+  ComfyUI 워크플로 쌍(`*.workflow.json` ↔ `*.api.json`)이 어긋난 채 남는 걸 막고,
+  `PostToolUse`(`check-cs-edit.sh`)는
   `Scripts/Core`의 UnityEngine 의존·`Assets` 아래 `.meta` 누락·Unity 의존 EditMode 테스트의 shim 제외 누락을 잡고,
   `Stop`(`verify-core-tests.sh`)은 `.cs`를 건드린 세션이 **테스트 실패 상태로 끝나지 못하게** 한다.
 - **CI**(`.github/workflows/core-tests.yml`)는 **`release/**` 브랜치 한정**이다. `main`과 작업 브랜치에는 CI가 없어

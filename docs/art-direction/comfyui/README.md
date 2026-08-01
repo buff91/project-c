@@ -139,6 +139,18 @@ python3 Tools/ArtPipeline/comfy_batch.py validate \
   docs/art-direction/comfyui/environment-styletransfer.api.json
 ```
 
+인자를 빼면 이 폴더의 **모든 쌍**을 훑고, 어긋난 것을 전부 보고한 뒤 실패한다. 캔버스 파일을
+넘겨도 짝인 `.api.json`을 검사한다.
+
+```bash
+python3 Tools/ArtPipeline/comfy_batch.py validate
+```
+
+에이전트가 이 파일들을 편집하면 `Tools/Hooks/check-comfy-workflow.sh`(PostToolUse 훅)가
+같은 검사를 자동으로 돌려 어긋난 쌍이 커밋으로 흘러가는 걸 막는다. **ComfyUI 캔버스에서
+직접 고치고 Export를 잊은 경우는 훅이 잡지 못하므로**, 캔버스 작업 뒤에는 위 전체 스윕을
+한 번 돌린다.
+
 API 워크플로 실행 예:
 
 ```bash
