@@ -78,6 +78,17 @@ namespace ProjectC.Gameplay
         [Tooltip("96×128 액터 아트만 축소한다. HP·위치 마커·발판은 격자 크기를 유지한다.")]
         [Range(0.5f, 1f)] public float actorVisualScale = 0.72f;
 
+        [Tooltip("메인 원정자 전용 배율. 적·폭발통은 공용 액터 배율을 유지한다.")]
+        [Range(0.5f, 1f)] public float playerVisualScale = 0.80f;
+
+        // 현재 actor-knight.aseprite는 11프레임 자동 조립 초안이라 프레임 간 해부·실루엣이
+        // 일치하지 않는다. 정식 방향별 Aseprite 타임라인이 화면 승인되기 전까지 플레이어만
+        // 정적 첫 프레임으로 두는 안전장치다. 적 애니메이션 경로는 이 게이트를 거치지 않는다.
+        internal static bool SurvivorAnimationApproved => false;
+
+        internal static bool ShouldAttachSurvivorAnimator(ActorAnimationSet animations) =>
+            SurvivorAnimationApproved && animations != null && animations.HasClips;
+
         [Header("M1 전투")]
         [Min(1)] public int playerMaxHp = 8;
         [Min(1)] public int playerAttack = 2;
@@ -420,12 +431,7 @@ namespace ProjectC.Gameplay
         private FloatingTextSpawner _floatingText;
         private readonly HashSet<string> _travelVisibleEnemyIds = new HashSet<string>();
         private readonly HashSet<GridPos> _travelVisibleItemTiles = new HashSet<GridPos>();
-        private readonly Dictionary<GridPos, string> _hubInteractables =
-            new Dictionary<GridPos, string>();
-        private readonly Dictionary<SpriteRenderer, GridPos> _hubPropPositions =
-            new Dictionary<SpriteRenderer, GridPos>();
-        private readonly Dictionary<SpriteRenderer, GridPos> _hubLightPositions =
-            new Dictionary<SpriteRenderer, GridPos>();
+        private readonly HubWorldRegistry _hubWorld = new HubWorldRegistry();
         private DungeonLayout _dungeon;
         private int _activeFloorIndex;
         private readonly Dictionary<GridPos, SpriteRenderer> _tileRenderers =
@@ -616,6 +622,7 @@ namespace ProjectC.Gameplay
             _throwRangeMarkers.Clear();
             _blastPreviewCells.Clear();
             _aimHoverCell = null;
+            _hubWorld.Reset();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
             ResetRescueForBuild();
@@ -835,9 +842,15 @@ namespace ProjectC.Gameplay
             if (playerSprite == null)
                 playerSprite = ActorSprites.GetCharacterSprite(false);
             _player = CreateActorSprite("Player", playerSprite, _playerPos, out _playerRenderer);
-            _playerAnimator = AttachActorAnimator(
-                _player, _playerRenderer,
-                visualCatalog != null ? visualCatalog.SurvivorAnimations : null);
+            // 회색 방호복이 웜 그레이 벽과 겹쳐도 실루엣이 남도록 플레이어만 한 단계 키운다.
+            // HP 바·위치 마커는 액터 자식이 아니므로 기존 화면 위치와 크기를 유지한다.
+            _playerRenderer.transform.localScale = Vector3.one * playerVisualScale;
+            ActorAnimationSet survivorAnimations = visualCatalog != null
+                ? visualCatalog.SurvivorAnimations
+                : null;
+            _playerAnimator = ShouldAttachSurvivorAnimator(survivorAnimations)
+                ? AttachActorAnimator(_player, _playerRenderer, survivorAnimations)
+                : null;
             _playerShadow = CreateContactShadow(_player.transform);
             _playerSorting = _player.AddComponent<GridSortingObject>();
             _playerSorting.grid = _grid;

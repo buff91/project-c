@@ -198,15 +198,13 @@ namespace ProjectC.Gameplay
                     label = "동료 구출";
                     return true;
                 }
-                if (hubMode && _hubInteractables.TryGetValue(candidate, out string hubId))
+                if (hubMode &&
+                    _hubWorld.TryGetInteraction(
+                        candidate,
+                        out HubInteractionTarget hubTarget))
                 {
                     target = candidate;
-                    label = hubId == "merchant" ? "상인"
-                        : hubId == "stash" ? "창고"
-                        : hubId == "smith" ? "대장간"
-                        : hubId == "bounty" ? "의뢰 게시판"
-                        : hubId == "codex" ? "기록실"
-                        : "영웅";
+                    label = hubTarget.Label;
                     return true;
                 }
                 if (!hubMode && TryGetRestSiteAt(candidate, out RestSiteAgent restSite))
@@ -304,10 +302,15 @@ namespace ProjectC.Gameplay
             }
 
             // 허브: NPC/오브젝트 탭 → 옆까지 걸어가 상호작용.
-            if (hubMode && _hubInteractables.TryGetValue(target, out string hubId))
+            if (hubMode &&
+                _hubWorld.TryGetInteraction(
+                    target,
+                    out HubInteractionTarget hubTarget))
             {
                 if (TryFindApproach(target, out List<GridPos> hubPath))
-                    StartPlayerAction(target, ApproachAndInteract(hubPath, target, hubId));
+                    StartPlayerAction(
+                        target,
+                        ApproachAndInteract(hubPath, target, hubTarget.Id));
                 return;
             }
 

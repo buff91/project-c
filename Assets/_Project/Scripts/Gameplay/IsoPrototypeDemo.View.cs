@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 
@@ -110,19 +108,7 @@ namespace ProjectC.Gameplay
             if (_selection != null)
                 PositionSelection(_selectionPos);
             ApplyThrowRangePreviewView();
-
-            foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubPropPositions)
-            {
-                if (pair.Key == null) continue;
-                pair.Key.transform.position = VisualPosition(pair.Value);
-                pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, 1);
-            }
-            foreach (KeyValuePair<SpriteRenderer, GridPos> pair in _hubLightPositions)
-            {
-                if (pair.Key == null) continue;
-                pair.Key.transform.position = VisualPosition(pair.Value);
-                pair.Key.sortingOrder = _grid.iso.SortingOrder(pair.Value, -1);
-            }
+            _hubWorld.ApplyView(_grid.iso, VisualPosition);
 
             RefreshFloorVisibility();
         }

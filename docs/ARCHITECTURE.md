@@ -93,17 +93,22 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 4.4 IsoGrid — 아이소 투영 + 정렬 (SSOT)
 - **투영** `GridToWorld`: `wx=(x'−y')·½W`, `wy=−(x'+y')·½H + elevation·step`(x'는 시점 회전 적용 좌표).
   **역투영** `WorldToGrid`는 호출자가 elevation 평면을 지정한다(위→아래로 후보 시도).
-- **정렬** `SortingOrder = elevation·elevationSortBand + 깊이` — **elevation이 우선**, 같은 층은 (x+y)가
+- **정렬** `SortingOrder = elevation·ElevationSortBand + 깊이` — **elevation이 우선**, 같은 층은 (x+y)가
   클수록 앞. 세부 정렬은 `SortingOrder(pos)·MicroResolution + microOffset`(바닥 데칼을 캐릭터 뒤로 등).
-  밴드 폭은 `elevationSortBand > 깊이 해상도 × (maxX+maxY)`라는 불변식으로 정해져 인접 층이 안 섞인다.
+  `GridPos` 깊이는 정수라 `DepthResolution=1`, 최대 20×20 맵의 깊이 0..38보다 큰
+  `ElevationSortBand=39`, 공식 micro 슬롯 -2..+2를 분리하는 `MicroResolution=5`를 쓴다.
+  이 압축 표현은 지원 최대치(20층·층당 elevation 6·20×20 맵)에서도 `SpriteRenderer.sortingOrder`
+  int16 범위와 월드 상단 오버레이 대역 아래를 유지한다.
   - **micro 슬롯**: 바닥 −2 · 계단/사다리 타일·뒷벽·조준 마커 −1 · 문·아이템·**수직 표지** 0 ·
     액터 +1 · 보스 봉인 +2. 수직 표지가 액터와 같은 +1 이면 **같은 칸과 같은 깊이(x+y가 같은
     대각 이웃)에서 정렬이 완전히 동률**이 되고, 층 전환 아치는 타일보다 두 배 넘게 높아 그
     동률을 이긴다 — 계단에 선 플레이어가 표지 뒤로 사라진다.
   - 표지가 **플레이어보다 앞칸**이라 정렬상 이기는 경우는 정렬로 못 고친다(앞은 앞이 맞다).
     이건 벽과 같은 가림 페이드(`SpriteOcclusion` + `fadePlayerOccluders`)가 맡는다.
-  - ⚠️ **알려진 결함**: `SpriteRenderer.sortingOrder`는 int16이라 elevation ≥ 4 인 층에서
-    이 식의 결과가 넘쳐 한 층 안에서 깊이 순서가 뒤집힌다(§ 아래 `docs/STATUS.md` 참고).
+  - **이동 중 액터**는 목적지 정렬을 트윈 시작부터 쓰지 않는다. 발 피벗이 화면상 칸 경계를
+    지나는 eased progress 0.5 전에는 출발 칸, 이후에는 도착 칸의 정렬을 쓴다
+    (`SortingOrderDuringMove`). 플레이어 걷기·넉백·낙하와 보이는 적 이동이 이 규칙을 공유하고,
+    층 전환·귀환은 흐린 상태로 목적지에 옮긴 직후 목적지 정렬까지 함께 확정한다.
 - **시점 회전**: 카메라를 돌리지 않고 `viewQuarterTurns(0..3)`로 (x,y)를 피벗 기준 90° 투영하며,
   위 세 함수가 같은 회전값을 공유한다.
 
@@ -488,6 +493,12 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 > 파셜이 아니라 별 타입으로 뺀다(§2) — `IsoPrototypeDemo.Sprites.cs`가 픽셀을 직접 그리지 않고
 > 격자 사실만 스프라이트 팩토리에 넘기는 어댑터인 것이 그 형태다.
 
+- `HubWorldPresenter`는 대장간·의뢰 게시판의 개방 여부만 담은 `HubFacilitySnapshot`과 주입된
+  씬 컨텍스트/비주얼 해석기를 받아 허브 프롭·광원을 만들고 상호작용과 재투영 앵커를 함께 등록한다.
+  `MetaStore`·플레이어 상태·`Generated Visuals` 초기화는 알지 않는다.
+- `HubWorldRegistry`는 허브 시설의 `GridPos → (id, label)`과 지속 프롭/광원 앵커를 소유하고,
+  `Interaction`/`View`에 조회·재투영 API만 제공한다. 오브젝트를 파괴하지 않으며 공용 빌드 초기화에서
+  참조만 비운다. 위치 투영은 호스트의 `VisualPosition`, 정렬값은 `IsoGrid.SortingOrder`를 따른다.
 - 내부 에이전트(경량 뷰 홀더) `EnemyAgent`/`ItemAgent`/`RestSiteAgent`/`VerticalLandmarkAgent`와
   이벤트(`PlayerHpChanged`·`ActiveFloorChanged`·`ExitChoiceRequested`…)로 HUD와 느슨 결합한다.
 - `IsoPrototypeDemo.Targeting`은 투척 조준 상태를 실제 유효 칸의 낮은 알파 월드 데칼로 번역한다.

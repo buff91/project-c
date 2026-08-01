@@ -18,7 +18,8 @@
   모든 파셜이 공유한다. 큰 파일을 관심사별로 나누되 타입 경계는 건드리지 않는 선택이다.
 - **다만 파셜 분할로는 결합이 줄지 않는다** — 모든 파셜이 같은 필드에 손댈 수 있어서
   "격자를 안 봐야 하는 코드"가 격자를 본다. 그래서 파셜 수가 19개까지 자란 뒤
-  **스프라이트 생성은 실제 별 클래스로 추출**했다(아래 "절차 생성 임시 아트"). 판단 기준은
+  **스프라이트 생성과 허브 월드 생성·등록은 실제 별 클래스로 추출**했다(아래 "절차 생성 임시 아트",
+  `HubWorldPresenter`·`HubWorldRegistry`). 판단 기준은
   *그 코드가 게임 상태를 알아야 하는가*다 — 몰라도 되는 것은 타입 경계 밖으로 내보낸다.
 - 흩어진 상수·매핑은 **단일 출처(SSOT)**로 모았다(아래 표 참조).
 
@@ -44,7 +45,7 @@
 | `IsoPrototypeDemo.Targeting.cs` | 투척 가능 칸/FOV 기반 월드 조준 범위 마커의 생성·정리·시점 회전 추종 |
 | `IsoPrototypeDemo.Movement.cs` | 경로 이동·문/비밀문/낙하 접근·auto-travel·플로어 전환 |
 | `IsoPrototypeDemo.RunLifecycle.cs` | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
-| `IsoPrototypeDemo.Hub.cs` | 허브 프롭/포탈 (영웅 프롭·잠금은 제거됨) |
+| `IsoPrototypeDemo.Hub.cs` | 메타 저장을 시설 개방 스냅샷으로 변환해 `HubWorldPresenter` 호출 + 원정자 기본 상태 적용 (영웅 프롭·잠금은 제거됨) |
 | `IsoPrototypeDemo.Enemies.cs` | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
@@ -99,6 +100,8 @@
 | 파일 | 담당 |
 |------|------|
 | `GridManager.cs` | 격자 데이터(`GridMap`)와 변환 규칙(`IsoGrid`)을 씬에서 소유하는 얇은 진입점. 로직은 Core, 여기서는 Unity와 이어주기만 |
+| `HubWorldPresenter.cs` | 시설 개방 불변 스냅샷과 주입된 씬/비주얼 의존성으로 허브 프롭·광원을 생성하고 상호작용·재투영 앵커를 함께 등록. `MetaStore`·플레이어 상태·루트 초기화는 모른다 |
+| `HubWorldRegistry.cs` | 허브 상호작용 id/표시 라벨과 프롭·광원 격자 앵커를 소유. 빌드 초기화·조회·시점 재투영을 한 경계로 묶되 GameObject 수명은 소유하지 않는다 |
 | `GridSortingObject.cs` | 격자 위 스프라이트의 월드 위치·`sortingOrder`를 `IsoGrid` 규칙으로 갱신. 정렬 계산을 개별 오브젝트가 하지 않게 하는 장치 |
 | `IsoGridGizmo.cs` | Scene 뷰에서 아이소 격자를 다이아몬드로 그려 좌표 변환을 눈으로 검증(에셋 없이) |
 | `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환. **입력 추상화 레이어** — Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고(`#if` 6곳) 게임 로직에는 `GridPos`만 넘긴다 |
