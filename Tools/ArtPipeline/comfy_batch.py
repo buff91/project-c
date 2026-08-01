@@ -10,6 +10,8 @@ media and can be loaded into ComfyUI's frontend bridge for live node progress.
 from __future__ import annotations
 
 import argparse
+import atexit
+import fcntl
 import hashlib
 import json
 import mimetypes
@@ -17,6 +19,7 @@ import os
 import socket
 import struct
 import sys
+import tempfile
 import time
 import uuid
 from datetime import UTC, datetime
@@ -971,6 +974,128 @@ def download_outputs(
     return written
 
 
+DEFAULT_LEASE_PATH = Path(
+    os.environ.get(
+        "COMFY_LEASE_PATH",
+        Path(tempfile.gettempdir()) / "project-c-comfy-checkpoint.lease",
+    )
+)
+# chunk 가 클수록 재로드는 줄지만(160/chunk 초) 다른 드라이버의 대기가 길어진다.
+# 4 면 낭비의 75% 를 걷어내면서 최대 대기가 잡 4개(약 15분)로 묶인다.
+DEFAULT_LEASE_CHUNK = 4
+
+
+def lease_chunk() -> int:
+    """호출 시점에 읽는다 — 테스트·CI 가 ``COMFY_LEASE_CHUNK=0`` 으로 끌 수 있게."""
+    try:
+        return int(os.environ.get("COMFY_LEASE_CHUNK", str(DEFAULT_LEASE_CHUNK)))
+    except ValueError:
+        return DEFAULT_LEASE_CHUNK
+
+
+def prompt_checkpoint(prompt: dict[str, Any]) -> str | None:
+    """API 프롬프트가 로드하는 체크포인트 이름 (없으면 None)."""
+    for node in prompt.values():
+        if not isinstance(node, dict):
+            continue
+        if node.get("class_type") == "CheckpointLoaderSimple":
+            name = node.get("inputs", {}).get("ckpt_name")
+            if isinstance(name, str):
+                return name
+    return None
+
+
+class CheckpointLease:
+    """배치 드라이버 여러 개가 한 ComfyUI 큐를 공유할 때 체크포인트 재로드를 줄인다.
+
+    드라이버들은 서로를 모른 채 같은 큐에 발주한다. 체크포인트가 다른 두 배치가
+    1:1로 교대하면 ComfyUI 는 매 장마다 SDXL 체크포인트를 다시 읽는다 — 2026-07-31
+    로컬 실측에서 장당 221초가 381초로 늘었다(+160초, 58잡 중 21잡이 이 비용을 냄).
+
+    ``chunk`` 개의 잡을 연속으로 점유한 뒤 락을 놓아 다른 드라이버에 차례를 준다.
+    재로드는 chunk 분의 1로 줄고, 긴 배치가 다른 워크트리를 무한정 막지도 않는다.
+    락을 잡지 못하는 환경(권한·플랫폼)에서는 경고만 남기고 그냥 진행한다 — 발주를
+    막는 것보다 느린 편이 낫다.
+    """
+
+    def __init__(
+        self,
+        checkpoint: str | None,
+        *,
+        chunk: int = DEFAULT_LEASE_CHUNK,
+        path: Path | None = None,
+    ) -> None:
+        if chunk < 1:
+            raise ValueError("chunk must be >= 1")
+        self.checkpoint = checkpoint
+        self.chunk = chunk
+        self.path = path or DEFAULT_LEASE_PATH
+        self._handle: Any = None
+        self._used = 0
+
+    def _acquire(self) -> None:
+        if self._handle is not None or self.checkpoint is None:
+            return
+        try:
+            handle = self.path.open("a+")
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        except OSError as exc:
+            print(
+                f"comfy lease unavailable ({exc}); 직렬화 없이 진행한다",
+                file=sys.stderr,
+            )
+            self.checkpoint = None
+            return
+        self._handle = handle
+        self._used = 0
+
+    def _release(self) -> None:
+        if self._handle is None:
+            return
+        try:
+            fcntl.flock(self._handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            self._handle.close()
+            self._handle = None
+
+    def tick(self) -> None:
+        """잡 하나를 제출하기 직전에 부른다. chunk 를 다 쓰면 차례를 넘긴다."""
+        if self.checkpoint is None:
+            return
+        if self._handle is not None and self._used >= self.chunk:
+            self._release()
+        self._acquire()
+        self._used += 1
+
+    def __enter__(self) -> CheckpointLease:
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self._release()
+
+
+_process_lease: CheckpointLease | None = None
+
+
+def hold_checkpoint_lease(checkpoint: str | None) -> None:
+    """이 프로세스가 발주하는 동안 큐를 체크포인트 단위로 점유한다.
+
+    배치 드라이버는 ``execute_prompt`` 만 부르고 리스의 존재를 몰라도 된다 —
+    드라이버가 워크트리마다 복제돼 있어 호출부를 일괄 수정할 수 없기 때문이다.
+    ``COMFY_LEASE_CHUNK=0`` 으로 끌 수 있다.
+    """
+    global _process_lease
+    chunk = lease_chunk()
+    if checkpoint is None or chunk < 1:
+        return
+    if _process_lease is None or _process_lease.checkpoint != checkpoint:
+        if _process_lease is not None:
+            _process_lease._release()
+        _process_lease = CheckpointLease(checkpoint, chunk=chunk)
+        atexit.register(_process_lease._release)
+    _process_lease.tick()
+
+
 def execute_prompt(
     base_url: str,
     prompt: dict[str, Any],
@@ -995,6 +1120,10 @@ def execute_prompt(
             f"ComfyUI workflow pair is out of sync for {workflow_path}: "
             + "; ".join(contract_errors)
         )
+
+    # 큐를 체크포인트 단위로 점유한다 — 다른 배치와 1:1 교대하면 매 장마다
+    # 체크포인트를 다시 읽어 장당 ~160초를 버린다. CheckpointLease 주석 참고.
+    hold_checkpoint_lease(prompt_checkpoint(prompt))
 
     prompt_id = str(uuid.uuid4())
     client_id: str | None = None

@@ -15,11 +15,16 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 from comfy_batch import (
+    DEFAULT_LEASE_CHUNK,
+    CheckpointLease,
     ComfyError,
     RunObserver,
     _binary_preview,
     execute_prompt,
+    hold_checkpoint_lease,
+    lease_chunk,
     paired_node_contract,
+    prompt_checkpoint,
     publish_workflows,
     ui_workflow_path,
     validate_workflow_pair,
@@ -296,6 +301,72 @@ class ProgressTests(unittest.TestCase):
                 2,
                 len(observer.events_path.read_text(encoding="utf-8").splitlines()),
             )
+
+
+class CheckpointLeaseTests(unittest.TestCase):
+    def test_prompt_checkpoint_reads_loader_node(self) -> None:
+        prompt = {
+            "1": {
+                "class_type": "CheckpointLoaderSimple",
+                "inputs": {"ckpt_name": "zavychromaxl_v100.safetensors"},
+            },
+            "2": {"class_type": "SaveImage", "inputs": {}},
+        }
+        self.assertEqual(
+            "zavychromaxl_v100.safetensors", prompt_checkpoint(prompt)
+        )
+
+    def test_prompt_checkpoint_returns_none_without_loader(self) -> None:
+        self.assertIsNone(prompt_checkpoint({"1": {"class_type": "SaveImage"}}))
+
+    def test_lease_holds_lock_across_chunk_then_yields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "lease"
+            lease = CheckpointLease("a.safetensors", chunk=2, path=path)
+            with lease:
+                lease.tick()
+                first = lease._handle
+                self.assertIsNotNone(first)
+                lease.tick()
+                # chunk 를 아직 다 쓰지 않았으면 같은 핸들을 유지한다.
+                self.assertIs(first, lease._handle)
+                lease.tick()
+                # chunk 소진 후에는 락을 놓았다가 다시 잡는다.
+                self.assertIsNotNone(lease._handle)
+                self.assertIsNot(first, lease._handle)
+            self.assertIsNone(lease._handle)
+
+    def test_lease_without_checkpoint_never_locks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            lease = CheckpointLease(None, path=Path(tmp) / "lease")
+            with lease:
+                lease.tick()
+                self.assertIsNone(lease._handle)
+
+    def test_lease_degrades_when_lock_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing-dir" / "lease"
+            lease = CheckpointLease("a.safetensors", path=path)
+            with lease:
+                lease.tick()
+                # 락을 못 잡아도 예외 없이 진행한다.
+                self.assertIsNone(lease._handle)
+                self.assertIsNone(lease.checkpoint)
+
+    def test_lease_rejects_zero_chunk(self) -> None:
+        with self.assertRaises(ValueError):
+            CheckpointLease("a.safetensors", chunk=0)
+
+    def test_chunk_env_can_disable_leasing(self) -> None:
+        with unittest.mock.patch.dict("os.environ", {"COMFY_LEASE_CHUNK": "0"}):
+            self.assertEqual(0, lease_chunk())
+            # 비활성일 때는 실제 락 파일을 건드리지 않는다 —
+            # 돌고 있는 배치가 쥔 락에 테스트가 걸리면 안 된다.
+            hold_checkpoint_lease("a.safetensors")
+
+    def test_chunk_env_falls_back_when_unparsable(self) -> None:
+        with unittest.mock.patch.dict("os.environ", {"COMFY_LEASE_CHUNK": "nope"}):
+            self.assertEqual(DEFAULT_LEASE_CHUNK, lease_chunk())
 
 
 if __name__ == "__main__":
