@@ -175,6 +175,7 @@
 | `StatusEffects.cs` | `StatusKind`(화상·빙결·중독)와 부여/상쇄. 중독은 화염·빙결과 무관하게 독립 지속 |
 | `FallRules.cs` | **모든 낙하 트리거의 수렴점 `TryFall`**. 낙하 칸수 → 낙뎀 곡선 → 착지 충돌을 한 곳에서. 플레이어와 몬스터가 같은 경로 |
 | `Interactions.cs` | `OilRules`(기름 살포·발화) · `BombRules`(+`BombResult`). **`BombRules.ForEachBlastCell`이 3×3 순회 SSOT**(SSOT 표 참조) |
+| `HazardSequence.cs` | 낙하·폭발 연쇄의 **순서**(피해→상태→원소 반응→넉백→유폭). 규칙이 아니라 규칙을 엮는 차례를 소유하고, 일어난 일을 `HazardStep` 목록으로 남겨 연출이 재생만 하게 한다 |
 | `WaterRules.cs` | 젖음·연쇄 결빙 + **`WetPoolFlood`(젖은 웅덩이 4방향 확산 SSOT)가 이 파일에 산다** — 파일 이름과 타입 이름이 다르니 찾을 때 주의 |
 | `ShockRules.cs` | 감전. 3×3 블라스트로 직접 지지고, 닿은 젖은 웅덩이 전체를 통전시킨다. 마른 칸엔 전파되지 않아 "적을 웅덩이로 모는" 셋업 전술이 된다 |
 | `WindowRules.cs` | 창문 깨기. 온전한 창문은 이동을 막고 시야는 통과, 깨지면 통로(되돌릴 수 없다). 밖이 허공이면 그대로 `FallRules`로 이어진다 |
