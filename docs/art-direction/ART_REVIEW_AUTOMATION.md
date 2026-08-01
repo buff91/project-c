@@ -37,6 +37,8 @@ art-review.sqlite3
 - **배치 YAML**: 여러 용도의 레시피를 한 번에 넣는 수동/예약 실행 단위다.
 - **SQLite**: batch run, job, 후보, 피드백, Spark 반영 요청과 Slack 연결을 영구 기록한다.
 - **Slack**: 사람이 보는 리뷰 UI다. 기록의 SSOT는 아니다.
+- **로컬 뷰어**(`art_runner.py review`): Slack과 같은 판정을 브라우저에서 하는 두 번째 UI다. 역시 SSOT가
+  아니며 CLI와 같은 함수를 호출한다.
 - **Codex Scheduled (Spark)**: 자연어 피드백과 승인된 후보의 실제 게임 반영만 처리한다.
 - **Runner**: 승인·거절·변형·Aseprite 마감처럼 결정론적인 작업만 실행한다.
 
@@ -319,6 +321,7 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
 | 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
 | 작업 상세 | 후보 카드의 스레드 첫 답글 (`/art job <job-id>`도 지원) | `art_runner.py job <job-id>` | 실제 positive/negative, 모델·LoRA, base/candidate seed, Steps·CFG·denoise 확인 |
+| 로컬 리뷰 뷰어 | — | `art_runner.py review` | Slack을 열지 않고 최근 후보를 브라우저 한 화면에서 훑고 판정 |
 
 #### 생성 폼의 이번 실행 조정
 
@@ -368,6 +371,48 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 Spark가 `needs_input`을 남기면 후보 스레드에 답한다. 다음 Scheduled 실행이 답을 intent로
 기록해 같은 요청을 다시 `queued`로 돌린다.
 
+### 3-b-1. 로컬 리뷰 뷰어
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py review
+```
+
+`127.0.0.1:8787`에 정적 페이지를 띄우고 브라우저를 연다(`--port`·`--limit`·`--no-open`으로 조정).
+최근 후보를 격자로 보여주고 카드마다 **채택·거절·변형 4장·Aseprite 준비·애니 초안**을, 멀티샷
+후보에는 샷별 **샷 채택·샷 거절·변형 2장**을 붙인다. 멀티샷 카드는 라벨 시트와 함께 각 샷의
+원본·게임 스케일 프리뷰를 나란히 보여준다.
+
+버튼은 Slack·CLI와 **같은 판정 함수**를 호출한다. 채택은 즉시 승인 스냅샷을 만들고, 변형·준비·
+애니 초안은 워커 큐에 들어간다 — 뷰어는 UI일 뿐 새 상태 머신이 아니다. 서버는 localhost 로만
+답하고(`Host` 검사), 이미지 경로는 요청이 아니라 DB·샷 매니페스트에서 되찾는다.
+
+### 3-b-2. 후보·job ID 별칭
+
+`ART-...-C01`을 카드에서 터미널로 옮겨 적지 않는다. 후보/job 인자를 받는 모든 명령이 아래를 같이
+받는다.
+
+| 쓰는 법 | 뜻 |
+|---|---|
+| `latest` · `last` · `^` | 최근 목록 1번 |
+| `^3` · `3` | 최근 목록 3번 |
+| `<recipe-id>@latest` · `<recipe-id>@^2` | 그 레시피 안에서 센 번호 |
+| `ART-20260731-...-abc123` (job ID) | 후보가 하나뿐인 job이면 그 후보 |
+| `-C02`처럼 ID 일부 | 유일하게 걸릴 때만. 여럿이면 후보를 나열하고 거절한다 |
+| (생략) | 최근 목록을 번호로 출력하고 고르게 한다 — 터미널일 때만 |
+
+번호 순서는 **뷰어 격자·선택기·`^N`이 모두 같다**(새 job이 위, 같은 job 안에서는 C01→C02).
+뷰어 카드에 찍힌 `^2`를 그대로 `art_runner.py approve ^2`에 쓸 수 있다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py approve ^2
+python3 Tools/ArtPipeline/art_runner.py variation actor-slinger-idle-v1@latest --count 4
+python3 Tools/ArtPipeline/art_runner.py prepare        # 목록에서 번호로 선택
+python3 Tools/ArtPipeline/art_runner.py retry latest   # cancel·retry·job 도 같은 어휘
+```
+
+`cancel`·`retry`는 선택기를 열 때 각각 `queued`·`failed` job만 보여준다. 스크립트·Scheduled 처럼
+터미널이 없는 실행에서 인자를 생략하면 선택기 대신 오류를 낸다 — 무엇을 고를지 물을 곳이 없다.
+
 ### 3-c. 자연어 피드백
 
 - Slack: 후보 또는 샷 카드의 스레드에 `[shot-id] 수정 내용` 또는 `[walk] 수정 내용`으로
@@ -391,15 +436,16 @@ python3 Tools/ArtPipeline/art_runner.py feedback \
 1. ComfyUI Desktop과 백그라운드 서비스를 켠다.
 2. `/art recipes`로 recipe ID를 찾고 `/art recipe <id>`로 설정을 확인한다.
 3. `/art shot <recipe-id> <shot-id> 1`로 가장 싼 단일 샷 시험을 실행한다.
-4. 카드에서 샷을 평가하고 필요하면 해당 샷만 변형한다.
+4. Slack 카드 또는 `art_runner.py review`에서 샷을 평가하고 필요하면 해당 샷만 변형한다.
 5. 설정이 읽힐 때만 `/art run <recipe-id> 1`로 전체 세트를 만든다.
 6. `Aseprite 소스 세트` → `애니 초안` 순서로 만들고 Aseprite에서 인비트윈과 피벗을 마감한다.
 7. 후보 전체를 채택해 스냅샷을 보관한다.
 8. 실제 게임에 쓸 후보만 `게임 반영 요청`한다. Spark가 기존 에셋·카탈로그 참조를 조사해
    대상을 하나로 확정하거나, 모호하면 Slack 스레드에 선택지를 남긴다.
 
-후보 ID는 카드 제목의 `ART-...-C01`, job ID는 `/art status`에서 찾는다. shot ID는 레시피
-상세 카드, 샷 카드 제목 또는 CLI `recipes <recipe-id>`에서 확인한다.
+후보 ID는 카드 제목의 `ART-...-C01`, job ID는 `/art status`에서 찾는다 — 로컬에서는 옮겨 적는
+대신 §3-b-2의 별칭(`latest`·`^2`·생략 시 선택기)을 쓴다. shot ID는 레시피 상세 카드, 샷 카드
+제목 또는 CLI `recipes <recipe-id>`에서 확인한다.
 
 ## 4. 로컬 큐 상세
 
@@ -451,9 +497,10 @@ python3 Tools/ArtPipeline/art_runner.py retry ART-...
 `cancel`은 `queued` 상태에서만, `retry`는 `failed` 상태에서만 성공한다. 실행 중인 ComfyUI
 요청을 강제로 끊지 않으므로 중간 파일과 DB가 어긋나지 않는다.
 
-CLI 리뷰:
+CLI 리뷰(전체 ID 대신 §3-b-2의 별칭을 써도 된다):
 
 ```bash
+python3 Tools/ArtPipeline/art_runner.py review --no-open
 python3 Tools/ArtPipeline/art_runner.py approve ART-...-C01
 python3 Tools/ArtPipeline/art_runner.py reject ART-...-C02
 python3 Tools/ArtPipeline/art_runner.py variation ART-...-C01 --count 4

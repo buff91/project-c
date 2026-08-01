@@ -1700,7 +1700,10 @@ def command_shot_decision(args: argparse.Namespace) -> None:
     )
 
 
-def viewer_actions(store: ReviewStore, requested_by: str) -> art_viewer.ViewerActions:
+def viewer_actions(
+    store: ReviewStore,
+    requested_by: str,
+) -> art_viewer.ViewerActions:
     """뷰어 버튼을 CLI와 같은 판정 함수에 묶는다."""
 
     def event_key(kind: str, candidate_id: str) -> str:
@@ -1726,7 +1729,10 @@ def viewer_actions(store: ReviewStore, requested_by: str) -> art_viewer.ViewerAc
                 shot_id,
                 decision,
                 user_id=requested_by,
-                event_key=event_key(f"shot:{decision}:{shot_id}", candidate_id),
+                event_key=event_key(
+                    f"shot:{decision}:{shot_id}",
+                    candidate_id,
+                ),
             )
         ),
         enqueue=lambda kind, candidate_id, payload: store.enqueue_action(

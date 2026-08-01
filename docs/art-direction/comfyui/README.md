@@ -309,6 +309,10 @@ python3 Tools/ArtPipeline/art_runner.py animation <candidate-id> \
 python3 Tools/ArtPipeline/art_runner.py work --once
 ```
 
+생성된 후보를 Slack 없이 판정하려면 `python3 Tools/ArtPipeline/art_runner.py review`로 로컬
+뷰어를 띄운다. 후보 ID를 손으로 옮겨 적는 대신 `approve ^2`·`prepare`(선택기)처럼 별칭을 쓴다 —
+둘 다 [`../ART_REVIEW_AUTOMATION.md`](../ART_REVIEW_AUTOMATION.md) §3-b-1·§3-b-2가 소유한다.
+
 처음 파라미터를 검증할 때는 전체 액터 포즈 세트를 만들지 말고
 `--shot idle` 또는 `--shot walk-contact-a`로 한 장만 실행한다.
 같은 작업은 Slack에서
