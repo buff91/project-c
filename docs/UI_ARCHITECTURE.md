@@ -17,8 +17,27 @@
 |------|-----------|------|
 | 성격 | 화면공간 평면 HUD·메뉴·패널 | 월드 앵커·엔티티/타일 추종 |
 | 데이터 | 데이터 바인딩 유리 | 개별 인스턴스 추종 |
-| 애니 | USS 트랜지션 | DOTween UGUI 모듈(`DOTweenModuleUI.cs`) |
+| 애니 | 상태 전이는 USS 트랜지션, 일회성 juice는 DOTween UI Toolkit 모듈 (아래 절) | DOTween UGUI 모듈(`DOTweenModuleUI.cs`) |
 | 이식 | Claude HTML 시안 → UXML/USS 거의 1:1 | 시안은 참고용, 씬에서 직접 배치 |
+
+### 애니메이션 — 상태 전이는 USS, 일회성 juice는 DOTween
+
+> **같은 속성을 둘이 함께 건드리지 않는다.** 무엇이 소유하는지로 가른다.
+
+| 무엇 | 누가 | 왜 |
+|---|---|---|
+| **상태 전이** — 열림/닫힘·hover·강조처럼 **클래스가 바뀌면 따라오는 것** | USS `transition` | 룩과 같은 파일에 선언적으로 있고 C# 0줄이다. 투명도·색·크기 전부 된다. 상태를 USS 클래스로 표현한다는 아래 「상태 클래스 계약」의 연장이다 |
+| **일회성 juice** — "지금 튕겨라"·"실패했으니 흔들어라"·요소 여러 개를 밀려 들어오게 | DOTween (`DOPunch`·`DOShake`·`DOMove`·`DOScale`·`DORotate`) | 상태가 아니라 사건이다. USS로 하려면 keyframe을 만들고 클래스를 붙였다 떼야 하며 완료 콜백·중첩이 금방 지저분해진다 |
+
+- DOTween의 UI Toolkit 모듈은 **transform 계열만** 준다(`DOTweenModuleUIToolkit.cs`).
+  **투명도·색 트윈은 없다** — 그건 USS `transition`이 맡거나, 꼭 필요하면
+  `DOTween.To(() => el.style.opacity.value, ...)` 제네릭으로 직접 쓴다.
+- **함정**: 이 모듈은 `style.translate`/`style.scale`/`style.rotate`, 즉 **인라인 스타일에 쓴다.**
+  인라인은 USS 규칙을 이기고 **트윈이 끝나도 남는다.** 그래서 한 번 트윈으로 옮긴 요소는 이후
+  클래스 토글로 같은 속성을 되돌릴 수 없다 — 되돌리려면 트윈으로 돌려놓거나
+  `el.style.translate = StyleKeyword.Null`로 인라인을 걷어야 한다.
+- 현재 화면공간 UI에는 애니메이션이 **하나도 없다**(USS `transition` 사용처 0, 컨트롤러 보간 0).
+  전환할 것이 있는 게 아니라 **처음 넣을 때** 이 기준을 적용한다.
 
 ### 화면별 배치
 
