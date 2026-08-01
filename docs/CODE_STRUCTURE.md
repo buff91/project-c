@@ -18,8 +18,9 @@
   모든 파셜이 공유한다. 큰 파일을 관심사별로 나누되 타입 경계는 건드리지 않는 선택이다.
 - **다만 파셜 분할로는 결합이 줄지 않는다** — 모든 파셜이 같은 필드에 손댈 수 있어서
   "격자를 안 봐야 하는 코드"가 격자를 본다. 그래서 파셜 수가 19개까지 자란 뒤
-  **스프라이트 생성과 허브 월드 생성·등록은 실제 별 클래스로 추출**했다(아래 "절차 생성 임시 아트",
-  `HubWorldPresenter`·`HubWorldRegistry`). 판단 기준은
+  **스프라이트 생성과 허브 월드 생성·등록, 낙하/폭발 상태 전이는 실제 별 클래스로 추출**했다
+  (아래 "절차 생성 임시 아트", `HubWorldPresenter`·`HubWorldRegistry`, Core의
+  `HazardSequenceService`). 판단 기준은
   *그 코드가 게임 상태를 알아야 하는가*다 — 몰라도 되는 것은 타입 경계 밖으로 내보낸다.
 - 흩어진 상수·매핑은 **단일 출처(SSOT)**로 모았다(아래 표 참조).
 
@@ -47,7 +48,7 @@
 | `IsoPrototypeDemo.RunLifecycle.cs` | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
 | `IsoPrototypeDemo.Hub.cs` | 메타 저장을 시설 개방 스냅샷으로 변환해 `HubWorldPresenter` 호출 + 원정자 기본 상태 적용 (영웅 프롭·잠금은 제거됨) |
 | `IsoPrototypeDemo.Enemies.cs` | 적 스폰·AI 턴·활성화 |
-| `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
+| `IsoPrototypeDemo.Falls.cs` | Core의 단계형 낙하/넉백/폭발 결과를 코루틴·FOV·텔레메트리·배럴 유폭 연출로 번역 |
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
 | `IsoPrototypeDemo.Extraction.cs` | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.Rescue.cs` | 갇힌 동료 프롭 렌더·구출 처리. 배치·판정은 Core(`ShelterNpcRoster`·`DungeonFloorInfo.RescueNpc`)가 소유한다 — `BossArena`와 같은 모양. 한 판에 동료가 여럿이라 **상태를 목록으로 든다**(스칼라 한 벌이면 뒤 NPC가 앞 것을 덮어써 참조 잃은 GameObject 가 씬에 남았다) |
@@ -173,6 +174,7 @@
 | `TurnManager.cs` | 플레이어 행동 1회 + 적 전체를 한 턴으로 묶는 상태 머신(`TurnPhase`) |
 | `StatusEffects.cs` | `StatusKind`(화상·빙결·중독)와 부여/상쇄. 중독은 화염·빙결과 무관하게 독립 지속 |
 | `FallRules.cs` | **모든 낙하 트리거의 수렴점 `TryFall`**. 낙하 칸수 → 낙뎀 곡선 → 착지 충돌을 한 곳에서. 플레이어와 몬스터가 같은 경로 |
+| `HazardSequenceService.cs` | 참가자 구성/최신 상태 DTO + 타입화한 낙하 원인, 순차 넉백 계획, 폭발 피해·직접 상태·기름/물 반응의 단계형 상태 전이. 연출 사이 생존·점유 변화 때문에 전체를 한 번에 계산하지 않는다 |
 | `Interactions.cs` | `OilRules`(기름 살포·발화) · `BombRules`(+`BombResult`). **`BombRules.ForEachBlastCell`이 3×3 순회 SSOT**(SSOT 표 참조) |
 | `WaterRules.cs` | 젖음·연쇄 결빙 + **`WetPoolFlood`(젖은 웅덩이 4방향 확산 SSOT)가 이 파일에 산다** — 파일 이름과 타입 이름이 다르니 찾을 때 주의 |
 | `ShockRules.cs` | 감전. 3×3 블라스트로 직접 지지고, 닿은 젖은 웅덩이 전체를 통전시킨다. 마른 칸엔 전파되지 않아 "적을 웅덩이로 모는" 셋업 전술이 된다 |
@@ -262,7 +264,7 @@
 | 젖은 웅덩이 4방향 확산 | `WetPoolFlood.Collect(map, center, onVisit)` — **파일은 `Core/WaterRules.cs` 안에 있다.** `WaterRules.ChainFreeze`(결빙)와 `ShockRules.DischargeDetailed`(감전)가 공유한다. 두 벌로 두면 같은 웅덩이가 얼 때와 통전될 때 다른 모양이 된다 |
 | 북쪽 방 입구 칸·방 rect 순회 | `FloorPlan.UpperRoomEntrance` / `IsUpperRoomEntrance(pos)` / `UpperRoomCells()` / `BranchCells()`. 생성기의 하드코딩 방 기하가 전부 여기로 모였다 — 예전에는 `(VerticalX, UpperMinY)` 비교가 손으로 적혀 있어 방 형상을 바꿀 때 하나만 빠뜨리면 입구가 막힌 층이 나왔다. **순회 순서(`x` 외곽 → `y` 내곽)가 곧 RNG 소비 순서**라 바꾸면 생성기 지문이 깨진다 |
 | 생성기 파셜 경계 | **타일을 바꾸면 `Carving`, 좌표만 고르면 `Placement`.** `PlaceRestSite`가 `map.Set`을 한 번도 하지 않는데 Carving에 있어서 이 기준으로 옮겼다 |
-| 원소 반응 상태 부여(폭발 후) | `IsoPrototypeDemo.Falls.ApplyStatusToCombatantsInRegion` |
+| 폭발 직접/표면 상태 대상 계획 | `HazardSequenceService.PlanBlastStatuses` / `ResolveElementAftermath`. Gameplay는 반환 의도를 `ApplyHazardStatusWithPresentation`으로 적용·연출한다 |
 | 원거리 명중 연출 | `IsoPrototypeDemo.Actions.FireRanged` |
 | 시야선·수직 개구부·근접 도달 기하·컬럼 span 해석 | `SightRules` (`CombatRules`·`GridVisibility`가 위임) |
 | 눈높이 초과 차폐 임계 | `SightRules.HeightBlockThreshold` |

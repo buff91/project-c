@@ -7,8 +7,9 @@ namespace ProjectC.Gameplay
 {
     /// <summary>
     /// IsoPrototypeDemo의 낙하·넉백·폭발 상호작용부. (M4 시그니처)
-    /// 모든 낙하 트리거(구멍 진입·약한 바닥 붕괴·넉백)는 Core의 FallRules.TryFall 로
-    /// 수렴하고, 여기서는 결과를 연출·뷰 상태에 반영만 한다.
+    /// 모든 낙하 트리거(구멍 진입·약한 바닥 붕괴·넉백)는 Core의
+    /// HazardSequenceService.ResolveFall → FallRules.TryFall 로 수렴하고,
+    /// 여기서는 단계 결과를 연출·뷰 상태에 반영한다.
     /// </summary>
     public partial class IsoPrototypeDemo
     {
@@ -45,22 +46,56 @@ namespace ProjectC.Gameplay
 
         private int BottomElevation => _dungeon.Height.Elevation(_dungeon.BottomFloorIndex);
 
+        private HazardSequenceState CreateHazardSequenceState() =>
+            new HazardSequenceState(
+                _grid.Map,
+                _dungeon.Height,
+                BottomElevation,
+                AllCombatants());
+
+        private static string PlayerFallCauseLabel(HazardFallCause cause)
+        {
+            switch (cause)
+            {
+                case HazardFallCause.IntentionalDrop: return "DROP";
+                case HazardFallCause.FloorCollapse: return "COLLAPSE";
+                case HazardFallCause.Knockback: return "KNOCKBACK";
+                default: return "FALL";
+            }
+        }
+
+        private static string EnemyFallCauseLabel(HazardFallCause cause)
+        {
+            switch (cause)
+            {
+                case HazardFallCause.FloorCollapse: return "붕괴";
+                case HazardFallCause.Knockback: return "넉백";
+                default: return "낙하";
+            }
+        }
+
         // ── 플레이어 낙하 ──────────────────────────────────────────
 
         /// <summary>from 칸에서 플레이어 낙하를 처리하고 층 이동·연출·피해 표시까지 반영한다.</summary>
-        private IEnumerator FallPlayer(GridPos from, string cause)
+        private IEnumerator FallPlayer(GridPos from, HazardFallCause cause)
         {
-            FallResult fall = FallRules.TryFall(
-                _grid.Map, _dungeon.Height, _playerState, from, BottomElevation, AllCombatants(),
+            FallSequenceResolution resolution = HazardSequenceService.ResolveFall(
+                CreateHazardSequenceState(),
+                _playerState,
+                from,
+                cause,
                 _playerLoadout.SafeFallHeight);
-            if (fall == null) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
+            if (!resolution.HasLanding) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
+
+            FallResult fall = resolution.Fall;
+            string causeLabel = PlayerFallCauseLabel(cause);
 
             _runTelemetry?.RecordFall(
                 player: true,
-                intentional: cause == "DROP",
+                intentional: resolution.IsIntentional,
                 fallenFloorCount: fall.FloorsFallen);
             int destinationFloor = _dungeon.Height.FloorIndex(fall.FinalPosition.elevation);
-            InteractionFeedback?.Invoke($"{cause} → {FloorLabel(destinationFloor)}");
+            InteractionFeedback?.Invoke($"{causeLabel} → {FloorLabel(destinationFloor)}");
             yield return AnimateHoleDrop(from, fall.FinalPosition);
 
             SyncPlayerView(fall.FinalPosition, floorChanged: true);
@@ -86,7 +121,7 @@ namespace ProjectC.Gameplay
             MarkStaticLightDirty(); // 새 개구부 = 새 광원
             InteractionFeedback?.Invoke("WEAK FLOOR COLLAPSED!");
             Debug.Log($"[Fall] 플레이어 밑의 약한 바닥 붕괴 {pos}");
-            yield return FallPlayer(pos, "COLLAPSE");
+            yield return FallPlayer(pos, HazardFallCause.FloorCollapse);
         }
 
         /// <summary>낙하 없는 1칸 밀림(넉백). 층은 그대로, 시야·카메라만 갱신.</summary>
@@ -141,12 +176,14 @@ namespace ProjectC.Gameplay
 
         // ── 몬스터 낙하 ──────────────────────────────────────────
 
-        private IEnumerator FallEnemy(EnemyAgent enemy, GridPos from, string cause)
+        private IEnumerator FallEnemy(EnemyAgent enemy, GridPos from, HazardFallCause cause)
         {
             bool witnessed = IsPositionVisibleToPlayer(from);
-            FallResult fall = FallRules.TryFall(
-                _grid.Map, _dungeon.Height, enemy.State, from, BottomElevation, AllCombatants());
-            if (fall == null) yield break;
+            FallSequenceResolution resolution = HazardSequenceService.ResolveFall(
+                CreateHazardSequenceState(), enemy.State, from, cause);
+            if (!resolution.HasLanding) yield break;
+
+            FallResult fall = resolution.Fall;
 
             _runTelemetry?.RecordFall(
                 player: false,
@@ -154,7 +191,8 @@ namespace ProjectC.Gameplay
                 fallenFloorCount: fall.FloorsFallen);
             if (witnessed)
                 InteractionFeedback?.Invoke($"{RunSummary.FormatCause(enemy.State.Id)} FELL!");
-            Debug.Log($"[Fall] {enemy.State.Id} {cause} 낙하 → {fall.FinalPosition} (-{fall.Damage} HP)");
+            Debug.Log($"[Fall] {enemy.State.Id} {EnemyFallCauseLabel(cause)} 낙하 → " +
+                      $"{fall.FinalPosition} (-{fall.Damage} HP)");
             enemy.Brain?.Rehome(fall.FinalPosition); // 새 층에서 순찰하도록 홈 이동
             yield return ShowEnemyHit(enemy, fall.Damage, "Fall");
             ApplyEnemyVisuals(enemy); // 대개 다른 층으로 사라진다
@@ -166,7 +204,7 @@ namespace ProjectC.Gameplay
             _grid.Map.Set(pos, TileKind.Hole);
             MarkStaticLightDirty(); // 새 개구부 = 새 광원
             Debug.Log($"[Fall] {enemy.State.Id} 밑의 약한 바닥 붕괴 {pos}");
-            yield return FallEnemy(enemy, pos, "붕괴");
+            yield return FallEnemy(enemy, pos, HazardFallCause.FloorCollapse);
         }
 
         /// <summary>착지점에 있던 상대(플레이어/몬스터)의 충돌 피해 연출.</summary>
@@ -189,9 +227,7 @@ namespace ProjectC.Gameplay
             }
         }
 
-        // ── 폭발: 피해 → 넉백 → 폭발통 연쇄 ───────────────────────
-
-        private const int StatusTurnsApplied = 2; // 폭발이 부여하는 화상/빙결 지속 턴
+        // ── 폭발: 피해 → 상태/표면 → 넉백/낙하 → 폭발통 연쇄 ──────
 
         /// <summary>
         /// 폭발 한 번의 전체 처리. 넉백으로 구멍/허공에 밀리면 TryFall 로 이어지고,
@@ -202,8 +238,16 @@ namespace ProjectC.Gameplay
         {
             yield return AnimateBlast(center, fiery);
 
-            BombResult result = BombRules.Detonate(_grid.Map, center, AllCombatants(), damage);
-            List<GridPos> revealedSecretDoors = SecretRoomRules.RevealInBlast(_grid.Map, center);
+            ExplosionElement element = fiery ? ExplosionElement.Fire : ExplosionElement.Frost;
+            HazardSequenceState hazards = CreateHazardSequenceState();
+            ExplosionSequenceStart sequence = HazardSequenceService.BeginExplosion(
+                hazards, center, damage, element);
+            BombResult result = sequence.Blast;
+            IReadOnlyList<GridPos> revealedSecretDoors = sequence.RevealedSecretDoors;
+            if (result.CollapsedWeakFloors.Count > 0 ||
+                result.ShatteredWindows.Count > 0 ||
+                revealedSecretDoors.Count > 0)
+                MarkStaticLightDirty();
             foreach (GridPos _ in revealedSecretDoors)
                 _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
             int visibleHitCount = 0;
@@ -246,57 +290,55 @@ namespace ProjectC.Gameplay
                 Debug.Log($"[SecretRoom] 폭발 발견: {string.Join(", ", revealedSecretDoors)}");
             }
 
-            // 상태 부여: 불 폭발은 화상, 냉기 폭발은 빙결. (GDD §5.5)
+            // 피격 연출 뒤 생존 상태를 다시 읽는다. 갓 모드가 이 사이 HP를 복구할 수 있다.
             bool anyVisibleAffected = false;
-            foreach (CombatantState survivor in result.Damaged)
+            IReadOnlyList<HazardStatusIntent> blastStatuses =
+                HazardSequenceService.PlanBlastStatuses(sequence);
+            foreach (HazardStatusIntent status in blastStatuses)
             {
-                if (!survivor.IsAlive) continue;
-                ApplyStatusWithPresentation(
-                    survivor,
-                    fiery ? StatusKind.Burn : StatusKind.Freeze,
-                    StatusTurnsApplied);
-                EnemyAgent affectedAgent = FindAgentByState(survivor);
-                if (survivor == _playerState ||
-                    affectedAgent != null && IsEnemyVisibleToPlayer(affectedAgent))
+                if (ApplyHazardStatusWithPresentation(status))
                     anyVisibleAffected = true;
             }
             if (anyVisibleAffected) InteractionFeedback?.Invoke(fiery ? "BURNING!" : "FROZEN!");
 
+            ExplosionElementAftermath aftermath =
+                HazardSequenceService.ResolveElementAftermath(hazards, sequence);
+
             // 요소 반응: 불 폭발이 기름 타일에 닿으면 발화 — 그 위의 전원이 불탄다. (GDD §5.5)
             if (fiery)
             {
-                List<GridPos> ignited = OilRules.Ignite(_grid.Map, center);
-                if (ignited.Count > 0)
+                if (aftermath.IgnitedOil.Count > 0)
                 {
-                    _runTelemetry?.RecordOilIgnition(ignited.Count);
-                    InteractionFeedback?.Invoke($"OIL IGNITED ×{ignited.Count}!");
-                    Debug.Log($"[Oil] 기름 발화 {center}: {ignited.Count}칸");
-                    ApplyStatusToCombatantsInRegion(ignited, StatusKind.Burn);
+                    _runTelemetry?.RecordOilIgnition(aftermath.IgnitedOil.Count);
+                    InteractionFeedback?.Invoke($"OIL IGNITED ×{aftermath.IgnitedOil.Count}!");
+                    Debug.Log($"[Oil] 기름 발화 {center}: {aftermath.IgnitedOil.Count}칸");
+                    foreach (HazardStatusIntent status in aftermath.SurfaceStatuses)
+                        ApplyHazardStatusWithPresentation(status);
                 }
 
-                List<GridPos> dried = WaterRules.Evaporate(_grid.Map, center);
-                _runTelemetry?.RecordWaterEvaporation(dried.Count);
-                if (dried.Count > 0) Debug.Log($"[Water] 증발 {center}: {dried.Count}칸");
+                _runTelemetry?.RecordWaterEvaporation(aftermath.EvaporatedWater.Count);
+                if (aftermath.EvaporatedWater.Count > 0)
+                    Debug.Log($"[Water] 증발 {center}: {aftermath.EvaporatedWater.Count}칸");
             }
             else
             {
                 // 요소 반응: 냉기가 웅덩이에 닿으면 이어진 웅덩이 전체로 결빙 전파. (GDD §5.5)
-                List<GridPos> frozenTiles = WaterRules.ChainFreeze(_grid.Map, center);
-                if (frozenTiles.Count > 0)
+                if (aftermath.FrozenWater.Count > 0)
                 {
-                    _runTelemetry?.RecordWaterFreeze(frozenTiles.Count);
-                    InteractionFeedback?.Invoke($"PUDDLE FROZEN ×{frozenTiles.Count}!");
-                    Debug.Log($"[Water] 웅덩이 결빙 {center}: {frozenTiles.Count}칸");
-                    ApplyStatusToCombatantsInRegion(frozenTiles, StatusKind.Freeze);
+                    _runTelemetry?.RecordWaterFreeze(aftermath.FrozenWater.Count);
+                    InteractionFeedback?.Invoke($"PUDDLE FROZEN ×{aftermath.FrozenWater.Count}!");
+                    Debug.Log($"[Water] 웅덩이 결빙 {center}: {aftermath.FrozenWater.Count}칸");
+                    foreach (HazardStatusIntent status in aftermath.SurfaceStatuses)
+                        ApplyHazardStatusWithPresentation(status);
                 }
             }
 
             // 넉백: 맞고 살아남은 전원을 중심 반대쪽으로 민다. 플레이어도 예외 없음. (GDD §5.3)
             foreach (CombatantState survivor in result.Damaged)
             {
+                if (!_playerState.IsAlive) break; // 직접 폭사면 누구도 추가로 밀지 않는다.
                 if (!survivor.IsAlive) continue;
                 yield return KnockbackCombatant(center, survivor);
-                if (!_playerState.IsAlive) break; // 사망 — 남은 넉백만 생략, 지형 갱신은 계속
             }
 
             if (_playerState.IsAlive &&
@@ -312,23 +354,12 @@ namespace ProjectC.Gameplay
             RefreshFloorVisibility();
         }
 
-        /// <summary>지정한 타일 위에 서 있는 살아있는 전투 참가자 전원에게 상태이상을 부여한다.
-        /// (기름 발화 → 화상, 웅덩이 결빙 → 빙결 두 경로가 공유)</summary>
-        private void ApplyStatusToCombatantsInRegion(List<GridPos> tiles, StatusKind kind)
-        {
-            foreach (CombatantState combatant in AllCombatants())
-            {
-                if (!combatant.IsAlive || !tiles.Contains(combatant.Position)) continue;
-                ApplyStatusWithPresentation(combatant, kind, StatusTurnsApplied);
-            }
-        }
-
         private IEnumerator KnockbackCombatant(GridPos center, CombatantState target)
         {
-            KnockbackOutcome outcome = KnockbackRules.Resolve(
-                _grid.Map, center, target.Position,
-                pos => IsPositionOccupiedExcept(pos, target),
-                out GridPos destination);
+            KnockbackSequenceStep step = HazardSequenceService.PlanKnockback(
+                CreateHazardSequenceState(), center, target);
+            KnockbackOutcome outcome = step.Outcome;
+            GridPos destination = step.Destination;
             if (outcome == KnockbackOutcome.None) yield break;
 
             if (target == _playerState)
@@ -336,13 +367,14 @@ namespace ProjectC.Gameplay
                 if (outcome == KnockbackOutcome.Pushed)
                 {
                     yield return ShiftPlayerTo(destination);
-                    if (_grid.Map.Get(destination)?.kind == TileKind.WeakFloor)
+                    if (step.CollapsesWeakFloor &&
+                        _grid.Map.Get(destination)?.kind == TileKind.WeakFloor)
                         yield return CollapseUnderPlayer(destination); // 충격 → 붕괴
                 }
                 else
                 {
                     InteractionFeedback?.Invoke("KNOCKED INTO THE PIT!");
-                    yield return FallPlayer(destination, "KNOCKBACK");
+                    yield return FallPlayer(destination, HazardFallCause.Knockback);
                 }
                 yield break;
             }
@@ -354,12 +386,13 @@ namespace ProjectC.Gameplay
             {
                 target.MoveTo(destination);
                 ApplyEnemyVisuals(agent);
-                if (_grid.Map.Get(destination)?.kind == TileKind.WeakFloor)
+                if (step.CollapsesWeakFloor &&
+                    _grid.Map.Get(destination)?.kind == TileKind.WeakFloor)
                     yield return CollapseUnderEnemy(agent, destination);
             }
             else
             {
-                yield return FallEnemy(agent, destination, "넉백");
+                yield return FallEnemy(agent, destination, HazardFallCause.Knockback);
             }
         }
 

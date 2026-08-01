@@ -453,6 +453,11 @@
   `HubWorldRegistry`에 함께 등록한다. Hub 파셜에는 `MetaStore → HubFacilitySnapshot` 변환과
   `ApplySurvivorStats`만 남는다. Registry는 공용 빌드 초기화에서 참조만 비우며, 오브젝트 수명은
   기존 `Generated Visuals` 루트가 계속 소유한다. Interaction/View 파셜은 조회·재투영만 요청한다.
+- **낙하/폭발 상태 전이도 Core의 단계형 경계를 얻었다**: `HazardSequenceState`는 한 시퀀스의 참가자
+  구성만 고정하고 최신 HP·위치를 읽으며, `HazardSequenceService`가 타입화한 낙하 원인·순차 넉백 계획·
+  폭발 피해/지형·직접 상태·기름/물 반응 DTO를 낸다. Gameplay는 각 단계 사이 피격/이동 코루틴을
+  실행하고 다음 대상을 다시 계획하므로 갓 모드 복구와 동적 점유가 보존된다. 폭발로 약한 바닥·창문·
+  비밀문이 바뀌면 정적 광원도 dirty 처리한다.
 - **해금 축 (진행 중)**: 도구 5종이 **조건 달성으로 열리고 다음 판부터** 드랍 풀에 들어온다
   (`ItemUnlockRules`). 계측은 `RunTelemetry` + `BountyMetric`을 재사용하며 새로 만들지 않았다.
   판정은 `FinishRunTelemetry` 한 곳이고 **사망에도 저장한다**(실패한 판도 전진).

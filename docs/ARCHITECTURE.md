@@ -72,7 +72,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 | `IsSolidGround` | Floor, Stairs, Ladder, StairsUp/Down, DoorClosed/Open, SecretDoor/Passage, WindowBroken |
 | `IsWalkable` | `(IsSolidGround && ≠DoorClosed && ≠SecretDoor) \|\| WeakFloor` |
 | `BlocksSight` | Wall, DoorClosed, SecretDoor |
-| `BlocksVerticalSight` | `≠Hole` (온전한 바닥은 수직으로 막는다 — §8.3) |
+| `BlocksVerticalSight` | `≠Hole` (온전한 바닥은 수직으로 막는다 — §8.4) |
 | `CanBreak` | Window (온전한 창문만) |
 | `CausesFall` | Empty, Hole |
 
@@ -129,7 +129,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 
 ### 5.1 GridVisibility — Recursive Shadowcasting
 - (x,y) 2D **8옥탄트** 캐스팅(Björn Bergström식). 반경은 체비셰프. 결과는 보이는 **표면 GridPos** 집합.
-- **차폐 판정은 자기가 갖지 않는다** — 컬럼 해석을 `SightRules.ViewColumn`에 위임하고(§8.3) 그 덕에
+- **차폐 판정은 자기가 갖지 않는다** — 컬럼 해석을 `SightRules.ViewColumn`에 위임하고(§8.4) 그 덕에
   FOV·전투 LoS·폭탄 사거리가 **같은 기하 하나**를 본다. 판정 내용은
   [`SYSTEMS.md` — 시야/안개](SYSTEMS.md)가 소유한다.
 - 3상태(Unknown/Explored/Visible)의 **"Visible"만** 계산한다. Explored 누적/렌더 정책은
@@ -284,7 +284,17 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 8.2 KnockbackRules — 폭발 넉백
 - `PushDirection`은 `target−center`의 우세 축 1칸(동률은 x 우선), `Resolve`는 벽/닫힌 문/점유 → `None`, walkable → `Pushed`, 구멍/void → `PushedIntoFall`(호출자가 `TryFall`로 잇는다).
 
-### 8.3 SightRules — 시야·도달 판정의 단일 출처
+### 8.3 HazardSequenceService — 연출 사이의 상태 전이 경계
+- `HazardSequenceState`는 한 시퀀스의 참가자 **구성**만 복사해 고정하고, 각 참조의 최신 HP·위치를
+  읽는다. 그래서 앞 대상의 넉백 이동을 적용한 뒤 다음 대상을 다시 계획하면 동적 점유가 보존된다.
+- 낙하는 문자열 원인이 아니라 `HazardFallCause`와 `FallSequenceResolution`으로 `TryFall` 결과를
+  묶는다. 폭발은 한 번에 미리 계산하지 않고 `BeginExplosion`(피해·지형·비밀문) → Gameplay 피격 연출 →
+  `PlanBlastStatuses` → `ResolveElementAftermath` → 대상별 `PlanKnockback` 단계로 진행한다.
+- 단계 사이를 열어 둔 이유는 갓 모드가 피격 연출 중 HP를 복구할 수 있고, 직접 피격 상태와 표면 상태가
+  같은 대상에 두 번 적용되는 것이 갱신/텔레메트리 계약이기 때문이다. 코루틴·FOV·층 라벨·저장·연출·
+  배럴 재귀는 여전히 `IsoPrototypeDemo.Falls`가 소유한다.
+
+### 8.4 SightRules — 시야·도달 판정의 단일 출처
 **FOV·전투 LoS·개구부·근접 도달의 기하가 전부 여기 하나로 모인다**(옛 `VerticalOpeningRules` 흡수).
 흩어져 있을 때는 "폭탄은 닿는데 화살은 안 닿는" 식으로 축마다 답이 갈렸다. 판정 내용은
 [`SYSTEMS.md` — 시야/안개](SYSTEMS.md)가 소유하고 여기서는 위임 관계만 적는다.
@@ -295,7 +305,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   해석하며 `GridVisibility` 셰도우캐스팅이 이 판정만 쓴다(§5.1). `ViewFromFloor`는 **오직 `Hole`만**
   시야 포털로 인정하고(StairsUp/Down은 아님) `isVisible` 델리게이트로 FOV를 존중한다.
 
-### 8.4 VerticalRouteCue — 최초 발견 카드 copy
+### 8.5 VerticalRouteCue — 최초 발견 카드 copy
 - `TryCreate(kind, viewedFromBelow, destinationLabel)`이 타일 종류를 카드 copy로 매핑한다(계단=WALK,
   사다리=CLIMB, 층 전환=`목적지 ▲/▼`, Hole=위/아래 시야). **층 라벨 문자열은 호출자가 넘긴다** —
   여기서 만들면 방향·구역 표기가 또 한 벌 생긴다(§7.5).
@@ -307,7 +317,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 9.1 전투 (`CombatantState.cs` = 엔티티 / `CombatRules.cs` = 규칙)
 - **엔티티와 규칙이 파일부터 갈려 있다.** `CombatantState`는 불변 스탯 + `Hp`뿐이고 방어/치명타가
   없으며 사망은 **이벤트 없이** `Hp==0`(`IsAlive`)으로만 표현한다(이벤트를 두면 구독자마다 순서 문제).
-- `AreAdjacent`는 판정을 직접 하지 않고 `SightRules.CanReachAcross`에 위임한다(기하 SSOT는 §8.3).
+- `AreAdjacent`는 판정을 직접 하지 않고 `SightRules.CanReachAcross`에 위임한다(기하 SSOT는 §8.4).
   `TryRanged`도 도달 비용 + `SightRules` 시야선이라 **폭탄·화살·FOV가 같은 기하를 본다**.
 - `FindFiringPosition`은 **결정적 타이브레이크**(경로 길이→표적 근접→x→y)를 쓴다 — AI가 같은 상황에서
   같은 칸을 고르지 않으면 테스트가 오라클이 되지 못한다. 수치는 [`SYSTEMS.md` — 전투](SYSTEMS.md).
@@ -565,7 +575,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 SSOT다. 배치 관점으로 남길 것은 하나 — **EditMode 테스트가 규칙 클래스와 1:1로 매핑**되고
 (`ShadowcastFovTests`·`ProceduralDungeonTests`·`FallRulesTests`…) 그중 `ProceduralDungeonTests`가
 생성기 구현과 무관한 **불변식 계약**을 진다(§7.4). PlayMode는 격리 개발 프로필에서
-`MainMenu→Hub→폐 아케이드 복합타워→보스 처치→옥상 출구 정복` 전 구간 스모크다.
+`MainMenu→Hub→폐 아케이드 복합타워→보스 처치→옥상 출구 정복` 전 구간과,
+폭발 상태·넉백→낙하·배럴 유폭의 실제 Gameplay 배선을 스모크한다.
 
 ---
 

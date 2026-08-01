@@ -182,6 +182,26 @@ namespace ProjectC.Gameplay
             int turns)
         {
             StatusApplyResult result = target.Statuses.Apply(kind, turns);
+            PresentStatusApplication(target, kind, result);
+            return result;
+        }
+
+        /// <summary>
+        /// Core 시퀀스가 만든 상태 의도를 적용하고 보이는 대상이면 연출한다.
+        /// 반환값은 폭발 공통 메시지(BURNING/FROZEN) 노출 여부에 쓴다.
+        /// </summary>
+        private bool ApplyHazardStatusWithPresentation(HazardStatusIntent intent)
+        {
+            StatusApplyResult result = intent.Target.Statuses.Apply(intent.Kind, intent.Turns);
+            return PresentStatusApplication(intent.Target, intent.Kind, result);
+        }
+
+        /// <summary>이미 계산된 상태 적용 결과를 텔레메트리와 뷰에 한 번만 반영한다.</summary>
+        private bool PresentStatusApplication(
+            CombatantState target,
+            StatusKind kind,
+            StatusApplyResult result)
+        {
             if (result == StatusApplyResult.Applied || result == StatusApplyResult.Refreshed)
                 _runTelemetry?.RecordStatus(kind);
             EnemyAgent enemy = target == _playerState ? null : FindAgentByState(target);
@@ -192,7 +212,7 @@ namespace ProjectC.Gameplay
             else if (enemy != null)
                 ApplyEnemyVisuals(enemy);
 
-            if (!visible) return result;
+            if (!visible) return false;
 
             Vector3 worldPosition = target == _playerState
                 ? _player.transform.position
@@ -215,7 +235,7 @@ namespace ProjectC.Gameplay
                 worldPosition + Vector3.up * 0.42f,
                 impact,
                 result == StatusApplyResult.CancelledOpposite ? 0.72f : 0.9f));
-            return result;
+            return true;
         }
 
         private void SyncPlayerStatusVisuals()

@@ -76,7 +76,7 @@ namespace ProjectC.Gameplay
             GridPos? landing = _grid.Map.FindLandingBelow(hole, BottomElevation);
             if (_playerState.IsAlive && landing.HasValue && IsPlayerAdjacentTo(hole))
             {
-                yield return FallPlayer(hole, "DROP");
+                yield return FallPlayer(hole, HazardFallCause.IntentionalDrop);
                 if (_playerState.IsAlive)
                     yield return ResolveEnemyPhase();
             }
