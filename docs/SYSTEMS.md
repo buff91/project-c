@@ -12,6 +12,11 @@
   `development-profile/telemetry` 아래 JSON으로 자동 확정된다.
 - 디버그 창은 실시간 압축 요약과 수동 `리포트 저장`을 제공한다. 게임플레이 치트를
   사용한 런은 `cheatsUsed`로 표시해 정상 밸런스 표본과 섞이지 않게 한다.
+- **리포트 → 수치**: `python3 Tools/Telemetry/analyze_run.py`가 저장된 JSON을 막힌 밸런스
+  항목의 숫자로 바꾼다(원거리 사격 간격 대 재충전 상한, 해금 조건 진척, 0인 의뢰 지표,
+  구간 곡선, 치명타 원인). **임계값을 도구에 베끼지 않는다** — 해금 조건은
+  `ItemUnlockRules.Conditions`, 충전 티어는 `RangedWeaponRules.Baseline`·`Equipment`,
+  지표→필드 매핑은 `BountyRules.Measure`에서 읽는다. 게임에서 수치를 고치면 리포트가 따라온다.
 - 휴식처 사용 횟수와 총 회복량, 숨은 방 발견 횟수도 기록한다. 텔레메트리 스키마 v3부터
   `restSitesUsed`/`healingFromRest`/`secretRoomsFound`를 사용한다.
 - **깊이 구간 롤업(v4)**: 층별 기록에 아이템 사용/조합·휴식·숨은 방이 추가되고,
