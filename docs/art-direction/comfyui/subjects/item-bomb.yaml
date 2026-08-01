@@ -1,0 +1,24 @@
+schema_version: 1
+id: item-bomb
+name: 급조 폭발물
+slot: item-bomb
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 던지는 급조 폭발물로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one improvised pipe bomb built by a survivor, three short steel pipe
+    cylinders bundled upright and bound with duct tape, capped ends, one crude
+    timer dial strapped to the bundle, two exposed copper wires curling out the
+    top, worn hazard stripe on the tape, believable scavenged construction
+  negative: >-
+    fantasy bomb, round black powder bomb, cartoon fuse ball, skull
+    ornament, ornate engraving, glass, lantern,
+    box, crate, case, toolbox, briefcase, suitcase, container, chest, cube,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

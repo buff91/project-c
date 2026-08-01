@@ -358,12 +358,13 @@
   후속 hero-room 패스는 기준 이미지+기존 환경 시트를 참조한 built-in ImageGen 소스
   `project-c-hospital-dressing-source-v1.png`를 `process_hospital_dressing_v1.py`로 conform하고,
   `docs/captures/hospital-hero-room-art-quality-v1.png`에서 카메라·조명·드레싱을 함께 승인했다.
-  아이템 fallback도 같은 단계 게이트를 따른다. 현재 `docs/art-direction/item-sources-v3/`의
-  단일 오브젝트 소스 12장은 built-in ImageGen provenance이며 이를 ComfyUI로 소급 표기하지 않는다.
-  `item-static-v1 + item-potion` ComfyUI 레시피를 추가해 포션 1종을 먼저 재생성했고, 두 번째 조합
-  후보는 64×64/하드 알파/가시 픽셀 게이트를 통과했다. 비교본은
-  `docs/captures/item-potion-comfy-gate-v2.png`이며 다음 아이템 일괄 생성은 이 한 종의 승격 판단
-  뒤에 진행한다. `process_items_v3.py`는 두 소스 계열을 64×64/하드 알파/공용 팔레트/아이템별
+  아이템 fallback도 같은 단계 게이트를 따른다. `docs/art-direction/item-sources-v3/`의 단일
+  오브젝트 소스 12장 중 **11장은 ComfyUI `item-static-v1` provenance로 교체됐고**, 남은
+  `item-frost-shard` 한 장만 built-in ImageGen provenance다 — 5차까지 재발주했으나 후보 15장이
+  전부 현행보다 못 읽혀(결정보다 기계 받침이 주역이 됨) 교체하지 않았다. 신구 비교본은
+  `docs/captures/item-arcade-reskin-v1.png`, 포션 단독 게이트 근거는
+  `docs/captures/item-potion-comfy-gate-v2.png`다. `process_items_v3.py`는 두 소스 계열을
+  64×64/하드 알파/공용 팔레트/아이템별
   피벗 여백으로 마감하며,
   `IsoVisualCatalog`와 인벤토리 USS의 기존 12슬롯 파일명을 그대로 교체한다. 액션 UI 9종은
   32×32로 마감해 PC HUD에서 24×24로 표시한다. Unity 실화면 근거는

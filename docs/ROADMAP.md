@@ -90,9 +90,11 @@
     32px 소스/24px 표시로 올렸고, HUD·인벤토리 검수본은
     `item-ui-integrated-{hud,inventory}-v3.png`에 보관했다. 정식 Aseprite 승격은 교체 가능한
     후속 단계로 남지만 조악한 절차 아이콘은 런타임에서 교체됐다.
-  - [ ] **배치 ④ ComfyUI 정식 전환**: `item-static-v1`과 포션 subject를 등록하고 포션 한 종의
-    64px 기계 게이트까지 통과했다. 기존 12종은 ImageGen fallback provenance를 유지하며,
-    포션 승격 판단 전에는 나머지 11종을 생성·덮어쓰지 않는다.
+  - [x] **배치 ④ ComfyUI 정식 전환**: 포션 게이트 통과본을 승격하고 나머지도 `item-static-v1`
+    레인으로 일괄 재발주해 **12종 중 11종을 ComfyUI provenance로 교체**했다. 리스킨 표 §4의
+    사이버펑크 정체성이 그림에 실제로 반영됐다(두루마리→귀환 비컨, 보석→발광 코어,
+    약초→정화 균사 군락). `item-frost-shard`만 5차까지 재발주하고도 현행을 못 이겨 남겼다.
+    신구 비교본은 `docs/captures/item-arcade-reskin-v1.png`.
 - [x] **UI 레이아웃·시인성 재설계** (5 Phase, `2e7cf5f`→`977eba4`) — 시인성 문제의 실체는
   도트 선명도가 아니라 **상대 크기**였다(정수 배율·`fontRenderingMode` 가설 둘은 실측으로 기각,
   `docs/captures/spike-*.png`). 논리 캔버스를 960×540 → **640×360**으로 옮겨 같은 논리 px가

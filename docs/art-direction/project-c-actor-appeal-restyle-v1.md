@@ -65,6 +65,14 @@
 - **(v2 추가)** 컬러 헤어 아이덴티티 색과 쿨 네온 광원(마젠타/시안)도 같은 원칙으로 append한다 —
   헤어는 캐릭터당 2단(base/light)이면 충분하고 램프를 늘리지 않는다. GDD §6 「사이버펑크 전환」 참조.
 - 양자화가 기존 재료 램프의 픽셀을 뺏지 않는지 기존 Runtime 세트 재-conform으로 확인한다.
+- **(게이트 실측 2026-07-30) 값 조정으로는 통과 불가 → 구조로 마감.** 재-conform 실측에서
+  items/actors 16장 629px 절도(93%가 skin-1, fabric-2·rust-3·stone-mid 암부에서) —
+  전 격자 탐색 결과 "절도 0인 갈색 피부톤"은 존재하지 않는다(유일해는 #B87474 로즈, 피부
+  램프로 부적격). 처방: `torchstone_palette`가 `skin-*`/`hair-*`를 **기본 잠금에서 제외**하고
+  얼굴 노출 자산(현재 백드롭, 이후 라이더 conform 레인)만 `include_identity=True`로 연다.
+  덕분에 이후 `hair-blonde` 등 아이덴티티 append도 절도 걱정 없이 값만 보고 정하면 된다.
+  근거 캡처: `docs/captures/palette-skin1-theft-audit-v1.png`(기각분) ·
+  `palette-identity-lock-cleanup-v1.png`(env/props 잠복 절도 청산 + gemstone 네온 4px 승인).
 - **(실측 2026-07-30)** skin 3단 + hair-pink 2단 + sig-neon 2색 append 완료. 단, **팔레트에
   네이비 램프가 없어 어두운 청색 의상이 틸 계열(anomaly/ui-teal)로 양자화된다** — 라이더
   4방향 conform에서 재킷이 틸로 끌려가 신호색 판독과 충돌했다. 처방: ① 액터 의상

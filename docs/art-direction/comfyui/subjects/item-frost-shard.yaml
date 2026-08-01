@@ -1,0 +1,30 @@
+schema_version: 1
+id: item-frost-shard
+name: 냉매 결정
+slot: item-frost-shard
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 빙결 조합용 냉매 결정으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one crystallized coolant shard recovered by a survivor, a single long
+    jagged pale cyan refrigerant crystal filling most of the frame, fully
+    opaque solid body with no see-through areas, broad flat facets with hard
+    tonal steps, frosted matte edges, a narrow dark steel collar wrapped around
+    the lower third only, crystal far larger than the collar, believable
+    industrial origin
+  negative: >-
+    magic ice crystal, snowflake, gem, jewel, ornate setting,
+    glowing rune,
+    transparent, translucent, see-through, clear crystal, glass, refraction,
+    splash, liquid spray, scattered debris,
+    machine, device, apparatus, pedestal, stand, mounting bracket, clamp rig,
+    console, panel, screen,
+    shadow on the ground, glow under the object, ice pool,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

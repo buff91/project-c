@@ -1,0 +1,22 @@
+schema_version: 1
+id: item-blast-powder
+name: 뇌관 화약
+slot: item-blast-powder
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 폭발 조합용 뇌관 화약통으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one primer charge tin scavenged by a survivor, dented sealed
+    steel tin of detonation powder, worn orange seal band, stenciled burst
+    mark, small red pull tab, believable scavenged construction
+  negative: >-
+    fantasy powder pouch, magic dust, sack, potion, ornate jar,
+    glass,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

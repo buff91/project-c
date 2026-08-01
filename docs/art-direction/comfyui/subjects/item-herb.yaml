@@ -1,0 +1,26 @@
+schema_version: 1
+id: item-herb
+name: 정화 균사
+slot: item-herb
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 조합용 정화 균사 배양물로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    a dense clump of pale sage purification fungus, three rounded shelf-fungus
+    caps of different sizes crowded together, wispy mycelium threads trailing
+    from the underside, gripping a small broken chunk of concrete rubble at the
+    base, soft organic mass filling most of the frame, damp scavenged growth
+  negative: >-
+    herb bouquet, flowers, leafy green plant, potted plant, salad,
+    fantasy glowing plant,
+    tin can, canister, barrel, drum, container, jar, box, bottle,
+    metal cylinder, printed label, machinery,
+    shadow on the ground, glow under the object,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

@@ -82,8 +82,10 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 5. **아케이드 소품/낙하 연출** (v0.3.3 개정 — 구 병원 소품 발주는 집행 전 폐기,
    `docs/ROADMAP.md` 「아트」와 동기): 자판기, 죽은 네온 간판, 홀로 패널, 셔터 내린 점포,
    엘리베이터 통로, 구멍 깊이 표현.
-6. **아이템 12종**: 64×64 포스트아포 리스킨. fallback vertical slice는 완료했으며
-   `item-sources-v3/`의 항목별 단일 소스를 `process_items_v3.py`로 마감한다.
+6. **아이템 12종**: 64×64 포스트아포 리스킨. 12종 중 11종은 ComfyUI `item-static-v1` 재발주로
+   교체됐고(`item-frost-shard`만 ImageGen 잔존), `item-sources-v3/`의 항목별 단일 소스를
+   `process_items_v3.py`로 마감한다. 채택 표·프롬프트 실측 교훈은
+   `item-sources-v3/README.md`가 소유한다.
    이후 Aseprite 원본으로 승격할 때도 파일명·피벗 계약은 유지한다.
 7. **액터 애니메이션**: 기본 스프라이트가 승인된 액터부터
    `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.
@@ -238,7 +240,11 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
 `process_postapoc_support_v2.py`, `process_postapoc_props_v2.py`, `process_items_v3.py`로,
 UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 `generate_ui_action_hex_v1.py`, `process_ui_backdrops_v1.py`로 재생성한다. 모든 프로세서는
-`torchstone_palette`의 공용 잠금 함수를 거친다.
+`torchstone_palette`의 공용 잠금 함수를 거친다. 액터 아이덴티티 램프(`skin-*`/`hair-*`)는
+**기본 잠금에서 제외**되고 얼굴 노출 자산의 conform만 `include_identity=True`로 연다 —
+갈색 피부톤은 fabric/rust/stone 회랑 한가운데라 팔레트에 두는 것만으로 재료 시트 암부를
+뺏는다(실측 2026-07-30: 629px 절도, 값 조정으로 해소 불가.
+`docs/captures/palette-skin1-theft-audit-v1.png`).
 `ProjectCArtImporter`가 Point filter, PPU 128(`ui-*`는 64), 무압축, Mip Map Off를 강제하고,
 피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
 `Art/Environment/` PNG도 같은 임포터가 강제한다.
