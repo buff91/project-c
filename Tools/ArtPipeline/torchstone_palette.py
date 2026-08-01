@@ -24,31 +24,52 @@ GPL_PATH = (
     / "Assets/_Project/Art/Source/Aseprite/project-c-torchstone.gpl"
 )
 
+# 액터 아이덴티티 램프(피부·머리)는 기본 잠금에서 제외한다(옵트인). 갈색 피부톤은
+# fabric/rust/stone 램프가 점유한 회랑 한가운데라, 팔레트에 있는 것만으로 최근접
+# 양자화가 재료 시트의 암부 픽셀을 뺏는다(실측 2026-07-30: 629px, 값 조정으로는
+# 절도 0인 피부톤이 존재하지 않음). 얼굴이 노출되는 자산의 conform만
+# ``include_identity=True``로 연다.
+IDENTITY_PREFIXES = ("skin-", "hair-")
+
 
 @lru_cache(maxsize=1)
-def load_gpl(gpl_path: Path = GPL_PATH) -> tuple[tuple[int, int, int], ...]:
-    """Parse a GIMP ``.gpl`` into an ordered RGB tuple (<=256 colors).
+def load_gpl_entries(
+    gpl_path: Path = GPL_PATH,
+) -> tuple[tuple[str, tuple[int, int, int]], ...]:
+    """Parse a GIMP ``.gpl`` into ordered ``(name, rgb)`` entries (<=256 colors).
 
     Color lines start with a digit (``R G B<TAB>name``); GIMP/Name/Columns and
     ``#`` comment lines are skipped.
     """
-    colors: list[tuple[int, int, int]] = []
+    entries: list[tuple[str, tuple[int, int, int]]] = []
     for line in gpl_path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or not stripped[0].isdigit():
             continue
-        red, green, blue = (int(value) for value in stripped.split()[:3])
-        colors.append((red, green, blue))
-    if not colors:
+        parts = stripped.split()
+        red, green, blue = (int(value) for value in parts[:3])
+        name = parts[3] if len(parts) > 3 else f"#{red:02X}{green:02X}{blue:02X}"
+        entries.append((name, (red, green, blue)))
+    if not entries:
         raise ValueError(f"no colors parsed from {gpl_path}")
-    if len(colors) > 256:
-        raise ValueError(f"{gpl_path} has {len(colors)} colors (max 256 for a P palette)")
-    return tuple(colors)
+    if len(entries) > 256:
+        raise ValueError(f"{gpl_path} has {len(entries)} colors (max 256 for a P palette)")
+    return tuple(entries)
 
 
 @lru_cache(maxsize=1)
-def _palette_image(gpl_path: Path = GPL_PATH) -> Image.Image:
-    colors = load_gpl(gpl_path)
+def load_gpl(gpl_path: Path = GPL_PATH) -> tuple[tuple[int, int, int], ...]:
+    """Ordered RGB tuple of every ``.gpl`` entry (identity ramps included)."""
+    return tuple(rgb for _, rgb in load_gpl_entries(gpl_path))
+
+
+@lru_cache(maxsize=2)
+def _palette_image(include_identity: bool = False) -> Image.Image:
+    colors = [
+        rgb
+        for name, rgb in load_gpl_entries()
+        if include_identity or not name.startswith(IDENTITY_PREFIXES)
+    ]
     palette = Image.new("P", (1, 1))
     flat = [channel for rgb in colors for channel in rgb]
     # 미사용 슬롯은 검정(0,0,0)이 아니라 첫 색으로 패딩한다 — 검정으로 패딩하면
@@ -58,24 +79,28 @@ def _palette_image(gpl_path: Path = GPL_PATH) -> Image.Image:
     return palette
 
 
-def lock_to_palette(rgb: Image.Image) -> Image.Image:
+def lock_to_palette(rgb: Image.Image, *, include_identity: bool = False) -> Image.Image:
     """Quantize an RGB image to the fixed Torchstone palette (no dither).
 
     Replaces per-sheet ``quantize(colors=N, method=MEDIANCUT)`` so every asset
-    shares the same indices. Alpha handling stays in the caller.
+    shares the same indices. Alpha handling stays in the caller. Identity ramps
+    (``skin-*``/``hair-*``) stay out of the lock unless ``include_identity`` —
+    only face-bearing art opts in.
     """
     if rgb.mode != "RGB":
         rgb = rgb.convert("RGB")
-    return rgb.quantize(palette=_palette_image(), dither=Image.Dither.NONE).convert("RGB")
+    return rgb.quantize(
+        palette=_palette_image(include_identity), dither=Image.Dither.NONE
+    ).convert("RGB")
 
 
-def lock_rgba_to_palette(image: Image.Image) -> Image.Image:
+def lock_rgba_to_palette(image: Image.Image, *, include_identity: bool = False) -> Image.Image:
     """Lock visible RGB to Torchstone while preserving the source alpha."""
     source = image.convert("RGBA")
     alpha = source.getchannel("A")
     rgb = Image.new("RGB", source.size, load_gpl()[0])
     rgb.paste(source, mask=alpha)
-    locked = lock_to_palette(rgb).convert("RGBA")
+    locked = lock_to_palette(rgb, include_identity=include_identity).convert("RGBA")
     locked.putalpha(alpha)
     return locked
 

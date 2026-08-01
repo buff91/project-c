@@ -12,10 +12,10 @@ output:
   padding: 3
 prompt:
   positive: >-
-    one rugged emergency healing ampoule used by a survivor in a ruined
-    arcade tower, squat rust-red medical canister, dark steel neck and cap, worn
+    one rugged emergency healing ampoule used by a survivor, squat rust-red medical canister, dark steel neck and cap, worn
     off-white medical cross plate, chipped enamel, wrapped rubber grip,
     believable scavenged construction
   negative: >-
     fantasy potion, cork bottle, alchemy flask, ornate magic, translucent
-    glass, cyan body
+    glass, cyan body,
+    building, tower, architecture, diorama, miniature building, terrain base, ground tile, grass

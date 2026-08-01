@@ -1,0 +1,29 @@
+schema_version: 1
+id: item-frost-bomb
+name: 냉각재 수류탄
+slot: item-frost-bomb
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 던지는 냉각재 수류탄으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one coolant grenade scavenged by a survivor, stubby wide pressurized cryo
+    canister standing alone in empty space with nothing beneath it, heavy
+    relief valve and pull ring on top, broad pale ice-blue coolant gauge window
+    across the front, pale frost patches painted only on the metal shell,
+    dark steel body with chipped paint, wrapped tape grip,
+    believable scavenged construction
+  negative: >-
+    fantasy ice crystal, snowflake ornament, glass orb, potion
+    bottle, translucent sphere, ornate magic,
+    ice pool, ice slab, frozen puddle, snow, snow drift, white base,
+    ice on the floor, frozen ground, mist, vapor cloud,
+    glowing floor effect, energy aura, particle effect, plain black cylinder,
+    shadow on the ground, glow under the object,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

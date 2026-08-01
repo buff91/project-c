@@ -84,6 +84,9 @@ Columns: 6
  51  47  40	umber-dim #332F28 [KEEP]
  31  31  27	ash #1F1F1B [KEEP]
 # --- actor 아이덴티티 (v0.3.3 — 얼굴 노출 액터용. 암부는 fabric-1 공유, 3단 이내) ---
+# skin-*/hair-* 는 conform 기본 잠금에서 제외된다(torchstone_palette IDENTITY_PREFIXES —
+# 얼굴 노출 자산만 include_identity=True로 옵트인). 갈색 피부톤은 fabric/rust/stone 회랑
+# 한가운데라 값 조정으로는 절도를 못 없앤다(실측 2026-07-30: 629px, 절도 0 피부톤 부재).
 138  90  68	skin-1 #8A5A44 [NEW]
 198 139 111	skin-2 #C68B6F [NEW]
 240 203 168	skin-3 #F0CBA8 [NEW]

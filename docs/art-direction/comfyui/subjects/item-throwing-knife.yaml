@@ -1,0 +1,26 @@
+schema_version: 1
+id: item-throwing-knife
+name: 투척 고철 볼트
+slot: item-throwing-knife
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 던지는 날붙이 고철로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one short heavy throwing spike ground from scrap steel by a survivor, broad
+    flat leaf-shaped blade taking up most of the length, stubby tape-wrapped
+    grip at the base, blade much wider than the grip, thick compact silhouette,
+    chipped edge and rust speckle, believable scavenged construction
+  negative: >-
+    fantasy dagger, ornate hilt, jeweled weapon, curved blade,
+    sword, sheath, engraving,
+    axe, pickaxe, hammer, wrench, screwdriver, saw, tool,
+    long thin rod, pole, spear, arrow, wire, chain, cable,
+    shadow on the ground, glow under the object,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

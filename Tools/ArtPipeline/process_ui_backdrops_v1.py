@@ -25,7 +25,8 @@ def build_main_menu_backdrop(source: Image.Image) -> Image.Image:
         method=Image.Resampling.BOX,
         centering=(0.5, 0.5),
     )
-    locked = lock_to_palette(fitted)
+    # 초상(라이더 얼굴·헤어)이 있는 유일한 생성 경로 — identity 램프를 옵트인으로 연다.
+    locked = lock_to_palette(fitted, include_identity=True)
     return locked.resize(RUNTIME_SIZE, Image.Resampling.NEAREST)
 
 

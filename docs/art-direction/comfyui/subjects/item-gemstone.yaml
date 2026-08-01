@@ -1,0 +1,23 @@
+schema_version: 1
+id: item-gemstone
+name: 에너지 코어 파편
+slot: item-gemstone
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 고가치 에너지 코어 전리품으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one salvaged energy core fragment looted by a survivor, angular
+    teal glowing cell shard seated in a rusted three-prong clamp cradle,
+    cracked dark casing revealing inner glow, believable scavenged
+    construction
+  negative: >-
+    gemstone, jewel, faceted crystal cluster, ornate setting, ring,
+    treasure, magic orb,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass

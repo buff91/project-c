@@ -1,0 +1,23 @@
+schema_version: 1
+id: item-recall-scroll
+name: 귀환 비컨
+slot: item-recall-scroll
+asset_type: prop
+readability_goal: 64×64과 HUD 32px 표시에서 전자식 탈출 비컨으로 즉시 읽혀야 한다.
+output:
+  canvas: [64, 64]
+  pivot: [0.5, 0.125]
+  fit: contain
+  anchor: bottom
+  padding: 3
+prompt:
+  positive: >-
+    one emergency recall beacon carried by a survivor, palm-sized
+    handheld transponder brick, stubby rubber antenna, one small glowing teal
+    status lamp, cracked casing patched with tape, worn button pad, believable
+    scavenged construction
+  negative: >-
+    paper scroll, parchment, folded map, book, ribbon, wax seal,
+    fantasy rune, ornate magic,
+    building, tower, architecture, diorama, miniature building,
+    terrain base, ground tile, grass
