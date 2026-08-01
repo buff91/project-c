@@ -16,6 +16,9 @@ description: 기능 하나를 끝낼 때의 마감 체크리스트 — 테스트
 새 로직에 EditMode 테스트를 추가했는지 확인한다. Core 규칙 테스트라면
 UnityEngine 타입을 쓰지 않는다 — 그러면 shim에서도 자동으로 돌아간다.
 
+**파이썬(`Tools/ArtPipeline/**` · `Tools/Telemetry/**`)을 건드렸으면 그 회귀도 돌린다.**
+세션 종료 훅은 `.cs`만 보므로, 파이썬만 고친 커밋은 아무 검증 없이 나갈 수 있다.
+
 ## 2. 문서 — 기능과 **같은 커밋에**
 
 무엇이 바뀌었는지에 따라 갱신 대상을 고른다. 해당 없으면 건너뛴다.
@@ -28,10 +31,15 @@ UnityEngine 타입을 쓰지 않는다 — 그러면 shim에서도 자동으로 
 | 코드가 사는 계층/의존이 달라짐 | `docs/ARCHITECTURE.md` |
 | 파일/파셜 배치가 달라짐 | `docs/CODE_STRUCTURE.md` |
 | UI 배치·컴포넌트 | `docs/UI_ARCHITECTURE.md` / `docs/UI_DESIGN_SYSTEM.md` |
+| 아트 생성·후처리 절차, 에셋 슬롯·리스킨 | `docs/ART_PIPELINE.md` / `docs/art-direction/`의 해당 표 |
 | 설계 방향 자체가 확정/변경됨 | `GDD.md` — 최종 SSOT |
 
 **`CLAUDE.md`는 얇게 유지한다.** 자라나는 서술은 `docs/STATUS.md`로 보낸다.
 CLAUDE.md는 규칙·진입점·불변 방침만 담는다.
+
+**절차가 바뀌었으면 문서가 아니라 스킬을 고친다.** 테스트 경로·마감 순서·발주 순서가
+달라졌는데 `.claude/skills/`가 그대로면, 다음 세션이 낡은 절차를 그대로 따른다 —
+이 리포에서 실제로 일어난 실패다(구 테마 톤 기준이 스킬에 일주일 남아 있었다).
 
 ## 3. 파일이 자라지 않았는지
 
