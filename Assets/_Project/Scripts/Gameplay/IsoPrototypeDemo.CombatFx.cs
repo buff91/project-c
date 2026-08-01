@@ -182,6 +182,22 @@ namespace ProjectC.Gameplay
             int turns)
         {
             StatusApplyResult result = target.Statuses.Apply(kind, turns);
+            PresentStatusApplied(target, kind, result);
+            return result;
+        }
+
+        /// <summary>
+        /// 이미 부여된 상태이상의 연출만 낸다.
+        /// <para>
+        /// 부여와 연출이 한 함수에 붙어 있으면 <see cref="HazardSequence"/>처럼 Core가 먼저
+        /// 부여한 결과를 화면에만 반영할 수 없다 — 두 번 부여하게 된다.
+        /// </para>
+        /// </summary>
+        private StatusApplyResult PresentStatusApplied(
+            CombatantState target,
+            StatusKind kind,
+            StatusApplyResult result)
+        {
             if (result == StatusApplyResult.Applied || result == StatusApplyResult.Refreshed)
                 _runTelemetry?.RecordStatus(kind);
             EnemyAgent enemy = target == _playerState ? null : FindAgentByState(target);

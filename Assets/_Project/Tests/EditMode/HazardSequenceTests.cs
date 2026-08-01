@@ -52,7 +52,7 @@ namespace ProjectC.Tests
             var enemy = new CombatantState("goblin", new GridPos(1, 0, 0), 20, 2);
             HazardContext context = Context(map, null, enemy);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
 
             Assert.AreEqual(
                 new[]
@@ -72,7 +72,7 @@ namespace ProjectC.Tests
             var center = new GridPos(0, 0, 0);
             HazardContext context = Context(FloorAround(center), null);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
 
             // 연출은 이 스텝에서 폭발 애니메이션을 시작한다 — 판정보다 뒤로 가면 피해가
             // 먼저 뜨고 폭발이 나중에 터진다.
@@ -92,7 +92,7 @@ namespace ProjectC.Tests
                 var enemy = new CombatantState("goblin", new GridPos(1, 0, 0), 20, 2);
                 HazardContext context = Context(FloorAround(center), null, enemy);
 
-                List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery);
+                List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery).ToList();
 
                 HazardStep status = steps.Single(
                     step => step.Kind == HazardStepKind.StatusApplied);
@@ -111,7 +111,7 @@ namespace ProjectC.Tests
             var enemy = new CombatantState("goblin", oiled, 20, 2);
             HazardContext context = Context(map, null, enemy);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
             List<HazardStepKind> kinds = Kinds(steps);
 
             Assert.IsFalse(map.Get(oiled).oiled, "발화한 기름은 소모된다");
@@ -138,7 +138,7 @@ namespace ProjectC.Tests
             var enemy = new CombatantState("goblin", far, 20, 2);
             HazardContext context = Context(map, null, enemy);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: false);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: false).ToList();
 
             HazardStep frozen = steps.Single(step => step.Kind == HazardStepKind.WaterFrozen);
             CollectionAssert.Contains(frozen.Cells, far);
@@ -165,7 +165,7 @@ namespace ProjectC.Tests
                 BottomElevation = -4,
             };
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
 
             HazardStep fell = steps.Single(step => step.Kind == HazardStepKind.Fell);
             Assert.AreEqual("KNOCKBACK", fell.Source);
@@ -191,7 +191,7 @@ namespace ProjectC.Tests
                 BottomElevation = -4,
             };
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
             List<HazardStepKind> kinds = Kinds(steps);
 
             // 밀림 → 붕괴 → 낙하 순서가 지켜져야 연출이 "밟자마자 꺼진다"로 읽힌다.
@@ -217,7 +217,7 @@ namespace ProjectC.Tests
             HazardContext context = Context(map, player, enemy);
             context.BottomElevation = -16;
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
 
             Assert.IsFalse(player.IsAlive, "낙뎀으로 죽어야 하는 배치다");
             Assert.IsTrue(steps.Any(step => step.Kind == HazardStepKind.Fell));
@@ -235,7 +235,7 @@ namespace ProjectC.Tests
             var enemy = new CombatantState("goblin", new GridPos(0, 1, 0), 40, 2);
             HazardContext context = Context(map, player, enemy);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 5, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 5, fiery: true).ToList();
 
             // 폭발 자체로 죽은 플레이어는 넉백 루프에서 `continue`로 건너뛰므로 중단 조건에
             // 걸리지 않는다 — 남은 몬스터는 그대로 밀린다. 기존 코루틴 동작 그대로다.
@@ -256,7 +256,7 @@ namespace ProjectC.Tests
                 Damage = 4,
             };
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 5, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 5, fiery: true).ToList();
 
             Assert.IsFalse(player.IsAlive);
             Assert.IsFalse(steps.Any(step => step.Kind == HazardStepKind.BarrelChained));
@@ -275,7 +275,7 @@ namespace ProjectC.Tests
                 Damage = 4,
             };
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
             List<HazardStepKind> kinds = Kinds(steps);
 
             Assert.AreEqual(1, kinds.Count(kind => kind == HazardStepKind.BarrelChained));
@@ -286,7 +286,7 @@ namespace ProjectC.Tests
             Assert.IsTrue(context.Barrel.Exploded);
 
             // 같은 폭발통은 다시 터지지 않는다.
-            List<HazardStep> again = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> again = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
             Assert.IsFalse(again.Any(step => step.Kind == HazardStepKind.BarrelChained));
         }
 
@@ -301,7 +301,7 @@ namespace ProjectC.Tests
                 Damage = 4,
             };
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: false);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: false).ToList();
 
             Assert.IsFalse(steps.Any(step => step.Kind == HazardStepKind.BarrelChained));
             Assert.IsFalse(context.Barrel.Exploded);
@@ -324,7 +324,7 @@ namespace ProjectC.Tests
                 BottomElevation = 0,
             };
 
-            List<HazardStep> steps = HazardSequence.Fall(context, faller, from, "DROP");
+            List<HazardStep> steps = HazardSequence.Fall(context, faller, from, "DROP").ToList();
 
             Assert.AreEqual(
                 new[] { HazardStepKind.Fell, HazardStepKind.Crushed },
@@ -354,7 +354,7 @@ namespace ProjectC.Tests
                     BottomElevation = 0,
                     PlayerSafeFallHeight = 3,
                 };
-                return HazardSequence.Fall(context, faller, from, "DROP")[0].Amount;
+                return HazardSequence.Fall(context, faller, from, "DROP").First().Amount;
             }
 
             Assert.Less(
@@ -372,7 +372,7 @@ namespace ProjectC.Tests
             map.Set(secret, TileKind.SecretDoor);
             HazardContext context = Context(map, null);
 
-            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true);
+            List<HazardStep> steps = HazardSequence.Explode(context, center, 3, fiery: true).ToList();
 
             HazardStep revealed = steps.Single(
                 step => step.Kind == HazardStepKind.SecretDoorsRevealed);

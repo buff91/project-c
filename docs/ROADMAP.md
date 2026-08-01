@@ -232,14 +232,19 @@
   - [x] 둘째 슬라이스: `HubWorldPresenter`가 시설 개방 불변 스냅샷을 입력받아 프롭·광원 생성과
     상호작용/앵커 등록을 소유한다. 호스트는 `MetaStore`를 한 번 읽어 스냅샷으로 바꾸고 씬 의존성만
     주입한다. 시설 4조합·광원 필터·카탈로그 폴백·환경 애니메이션과 동일 인스턴스 재빌드를 검증한다.
-  - [ ] 남은 슬라이스: 낙하/폭발 시퀀스 서비스.
-    - [x] **상태 DTO와 회귀 테스트(2026-08-01)**: `Core/HazardSequence`가 연쇄의 **순서**를
+  - [x] 남은 슬라이스: 낙하/폭발 시퀀스 서비스 **(2026-08-01 완료)**.
+    - [x] **상태 DTO와 회귀 테스트**: `Core/HazardSequence`가 연쇄의 **순서**를
       가져갔다 — 피해→상태→원소 반응→넉백→유폭을 `HazardStep` 목록으로 남기고, 규칙 자체는
       기존 `BombRules`/`KnockbackRules`/`FallRules`/`OilRules`/`WaterRules` 그대로다.
       코루틴에만 있던 판정(유폭 조건·플레이어 사망 중단·붕괴→낙하 순서·안전 낙하 높이가
       플레이어 전용인 것)을 EditMode 15개로 고정했다. 근거는 `ARCHITECTURE.md` §8.3.
-    - [ ] 씬 와이어링: `IsoPrototypeDemo.Falls`가 스텝을 재생만 하도록 바꾼다. 연출·텔레메트리·
-      뷰 동기화 대응은 PlayMode 회귀가 필요해 에디터 세션에서 한다.
+    - [x] **씬 와이어링**: `IsoPrototypeDemo.Falls`가 스텝을 재생만 한다 — 진입점
+      (`FallPlayer`·`CollapseUnder*`·`ResolveExplosion`·`KnockbackCombatant`) 시그니처는 그대로 두고
+      본문에서 판정을 전부 걷어냈다. 스텝 열거를 **지연**시켜 "폭발 애니메이션 → 피해 → 밀려남"의
+      끼어드는 순서를 보존한다(한꺼번에 판정하면 첫 연출에서 이미 적이 다른 층에 있다).
+      부여와 연출이 붙어 있던 `ApplyStatusWithPresentation`은 `PresentStatusApplied`로 갈라
+      Core가 부여한 결과를 화면에만 반영한다. Core 1095 · EditMode 1306 · PlayMode 10 통과.
+      **화면 검수는 아직**이다 — 자동 회귀는 연출 문구의 순서까지는 보지 않는다.
 - [ ] **공용 Tween 추출** — 코루틴 보간이 여러 곳에 흩어져 있다. 다만 CombatFx 쪽은 루프가
   프레임별 생존 확인을 품고 있어 단순 시그니처로는 못 옮긴다.
 - [ ] **DOTween 사용 여부 결정** — 설치·asmdef 참조·부트스트랩까지 있는데 호출부가 0곳이다.

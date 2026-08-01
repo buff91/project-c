@@ -37,6 +37,9 @@ namespace ProjectC.Core
         /// <summary>피해·상태·넉백·낙하의 대상.</summary>
         public CombatantState Actor;
 
+        /// <summary>한 번에 맞은 대상 묶음(폭발 피해). 개별 연출은 이 순서대로 낸다.</summary>
+        public IReadOnlyList<CombatantState> Actors;
+
         /// <summary>폭발 중심 · 낙하 출발 칸.</summary>
         public GridPos Origin;
 
@@ -110,8 +113,16 @@ namespace ProjectC.Core
     /// </summary>
     public static class HazardSequence
     {
-        /// <summary>폭발 한 번의 전체 연쇄. 유폭까지 평탄하게 이어 붙인다.</summary>
-        public static List<HazardStep> Explode(
+        /// <summary>
+        /// 폭발 한 번의 전체 연쇄. 유폭까지 평탄하게 이어 붙인다.
+        /// <para>
+        /// <b>지연 열거다.</b> 한 스텝을 꺼낼 때 그 스텝까지의 판정만 일어난다 — 소비자가
+        /// 스텝 하나를 연출하는 동안 다음 판정은 아직 오지 않았다는 뜻이고, 그래야
+        /// "폭발 애니메이션 → 피해 → 넉백 이동" 같은 끼어드는 순서가 코루틴 시절과 같다.
+        /// 한꺼번에 판정해 두면 첫 연출을 그릴 때 이미 적이 다른 층에 가 있다.
+        /// </para>
+        /// </summary>
+        public static IEnumerable<HazardStep> Explode(
             HazardContext context,
             GridPos center,
             int damage,
@@ -119,17 +130,14 @@ namespace ProjectC.Core
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
             if (context.Map == null) throw new ArgumentNullException(nameof(context.Map));
-
-            var steps = new List<HazardStep>();
-            Explode(context, center, damage, fiery, steps);
-            return steps;
+            return ExplodeSteps(context, center, damage, fiery);
         }
 
         /// <summary>
         /// 어떤 이유로든 시작된 낙하 하나. <paramref name="cause"/>는 그대로
         /// <see cref="HazardStep.Source"/>에 실려 연출·텔레메트리가 의도 낙하를 구분한다.
         /// </summary>
-        public static List<HazardStep> Fall(
+        public static IEnumerable<HazardStep> Fall(
             HazardContext context,
             CombatantState faller,
             GridPos from,
@@ -137,62 +145,89 @@ namespace ProjectC.Core
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
             if (faller == null) throw new ArgumentNullException(nameof(faller));
-
-            var steps = new List<HazardStep>();
-            Fall(context, faller, from, cause, steps);
-            return steps;
+            return FallSteps(context, faller, from, cause);
         }
 
-        private static void Explode(
+        /// <summary>
+        /// 폭발이 아닌 단일 넉백(둔기 타격 등). <paramref name="center"/>에서 바깥으로 한 칸
+        /// 밀고, 구멍이면 낙하·약한 바닥이면 붕괴까지 같은 규칙으로 이어진다.
+        /// </summary>
+        public static IEnumerable<HazardStep> Knockback(
+            HazardContext context,
+            GridPos center,
+            CombatantState target)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            return KnockbackSteps(context, center, target);
+        }
+
+        /// <summary>
+        /// 밟거나 충격을 받은 약한 바닥이 무너지고 그 위의 대상이 떨어진다.
+        /// 붕괴는 낙하와 한 덩어리다 — 따로 부르면 구멍만 뚫고 아무도 안 떨어지는 상태가 생긴다.
+        /// </summary>
+        public static IEnumerable<HazardStep> CollapseUnder(
+            HazardContext context,
+            CombatantState faller,
+            GridPos pos)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (faller == null) throw new ArgumentNullException(nameof(faller));
+            return Collapse(context, faller, pos);
+        }
+
+        private static IEnumerable<HazardStep> ExplodeSteps(
             HazardContext context,
             GridPos center,
             int damage,
-            bool fiery,
-            List<HazardStep> steps)
+            bool fiery)
         {
-            steps.Add(new HazardStep
+            yield return new HazardStep
             {
                 Kind = HazardStepKind.Detonated,
                 Origin = center,
                 Amount = damage,
                 Fiery = fiery,
-            });
+            };
 
             BombResult blast = BombRules.Detonate(
                 context.Map, center, context.Combatants, damage);
             List<GridPos> revealed = SecretRoomRules.RevealInBlast(context.Map, center);
-            string source = fiery ? "Bomb" : "FrostBomb";
 
-            foreach (CombatantState damaged in blast.Damaged)
-                steps.Add(new HazardStep
+            if (blast.Damaged.Count > 0)
+                yield return new HazardStep
                 {
                     Kind = HazardStepKind.Damaged,
-                    Actor = damaged,
+                    Actors = blast.Damaged,
                     Origin = center,
                     Amount = damage,
-                    Source = source,
-                });
+                    Source = fiery ? "Bomb" : "FrostBomb",
+                };
 
             if (blast.CollapsedWeakFloors.Count > 0)
-                steps.Add(new HazardStep
+                yield return new HazardStep
                 {
                     Kind = HazardStepKind.WeakFloorsCollapsed,
                     Origin = center,
                     Cells = blast.CollapsedWeakFloors,
-                });
+                    Source = "Blast",
+                };
 
             if (revealed.Count > 0)
-                steps.Add(new HazardStep
+                yield return new HazardStep
                 {
                     Kind = HazardStepKind.SecretDoorsRevealed,
                     Origin = center,
                     Cells = revealed,
-                });
+                };
 
             // 상태 부여: 불 폭발은 화상, 냉기 폭발은 빙결. (GDD §5.5)
             StatusKind blastStatus = fiery ? StatusKind.Burn : StatusKind.Freeze;
             foreach (CombatantState survivor in blast.Damaged)
-                ApplyStatus(context, survivor, blastStatus, steps);
+            {
+                HazardStep applied = ApplyStatus(context, survivor, blastStatus, "Blast");
+                if (applied != null) yield return applied;
+            }
 
             // 요소 반응은 넉백보다 먼저다 — 밀려나기 전에 서 있던 칸의 반응을 맞는다.
             if (fiery)
@@ -200,35 +235,39 @@ namespace ProjectC.Core
                 List<GridPos> ignited = OilRules.Ignite(context.Map, center);
                 if (ignited.Count > 0)
                 {
-                    steps.Add(new HazardStep
+                    yield return new HazardStep
                     {
                         Kind = HazardStepKind.OilIgnited,
                         Origin = center,
                         Cells = ignited,
-                    });
-                    ApplyStatusInRegion(context, ignited, StatusKind.Burn, steps);
+                    };
+                    foreach (HazardStep step in
+                             StatusInRegion(context, ignited, StatusKind.Burn, "Oil"))
+                        yield return step;
                 }
 
                 List<GridPos> dried = WaterRules.Evaporate(context.Map, center);
-                steps.Add(new HazardStep
+                yield return new HazardStep
                 {
                     Kind = HazardStepKind.WaterEvaporated,
                     Origin = center,
                     Cells = dried,
-                });
+                };
             }
             else
             {
                 List<GridPos> frozen = WaterRules.ChainFreeze(context.Map, center);
                 if (frozen.Count > 0)
                 {
-                    steps.Add(new HazardStep
+                    yield return new HazardStep
                     {
                         Kind = HazardStepKind.WaterFrozen,
                         Origin = center,
                         Cells = frozen,
-                    });
-                    ApplyStatusInRegion(context, frozen, StatusKind.Freeze, steps);
+                    };
+                    foreach (HazardStep step in
+                             StatusInRegion(context, frozen, StatusKind.Freeze, "Water"))
+                        yield return step;
                 }
             }
 
@@ -236,28 +275,30 @@ namespace ProjectC.Core
             foreach (CombatantState survivor in blast.Damaged)
             {
                 if (!survivor.IsAlive) continue;
-                Knockback(context, center, survivor, steps);
+                foreach (HazardStep step in KnockbackSteps(context, center, survivor))
+                    yield return step;
                 if (PlayerIsDown(context)) break; // 사망 — 남은 넉백만 생략한다
             }
 
-            if (PlayerIsDown(context)) return;
-            if (!fiery || context.Barrel == null || context.Barrel.Exploded) return;
-            if (!BombRules.InBlast(center, context.Barrel.Position)) return;
+            if (PlayerIsDown(context)) yield break;
+            if (!fiery || context.Barrel == null || context.Barrel.Exploded) yield break;
+            if (!BombRules.InBlast(center, context.Barrel.Position)) yield break;
 
             context.Barrel.Exploded = true;
-            steps.Add(new HazardStep
+            yield return new HazardStep
             {
                 Kind = HazardStepKind.BarrelChained,
                 Origin = context.Barrel.Position,
-            });
-            Explode(context, context.Barrel.Position, context.Barrel.Damage, true, steps);
+            };
+            foreach (HazardStep step in ExplodeSteps(
+                         context, context.Barrel.Position, context.Barrel.Damage, true))
+                yield return step;
         }
 
-        private static void Knockback(
+        private static IEnumerable<HazardStep> KnockbackSteps(
             HazardContext context,
             GridPos center,
-            CombatantState target,
-            List<HazardStep> steps)
+            CombatantState target)
         {
             KnockbackOutcome outcome = KnockbackRules.Resolve(
                 context.Map,
@@ -265,52 +306,56 @@ namespace ProjectC.Core
                 target.Position,
                 pos => IsOccupiedExcept(context, pos, target),
                 out GridPos destination);
-            if (outcome == KnockbackOutcome.None) return;
+            if (outcome == KnockbackOutcome.None) yield break;
 
             if (outcome == KnockbackOutcome.PushedIntoFall)
             {
-                Fall(context, target, destination, "KNOCKBACK", steps);
-                return;
+                foreach (HazardStep step in
+                         FallSteps(context, target, destination, "KNOCKBACK"))
+                    yield return step;
+                yield break;
             }
 
             GridPos from = target.Position;
             target.MoveTo(destination);
-            steps.Add(new HazardStep
+            yield return new HazardStep
             {
                 Kind = HazardStepKind.Knocked,
                 Actor = target,
                 Origin = from,
                 Destination = destination,
-            });
+            };
 
             // 밀려 떨어진 충격으로 약한 바닥이 무너진다.
-            if (context.Map.Get(destination)?.kind == TileKind.WeakFloor)
-                Collapse(context, target, destination, steps);
+            if (context.Map.Get(destination)?.kind != TileKind.WeakFloor) yield break;
+            foreach (HazardStep step in Collapse(context, target, destination))
+                yield return step;
         }
 
         /// <summary>약한 바닥을 구멍으로 바꾸고 그 위의 대상을 떨어뜨린다.</summary>
-        private static void Collapse(
+        private static IEnumerable<HazardStep> Collapse(
             HazardContext context,
             CombatantState faller,
-            GridPos pos,
-            List<HazardStep> steps)
+            GridPos pos)
         {
             context.Map.Set(pos, TileKind.Hole);
-            steps.Add(new HazardStep
+            yield return new HazardStep
             {
                 Kind = HazardStepKind.WeakFloorsCollapsed,
+                Actor = faller, // 누구 발밑인지에 따라 안내 문구가 갈린다
                 Origin = pos,
                 Cells = new[] { pos },
-            });
-            Fall(context, faller, pos, "COLLAPSE", steps);
+                Source = "COLLAPSE",
+            };
+            foreach (HazardStep step in FallSteps(context, faller, pos, "COLLAPSE"))
+                yield return step;
         }
 
-        private static void Fall(
+        private static IEnumerable<HazardStep> FallSteps(
             HazardContext context,
             CombatantState faller,
             GridPos from,
-            string cause,
-            List<HazardStep> steps)
+            string cause)
         {
             // 안전 낙하 높이는 장비를 든 플레이어만 받는다.
             int safeFallHeight = faller == context.Player
@@ -325,9 +370,9 @@ namespace ProjectC.Core
                 context.BottomElevation,
                 context.Combatants,
                 safeFallHeight);
-            if (fall == null) return; // 무저갱 — 생성기가 없다고 보장하지만 방어
+            if (fall == null) yield break; // 무저갱 — 생성기가 없다고 보장하지만 방어
 
-            steps.Add(new HazardStep
+            yield return new HazardStep
             {
                 Kind = HazardStepKind.Fell,
                 Actor = faller,
@@ -336,51 +381,53 @@ namespace ProjectC.Core
                 FloorsFallen = fall.FloorsFallen,
                 Amount = fall.Damage,
                 Source = cause,
-            });
+            };
 
             if (fall.CrushedOccupant != null)
-                steps.Add(new HazardStep
+                yield return new HazardStep
                 {
                     Kind = HazardStepKind.Crushed,
                     Actor = fall.CrushedOccupant,
                     Origin = fall.FinalPosition,
                     Amount = fall.Damage,
                     Source = "Crush",
-                });
+                };
         }
 
-        private static void ApplyStatusInRegion(
+        private static IEnumerable<HazardStep> StatusInRegion(
             HazardContext context,
             IReadOnlyList<GridPos> cells,
             StatusKind kind,
-            List<HazardStep> steps)
+            string source)
         {
-            if (context.Combatants == null) return;
+            if (context.Combatants == null) yield break;
             foreach (CombatantState combatant in context.Combatants)
             {
                 if (combatant == null || !combatant.IsAlive) continue;
                 if (!Contains(cells, combatant.Position)) continue;
-                ApplyStatus(context, combatant, kind, steps);
+                HazardStep applied = ApplyStatus(context, combatant, kind, source);
+                if (applied != null) yield return applied;
             }
         }
 
-        private static void ApplyStatus(
+        private static HazardStep ApplyStatus(
             HazardContext context,
             CombatantState target,
             StatusKind kind,
-            List<HazardStep> steps)
+            string source)
         {
-            if (target == null || !target.IsAlive) return;
+            if (target == null || !target.IsAlive) return null;
 
             StatusApplyResult result = target.Statuses.Apply(kind, context.StatusTurns);
-            steps.Add(new HazardStep
+            return new HazardStep
             {
                 Kind = HazardStepKind.StatusApplied,
                 Actor = target,
                 Status = kind,
                 StatusResult = result,
                 Amount = context.StatusTurns,
-            });
+                Source = source,
+            };
         }
 
         private static bool Contains(IReadOnlyList<GridPos> cells, GridPos pos)

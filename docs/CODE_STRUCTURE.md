@@ -47,7 +47,7 @@
 | `IsoPrototypeDemo.RunLifecycle.cs` | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
 | `IsoPrototypeDemo.Hub.cs` | 메타 저장을 시설 개방 스냅샷으로 변환해 `HubWorldPresenter` 호출 + 원정자 기본 상태 적용 (영웅 프롭·잠금은 제거됨) |
 | `IsoPrototypeDemo.Enemies.cs` | 적 스폰·AI 턴·활성화 |
-| `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 해소·`ApplyStatusToCombatantsInRegion` |
+| `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 **연출**. 순서는 `Core/HazardSequence`가 정하고 여기서는 `HazardStep`을 애니메이션·문구·텔레메트리·뷰 동기화로 옮기기만 한다 |
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
 | `IsoPrototypeDemo.DungeonDressing.cs` | 첫 던전 B2의 비충돌 완성형 바닥 드레싱 후보·예약 좌표·스프라이트 매핑. 선택 판정은 Core `DungeonDressingPlacementRules`가 소유한다 |
 | `IsoPrototypeDemo.Extraction.cs` | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
