@@ -344,6 +344,7 @@ def run_comfy(args: argparse.Namespace, raw_dir: Path) -> list[Path]:
         raw_dir,
         timeout=args.timeout,
         poll_interval=args.poll_interval,
+        workflow_path=args.workflow,
     )
     print(f"prompt_id: {prompt_id}")
     if not outputs:

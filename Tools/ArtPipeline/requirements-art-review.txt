@@ -3,3 +3,4 @@ PyYAML>=6
 certifi>=2024.2.2
 slack-bolt>=1.18
 slack-sdk>=3.27
+websocket-client>=1.8

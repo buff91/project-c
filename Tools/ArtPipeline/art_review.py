@@ -146,6 +146,34 @@ def make_id(prefix: str) -> str:
     return f"{prefix}-{stamp}-{secrets.token_hex(3)}"
 
 
+RECENT_ALIASES = frozenset({"latest", "last", "^"})
+CARET_INDEX_PATTERN = re.compile(r"^\^(\d+)$|^(\d+)$")
+
+
+def alias_index(token: str) -> int | None:
+    """`latest`/`^`/`^3`/`3`을 1부터 세는 최근 목록 번호로 바꾼다.
+
+    번호는 `list_recent_candidates` 순서다 — 선택기가 출력한 번호를 그대로
+    다음 명령에 쓸 수 있어야 손으로 ID를 옮기지 않게 된다. 생성 ID는 항상
+    접두사로 시작하므로 순수 숫자와 충돌하지 않는다.
+    """
+    text = (token or "").strip().lower()
+    if text in RECENT_ALIASES:
+        return 1
+    match = CARET_INDEX_PATTERN.match(text)
+    if match is None:
+        return None
+    index = int(match.group(1) or match.group(2))
+    return index if index >= 1 else None
+
+
+def like_escape(value: str) -> str:
+    """부분 일치 검색에서 사용자 입력의 LIKE 와일드카드를 문자로 다룬다."""
+    return (
+        value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    )
+
+
 def project_path(value: str | Path) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -255,6 +283,18 @@ class Recipe:
     @property
     def workflow_path(self) -> Path:
         return project_path(self.pipeline["workflow"])
+
+    @property
+    def workflow_ui_path(self) -> Path:
+        api_path = self.workflow_path
+        suffix = ".api.json"
+        if not api_path.name.endswith(suffix):
+            raise ReviewError(
+                f"Recipe {self.id} workflow must end with {suffix}: {api_path}"
+            )
+        return api_path.with_name(
+            api_path.name.removesuffix(suffix) + ".workflow.json"
+        )
 
     @property
     def candidate_count(self) -> int:
@@ -731,6 +771,11 @@ class Recipe:
             raise ReviewError(
                 f"Recipe {self.id} workflow is missing: {self.workflow_path}"
             )
+        if not self.workflow_ui_path.is_file():
+            raise ReviewError(
+                f"Recipe {self.id} canvas workflow is missing: "
+                f"{self.workflow_ui_path}"
+            )
         for target, source in self.pipeline.get("uploads", {}).items():
             path = project_path(str(source))
             if not path.is_file():
@@ -815,7 +860,9 @@ class Recipe:
         """
         import comfy_batch
 
-        prompt = comfy_batch.load_prompt(self.workflow_path)
+        prompt, _, _ = comfy_batch.validate_workflow_pair(
+            self.workflow_path
+        )
         targets: dict[str, str] = {
             str(target): f"binding {name}"
             for name, target in self.pipeline.get("bindings", {}).items()
@@ -1792,7 +1839,7 @@ class ReviewStore:
                     """
                     SELECT * FROM jobs
                     WHERE status = ?
-                    ORDER BY created_at DESC
+                    ORDER BY created_at DESC, rowid DESC
                     LIMIT ?
                     """,
                     (status, limit),
@@ -1800,7 +1847,7 @@ class ReviewStore:
             return connection.execute(
                 """
                 SELECT * FROM jobs
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, rowid DESC
                 LIMIT ?
                 """,
                 (limit,),
@@ -2021,6 +2068,167 @@ class ReviewStore:
                 """,
                 (job_id,),
             ).fetchall()
+
+    def list_recent_candidates(
+        self,
+        limit: int = 24,
+        *,
+        recipe_id: str | None = None,
+        status: str | None = None,
+    ) -> list[sqlite3.Row]:
+        """리뷰 순서의 SSOT.
+
+        뷰어 격자, CLI 선택기 번호, `^N` 별칭이 모두 이 순서를 쓴다 — 같은 축을
+        세 UI가 다르게 정렬하면 "3번 채택"이 서로 다른 후보를 가리킨다.
+        """
+        clauses: list[str] = []
+        params: list[Any] = []
+        if recipe_id:
+            clauses.append("jobs.recipe_id = ?")
+            params.append(recipe_id)
+        if status:
+            clauses.append("candidates.status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(max(1, limit))
+        with self.connect() as connection:
+            return connection.execute(
+                f"""
+                SELECT
+                    candidates.*,
+                    jobs.recipe_id AS recipe_id,
+                    jobs.status AS job_status,
+                    jobs.notes AS job_notes,
+                    jobs.created_at AS job_created_at
+                FROM candidates
+                JOIN jobs ON jobs.id = candidates.job_id
+                {where}
+                ORDER BY jobs.created_at DESC, jobs.rowid DESC,
+                         candidates.ordinal ASC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
+
+    def resolve_candidate_id(self, token: str | None) -> str:
+        """별칭·부분 일치를 실제 후보 ID로 바꾼다.
+
+        `ART-...-C01`을 카드에서 터미널로 옮겨 적는 동작이 판정마다 반복돼서,
+        `latest`/`^N`/`<recipe>@^N`/부분 일치를 같은 자리에서 받는다.
+        """
+        raw = (token or "").strip()
+        if not raw:
+            raise ReviewError("Candidate reference is empty")
+        with self.connect() as connection:
+            exact = connection.execute(
+                "SELECT id FROM candidates WHERE id = ?",
+                (raw,),
+            ).fetchone()
+        if exact is not None:
+            return str(exact["id"])
+
+        recipe_id: str | None = None
+        reference = raw
+        if "@" in raw:
+            head, _, tail = raw.partition("@")
+            recipe_id = head.strip() or None
+            reference = tail.strip() or "^"
+
+        index = alias_index(reference)
+        if index is not None:
+            rows = self.list_recent_candidates(index, recipe_id=recipe_id)
+            if len(rows) < index:
+                scope = f" for recipe {recipe_id}" if recipe_id else ""
+                raise ReviewError(
+                    f"Only {len(rows)} recent candidates{scope} — "
+                    f"{raw!r} points past the end"
+                )
+            return str(rows[index - 1]["id"])
+        if recipe_id is not None:
+            raise ReviewError(
+                f"{raw!r} is not a recipe alias — use "
+                f"'{recipe_id}@latest' or '{recipe_id}@^2'"
+            )
+        return self._match_candidate_reference(raw)
+
+    def _match_candidate_reference(self, raw: str) -> str:
+        with self.connect() as connection:
+            from_job = connection.execute(
+                """
+                SELECT id FROM candidates
+                WHERE job_id = ?
+                ORDER BY ordinal
+                """,
+                (raw,),
+            ).fetchall()
+            if len(from_job) == 1:
+                return str(from_job[0]["id"])
+            if from_job:
+                names = ", ".join(str(row["id"]) for row in from_job)
+                raise ReviewError(
+                    f"Job {raw} has {len(from_job)} candidates: {names}"
+                )
+            matches = connection.execute(
+                """
+                SELECT id FROM candidates
+                WHERE id LIKE ? ESCAPE '\\'
+                ORDER BY id DESC
+                LIMIT 6
+                """,
+                (f"%{like_escape(raw)}%",),
+            ).fetchall()
+        if len(matches) == 1:
+            return str(matches[0]["id"])
+        if not matches:
+            raise ReviewError(f"Unknown candidate {raw}")
+        names = ", ".join(str(row["id"]) for row in matches)
+        raise ReviewError(f"{raw!r} matches several candidates: {names}")
+
+    def resolve_job_id(self, token: str | None) -> str:
+        """후보 해석기와 같은 어휘를 job 인자에도 준다."""
+        raw = (token or "").strip()
+        if not raw:
+            raise ReviewError("Job reference is empty")
+        with self.connect() as connection:
+            exact = connection.execute(
+                "SELECT id FROM jobs WHERE id = ?",
+                (raw,),
+            ).fetchone()
+            if exact is not None:
+                return str(exact["id"])
+            owner = connection.execute(
+                "SELECT job_id FROM candidates WHERE id = ?",
+                (raw,),
+            ).fetchone()
+        if owner is not None:
+            return str(owner["job_id"])
+
+        index = alias_index(raw)
+        if index is not None:
+            rows = self.list_jobs(limit=index)
+            if len(rows) < index:
+                raise ReviewError(
+                    f"Only {len(rows)} recent jobs — "
+                    f"{raw!r} points past the end"
+                )
+            return str(rows[index - 1]["id"])
+
+        with self.connect() as connection:
+            matches = connection.execute(
+                """
+                SELECT id FROM jobs
+                WHERE id LIKE ? ESCAPE '\\'
+                ORDER BY created_at DESC
+                LIMIT 6
+                """,
+                (f"%{like_escape(raw)}%",),
+            ).fetchall()
+        if len(matches) == 1:
+            return str(matches[0]["id"])
+        if not matches:
+            raise ReviewError(f"Unknown job {raw}")
+        names = ", ".join(str(row["id"]) for row in matches)
+        raise ReviewError(f"{raw!r} matches several jobs: {names}")
 
     def set_candidate_status(
         self,

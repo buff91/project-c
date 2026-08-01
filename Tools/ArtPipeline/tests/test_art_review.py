@@ -26,6 +26,7 @@ from art_review import (
     ReviewStore,
     SlotCatalog,
     WorkflowTypeRegistry,
+    alias_index,
     derive_asset_type,
     enforce_color_area_limits,
     image_metrics,
@@ -207,7 +208,10 @@ class RecipeTests(unittest.TestCase):
     def test_slack_groups_recipes_by_asset_type(self) -> None:
         groups = recipes_by_asset_type(self.registry)
         labels = [label for _type_id, label, _recipes in groups]
-        self.assertEqual(["컨셉", "배경", "캐릭터", "애니메이션", "이펙트"], labels)
+        self.assertEqual(
+            ["컨셉", "배경", "캐릭터", "애니메이션", "이펙트", "소품·아이템"],
+            labels,
+        )
         listed = recipe_list_text(self.registry)
         self.assertIn("*애니메이션*", listed)
         self.assertIn("actor-slinger-animation-v5", listed)
@@ -1626,6 +1630,132 @@ class StoreTests(unittest.TestCase):
                 for item in child_recipe["effect_variants"]["variants"]
             ],
         )
+
+
+class ReferenceResolutionTests(unittest.TestCase):
+    """후보/job ID를 손으로 옮겨 적지 않게 하는 별칭 규칙."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.store = ReviewStore(self.root / "review.sqlite3")
+        self.recipe = RecipeRegistry().get("actor-slinger-idle-v1")
+        self.older = self.make_job(base_seed=100, count=2)
+        self.newer = self.make_job(base_seed=200, count=1)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def make_job(self, *, base_seed: int, count: int) -> str:
+        job_id = self.store.create_job(
+            self.recipe,
+            requested_by="test",
+            candidate_count=count,
+            base_seed=base_seed,
+        )
+        for ordinal in range(1, count + 1):
+            path = self.root / job_id / f"C{ordinal:02d}.png"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGBA", (4, 4), (10, 20, 30, 255)).save(path)
+            self.store.add_candidate(
+                job_id=job_id,
+                ordinal=ordinal,
+                seed=base_seed + ordinal,
+                raw_path=path,
+                metrics=image_metrics(path),
+            )
+        return job_id
+
+    def test_alias_index_reads_recent_list_positions(self) -> None:
+        self.assertEqual(1, alias_index("latest"))
+        self.assertEqual(1, alias_index("LAST"))
+        self.assertEqual(1, alias_index("^"))
+        self.assertEqual(3, alias_index("^3"))
+        self.assertEqual(3, alias_index("3"))
+        self.assertIsNone(alias_index("^0"))
+        self.assertIsNone(alias_index("ART-x-C01"))
+        self.assertIsNone(alias_index(""))
+
+    def test_latest_is_the_newest_job_first_candidate(self) -> None:
+        expected = f"{self.newer}-C01"
+        for token in ("latest", "last", "^", "^1", "1"):
+            self.assertEqual(
+                expected,
+                self.store.resolve_candidate_id(token),
+                msg=token,
+            )
+
+    def test_alias_walks_into_the_previous_job(self) -> None:
+        self.assertEqual(
+            f"{self.older}-C01",
+            self.store.resolve_candidate_id("^2"),
+        )
+        self.assertEqual(
+            f"{self.older}-C02",
+            self.store.resolve_candidate_id("^3"),
+        )
+
+    def test_recipe_scoped_alias(self) -> None:
+        self.assertEqual(
+            f"{self.newer}-C01",
+            self.store.resolve_candidate_id(f"{self.recipe.id}@latest"),
+        )
+        with self.assertRaisesRegex(ReviewError, "recipe alias"):
+            self.store.resolve_candidate_id(f"{self.recipe.id}@nonsense")
+
+    def test_job_id_resolves_only_when_one_candidate_exists(self) -> None:
+        self.assertEqual(
+            f"{self.newer}-C01",
+            self.store.resolve_candidate_id(self.newer),
+        )
+        with self.assertRaisesRegex(ReviewError, "2 candidates"):
+            self.store.resolve_candidate_id(self.older)
+
+    def test_unique_substring_resolves_and_ambiguity_is_reported(self) -> None:
+        exact = f"{self.older}-C02"
+        self.assertEqual(
+            exact,
+            self.store.resolve_candidate_id(exact[-14:]),
+        )
+        with self.assertRaisesRegex(ReviewError, "several candidates"):
+            self.store.resolve_candidate_id("-C0")
+        with self.assertRaisesRegex(ReviewError, "Unknown candidate"):
+            self.store.resolve_candidate_id("ART-none")
+
+    def test_wildcards_in_input_are_literal(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "Unknown candidate"):
+            self.store.resolve_candidate_id("%")
+
+    def test_alias_past_the_end_is_refused(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "points past the end"):
+            self.store.resolve_candidate_id("^9")
+
+    def test_job_references_accept_aliases_and_candidate_ids(self) -> None:
+        self.assertEqual(self.newer, self.store.resolve_job_id("latest"))
+        self.assertEqual(self.older, self.store.resolve_job_id("^2"))
+        self.assertEqual(
+            self.older,
+            self.store.resolve_job_id(f"{self.older}-C02"),
+        )
+        with self.assertRaisesRegex(ReviewError, "Unknown job"):
+            self.store.resolve_job_id("ART-none")
+
+    def test_candidate_commands_accept_an_omitted_id(self) -> None:
+        parser = build_parser()
+        for command in (
+            "approve",
+            "reject",
+            "prepare",
+            "animation",
+            "variation",
+            "apply-request",
+        ):
+            args = parser.parse_args([command])
+            self.assertIsNone(args.candidate_id, msg=command)
+            self.assertTrue(args.pick_candidate, msg=command)
+        shot = parser.parse_args(["shot-approve", "idle"])
+        self.assertIsNone(shot.candidate_id)
+        self.assertEqual("idle", shot.shot_id)
 
 
 if __name__ == "__main__":

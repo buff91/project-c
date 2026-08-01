@@ -24,6 +24,7 @@ from typing import Any
 from PIL import Image, ImageDraw
 
 import art_asset
+import art_viewer
 import comfy_batch
 from art_review import (
     ASSET_TYPES,
@@ -94,6 +95,7 @@ def submit_prompt(
         output_dir,
         timeout=timeout,
         poll_interval=1.0,
+        workflow_path=recipe.workflow_path,
     )
     image_outputs = [
         path for path in outputs
@@ -1698,6 +1700,131 @@ def command_shot_decision(args: argparse.Namespace) -> None:
     )
 
 
+def viewer_actions(store: ReviewStore, requested_by: str) -> art_viewer.ViewerActions:
+    """뷰어 버튼을 CLI와 같은 판정 함수에 묶는다."""
+
+    def event_key(kind: str, candidate_id: str) -> str:
+        return f"viewer:{kind}:{candidate_id}:{uuid.uuid4().hex}"
+
+    return art_viewer.ViewerActions(
+        approve=lambda candidate_id: approve_candidate(
+            store,
+            candidate_id,
+            user_id=requested_by,
+            event_key=event_key("approve", candidate_id),
+        ),
+        reject=lambda candidate_id: reject_candidate(
+            store,
+            candidate_id,
+            user_id=requested_by,
+            event_key=event_key("reject", candidate_id),
+        ),
+        shot_decision=lambda candidate_id, shot_id, decision: (
+            decide_candidate_shot(
+                store,
+                candidate_id,
+                shot_id,
+                decision,
+                user_id=requested_by,
+                event_key=event_key(f"shot:{decision}:{shot_id}", candidate_id),
+            )
+        ),
+        enqueue=lambda kind, candidate_id, payload: store.enqueue_action(
+            kind,
+            requested_by=requested_by,
+            candidate_id=candidate_id,
+            payload=payload,
+        ),
+    )
+
+
+def command_review(args: argparse.Namespace) -> None:
+    store = ReviewStore(args.db)
+    art_viewer.serve(
+        store,
+        viewer_actions(store, args.requested_by),
+        host=args.host,
+        port=args.port,
+        limit=args.limit,
+        open_browser=not args.no_open,
+    )
+
+
+def pick_from_recent(
+    store: ReviewStore,
+    *,
+    kind: str,
+    limit: int,
+    status: str | None = None,
+) -> str:
+    """ID 인자를 생략했을 때 최근 목록에서 번호로 고른다.
+
+    번호는 `^N` 별칭과 같은 순서다 — 여기서 본 3번을 다음 명령에 `^3`으로
+    그대로 쓸 수 있어야 ID를 옮겨 적는 동작이 사라진다.
+    """
+    if not sys.stdin.isatty():
+        raise ReviewError(
+            f"{kind} id is required when stdin is not a terminal "
+            "(use 'latest', '^2', or a full id)"
+        )
+    if kind == "candidate":
+        rows = store.list_recent_candidates(limit)
+        lines = [
+            f"  ^{index:<3} {row['id']}  {row['status']:<10} "
+            f"{row['recipe_id']}"
+            for index, row in enumerate(rows, start=1)
+        ]
+    else:
+        rows = store.list_jobs(status=status, limit=limit)
+        lines = [
+            f"  ^{index:<3} {row['id']}  {row['status']:<15} "
+            f"{row['recipe_id']}"
+            for index, row in enumerate(rows, start=1)
+        ]
+    if not rows:
+        scope = f" with status {status}" if status else ""
+        raise ReviewError(f"No recent {kind}s{scope}")
+    print(f"최근 {kind}:", file=sys.stderr)
+    for line in lines:
+        print(line, file=sys.stderr)
+    try:
+        answer = input("번호 또는 ID (기본 ^1): ").strip()
+    except EOFError as exc:
+        raise ReviewError(f"{kind} selection was cancelled") from exc
+    if not answer:
+        return str(rows[0]["id"])
+    if kind == "candidate":
+        return store.resolve_candidate_id(answer)
+    return store.resolve_job_id(answer)
+
+
+def resolve_reference_args(args: argparse.Namespace) -> None:
+    """핸들러가 돌기 전에 별칭·부분 일치·선택기를 실제 ID로 바꾼다."""
+    if not (
+        getattr(args, "pick_candidate", False)
+        or getattr(args, "pick_job", False)
+    ):
+        return
+    store = ReviewStore(args.db)
+    if getattr(args, "pick_candidate", False):
+        args.candidate_id = (
+            store.resolve_candidate_id(args.candidate_id)
+            if args.candidate_id
+            else pick_from_recent(store, kind="candidate", limit=12)
+        )
+    if getattr(args, "pick_job", False):
+        args.job_id = (
+            store.resolve_job_id(args.job_id)
+            if args.job_id
+            else pick_from_recent(
+                store,
+                kind="job",
+                limit=12,
+                status=getattr(args, "pick_job_status", None),
+            )
+        )
+
+
 def command_feedback(args: argparse.Namespace) -> None:
     store = ReviewStore(args.db)
     inserted = store.add_feedback(
@@ -1878,27 +2005,44 @@ def build_parser() -> argparse.ArgumentParser:
     jobs.set_defaults(handler=command_jobs)
 
     job = subparsers.add_parser("job")
-    job.add_argument("job_id")
-    job.set_defaults(handler=command_job)
+    job.add_argument("job_id", nargs="?")
+    job.set_defaults(handler=command_job, pick_job=True)
 
     queue = subparsers.add_parser("queue")
     queue.add_argument("--limit", type=int, default=50)
     queue.add_argument("--all", action="store_true")
     queue.set_defaults(handler=command_queue)
 
-    for command_name in ("cancel", "retry"):
+    review = subparsers.add_parser("review")
+    review.add_argument("--host", default=art_viewer.DEFAULT_HOST)
+    review.add_argument("--port", type=int, default=art_viewer.DEFAULT_PORT)
+    review.add_argument(
+        "--limit",
+        type=int,
+        default=art_viewer.DEFAULT_LIMIT,
+    )
+    review.add_argument("--no-open", action="store_true")
+    review.add_argument("--requested-by", default="viewer")
+    review.set_defaults(handler=command_review)
+
+    for command_name, pick_status in (("cancel", "queued"), ("retry", "failed")):
         control = subparsers.add_parser(command_name)
-        control.add_argument("job_id")
+        control.add_argument("job_id", nargs="?")
         control.set_defaults(
             handler=command_job_control,
             control=command_name,
+            pick_job=True,
+            pick_job_status=pick_status,
         )
 
     apply_request = subparsers.add_parser("apply-request")
-    apply_request.add_argument("candidate_id")
+    apply_request.add_argument("candidate_id", nargs="?")
     apply_request.add_argument("--intent", default="")
     apply_request.add_argument("--requested-by", default="cli")
-    apply_request.set_defaults(handler=command_apply_request)
+    apply_request.set_defaults(
+        handler=command_apply_request,
+        pick_candidate=True,
+    )
 
     apply_requests = subparsers.add_parser("apply-requests")
     apply_requests.add_argument("--status")
@@ -1946,12 +2090,13 @@ def build_parser() -> argparse.ArgumentParser:
         "animation",
     ):
         action = subparsers.add_parser(action_name)
-        action.add_argument("candidate_id")
+        action.add_argument("candidate_id", nargs="?")
         action.add_argument("--requested-by", default="cli")
         if action_name == "animation":
             action.add_argument("--timing-scale", type=float, default=1.0)
         action.set_defaults(
             handler=command_candidate_action,
+            pick_candidate=True,
             action=(
                 "animation_draft"
                 if action_name == "animation"
@@ -1966,17 +2111,18 @@ def build_parser() -> argparse.ArgumentParser:
     publish.set_defaults(handler=command_publish)
 
     variation = subparsers.add_parser("variation")
-    variation.add_argument("candidate_id")
+    variation.add_argument("candidate_id", nargs="?")
     variation.add_argument("--count", type=candidate_count_arg, default=4)
     variation.add_argument("--notes", default="")
     variation.add_argument("--requested-by", default="cli")
     variation.set_defaults(
         handler=command_candidate_action,
+        pick_candidate=True,
         action="variation",
     )
 
     shot_variation = subparsers.add_parser("shot-variation")
-    shot_variation.add_argument("candidate_id")
+    shot_variation.add_argument("candidate_id", nargs="?")
     shot_variation.add_argument("shot_id")
     shot_variation.add_argument(
         "--count",
@@ -1987,6 +2133,7 @@ def build_parser() -> argparse.ArgumentParser:
     shot_variation.add_argument("--requested-by", default="cli")
     shot_variation.set_defaults(
         handler=command_candidate_action,
+        pick_candidate=True,
         action="shot_variation",
     )
 
@@ -1995,11 +2142,12 @@ def build_parser() -> argparse.ArgumentParser:
         ("shot-reject", "reject"),
     ):
         shot_decision = subparsers.add_parser(command_name)
-        shot_decision.add_argument("candidate_id")
+        shot_decision.add_argument("candidate_id", nargs="?")
         shot_decision.add_argument("shot_id")
         shot_decision.add_argument("--requested-by", default="cli")
         shot_decision.set_defaults(
             handler=command_shot_decision,
+            pick_candidate=True,
             decision=decision,
         )
 
@@ -2048,6 +2196,7 @@ def main() -> int:
         args.batch_dir = args.batch_dir.expanduser().resolve()
         if hasattr(args, "output_root"):
             args.output_root = args.output_root.expanduser().resolve()
+        resolve_reference_args(args)
         args.handler(args)
     except (
         ReviewError,
