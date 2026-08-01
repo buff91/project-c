@@ -92,6 +92,7 @@ namespace ProjectC.Gameplay
         /// <summary>낙하 없는 1칸 밀림(넉백). 층은 그대로, 시야·카메라만 갱신.</summary>
         private IEnumerator ShiftPlayerTo(GridPos destination)
         {
+            GridPos startPos = _playerState.Position;
             Vector3 start = _player.transform.position;
             _playerState.MoveTo(destination);
 
@@ -101,7 +102,9 @@ namespace ProjectC.Gameplay
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                _player.transform.position = Vector3.Lerp(start, end, Mathf.Clamp01(elapsed / duration));
+                float t = Mathf.Clamp01(elapsed / duration);
+                _player.transform.position = Vector3.Lerp(start, end, t);
+                ApplyMovingActorVisualSorting(_playerRenderer, startPos, destination, t);
                 yield return null;
             }
             _player.transform.position = end;

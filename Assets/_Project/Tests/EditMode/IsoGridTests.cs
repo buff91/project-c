@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using ProjectC.Core;
@@ -126,6 +127,146 @@ namespace ProjectC.Tests
             iso.SetViewRotation(2);
             Assert.Less(iso.SortingOrder(second), iso.SortingOrder(first));
         }
+
+        [Test]
+        public void SortingOrder_SupportedDungeonEnvelope_FitsSpriteRendererRange()
+        {
+            var iso = MakeGrid();
+            const int roomSize = 20;
+            const int minElevation = -19 * 6;
+            const int maxElevation = 19 * 6 + 5;
+
+            iso.viewPivotX = (roomSize - 1) * 0.5f;
+            iso.viewPivotY = (roomSize - 1) * 0.5f;
+
+            for (int rotation = 0; rotation < 4; rotation++)
+            {
+                iso.SetViewRotation(rotation);
+                int minimum = int.MaxValue;
+                int maximum = int.MinValue;
+                for (int elevation = minElevation; elevation <= maxElevation; elevation++)
+                for (int x = 0; x < roomSize; x++)
+                for (int y = 0; y < roomSize; y++)
+                {
+                    var pos = new GridPos(x, y, elevation);
+                    minimum = Mathf.Min(minimum, iso.SortingOrder(pos, -2));
+                    maximum = Mathf.Max(maximum, iso.SortingOrder(pos, 2));
+                }
+
+                Assert.That(minimum, Is.GreaterThanOrEqualTo((int)short.MinValue),
+                    $"sortingOrder 하한 범위 벗어남: rotation={rotation}");
+                Assert.That(maximum, Is.LessThanOrEqualTo((int)short.MaxValue),
+                    $"sortingOrder 상한 범위 벗어남: rotation={rotation}");
+            }
+        }
+
+        [Test]
+        public void SortingOrder_PreservesElevationDepthAndMicroPriority()
+        {
+            var iso = MakeGrid();
+            const int roomSize = 20;
+            iso.viewPivotX = (roomSize - 1) * 0.5f;
+            iso.viewPivotY = (roomSize - 1) * 0.5f;
+
+            for (int rotation = 0; rotation < 4; rotation++)
+            {
+                iso.SetViewRotation(rotation);
+
+                int lowerElevationFront = int.MinValue;
+                int higherElevationBack = int.MaxValue;
+                for (int x = 0; x < roomSize; x++)
+                for (int y = 0; y < roomSize; y++)
+                {
+                    lowerElevationFront = Mathf.Max(
+                        lowerElevationFront,
+                        iso.SortingOrder(new GridPos(x, y, 4), 2));
+                    higherElevationBack = Mathf.Min(
+                        higherElevationBack,
+                        iso.SortingOrder(new GridPos(x, y, 5), -2));
+                }
+                Assert.Greater(higherElevationBack, lowerElevationFront,
+                    $"elevation 우선순 붕괴: rotation={rotation}");
+
+                var positionsByDepth = new SortedDictionary<int, GridPos>();
+                for (int x = 0; x < roomSize; x++)
+                for (int y = 0; y < roomSize; y++)
+                {
+                    Vector2 view = iso.RotateToView(x, y);
+                    int depth = Mathf.RoundToInt(
+                        (view.x + view.y) * IsoGrid.DepthResolution);
+                    positionsByDepth[depth] = new GridPos(x, y, 4);
+                }
+
+                GridPos previous = default;
+                bool hasPrevious = false;
+                foreach (GridPos current in positionsByDepth.Values)
+                {
+                    if (hasPrevious)
+                    {
+                        Assert.Greater(
+                            iso.SortingOrder(current, -2),
+                            iso.SortingOrder(previous, 2),
+                            $"(x+y) 깊이 우선순 붕괴: rotation={rotation}");
+                    }
+                    previous = current;
+                    hasPrevious = true;
+                }
+
+                int floor = iso.SortingOrder(new GridPos(7, 8, 4), -2);
+                int actor = iso.SortingOrder(new GridPos(7, 8, 4), 1);
+                int seal = iso.SortingOrder(new GridPos(7, 8, 4), 2);
+                Assert.Less(floor, actor);
+                Assert.Less(actor, seal);
+            }
+        }
+
+        [Test]
+        public void SortingOrderDuringMove_SwitchesOnlyAfterFootCrossesHalfway()
+        {
+            var iso = MakeGrid();
+            iso.viewPivotX = 4.5f;
+            iso.viewPivotY = 4.5f;
+            var back = new GridPos(1, 1, 0);
+            var front = new GridPos(2, 1, 0);
+
+            for (int rotation = 0; rotation < 4; rotation++)
+            {
+                iso.SetViewRotation(rotation);
+                Assert.AreEqual(
+                    iso.SortingOrder(back, 1),
+                    iso.SortingOrderDuringMove(back, front, 0.49f, 1));
+                Assert.AreEqual(
+                    iso.SortingOrder(front, 1),
+                    iso.SortingOrderDuringMove(back, front, 0.5f, 1));
+                Assert.AreEqual(
+                    iso.SortingOrder(front, 1),
+                    iso.SortingOrderDuringMove(back, front, 0.51f, 1));
+
+                // 앞→뒤 이동도 절반 전까지 앞 순서를 유지해야 출발 타일에 가려지지 않는다.
+                Assert.AreEqual(
+                    iso.SortingOrder(front, 1),
+                    iso.SortingOrderDuringMove(front, back, 0.49f, 1));
+                Assert.AreEqual(
+                    iso.SortingOrder(back, 1),
+                    iso.SortingOrderDuringMove(front, back, 0.5f, 1));
+            }
+        }
+
+        [Test]
+        public void SortingOrderDuringMove_ClampsProgressToEndpoints()
+        {
+            var iso = MakeGrid();
+            var from = new GridPos(3, 4, 1);
+            var to = new GridPos(3, 5, 1);
+
+            Assert.AreEqual(
+                iso.SortingOrder(from, 1),
+                iso.SortingOrderDuringMove(from, to, -1f, 1));
+            Assert.AreEqual(
+                iso.SortingOrder(to, 1),
+                iso.SortingOrderDuringMove(from, to, 2f, 1));
+        }
+
     }
 
     public class GridPosTests

@@ -366,6 +366,7 @@ namespace ProjectC.Gameplay
 
             bool animate = _visibleTiles.Contains(enemy.State.Position) || _visibleTiles.Contains(next);
             Vector3 start = enemy.Root != null ? enemy.Root.transform.position : Vector3.zero;
+            GridPos previous = enemy.State.Position;
 
             enemy.State.MoveTo(next);
             ApplyEnemyVisuals(enemy);
@@ -382,10 +383,13 @@ namespace ProjectC.Gameplay
                 {
                     elapsed += Time.deltaTime;
                     float t = Mathf.Clamp01(elapsed / duration);
-                    enemy.Root.transform.position = Vector3.Lerp(start, end, SmoothStep(t));
+                    float eased = SmoothStep(t);
+                    enemy.Root.transform.position = Vector3.Lerp(start, end, eased);
+                    ApplyMovingActorVisualSorting(enemy.Renderer, previous, next, eased);
                     yield return null;
                 }
                 enemy.Root.transform.position = end;
+                ApplyEnemyVisuals(enemy);
                 enemy.Animator?.StopToIdle();
             }
 

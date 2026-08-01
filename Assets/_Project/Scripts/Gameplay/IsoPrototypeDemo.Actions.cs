@@ -460,7 +460,7 @@ namespace ProjectC.Gameplay
 
             InteractionFeedback?.Invoke("RECALL — 층 입구로 귀환");
             Debug.Log($"[Item] 귀환 비컨: {_playerPos} → {destination}");
-            yield return AnimateFloorTransition(_grid.GridToWorld(destination));
+            yield return AnimateFloorTransition(_grid.GridToWorld(destination), destination);
             _playerState.MoveTo(destination);
             SyncPlayerView(destination, floorChanged: false);
 

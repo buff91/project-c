@@ -25,9 +25,6 @@ namespace ProjectC.Core
         [Tooltip("elevation 1당 화면상 들어올리는 월드 높이.")]
         public float elevationStep = 0.25f;
 
-        [Tooltip("정렬 시 한 elevation 층이 차지하는 sortingOrder 대역. x+y 범위보다 커야 층이 안 섞임.")]
-        public int elevationSortBand = 1000;
-
         [Tooltip("시점을 시계 방향으로 돌린 횟수. 0..3의 90도 단위.")]
         [Range(0, 3)] public int viewQuarterTurns;
 
@@ -49,13 +46,22 @@ namespace ProjectC.Core
 
         /// <summary>
         /// 같은 elevation 안에서 (x+y) 깊이를 sortingOrder 정수로 양자화하는 해상도.
-        /// 스프라이트 겹침 방지 불변식: elevationSortBand &gt; DepthResolution × (maxX + maxY).
-        /// 현재 roomSize ≤ 20 → 16 × (19+19) = 608 &lt; elevationSortBand(1000) 이므로 인접 층이 안 섞인다.
+        /// GridPos는 정수 좌표고 시점 피벗은 방 중앙(정수/반정수)이므로 90도 회전 후에도
+        /// view.x + view.y 깊이는 항상 정수다. 따라서 1이면 서로 다른 대각선을 모두 구분한다.
         /// </summary>
-        public const int DepthResolution = 16;
+        public const int DepthResolution = 1;
 
-        /// <summary>한 타일 안에서 microOffset 이 차지하는 하위 대역(바닥 데칼 vs 그 위 캐릭터 등).</summary>
-        public const int MicroResolution = 8;
+        /// <summary>
+        /// elevation 하나가 차지하는 깊이 대역. 최대 20×20 맵의 깊이 범위 0..38보다
+        /// 크게 유지해 인접 elevation이 절대 섞이지 않게 한다.
+        /// </summary>
+        public const int ElevationSortBand = 39;
+
+        /// <summary>
+        /// 한 깊이 안에서 microOffset이 차지하는 하위 대역. 공식 슬롯 -2..+2를
+        /// 인접 깊이와 섞이지 않게 정확히 5칸으로 둔다.
+        /// </summary>
+        public const int MicroResolution = 5;
 
         /// <summary>
         /// 격자 → 월드 좌표. (타일 중심)
@@ -107,7 +113,7 @@ namespace ProjectC.Core
         {
             Vector2 view = RotateToView(pos.x, pos.y);
             int viewDepth = Mathf.RoundToInt((view.x + view.y) * DepthResolution);
-            return pos.elevation * elevationSortBand + viewDepth;
+            return pos.elevation * ElevationSortBand + viewDepth;
         }
 
         /// <summary>
@@ -116,7 +122,23 @@ namespace ProjectC.Core
         /// </summary>
         public int SortingOrder(GridPos pos, int microOffset)
         {
-            return SortingOrder(pos) * MicroResolution + microOffset; // microOffset: -3..+3 정도 권장
+            return SortingOrder(pos) * MicroResolution + microOffset; // 공식 micro 슬롯: -2..+2
+        }
+
+        /// <summary>
+        /// 한 칸 이동 중인 스프라이트의 정렬 순서. 발 피벗이 두 칸의 화면상 경계를
+        /// 넘는 절반 지점까지는 출발 칸, 그 뒤에는 도착 칸의 순서를 쓴다.
+        /// 도착 순서를 이동 시작부터 적용하면 뒤쪽으로 걷는 액터가 아직 출발 칸에
+        /// 있는데도 앞 타일 아래로 들어가는 한 프레임 가림이 생긴다.
+        /// </summary>
+        public int SortingOrderDuringMove(
+            GridPos from,
+            GridPos to,
+            float progress,
+            int microOffset)
+        {
+            GridPos anchor = Mathf.Clamp01(progress) < 0.5f ? from : to;
+            return SortingOrder(anchor, microOffset);
         }
 
         public void RotateView(int direction)

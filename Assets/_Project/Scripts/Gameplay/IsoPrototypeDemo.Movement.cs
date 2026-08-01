@@ -84,6 +84,7 @@ namespace ProjectC.Gameplay
 
         private IEnumerator AnimateHoleDrop(GridPos hole, GridPos landing)
         {
+            GridPos startPos = _playerPos;
             Vector3 start = _player.transform.position;
             Vector3 holeWorld = _grid.GridToWorld(hole);
             Vector3 landingWorld = _grid.GridToWorld(landing);
@@ -97,6 +98,7 @@ namespace ProjectC.Gameplay
                 float t = Mathf.Clamp01(elapsed / hopDuration);
                 _player.transform.position = Vector3.Lerp(start, holeWorld, t) +
                                              Vector3.up * Mathf.Sin(t * Mathf.PI) * 0.18f;
+                ApplyMovingActorVisualSorting(_playerRenderer, startPos, hole, t);
                 yield return null;
             }
 
@@ -106,13 +108,16 @@ namespace ProjectC.Gameplay
             {
                 elapsed += Time.deltaTime;
                 float t = Mathf.Clamp01(elapsed / fallDuration);
-                _player.transform.position = Vector3.Lerp(holeWorld, landingWorld, SmoothStep(t));
+                float eased = SmoothStep(t);
+                _player.transform.position = Vector3.Lerp(holeWorld, landingWorld, eased);
+                ApplyMovingActorVisualSorting(_playerRenderer, hole, landing, eased);
                 _player.transform.localScale = Vector3.one * Mathf.Lerp(1f, 0.72f, Mathf.Sin(t * Mathf.PI));
                 _playerRenderer.color = new Color(original.r, original.g, original.b, Mathf.Lerp(1f, 0.35f, Mathf.Sin(t * Mathf.PI)));
                 yield return null;
             }
 
             _player.transform.position = landingWorld;
+            ApplyPlayerVisualSorting(landing);
             _player.transform.localScale = Vector3.one;
             _playerRenderer.color = original;
         }
@@ -211,14 +216,14 @@ namespace ProjectC.Gameplay
                 SnapshotTravelSight();
                 int hpBeforeStep = _playerState.Hp;
 
+                GridPos current = _playerState.Position;
                 Vector3 start = _player.transform.position;
                 Vector3 end = _grid.GridToWorld(next);
-                ApplyPlayerVisualSorting(next);
 
-                bool changesDungeonFloor = !_dungeon.Height.SameFloor(_playerState.Position, next);
+                bool changesDungeonFloor = !_dungeon.Height.SameFloor(current, next);
                 if (changesDungeonFloor)
                 {
-                    yield return AnimateFloorTransition(end);
+                    yield return AnimateFloorTransition(end, next);
                 }
                 else
                 {
@@ -227,9 +232,12 @@ namespace ProjectC.Gameplay
                     {
                         elapsed += Time.deltaTime;
                         float t = Mathf.Clamp01(elapsed / secondsPerStep);
-                        _player.transform.position = Vector3.LerpUnclamped(start, end, SmoothStep(t));
+                        float eased = SmoothStep(t);
+                        _player.transform.position = Vector3.LerpUnclamped(start, end, eased);
+                        ApplyMovingActorVisualSorting(_playerRenderer, current, next, eased);
                         yield return null;
                     }
+                    ApplyPlayerVisualSorting(next);
                 }
 
                 _player.transform.position = end;
@@ -245,7 +253,9 @@ namespace ProjectC.Gameplay
                 {
                     InteractionFeedback?.Invoke(
                         $"{FloorLabel(_dungeon.Height.FloorIndex(floorDestination.elevation))}로 이동");
-                    yield return AnimateFloorTransition(_grid.GridToWorld(floorDestination));
+                    yield return AnimateFloorTransition(
+                        _grid.GridToWorld(floorDestination),
+                        floorDestination);
 
                     if (i + 1 < path.Count && path[i + 1] == floorDestination)
                         i++; // 경로 탐색이 넣은 링크 목적지는 이미 함께 소비했다.
@@ -441,12 +451,13 @@ namespace ProjectC.Gameplay
             return false;
         }
 
-        private IEnumerator AnimateFloorTransition(Vector3 destination)
+        private IEnumerator AnimateFloorTransition(Vector3 destination, GridPos destinationPos)
         {
             Color original = _playerRenderer.color;
             _playerRenderer.color = new Color(original.r, original.g, original.b, 0.2f);
             yield return new WaitForSeconds(0.12f);
             _player.transform.position = destination;
+            ApplyPlayerVisualSorting(destinationPos);
             _playerRenderer.color = original;
             yield return new WaitForSeconds(0.12f);
         }
