@@ -1,6 +1,8 @@
 schema_version: 1
 id: arcade-tower-v1
-name: 폐 아케이드 복합타워 네온 미궁 (v0.3.3)
+name: 폐 아케이드 복합타워 (v0.3.4)
+# v0.3.4(GDD §10): 미궁·이상(異常) 현상이 삭제돼 positive 의 anomaly-dungeon 을 걷었다.
+# 재료 어휘·광원 규율·negative 는 그대로다 — 바뀐 것은 세계의 정체이지 폐허의 재질이 아니다.
 # collapsed-hospital-v1 승계 — v0.3.3 사이버펑크 승격(GDD §10)에 따라 세계관 재료 어휘를
 # 폐 아케이드 복합타워(죽은 네온 상가)로 교체한다. 구판이 negative로 neon 자체를 금지하던
 # 것을 "국소 광원만 허용" 규율(§6 채도 규율, §1-c 판독 규칙)로 바꾼다 — 네온은 간판/광원
@@ -14,7 +16,7 @@ applies_to:
 - prop
 prompt:
   positive: >-
-    Project-C post-apocalyptic cyberpunk anomaly-dungeon world, abandoned
+    Project-C post-apocalyptic cyberpunk city world, abandoned
     neon shopping arcade tower, cracked concrete, shuttered storefronts,
     dead signage boxes and broken holo panel frames, cable trays, oxidized
     dark steel, exposed rebar, practical scavenged survival materials,

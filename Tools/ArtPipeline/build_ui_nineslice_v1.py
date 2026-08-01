@@ -16,7 +16,10 @@ OUT = Path(__file__).resolve().parents[2] / "Assets/_Project/Art/Runtime"
 
 VOID = (5, 7, 12, 255)
 PANEL = (10, 13, 19, 255)
-S_DIM = (74, 64, 56, 255); STONE = (152, 134, 111, 255); S_LIT = (207, 192, 174, 255)
+# v1.8: 웜 토프 → 쿨 스틸. 값은 DesignSystem.uss 의 --pc-stone* 와 같다.
+S_DIM = (44, 49, 56, 255); STONE = (84, 91, 97, 255); S_LIT = (223, 231, 242, 255)
+# UI 크롬 액센트 — .gpl sig-neon-magenta. 월드 네온이 아니라 화면 크롬 전용이다.
+ACCENT = (230, 68, 184, 255)
 ICE = (154, 223, 232, 255); TEAL = (79, 167, 160, 255); TEAL_BG = (20, 52, 58, 255)
 GOLD = (255, 213, 84, 255); TORCH = (255, 189, 65, 255); GOLD_D = (154, 107, 34, 255)
 
@@ -136,8 +139,40 @@ def vignette():
     return im
 
 
+
+BR = 12   # bracket tile canvas (slice 5 -> 2px stretchable centre)
+BR_SLICE = 5
+BR_LEN = 4    # 모서리에서 뻗는 길이
+
+
+def bracket_frame():
+    """모서리만 그리는 크롬 프레임 — 사각 테두리 대신 계기처럼 읽힌다.
+
+    UI Toolkit USS 에는 ``::before``/``::after`` 가 없어서 코너 브래킷을 의사요소로
+    만들 수 없다. 그래서 이 프로젝트가 이미 쓰는 방식(9-slice 승격)을 따른다 —
+    가장자리 슬라이스만 늘어나고 **모서리 타일은 크기를 유지**하므로, 패널이 아무리
+    커져도 브래킷 길이가 그대로다. 늘어나는 구간은 비워 둬서 변이 그려지지 않는다.
+    """
+    im = Image.new("RGBA", (BR, BR), (0, 0, 0, 0))
+    px = im.load()
+    hairline = (ACCENT[0], ACCENT[1], ACCENT[2], 76)   # 상단 헤어라인 30%
+    for y in range(BR):
+        for x in range(BR):
+            on_left, on_right = x == 0, x == BR - 1
+            on_top, on_bottom = y == 0, y == BR - 1
+            if not (on_left or on_right or on_top or on_bottom):
+                continue
+            near_x = min(x, BR - 1 - x) < BR_LEN
+            near_y = min(y, BR - 1 - y) < BR_LEN
+            if near_x and near_y:
+                px[x, y] = ACCENT          # 네 모서리만 진하게
+            elif on_top:
+                px[x, y] = hairline        # 위 변만 옅은 헤어라인(판금 베벨)
+    return im
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    lock_rgba_to_palette(bracket_frame()).save(OUT / "ui-bracket-frame.png")
     lock_rgba_to_palette(window_frame(S_LIT, STONE, S_DIM)).save(
         OUT / "ui-window-frame.png"
     )

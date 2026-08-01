@@ -42,7 +42,7 @@ namespace ProjectC.Gameplay
         public Color32 dungeonAmber = new Color32(255, 189, 65, 255);
         [Tooltip("pc-gold — 불꽃 중심과 현재 목표")]
         public Color32 dungeonAmberCore = new Color32(255, 213, 84, 255);
-        [Tooltip("pc-teal — Hole·포탈·마법 경로의 국소 신호색")]
+        [Tooltip("pc-teal — Hole·게이트·해금된 경로의 국소 신호색")]
         public Color32 dungeonMagic = new Color32(79, 167, 160, 255);
         [Tooltip("sig-neon-cyan — 장식용 충전·서비스 광원. 이상현상 틸과 구분한다")]
         public Color32 dungeonNeonCyan = new Color32(61, 225, 232, 255);

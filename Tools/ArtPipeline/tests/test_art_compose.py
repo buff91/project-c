@@ -237,7 +237,7 @@ class ComposeTests(unittest.TestCase):
             recipe.document["art_style"]["name"],
         )
         self.assertEqual(
-            "폐 아케이드 복합타워 네온 미궁 (v0.3.3)",
+            "폐 아케이드 복합타워 (v0.3.4)",
             recipe.document["world"]["name"],
         )
         self.assertIn("deliberate hard-edged", recipe.prompt["positive"])

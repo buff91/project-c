@@ -287,8 +287,8 @@ HUB = f"""
 
 MAINMENU = """
     <div class="mm-card win">
-      <div class="mm-t">이상 미궁</div>
-      <div class="mm-s">폐병원 · 상승</div>
+      <div class="mm-t">Project-C</div>
+      <div class="mm-s">폐 아케이드 복합타워 · 상승</div>
       <div class="mm-btns">
         <button class="mm-b mm-p">이어하기</button>
         <button class="mm-b">새 원정</button>

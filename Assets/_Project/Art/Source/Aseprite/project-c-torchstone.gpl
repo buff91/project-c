@@ -23,6 +23,10 @@ Columns: 6
 #     (build_ui_nineslice_v1 · process_ui_icons_v1 등)가 같은 lock_to_palette를 쓴다.
 #   · legacy 항목은 USS/절차 생성 코드가 이름으로 참조하는 v1 색이다. 지우면 off-palette가 된다.
 #
+# v1.8(2026-08-01): ui-text-cool 하나를 더했다. UI 본문/프레임이 판타지 시절 웜 계조라
+#   청흑 바탕 + 네온과 색온도가 부딪쳤다. 프레임은 grey-1/3/5 로 옮겨 신규 색이 없고,
+#   밝은 쿨 본문만 이 팔레트에 없어서 append 한다. ui-text(웜)는 남긴다 — 기존 ui-*.png
+#   가 그 값으로 구워져 있어 지우면 그 스프라이트들이 off-palette 가 된다.
 # 별칭(같은 값이라 항목을 합쳤다): ui-void == dark-void · ui-teal-bg == anomaly-1
 #
 # --- shared dark ---
@@ -99,6 +103,7 @@ Columns: 6
  31  23  16	ui-action #1F1710 [KEEP]
  46  33  21	ui-action-hover #2E2115 [KEEP]
 234 223 200	ui-text #EADFC8 [KEEP]
+223 231 242	ui-text-cool #DFE7F2 [NEW]
 151 144 126	ui-dim #97907E [KEEP]
 216  69  42	ui-hp #D8452A [KEEP]
  69  16  11	ui-hp-empty #45100B [KEEP]

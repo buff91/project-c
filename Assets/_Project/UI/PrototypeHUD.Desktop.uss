@@ -85,20 +85,23 @@
    미니맵은 면적이 줄지만 정보 밀도는 약 2배다: MinimapSize == roomSize 라
    텍스처가 정사각인데 지금까지 가로 스트립에 레터박스로 들어가 있었다. */
 
+/* v1.8: 1px 사각 보더 → 코너 브래킷 9-slice. 공용 규칙은 .pc-plate 가 소유한다. */
 .hud-root.hud-desktop .minimap-panel {
     right: 8px;
     top: 8px;
     width: 104px;
     padding: 8px;
     background-color: rgba(5, 7, 12, 0.78);
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-color: var(--pc-stone-dim);
-    border-right-color: var(--pc-stone-dim);
-    border-top-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
+    background-image: url("../Art/Runtime/ui-bracket-frame.png");
+    -unity-slice-left: 5;
+    -unity-slice-top: 5;
+    -unity-slice-right: 5;
+    -unity-slice-bottom: 5;
+    -unity-slice-scale: 1px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
     border-radius: 0;
 }
 
@@ -192,14 +195,16 @@
     width: 208px;
     padding: 3px 4px;
     background-color: rgba(5, 7, 12, 0.78);
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-top-width: 1px;
-    border-bottom-width: 1px;
-    border-left-color: var(--pc-stone-dim);
-    border-right-color: var(--pc-stone-dim);
-    border-top-color: var(--pc-stone-dim);
-    border-bottom-color: var(--pc-stone-dim);
+    background-image: url("../Art/Runtime/ui-bracket-frame.png");
+    -unity-slice-left: 5;
+    -unity-slice-top: 5;
+    -unity-slice-right: 5;
+    -unity-slice-bottom: 5;
+    -unity-slice-scale: 1px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
 }
 
 /* 최신 줄은 로그 안의 한 줄이지 별도 칩이 아니다 — 플레이트는 로그 하나만 쓴다. */
@@ -468,4 +473,14 @@
 .hud-root.hud-desktop.is-ultrawide .hud-bottom {
     left: 24px;
     right: 24px;
+}
+
+/* 기술 라벨 (v1.8) — 라틴 대문자 + 자간 1px + UI 크롬 액센트.
+   대문자는 UXML 원문이 소유한다(UI Toolkit 에 text-transform 이 없다).
+   자간은 정수만 — 소수점은 UssTypographyTests 가 막는다. */
+.hud-root.hud-desktop .boss-kicker,
+.hud-root.hud-desktop .view-label,
+.hud-root.hud-desktop .elevation-label {
+    letter-spacing: 1px;
+    color: var(--pc-ui-accent);
 }

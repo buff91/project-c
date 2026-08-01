@@ -40,3 +40,44 @@ class UiIconProcessorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UiIconCoolShiftTests(unittest.TestCase):
+    """v1.8 웜 → 쿨 리맵. 게이트가 신호색을 건드리지 않는 것이 핵심 계약이다."""
+
+    def test_warm_neutral_stone_becomes_cool(self) -> None:
+        from process_ui_icons_v1 import cool_shift
+
+        warm = Image.new("RGBA", (1, 1), (152, 134, 111, 255))  # 구 --pc-stone
+        red, green, blue, _ = cool_shift(warm).getpixel((0, 0))
+
+        self.assertLess(red, blue, "리맵 뒤에도 적색이 청색보다 크면 여전히 웜이다.")
+
+    def test_signal_colours_are_untouched(self) -> None:
+        from process_ui_icons_v1 import cool_shift
+
+        # 골드·토치·틸·HP·아이스 — 하나라도 옮겨지면 화면 판독이 무너진다.
+        signals = (
+            (255, 213, 84, 255),
+            (255, 189, 65, 255),
+            (79, 167, 160, 255),
+            (216, 69, 42, 255),
+            (154, 223, 232, 255),
+        )
+        for colour in signals:
+            with self.subTest(colour=colour):
+                cell = Image.new("RGBA", (1, 1), colour)
+                self.assertEqual(colour, cool_shift(cell).getpixel((0, 0)))
+
+    def test_transparent_pixels_stay_transparent(self) -> None:
+        from process_ui_icons_v1 import cool_shift
+
+        cell = Image.new("RGBA", (1, 1), (152, 134, 111, 0))
+        self.assertEqual(0, cool_shift(cell).getpixel((0, 0))[3])
+
+    def test_value_is_preserved_so_shading_survives(self) -> None:
+        from process_ui_icons_v1 import cool_shift
+
+        dark = cool_shift(Image.new("RGBA", (1, 1), (74, 64, 56, 255))).getpixel((0, 0))
+        light = cool_shift(Image.new("RGBA", (1, 1), (207, 192, 174, 255))).getpixel((0, 0))
+        self.assertLess(max(dark[:3]), max(light[:3]), "명도 순서가 뒤집혔다.")
