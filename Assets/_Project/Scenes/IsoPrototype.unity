@@ -157,6 +157,7 @@ MonoBehaviour:
   playCameraSize: 2.3
   debugCameraSize: 8.8
   actorVisualScale: 0.72
+  playerVisualScale: 0.8
   playerMaxHp: 8
   playerAttack: 2
   rangedAttackDamage: 1
