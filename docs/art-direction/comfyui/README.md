@@ -1,8 +1,9 @@
-# ComfyUI 스타터 워크플로 — collapsed-transit 스타일 트랜스퍼
+# Project-C ComfyUI 워크플로
 
-`collapsed-transit-styletransfer.workflow.json` — 기존 6-셀 환경 시트를 **실루엣·2:1 투영을
-보존한 채 재료만 postapoc로** 바꾸는 통제형 생성 스캐폴드. 개념·근거는
-`../comfyui-to-aseprite-pipeline.md`, 첫 실행 범위는 `../vertical-slice-01-collapsed-transit-env.md`.
+이 폴더의 `*.workflow.json`은 사람이 보는 캔버스 원본, `*.api.json`은 REST 실행본이다.
+기존 6-셀 환경 시트를 **실루엣·2:1 투영을 보존한 채 재료만** 바꾸는 통제형 생성과
+액터·아이템 생성 그래프를 함께 관리한다. 개념·근거는
+`../comfyui-to-aseprite-pipeline.md`를 따른다.
 
 > **성격**: 스톡 ComfyUI에서 바로 로드되도록 **코어 노드만**으로 짠 최소 그래프
 > (img2img + ControlNet + LoRA 슬롯). IPAdapter와 LineArt 전처리기는 커스텀 노드라
@@ -79,28 +80,67 @@ python3 Tools/ArtPipeline/comfy_batch.py status
 python3 Tools/ArtPipeline/comfy_batch.py models
 ```
 
-### 7-b. API 형식으로 저장
+### 7-b. 캔버스/API 워크플로 쌍
 
-이 폴더의 `collapsed-transit-styletransfer.workflow.json`은 **ComfyUI 캔버스 편집 형식**이다.
-Desktop에서 모델과 노드를 채운 뒤 **Save/Export (API Format)**으로 별도 저장해야 REST 실행이
-가능하다. 캔버스 JSON을 `/prompt`에 그대로 보내지 않는다.
+Project-C의 모든 실행 그래프는 같은 basename의 두 파일을 함께 보존한다.
+
+- `NAME.workflow.json`: ComfyUI 캔버스에서 여는 편집 SSOT. 노드 위치·그룹·위젯을 보존한다.
+- `NAME.api.json`: 캔버스에서 **Save/Export (API Format)**으로 만든 실행 산출물.
+
+캔버스 JSON을 `/prompt`에 그대로 보내지 않는다. 반대로 API JSON만 고치면 실제 실행과
+캔버스가 달라지므로, 캔버스에서 수정하고 API 형식을 다시 Export한다. 실행 전 계약 검사는:
+
+```bash
+python3 Tools/ArtPipeline/comfy_batch.py validate \
+  docs/art-direction/comfyui/environment-styletransfer.api.json
+```
 
 API 워크플로 실행 예:
 
 ```bash
 python3 Tools/ArtPipeline/comfy_batch.py run \
-  docs/art-direction/comfyui/collapsed-transit-styletransfer.api.json \
-  --upload 5.image=docs/art-direction/project-c-collapsed-transit-environment-source-v2.png \
+  docs/art-direction/comfyui/environment-styletransfer.api.json \
+  --upload 7.image=docs/art-direction/project-c-collapsed-transit-environment-source-v2.png \
   --set 9.seed=42 \
   --set 9.denoise=0.55 \
   --output-dir docs/art-direction/comfyui/output
 ```
 
+- ComfyUI 왼쪽 **Workflows → Project-C** 목록에 캔버스 5개를 게시하려면
+  `python3 Tools/ArtPipeline/comfy_batch.py sync-workflows`를 실행한다.
 - `--set NODE.INPUT=VALUE`: API 그래프의 입력을 덮어쓴다. 숫자·bool·배열은 JSON으로 해석한다.
 - `--upload NODE.INPUT=PATH`: `/upload/image`에 올리고 반환 파일명을 해당 입력에 넣는다.
-- 기본값은 완료까지 기다린 뒤 `/history`와 `/view`로 결과를 내려받는 것이다.
+- 기본값은 ComfyUI 캔버스 브리지를 먼저 찾고, 없으면 WebSocket으로
+  `executing`/`progress`/프리뷰를 받은 뒤 `/history`와 `/view`로 결과를 내려받는다.
+- 실행에 사용한 최종 API 그래프, 캔버스, 이벤트, 진행 상태는
+  `OUTPUT_DIR/_runs/<prompt-id>/`에 보존한다.
+- 캔버스 전체를 `extra_pnginfo.workflow`로 함께 보내므로 생성 PNG를 ComfyUI에 드롭하면
+  실행 그래프를 다시 열 수 있다.
 - `output/`은 검토용이며 gitignore 대상이다. 채택한 결과만 정식 `*-source-v3.png` 이름으로
   `docs/art-direction/`에 옮긴다.
+
+### 7-c. ComfyUI에서 실제 노드 진행 보기
+
+한 번만 브리지를 설치하고 ComfyUI Desktop을 재시작한다. 이미 장시간 실행 중인
+`art_runner.py work` 서비스가 있으면 현재 작업이 끝난 뒤 그 워커도 재시작해 새 클라이언트를
+로드한다.
+
+```bash
+Tools/ArtPipeline/install_comfy_live_bridge.sh
+```
+
+설치기는 실행 중인 ComfyUI의 실제 `custom_nodes` 경로를 자동으로 찾고, 캔버스 파일도
+**Workflows → Project-C**에 함께 게시한다. 별도 설치 위치를 쓸 때만
+`COMFYUI_CUSTOM_NODES_DIR=/path/to/custom_nodes`를 지정한다.
+
+이후 ComfyUI 창이 열려 있으면 REST 작업을 제출하기 전에 대응하는
+`*.workflow.json`을 자동으로 캔버스에 로드한다. 작업은 그 프런트엔드의 `client_id`로
+제출되므로 ComfyUI 자체의 실행 노드 강조, KSampler 진행률, 프리뷰가 그대로 표시된다.
+동시에 프런트엔드 이벤트가 워커로 돌아와 `_runs/<prompt-id>/events.ndjson`에도 기록된다.
+
+브리지가 설치되지 않았거나 ComfyUI 창이 닫혀 있으면 배치는 멈추지 않고 독립 WebSocket
+모니터로 전환한다. `websocket-client`는 아트 리뷰 requirements에 포함되어 있다.
+의도적으로 캔버스 자동 로드를 끄려면 `comfy_batch.py run --no-frontend ...`를 사용한다.
 
 ## 8. Aseprite CLI/Lua 정적 마감
 
