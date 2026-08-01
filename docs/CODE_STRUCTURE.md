@@ -93,7 +93,7 @@
 
 ## Gameplay — 그 밖의 씬 서비스·패널·스토어
 
-위 세 표(파셜 19 + 절차 아트 6 + HUD 8 = 33개)에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
+위 세 표(파셜 20 + 절차 아트 6 + HUD 8 = 34개)에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
 예전에는 이 표가 없어서 Gameplay 절반이 문서 어디에도 없었다 —
 `InventoryPanelController` 같은 큰 파일을 이름으로 찾을 방법이 없었다.
 
