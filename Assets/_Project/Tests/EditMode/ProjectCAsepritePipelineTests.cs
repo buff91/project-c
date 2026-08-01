@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using ProjectC.Core;
 using ProjectC.EditorTools;
 using ProjectC.Gameplay;
+using UnityEditor;
 using UnityEngine;
 
 namespace ProjectC.Tests
@@ -30,6 +32,75 @@ namespace ProjectC.Tests
                 "Assets/_Project/Art/Runtime/actor-knight.aseprite"));
             Assert.IsFalse(ProjectCAsepritePipeline.IsAsepriteSourcePath(
                 "Assets/_Project/Art/Source/Aseprite/actor-knight.png"));
+        }
+
+        [Test]
+        public void CanvasContracts_RequireFloorAndActorSourceSizes()
+        {
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                "Assets/_Project/Art/Source/Aseprite/env-floor.aseprite",
+                out Vector2Int floor));
+            Assert.AreEqual(new Vector2Int(128, 64), floor);
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                "Assets/_Project/Art/Source/Aseprite/env-floor-b2-parking-stop.aseprite",
+                out Vector2Int floorDressing));
+            Assert.AreEqual(new Vector2Int(128, 64), floorDressing);
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite",
+                out Vector2Int actor));
+            Assert.AreEqual(new Vector2Int(96, 128), actor);
+            Assert.IsFalse(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                "Assets/_Project/Art/Source/Aseprite/env-wall-rising-left.aseprite",
+                out _));
+
+            Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(
+                "Assets/_Project/Art/Source/Aseprite/env-floor.aseprite"));
+            Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(
+                "Assets/_Project/Art/Source/Aseprite/env-floor-cracked.aseprite"));
+            Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(
+                "Assets/_Project/Art/Source/Aseprite/env-wall-rising-left.aseprite"));
+            Assert.IsFalse(ProjectCAsepritePipeline.RequiresReadableTexture(
+                "Assets/_Project/Art/Source/Aseprite/env-flooring.aseprite"));
+            Assert.IsFalse(ProjectCAsepritePipeline.RequiresReadableTexture(
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite"));
+        }
+
+        [Test]
+        public void ActorTags_RequireAllSixCanonicalClips()
+        {
+            CollectionAssert.IsEmpty(ProjectCAsepritePipeline.MissingRequiredActorTags(
+                new[]
+                {
+                    "actor-knight_idle",
+                    "walk",
+                    "attack",
+                    "hit",
+                    "fall",
+                    "actor-knight_death"
+                }));
+
+            CollectionAssert.AreEqual(
+                new[] { "attack", "hit", "fall", "death" },
+                ProjectCAsepritePipeline.MissingRequiredActorTags(
+                    new[] { "idle", "actor-knight_walk", "sprint" }));
+            CollectionAssert.AreEqual(
+                new[] { "idle", "walk", "attack", "hit", "fall", "death" },
+                ProjectCAsepritePipeline.MissingRequiredActorTags(null));
+        }
+
+        [Test]
+        public void AsepritePackage_ExposesReadableSettingUsedByFloorPipeline()
+        {
+            const string source =
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
+            AssetImporter importer = AssetImporter.GetAtPath(source);
+            Assert.IsNotNull(importer);
+
+            var serializedImporter = new SerializedObject(importer);
+            SerializedProperty textureSettings =
+                serializedImporter.FindProperty("m_TextureImporterSettings");
+            Assert.IsNotNull(textureSettings);
+            Assert.IsNotNull(textureSettings.FindPropertyRelative("m_IsReadable"));
         }
 
         [Test]
@@ -127,6 +198,14 @@ namespace ProjectC.Tests
             {
                 ("env-floor-b2-parking-stop", "b2ParkingWheelStopFloor"),
                 ("env-floor-b2-fallen-sign", "b2FallenWayfindingFloor"),
+                ("env-floor-b2-parking-stop-view-0", "b2ParkingWheelStopFloorView0"),
+                ("env-floor-b2-parking-stop-view-1", "b2ParkingWheelStopFloorView1"),
+                ("env-floor-b2-parking-stop-view-2", "b2ParkingWheelStopFloorView2"),
+                ("env-floor-b2-parking-stop-view-3", "b2ParkingWheelStopFloorView3"),
+                ("env-floor-b2-fallen-sign-view-0", "b2FallenWayfindingFloorView0"),
+                ("env-floor-b2-fallen-sign-view-1", "b2FallenWayfindingFloorView1"),
+                ("env-floor-b2-fallen-sign-view-2", "b2FallenWayfindingFloorView2"),
+                ("env-floor-b2-fallen-sign-view-3", "b2FallenWayfindingFloorView3"),
             };
 
             foreach ((string fileName, string slot) in expected)
@@ -138,6 +217,29 @@ namespace ProjectC.Tests
                     new Vector2(0.5f, 0.5f),
                     ProjectCAsepritePipeline.ResolvePivotNormalized(path));
             }
+        }
+
+        [Test]
+        public void B2DirectionalSources_RequireCompleteViewZeroThroughThreeSets()
+        {
+            string sourceRoot = ProjectCAsepritePipeline.SourceRoot.TrimEnd('/');
+            string[] sources = AssetDatabase.FindAssets(string.Empty, new[] { sourceRoot })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(ProjectCAsepritePipeline.IsAsepriteSourcePath)
+                .ToArray();
+
+            CollectionAssert.IsEmpty(
+                ProjectCAsepritePipeline.MissingRequiredB2ViewSources(sources));
+
+            string[] withoutParkingViewTwo = sources
+                .Where(path => !path.EndsWith(
+                    "env-floor-b2-parking-stop-view-2.aseprite",
+                    System.StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "env-floor-b2-parking-stop-view-2" },
+                ProjectCAsepritePipeline.MissingRequiredB2ViewSources(
+                    withoutParkingViewTwo));
         }
 
         [Test]
@@ -174,6 +276,139 @@ namespace ProjectC.Tests
                 frameZero,
                 ProjectCAsepritePipeline.SelectFirstFrame(
                     new[] { frameTen, frameTwo, frameZero }));
+        }
+
+        [Test]
+        public void SynchronizeSpriteSlots_RemovedAsepriteRestoresPngFallback_AndPreservesManualReference()
+        {
+            const string removedSource =
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
+            Sprite removedSprite = ProjectCAsepritePipeline.SelectFirstFrame(
+                AssetDatabase.LoadAllAssetsAtPath(removedSource).OfType<Sprite>());
+            Sprite fallback = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Project/Art/Runtime/actor-knight.png");
+            Assert.IsNotNull(removedSprite);
+            Assert.IsNotNull(fallback);
+
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            try
+            {
+                catalog.knight = removedSprite;
+                catalog.ranger = removedSprite;
+                var removed = new Dictionary<string, string[]>(
+                    System.StringComparer.OrdinalIgnoreCase)
+                {
+                    { "actor-knight", new[] { removedSource } },
+                    {
+                        "actor-ranger",
+                        new[]
+                        {
+                            "Assets/_Project/Art/Source/Aseprite/actor-ranger.aseprite"
+                        }
+                    }
+                };
+
+                int changed = ProjectCAsepritePipeline.SynchronizeSpriteSlots(
+                    catalog,
+                    System.Array.Empty<string>(),
+                    removed,
+                    out int bound);
+
+                Assert.AreEqual(0, bound);
+                Assert.AreEqual(1, changed);
+                Assert.AreSame(fallback, catalog.knight);
+                Assert.AreSame(
+                    removedSprite,
+                    catalog.ranger,
+                    "다른 SourceRoot Aseprite를 수동 참조한 슬롯은 지우면 안 된다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(catalog);
+            }
+        }
+
+        [Test]
+        public void SynchronizeSpriteSlots_DeletedMissingReferenceRestoresEnvironmentPng_OrClearsWhenAbsent()
+        {
+            const string floorSource =
+                "Assets/_Project/Art/Source/Aseprite/env-floor.aseprite";
+            const string slingerSource =
+                "Assets/_Project/Art/Source/Aseprite/actor-slinger.aseprite";
+            Sprite floorFallback = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Project/Art/Environment/env-floor.png");
+            Sprite slingerSprite = ProjectCAsepritePipeline.SelectFirstFrame(
+                AssetDatabase.LoadAllAssetsAtPath(slingerSource).OfType<Sprite>());
+            Assert.IsNotNull(floorFallback);
+            Assert.IsNotNull(slingerSprite);
+            Assert.IsNull(AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Project/Art/Runtime/actor-slinger.png"));
+
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            try
+            {
+                catalog.floor = null; // 삭제된 subasset은 SerializedProperty에서 null처럼 보인다.
+                catalog.slinger = slingerSprite;
+                var removed = new Dictionary<string, string[]>(
+                    System.StringComparer.OrdinalIgnoreCase)
+                {
+                    { "env-floor", new[] { floorSource, string.Empty } },
+                    { "actor-slinger", new[] { slingerSource, string.Empty } }
+                };
+
+                int changed = ProjectCAsepritePipeline.SynchronizeSpriteSlots(
+                    catalog,
+                    System.Array.Empty<string>(),
+                    removed,
+                    out int bound);
+
+                Assert.AreEqual(0, bound);
+                Assert.AreEqual(2, changed);
+                Assert.AreSame(floorFallback, catalog.floor);
+                Assert.IsNull(catalog.slinger, "PNG 폴백이 없으면 stale 참조를 비워야 한다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(catalog);
+            }
+        }
+
+        [Test]
+        public void SynchronizeSpriteSlots_ExistingSourceWinsOverRemovalFallback()
+        {
+            const string source =
+                "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
+            Sprite sourceSprite = ProjectCAsepritePipeline.SelectFirstFrame(
+                AssetDatabase.LoadAllAssetsAtPath(source).OfType<Sprite>());
+            Sprite fallback = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Project/Art/Runtime/actor-knight.png");
+            Assert.IsNotNull(sourceSprite);
+            Assert.IsNotNull(fallback);
+
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            try
+            {
+                catalog.knight = fallback;
+                var removed = new Dictionary<string, string[]>(
+                    System.StringComparer.OrdinalIgnoreCase)
+                {
+                    { "actor-knight", new[] { source } }
+                };
+
+                int changed = ProjectCAsepritePipeline.SynchronizeSpriteSlots(
+                    catalog,
+                    new[] { source },
+                    removed,
+                    out int bound);
+
+                Assert.AreEqual(1, bound);
+                Assert.AreEqual(1, changed);
+                Assert.AreSame(sourceSprite, catalog.knight);
+            }
+            finally
+            {
+                Object.DestroyImmediate(catalog);
+            }
         }
 
         [Test]
@@ -236,6 +471,17 @@ namespace ProjectC.Tests
         {
             const string source =
                 "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
+            AssetImporter importer = AssetImporter.GetAtPath(source);
+            Assert.IsNotNull(importer);
+            var serializedImporter = new SerializedObject(importer);
+            SerializedProperty canvas = serializedImporter.FindProperty("m_CanvasSize");
+            Assert.IsNotNull(canvas);
+            Assert.AreEqual(new Vector2Int(96, 128), canvas.vector2IntValue);
+            CollectionAssert.IsEmpty(ProjectCAsepritePipeline.MissingRequiredActorTags(
+                AssetDatabase.LoadAllAssetsAtPath(source)
+                    .OfType<AnimationClip>()
+                    .Select(clip => clip.name)));
+
             ActorAnimationSet set = ActorAnimationBake.ExtractSet(source, "knight");
 
             // 기대값은 현재 원본의 스냅샷이다 — v0.3.3 치비 라이더 교체(2026-07-30) 기준.
@@ -260,6 +506,17 @@ namespace ProjectC.Tests
                     clip.frames.Where(frame => frame != null).Distinct().Count(),
                     tag);
             }
+        }
+
+        [Test]
+        public void SurvivorDraftAnimation_RemainsDisabledUntilDirectionalSourceIsApproved()
+        {
+            var draft = new ActorAnimationSet();
+            draft.clips.Add(new SpriteClip { tag = SpriteClipTags.Idle });
+
+            Assert.IsFalse(IsoPrototypeDemo.SurvivorAnimationApproved);
+            Assert.IsFalse(IsoPrototypeDemo.ShouldAttachSurvivorAnimator(draft));
+            Assert.IsFalse(IsoPrototypeDemo.ShouldAttachSurvivorAnimator(null));
         }
 
         [Test]

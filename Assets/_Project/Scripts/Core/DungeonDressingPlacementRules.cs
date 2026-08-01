@@ -21,6 +21,18 @@ namespace ProjectC.Core
             (-1, 0)
         };
 
+        /// <summary>
+        /// 월드에 고정된 소품 방향을 현재 4분기 시점의 화면 방향으로 바꾼다.
+        /// <see cref="IsoGrid.RotateToView(float, float)"/>와 같은 회전 부호를 사용한다.
+        /// </summary>
+        public static int ResolveViewIndex(
+            int worldFacingQuarterTurns,
+            int viewQuarterTurns)
+        {
+            int effective = (worldFacingQuarterTurns + viewQuarterTurns) % 4;
+            return effective < 0 ? effective + 4 : effective;
+        }
+
         public static IReadOnlyList<GridPos> SelectSafePositions(
             GridMap map,
             GridPos entry,

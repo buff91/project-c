@@ -42,6 +42,12 @@ namespace ProjectC.EditorTools
             importer.alphaIsTransparency = true;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.npotScale = TextureImporterNPOTScale.None;
+            // 환경 벽과 모든 바닥은 런타임 역할색 톤매핑/단차 측면 생성이 픽셀을 읽는다.
+            // 읽기 비활성이면 원본 PNG를 조용히 반환해 팔레트·높이 계약을 우회한다.
+            if (environmentArt &&
+                (baseName.StartsWith("env-wall-", System.StringComparison.Ordinal) ||
+                 baseName.StartsWith("env-floor", System.StringComparison.Ordinal)))
+                importer.isReadable = true;
 
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);

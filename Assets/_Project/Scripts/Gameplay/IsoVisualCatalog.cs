@@ -22,14 +22,18 @@ namespace ProjectC.Gameplay
         public Color32 dungeonOutline = new Color32(5, 7, 12, 255);
         [Tooltip("pc-panel — 바닥 줄눈과 얇은 경계")]
         public Color32 dungeonSeam = new Color32(10, 13, 19, 255);
-        public Color32 dungeonStoneShadow = new Color32(31, 31, 27, 255);
-        [Tooltip("taupe — 조명 전의 공통 콘크리트 중간톤")]
-        public Color32 dungeonStone = new Color32(82, 72, 62, 255);
-        [Tooltip("pc-stone — 같은 층 안 단차의 밝은 면")]
-        public Color32 dungeonStoneLight = new Color32(113, 97, 80, 255);
-        public Color32 dungeonWallShadow = new Color32(43, 39, 34, 255);
-        public Color32 dungeonWall = new Color32(74, 64, 56, 255);
-        public Color32 dungeonWallLight = new Color32(113, 97, 80, 255);
+        [Tooltip("grey-1 — 냉회색 콘크리트의 그림자")]
+        public Color32 dungeonStoneShadow = new Color32(44, 49, 56, 255);
+        [Tooltip("grey-2 — 조명 전의 공통 콘크리트 중간톤")]
+        public Color32 dungeonStone = new Color32(59, 63, 69, 255);
+        [Tooltip("grey-3 — 같은 층 안 단차의 밝은 면")]
+        public Color32 dungeonStoneLight = new Color32(84, 91, 97, 255);
+        [Tooltip("dark-cool — 벽 패널의 최암부")]
+        public Color32 dungeonWallShadow = new Color32(21, 23, 29, 255);
+        [Tooltip("grey-1 — 폐 아케이드 콘크리트/강철 벽 몸통")]
+        public Color32 dungeonWall = new Color32(44, 49, 56, 255);
+        [Tooltip("grey-3 — 벽 모서리와 금속 베벨")]
+        public Color32 dungeonWallLight = new Color32(84, 91, 97, 255);
         public Color32 dungeonMoss = new Color32(127, 178, 65, 255);
         public Color32 dungeonWood = new Color32(74, 64, 56, 255);
         public Color32 dungeonWoodLight = new Color32(154, 107, 34, 255);
@@ -40,6 +44,10 @@ namespace ProjectC.Gameplay
         public Color32 dungeonAmberCore = new Color32(255, 213, 84, 255);
         [Tooltip("pc-teal — Hole·포탈·마법 경로의 국소 신호색")]
         public Color32 dungeonMagic = new Color32(79, 167, 160, 255);
+        [Tooltip("sig-neon-cyan — 장식용 충전·서비스 광원. 이상현상 틸과 구분한다")]
+        public Color32 dungeonNeonCyan = new Color32(61, 225, 232, 255);
+        [Tooltip("sig-neon-magenta — 장식용 아케이드·광고 광원")]
+        public Color32 dungeonNeonMagenta = new Color32(230, 68, 184, 255);
 
         [Header("배경")]
         [Tooltip("미탐색 구조를 노출하지 않는 전체 생성 영역의 교체 가능한 배경")]
@@ -78,6 +86,16 @@ namespace ProjectC.Gameplay
         public Sprite b2ParkingWheelStopFloor;
         [Tooltip("기본 바닥과 합성된 쓰러진 아케이드 안내판 — 비충돌 장식")]
         public Sprite b2FallenWayfindingFloor;
+        [Tooltip("주차 범퍼 4분기 화면 방향 — view 0..3")]
+        public Sprite b2ParkingWheelStopFloorView0;
+        public Sprite b2ParkingWheelStopFloorView1;
+        public Sprite b2ParkingWheelStopFloorView2;
+        public Sprite b2ParkingWheelStopFloorView3;
+        [Tooltip("쓰러진 안내판 4분기 화면 방향 — view 0..3")]
+        public Sprite b2FallenWayfindingFloorView0;
+        public Sprite b2FallenWayfindingFloorView1;
+        public Sprite b2FallenWayfindingFloorView2;
+        public Sprite b2FallenWayfindingFloorView3;
 
         public Sprite stairs;
         public Sprite ladder;
@@ -417,6 +435,89 @@ namespace ProjectC.Gameplay
                 case 6: return hospitalFloorService;
                 default: return null;
             }
+        }
+
+        public bool HasB2ParkingWheelStopFloor =>
+            b2ParkingWheelStopFloor != null ||
+            b2ParkingWheelStopFloorView0 != null ||
+            b2ParkingWheelStopFloorView1 != null ||
+            b2ParkingWheelStopFloorView2 != null ||
+            b2ParkingWheelStopFloorView3 != null;
+
+        public bool HasB2FallenWayfindingFloor =>
+            b2FallenWayfindingFloor != null ||
+            b2FallenWayfindingFloorView0 != null ||
+            b2FallenWayfindingFloorView1 != null ||
+            b2FallenWayfindingFloorView2 != null ||
+            b2FallenWayfindingFloorView3 != null;
+
+        public Sprite B2ParkingWheelStopFloorFor(int viewQuarterTurns)
+        {
+            return B2FloorDressingFor(
+                viewQuarterTurns,
+                b2ParkingWheelStopFloor,
+                b2ParkingWheelStopFloorView0,
+                b2ParkingWheelStopFloorView1,
+                b2ParkingWheelStopFloorView2,
+                b2ParkingWheelStopFloorView3);
+        }
+
+        public Sprite B2FallenWayfindingFloorFor(int viewQuarterTurns)
+        {
+            return B2FloorDressingFor(
+                viewQuarterTurns,
+                b2FallenWayfindingFloor,
+                b2FallenWayfindingFloorView0,
+                b2FallenWayfindingFloorView1,
+                b2FallenWayfindingFloorView2,
+                b2FallenWayfindingFloorView3);
+        }
+
+        private static Sprite B2FloorDressingFor(
+            int viewQuarterTurns,
+            Sprite legacy,
+            Sprite view0,
+            Sprite view1,
+            Sprite view2,
+            Sprite view3)
+        {
+            int view = NormalizeQuarterTurns(viewQuarterTurns);
+            bool complete = view0 != null && view1 != null &&
+                            view2 != null && view3 != null;
+            if (complete)
+            {
+                switch (view)
+                {
+                    case 1: return view1;
+                    case 2: return view2;
+                    case 3: return view3;
+                    default: return view0;
+                }
+            }
+
+            // 부분 승격 중에는 방향형과 무방향형을 섞지 않는다. legacy가 있으면 네
+            // 시점 모두 같은 완성형 타일을 써서 회전 중 소품이 바뀌거나 사라지지 않게 한다.
+            if (legacy != null) return legacy;
+
+            // legacy도 없으면 같은 화면 축 parity(0/2 또는 1/3)를 우선한다. 요청 parity가
+            // 통째로 비어 있는 비정상 상태에서도 첫 존재 슬롯으로 내려가 렌더링은 유지한다.
+            Sprite sameAxis;
+            switch (view)
+            {
+                case 1: sameAxis = view1 != null ? view1 : view3; break;
+                case 2: sameAxis = view2 != null ? view2 : view0; break;
+                case 3: sameAxis = view3 != null ? view3 : view1; break;
+                default: sameAxis = view0 != null ? view0 : view2; break;
+            }
+            return sameAxis != null
+                ? sameAxis
+                : view0 ?? view1 ?? view2 ?? view3;
+        }
+
+        private static int NormalizeQuarterTurns(int value)
+        {
+            int normalized = value % 4;
+            return normalized < 0 ? normalized + 4 : normalized;
         }
 
         public Sprite RearWallFor(bool torch, bool risesRight)

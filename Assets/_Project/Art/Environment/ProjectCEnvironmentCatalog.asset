@@ -29,22 +29,22 @@ MonoBehaviour:
     rgba: 4279438602
   dungeonStoneShadow:
     serializedVersion: 2
-    rgba: 4279967519
+    rgba: 4281872684
   dungeonStone:
     serializedVersion: 2
-    rgba: 4282271826
+    rgba: 4282728251
   dungeonStoneLight:
     serializedVersion: 2
-    rgba: 4283457905
+    rgba: 4284570452
   dungeonWallShadow:
     serializedVersion: 2
-    rgba: 4280428331
+    rgba: 4280096533
   dungeonWall:
     serializedVersion: 2
-    rgba: 4281876554
+    rgba: 4281872684
   dungeonWallLight:
     serializedVersion: 2
-    rgba: 4283457905
+    rgba: 4284570452
   dungeonMoss:
     serializedVersion: 2
     rgba: 4282495615
@@ -66,8 +66,14 @@ MonoBehaviour:
   dungeonMagic:
     serializedVersion: 2
     rgba: 4288718671
-  dungeonBackdrop: {fileID: 21300000, guid: 272c0e419899e4966ae32b4f8b47e886, type: 3}
-  floor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
+  dungeonNeonCyan:
+    serializedVersion: 2
+    rgba: 4293452093
+  dungeonNeonMagenta:
+    serializedVersion: 2
+    rgba: 4290266342
+  dungeonBackdrop: {fileID: 1392443103025478587, guid: dcf0b583d5f5b4ac684b36b2eb46aab9, type: 3}
+  floor: {fileID: -4115102287229986543, guid: 8dfc1a50f8ef049c59c7a097072e679a, type: 3}
   raisedFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   lowerFloor: {fileID: 21300000, guid: 0d2d2affaa2524e47b4f12b2f8578170, type: 3}
   midFloor: {fileID: 21300000, guid: 782e561a473964c5eade17c04b1ba452, type: 3}
@@ -76,11 +82,19 @@ MonoBehaviour:
   deepRaisedFloor: {fileID: 21300000, guid: cec597534c8cb41cda842316be9f2812, type: 3}
   bossFloor: {fileID: 21300000, guid: f5986403e3a8146d59dbe6d972984567, type: 3}
   bossRaisedFloor: {fileID: 21300000, guid: 740aed733bda842798dc07aa04563c73, type: 3}
-  hospitalFloorGrate: {fileID: 21300000, guid: 9cddb697874684333b190001f1e01a65, type: 3}
+  hospitalFloorGrate: {fileID: 9032447338815623262, guid: 44834b7a0105e484a806ec15159dec44, type: 3}
   hospitalFloorCracked: {fileID: 21300000, guid: 413813368492348acb0a020a0352e122, type: 3}
-  hospitalFloorService: {fileID: 21300000, guid: a22b47113a83945b18a8c36f7b1418f6, type: 3}
+  hospitalFloorService: {fileID: -5116192764051695462, guid: e4612de303e4d49d08e50dddf8a692ed, type: 3}
   b2ParkingWheelStopFloor: {fileID: 21300000, guid: 673f679c9db88471bb4773e9dd1cf875, type: 3}
   b2FallenWayfindingFloor: {fileID: 21300000, guid: 8e05213acfebb450598cb3681c3da8f1, type: 3}
+  b2ParkingWheelStopFloorView0: {fileID: -7663427411360604691, guid: cc8b8f729ae7e4aa89cda80c39ff4dd1, type: 3}
+  b2ParkingWheelStopFloorView1: {fileID: 7458450914469590535, guid: 185db519741984d099db3573e4a4a929, type: 3}
+  b2ParkingWheelStopFloorView2: {fileID: 3279833622342314907, guid: 406c1a6ce7baa4a819b1e7537014a420, type: 3}
+  b2ParkingWheelStopFloorView3: {fileID: 5568425194024044496, guid: c61f07bbf41094dbb94a193487078aa4, type: 3}
+  b2FallenWayfindingFloorView0: {fileID: -7614380510121923490, guid: 055a3b0653a154f35b01219ea40306b6, type: 3}
+  b2FallenWayfindingFloorView1: {fileID: -3280673575726565241, guid: 92fb681c96b144cae92d1eefbfa0f526, type: 3}
+  b2FallenWayfindingFloorView2: {fileID: -7312188156469278615, guid: f911b21ea8cfa450996d6565164641c3, type: 3}
+  b2FallenWayfindingFloorView3: {fileID: 183686844213091506, guid: cd4cf454336054c71a928352bd15b623, type: 3}
   stairs: {fileID: 0}
   ladder: {fileID: 0}
   stairsUp: {fileID: 0}
@@ -89,26 +103,26 @@ MonoBehaviour:
   weakFloor: {fileID: 0}
   doorClosed: {fileID: 0}
   doorOpen: {fileID: 0}
-  stairsRisingRight: {fileID: 21300000, guid: 7e0ea4c194a8041358178035b4debc6d, type: 3}
-  stairsRisingLeft: {fileID: 21300000, guid: 6fdb697c888e34952810411dba6325b5, type: 3}
-  stairsUpRisingRight: {fileID: 21300000, guid: 7ee6569795e5b43f78d85b668944a3bf, type: 3}
-  stairsUpRisingLeft: {fileID: 21300000, guid: dd03cbcebcc454783b3a46db8c25d3f9, type: 3}
-  stairsDownRisingRight: {fileID: 21300000, guid: 06d82d1fafad647e1a43e6a8b4ca5f96, type: 3}
-  stairsDownRisingLeft: {fileID: 21300000, guid: 903cf373912964852951e78a50144a8e, type: 3}
+  stairsRisingRight: {fileID: -4953723337692643215, guid: bf2bd7d41903d4086977978bed2729b0, type: 3}
+  stairsRisingLeft: {fileID: 5195544849107677493, guid: 8d500925efc68431cbd83bf2a6c255da, type: 3}
+  stairsUpRisingRight: {fileID: -8481411668136411, guid: c7565657c89694b1a89106670f016b21, type: 3}
+  stairsUpRisingLeft: {fileID: -2949765016258119720, guid: 09646119d4b7f4275b39958a384f4953, type: 3}
+  stairsDownRisingRight: {fileID: -8254160809267237207, guid: 17faaca32c7754ec08ae13baa93603d5, type: 3}
+  stairsDownRisingLeft: {fileID: 7759579255777140473, guid: d1882a246533d463cad1308ddd86553c, type: 3}
   doorClosedRisingRight: {fileID: 21300000, guid: 735aef714ec404d35a6cd35429579199, type: 3}
   doorClosedRisingLeft: {fileID: 21300000, guid: 92640add07d7b4f098e12972127ce480, type: 3}
   doorOpenRisingRight: {fileID: 21300000, guid: b02a26a89f8ae4e39aeb29c758c80d18, type: 3}
   doorOpenRisingLeft: {fileID: 21300000, guid: dd845dc51149645118be70c6bb1afe95, type: 3}
-  rearWallRisingRight: {fileID: 21300000, guid: 453b6c6bfb1294abab822c6cccd74074, type: 3}
-  rearWallRisingLeft: {fileID: 21300000, guid: 698634ebef95a4f0390a33286ca14520, type: 3}
+  rearWallRisingRight: {fileID: 7997243774186166987, guid: a2cc39b1e8e1f42a082ec9d95e85abaf, type: 3}
+  rearWallRisingLeft: {fileID: -7982629042104604584, guid: 4289214b718104eab8888534c6cbc9e1, type: 3}
   rearWallTorchRisingRight: {fileID: 21300000, guid: e4fee66e8f20847d0afdb8c2b9aecbcd, type: 3}
   rearWallTorchRisingLeft: {fileID: 21300000, guid: 85c190b2bdbd4460f884c2e85b7a710b, type: 3}
-  hospitalWallPipesRisingRight: {fileID: 21300000, guid: 7892f00bdb58d4465b7bcb036908965c, type: 3}
-  hospitalWallPipesRisingLeft: {fileID: 21300000, guid: 9dc5576f421624c0dae42c924892f352, type: 3}
-  hospitalWallWindowRisingRight: {fileID: 21300000, guid: 862acb4388a0a49c7a34bf5194cb7609, type: 3}
-  hospitalWallWindowRisingLeft: {fileID: 21300000, guid: cf7705bf2c95e4a2eb3233f55f61856e, type: 3}
-  hospitalWallCabinetRisingRight: {fileID: 21300000, guid: 62987a3de44064119970dc035ecbdb90, type: 3}
-  hospitalWallCabinetRisingLeft: {fileID: 21300000, guid: d52a43fe3821b4169ac256757136bfe2, type: 3}
+  hospitalWallPipesRisingRight: {fileID: 7585233026971736164, guid: c3bffb426929c4fceabc45d6b7871e84, type: 3}
+  hospitalWallPipesRisingLeft: {fileID: 9042569773538280550, guid: f4eedd073e33c4e38a322f95838da8f5, type: 3}
+  hospitalWallWindowRisingRight: {fileID: 7001827312818820769, guid: 70b3b2d156829429496f27901a07e812, type: 3}
+  hospitalWallWindowRisingLeft: {fileID: 3552670020806883358, guid: fbe289dc0baee45eeb338f48ceedcc34, type: 3}
+  hospitalWallCabinetRisingRight: {fileID: -7252545050943076929, guid: dc1b9deab07bb444896c3804c56f844d, type: 3}
+  hospitalWallCabinetRisingLeft: {fileID: 1406182190971816784, guid: 3874507661acc40ad9d37ff5496c91d5, type: 3}
   player: {fileID: 21300000, guid: 48d2ea6b1bb084f7597ade7612f514f7, type: 3}
   knight: {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
   ranger: {fileID: 21300000, guid: 379fcd188cbc941219ab49f853188ad1, type: 3}

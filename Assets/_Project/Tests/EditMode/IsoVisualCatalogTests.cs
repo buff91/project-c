@@ -173,15 +173,17 @@ namespace ProjectC.Tests
             Assert.AreEqual(new Color32(10, 13, 19, 255), _catalog.dungeonFog);
             Assert.AreEqual(new Color32(31, 31, 27, 228), _catalog.dungeonFogEdge);
             Assert.AreEqual(new Color32(10, 13, 19, 255), _catalog.dungeonSeam);
-            Assert.AreEqual(new Color32(31, 31, 27, 255), _catalog.dungeonStoneShadow);
-            Assert.AreEqual(new Color32(82, 72, 62, 255), _catalog.dungeonStone);
-            Assert.AreEqual(new Color32(113, 97, 80, 255), _catalog.dungeonStoneLight);
-            Assert.AreEqual(new Color32(43, 39, 34, 255), _catalog.dungeonWallShadow);
-            Assert.AreEqual(new Color32(74, 64, 56, 255), _catalog.dungeonWall);
-            Assert.AreEqual(new Color32(113, 97, 80, 255), _catalog.dungeonWallLight);
+            Assert.AreEqual(new Color32(44, 49, 56, 255), _catalog.dungeonStoneShadow);
+            Assert.AreEqual(new Color32(59, 63, 69, 255), _catalog.dungeonStone);
+            Assert.AreEqual(new Color32(84, 91, 97, 255), _catalog.dungeonStoneLight);
+            Assert.AreEqual(new Color32(21, 23, 29, 255), _catalog.dungeonWallShadow);
+            Assert.AreEqual(new Color32(44, 49, 56, 255), _catalog.dungeonWall);
+            Assert.AreEqual(new Color32(84, 91, 97, 255), _catalog.dungeonWallLight);
             Assert.AreEqual(new Color32(255, 189, 65, 255), _catalog.dungeonAmber);
             Assert.AreEqual(new Color32(255, 213, 84, 255), _catalog.dungeonAmberCore);
             Assert.AreEqual(new Color32(79, 167, 160, 255), _catalog.dungeonMagic);
+            Assert.AreEqual(new Color32(61, 225, 232, 255), _catalog.dungeonNeonCyan);
+            Assert.AreEqual(new Color32(230, 68, 184, 255), _catalog.dungeonNeonMagenta);
         }
 
         [Test]
@@ -214,6 +216,89 @@ namespace ProjectC.Tests
             Assert.AreSame(service, _catalog.HospitalFloorFor(6));
             Assert.IsNull(_catalog.HospitalFloorFor(1));
             Assert.AreSame(grate, _catalog.HospitalFloorFor(8));
+        }
+
+        [Test]
+        public void B2FloorDressingFor_SelectsFourViews_ThenLegacyFallback()
+        {
+            Sprite parkingLegacy = MakeSprite();
+            Sprite parking0 = MakeSprite();
+            Sprite parking1 = MakeSprite();
+            Sprite parking2 = MakeSprite();
+            Sprite parking3 = MakeSprite();
+            Sprite signLegacy = MakeSprite();
+            Sprite sign0 = MakeSprite();
+            Sprite sign1 = MakeSprite();
+            Sprite sign2 = MakeSprite();
+            Sprite sign3 = MakeSprite();
+            _catalog.b2ParkingWheelStopFloor = parkingLegacy;
+            _catalog.b2ParkingWheelStopFloorView0 = parking0;
+            _catalog.b2ParkingWheelStopFloorView1 = parking1;
+            _catalog.b2ParkingWheelStopFloorView2 = parking2;
+            _catalog.b2ParkingWheelStopFloorView3 = parking3;
+            _catalog.b2FallenWayfindingFloor = signLegacy;
+            _catalog.b2FallenWayfindingFloorView0 = sign0;
+            _catalog.b2FallenWayfindingFloorView1 = sign1;
+            _catalog.b2FallenWayfindingFloorView2 = sign2;
+            _catalog.b2FallenWayfindingFloorView3 = sign3;
+
+            Assert.IsTrue(_catalog.HasB2ParkingWheelStopFloor);
+            Assert.IsTrue(_catalog.HasB2FallenWayfindingFloor);
+            Assert.AreSame(parking0, _catalog.B2ParkingWheelStopFloorFor(0));
+            Assert.AreSame(parking1, _catalog.B2ParkingWheelStopFloorFor(1));
+            Assert.AreSame(parking2, _catalog.B2ParkingWheelStopFloorFor(2));
+            Assert.AreSame(parking3, _catalog.B2ParkingWheelStopFloorFor(-1));
+            Assert.AreSame(sign0, _catalog.B2FallenWayfindingFloorFor(4));
+            Assert.AreSame(sign1, _catalog.B2FallenWayfindingFloorFor(5));
+            Assert.AreSame(sign2, _catalog.B2FallenWayfindingFloorFor(6));
+            Assert.AreSame(sign3, _catalog.B2FallenWayfindingFloorFor(7));
+
+            _catalog.b2ParkingWheelStopFloorView2 = null;
+            _catalog.b2FallenWayfindingFloorView1 = null;
+            Assert.AreSame(parkingLegacy, _catalog.B2ParkingWheelStopFloorFor(2));
+            Assert.AreSame(signLegacy, _catalog.B2FallenWayfindingFloorFor(1));
+        }
+
+        [Test]
+        public void B2FloorDressingFor_IncompleteViews_UsesLegacyForEveryDirection()
+        {
+            Sprite parkingLegacy = MakeSprite();
+            Sprite parking0 = MakeSprite();
+            Sprite parking1 = MakeSprite();
+            _catalog.b2ParkingWheelStopFloor = parkingLegacy;
+            _catalog.b2ParkingWheelStopFloorView0 = parking0;
+            _catalog.b2ParkingWheelStopFloorView1 = parking1;
+
+            Assert.IsTrue(_catalog.HasB2ParkingWheelStopFloor);
+            Assert.AreSame(parkingLegacy, _catalog.B2ParkingWheelStopFloorFor(0));
+            Assert.AreSame(parkingLegacy, _catalog.B2ParkingWheelStopFloorFor(1));
+            Assert.AreSame(parkingLegacy, _catalog.B2ParkingWheelStopFloorFor(2));
+            Assert.AreSame(parkingLegacy, _catalog.B2ParkingWheelStopFloorFor(3));
+        }
+
+        [Test]
+        public void B2FloorDressingFor_NoLegacy_PreservesAxisParityAndNeverDisappears()
+        {
+            Sprite parking0 = MakeSprite();
+            Sprite parking3 = MakeSprite();
+            _catalog.b2ParkingWheelStopFloorView0 = parking0;
+            _catalog.b2ParkingWheelStopFloorView3 = parking3;
+
+            Assert.IsTrue(_catalog.HasB2ParkingWheelStopFloor);
+            Assert.AreSame(parking0, _catalog.B2ParkingWheelStopFloorFor(0));
+            Assert.AreSame(parking3, _catalog.B2ParkingWheelStopFloorFor(1));
+            Assert.AreSame(parking0, _catalog.B2ParkingWheelStopFloorFor(2));
+            Assert.AreSame(parking3, _catalog.B2ParkingWheelStopFloorFor(3));
+
+            _catalog.b2ParkingWheelStopFloorView0 = null;
+            Assert.AreSame(
+                parking3,
+                _catalog.B2ParkingWheelStopFloorFor(0),
+                "요청 parity가 전부 비어도 존재하는 슬롯으로 내려가야 한다");
+
+            _catalog.b2ParkingWheelStopFloorView3 = null;
+            Assert.IsFalse(_catalog.HasB2ParkingWheelStopFloor);
+            Assert.IsNull(_catalog.B2ParkingWheelStopFloorFor(0));
         }
 
         [Test]

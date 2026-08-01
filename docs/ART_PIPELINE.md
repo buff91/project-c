@@ -204,6 +204,23 @@ Unity Project 창에서 `Create > Project-C > Isometric Visual Catalog`를 선�
 메뉴 `Project-C > Art > Aseprite > Validate Sources`로 중복 이름, 미지원 이름,
 임포트 규격과 Sprite 생성 여부를 검사한다. `.aseprite`가 없는 슬롯은 현재 PNG를 유지한다.
 
+정적 PNG를 원본까지 한 번에 승격할 때는 슬롯의 최종 캔버스가 확정된 뒤 아래 진입점을 쓴다.
+
+```bash
+python3 Tools/ArtPipeline/art_asset.py publish INPUT.png \
+  --slot env-floor --width 128 --height 64 --fit strict --anchor center
+```
+
+로컬 Aseprite 앱은 `/Applications`, `~/Applications`, Steam 설치 경로 순으로 자동 탐색하며,
+별도 위치만 `PROJECTC_ASEPRITE_BIN`으로 지정한다. 명령이
+`Art/Source/Aseprite/<slot>.aseprite`를 만들면 열린 Unity가 이를 감지해 위 임포터와 카탈로그
+동기화를 실행한다. 자동 새로고침이 멈춘 경우에만
+`Project-C > Art > Aseprite > Reimport and Sync Catalog`를 한 번 실행한다.
+
+이 명령은 **정적 한 프레임 전용**이다. 기존 `actor-*`에 `--force`로 쓰면 태그와 모든 애니메이션
+프레임이 사라진다. 액터는 `art_runner.py animation`으로 초안을 만든 뒤 Aseprite에서 발 기준선과
+프레임 정체성을 마감하고 정식 슬롯으로 승격한다.
+
 ## 7. 현재 레퍼런스
 
 - 현재 통합 화면 방향:

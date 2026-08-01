@@ -79,6 +79,25 @@ namespace ProjectC.Tests
             Assert.AreEqual(before, map.Count);
         }
 
+        [TestCase(0, 0, 0)]
+        [TestCase(0, 1, 1)]
+        [TestCase(0, 2, 2)]
+        [TestCase(0, 3, 3)]
+        [TestCase(3, 1, 0)]
+        [TestCase(2, 3, 1)]
+        [TestCase(-1, 0, 3)]
+        public void DressingViewIndex_AddsWorldFacingAndCurrentView(
+            int worldFacingQuarterTurns,
+            int viewQuarterTurns,
+            int expected)
+        {
+            Assert.AreEqual(
+                expected,
+                DungeonDressingPlacementRules.ResolveViewIndex(
+                    worldFacingQuarterTurns,
+                    viewQuarterTurns));
+        }
+
         private static GridMap FilledRoom(int width, int height)
         {
             var map = new GridMap();

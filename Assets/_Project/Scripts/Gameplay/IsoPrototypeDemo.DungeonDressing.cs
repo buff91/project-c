@@ -10,13 +10,47 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
-        private readonly Dictionary<GridPos, Sprite> _dungeonFloorDressing =
-            new Dictionary<GridPos, Sprite>();
+        private enum DungeonFloorDressingKind
+        {
+            ParkingWheelStop,
+            FallenWayfinding,
+        }
+
+        private readonly struct DungeonFloorDressing
+        {
+            public DungeonFloorDressingKind Kind { get; }
+            public int WorldFacingQuarterTurns { get; }
+
+            public DungeonFloorDressing(
+                DungeonFloorDressingKind kind,
+                int worldFacingQuarterTurns)
+            {
+                Kind = kind;
+                WorldFacingQuarterTurns = worldFacingQuarterTurns;
+            }
+        }
+
+        private readonly Dictionary<GridPos, DungeonFloorDressing> _dungeonFloorDressing =
+            new Dictionary<GridPos, DungeonFloorDressing>();
 
         private void ResetDungeonDressingForBuild() => _dungeonFloorDressing.Clear();
 
-        private bool TryGetDungeonFloorDressing(GridPos pos, out Sprite sprite) =>
-            _dungeonFloorDressing.TryGetValue(pos, out sprite);
+        private bool TryGetDungeonFloorDressing(GridPos pos, out Sprite sprite)
+        {
+            sprite = null;
+            if (visualCatalog == null ||
+                !_dungeonFloorDressing.TryGetValue(pos, out DungeonFloorDressing dressing))
+                return false;
+
+            int viewQuarterTurns = _grid != null ? _grid.iso.viewQuarterTurns : 0;
+            int effectiveView = DungeonDressingPlacementRules.ResolveViewIndex(
+                dressing.WorldFacingQuarterTurns,
+                viewQuarterTurns);
+            sprite = dressing.Kind == DungeonFloorDressingKind.ParkingWheelStop
+                ? visualCatalog.B2ParkingWheelStopFloorFor(effectiveView)
+                : visualCatalog.B2FallenWayfindingFloorFor(effectiveView);
+            return sprite != null;
+        }
 
         private void PrepareDungeonDressing()
         {
@@ -26,12 +60,12 @@ namespace ProjectC.Gameplay
                 _dungeon.ProgressIndexFor(active.FloorIndex) != 0)
                 return;
 
-            var sprites = new List<Sprite>(2);
-            if (visualCatalog.b2ParkingWheelStopFloor != null)
-                sprites.Add(visualCatalog.b2ParkingWheelStopFloor);
-            if (visualCatalog.b2FallenWayfindingFloor != null)
-                sprites.Add(visualCatalog.b2FallenWayfindingFloor);
-            if (sprites.Count == 0) return;
+            var kinds = new List<DungeonFloorDressingKind>(2);
+            if (visualCatalog.HasB2ParkingWheelStopFloor)
+                kinds.Add(DungeonFloorDressingKind.ParkingWheelStop);
+            if (visualCatalog.HasB2FallenWayfindingFloor)
+                kinds.Add(DungeonFloorDressingKind.FallenWayfinding);
+            if (kinds.Count == 0) return;
 
             HashSet<GridPos> reserved = BuildDungeonDressingReserved(active);
             var candidates = new List<GridPos>();
@@ -66,9 +100,15 @@ namespace ProjectC.Gameplay
                     active.Entry,
                     candidates,
                     reserved,
-                    sprites.Count);
+                    kinds.Count);
             for (int index = 0; index < selected.Count; index++)
-                _dungeonFloorDressing[selected[index]] = sprites[index];
+            {
+                int worldFacingQuarterTurns =
+                    StableDungeonDressingOrder(selected[index]) & 3;
+                _dungeonFloorDressing[selected[index]] = new DungeonFloorDressing(
+                    kinds[index],
+                    worldFacingQuarterTurns);
+            }
         }
 
         private HashSet<GridPos> BuildDungeonDressingReserved(DungeonFloorInfo active)

@@ -29,6 +29,8 @@ namespace ProjectC.Gameplay
             None,
             Wood,
             Signal,
+            NeonCyan,
+            NeonMagenta,
         }
 
         internal Sprite GetDungeonFogBackdropSprite()
@@ -69,6 +71,90 @@ namespace ProjectC.Gameplay
             cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
             _spriteCache[key] = cached;
             return cached;
+        }
+
+        /// <summary>
+        /// 플레이 영역 뒤에만 놓이는 비(非)지형 분위기층. 실제 방·복도 좌표를 전혀 받지 않고
+        /// 환기 덕트·케이블·서비스 패널의 저대비 실루엣만 그리므로 Unknown 구조를 누설하지 않는다.
+        /// 카메라를 덮는 16:9 한 장이며 전역 블룸이나 후처리는 사용하지 않는다.
+        /// </summary>
+        internal Sprite GetDungeonAtmosphereBackdropSprite()
+        {
+            const string key = "dungeon-atmosphere-backdrop-v1";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            const int width = 320;
+            const int height = 180;
+            var texture = NewTexture(width, height);
+            Color32 background = _palette.Void;
+            Color32 panel = Blend(_palette.Void, _palette.WallShadow, 0.62f);
+            Color32 panelDeep = Blend(_palette.Void, _palette.WallShadow, 0.38f);
+            Color32 seam = Blend(_palette.Void, _palette.Wall, 0.48f);
+            Color32 cable = Blend(_palette.Void, _palette.WallLight, 0.34f);
+
+            FillRect(texture, 0, 0, width, height, background);
+
+            // 세로 설비 베이. 화면 어디에도 방 윤곽과 닮은 다이아몬드/격자 정보는 넣지 않는다.
+            int[] bayStarts = { 4, 58, 116, 204, 262, 304 };
+            for (int i = 0; i < bayStarts.Length; i++)
+            {
+                int x = bayStarts[i];
+                int bayWidth = i % 2 == 0 ? 34 : 25;
+                FillRect(texture, x, 0, bayWidth, height, panelDeep);
+                FillRect(texture, x, 0, 3, height, seam);
+                FillRect(texture, x + bayWidth - 2, 0, 2, height, seam);
+                for (int y = 12 + (i % 3) * 5; y < height; y += 31)
+                    FillRect(texture, x + 3, y, bayWidth - 5, 2, panel);
+            }
+
+            // 낮은 대비 환기구. 월드 타일보다 훨씬 어두워 배경으로만 읽힌다.
+            DrawBackdropVent(texture, 18, 103, 46, 29, panel, seam, cable);
+            DrawBackdropVent(texture, 126, 121, 54, 25, panel, seam, cable);
+            DrawBackdropVent(texture, 245, 84, 43, 27, panel, seam, cable);
+
+            // 상부 케이블 트레이와 늘어진 배선. 불연속 폴리라인이라 맵 경계로 오인되지 않는다.
+            DrawThickLine(texture, 0, 165, 72, 165, 3, cable);
+            DrawThickLine(texture, 72, 165, 96, 151, 3, cable);
+            DrawThickLine(texture, 96, 151, 150, 151, 3, cable);
+            DrawThickLine(texture, 183, 170, 235, 170, 3, cable);
+            DrawThickLine(texture, 235, 170, 254, 155, 3, cable);
+            DrawThickLine(texture, 254, 155, 319, 155, 3, cable);
+
+            DrawThickLine(texture, 43, 180, 43, 138, 2, seam);
+            DrawThickLine(texture, 43, 138, 52, 126, 2, seam);
+            DrawThickLine(texture, 52, 126, 52, 99, 2, seam);
+            DrawThickLine(texture, 279, 180, 279, 142, 2, seam);
+            DrawThickLine(texture, 279, 142, 270, 131, 2, seam);
+            DrawThickLine(texture, 270, 131, 270, 104, 2, seam);
+
+            // 장식 네온은 배경 케이블의 아주 짧은 단절 구간에만 쓴다. gameplay teal과 무관하다.
+            Color32 cyanCable = WithAlpha(_palette.NeonCyan, 54);
+            Color32 magentaCable = WithAlpha(_palette.NeonMagenta, 46);
+            DrawThickLine(texture, 84, 151, 96, 151, 1, cyanCable);
+            DrawThickLine(texture, 235, 170, 247, 161, 1, magentaCable);
+            FillRect(texture, 143, 127, 2, 5, cyanCable);
+            FillRect(texture, 285, 91, 2, 6, magentaCable);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f), PixelsPerUnit);
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private static void DrawBackdropVent(
+            Texture2D texture,
+            int x,
+            int y,
+            int width,
+            int height,
+            Color32 fill,
+            Color32 border,
+            Color32 slat)
+        {
+            FillRect(texture, x, y, width, height, border);
+            FillRect(texture, x + 2, y + 2, width - 4, height - 4, fill);
+            for (int sy = y + 6; sy < y + height - 3; sy += 5)
+                FillRect(texture, x + 5, sy, width - 10, 2, slat);
         }
 
         internal Sprite GetTileSprite(TileKind kind, GridPos pos, in TileVisualFacts facts)
@@ -426,7 +512,7 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private Color ToneMapEnvironmentPixel(
+        internal Color ToneMapEnvironmentPixel(
             Color source,
             Color32 target,
             EnvironmentAccentMode accentMode = EnvironmentAccentMode.None)
@@ -443,6 +529,23 @@ namespace ProjectC.Gameplay
                 chroma >= 0.16f &&
                 luminance >= 0.14f)
             {
+                bool neonMode =
+                    accentMode == EnvironmentAccentMode.NeonCyan ||
+                    accentMode == EnvironmentAccentMode.NeonMagenta;
+                bool coolScreen =
+                    source.g > source.r * 1.08f ||
+                    source.b > source.r * 1.08f;
+                bool magentaSource =
+                    source.r > source.g * 1.18f &&
+                    source.b > source.g * 1.18f;
+                if (neonMode && (coolScreen || magentaSource))
+                {
+                    Color32 neon = accentMode == EnvironmentAccentMode.NeonMagenta
+                        ? _palette.NeonMagenta
+                        : _palette.NeonCyan;
+                    return ToRuntimeColor(neon, source.a);
+                }
+
                 bool teal =
                     source.g > source.r * 1.12f &&
                     source.b > source.r * 1.12f;
@@ -853,6 +956,184 @@ namespace ProjectC.Gameplay
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 기존 Facility 벽 캔버스 위에 겹치는 네온 패널 본체. 소스 텍스처를 다시 그리지 않고
+        /// 같은 크기·PPU·피벗의 투명 오버레이만 만들어 창/상태 패널의 광원 근거를 보강한다.
+        /// </summary>
+        internal Sprite GetFacilityNeonWallOverlaySprite(
+            Sprite sourceSprite,
+            EnvironmentAccentMode accentMode,
+            bool risesRight)
+        {
+            bool magenta = accentMode == EnvironmentAccentMode.NeonMagenta;
+            if (sourceSprite == null ||
+                (!magenta && accentMode != EnvironmentAccentMode.NeonCyan))
+                return null;
+
+            int width = Mathf.RoundToInt(sourceSprite.rect.width);
+            int height = Mathf.RoundToInt(sourceSprite.rect.height);
+            if (width < 32 || height < 48) return null;
+
+            string key =
+                $"facility-neon-wall-{sourceSprite.name}-{accentMode}-r{risesRight}-{width}x{height}";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(width, height);
+            float sx = width / 64f;
+            float sy = height / 112f;
+            int X(float value) => Mathf.RoundToInt(value * sx);
+            int Y(float value) => Mathf.RoundToInt(value * sy);
+            int T(float value) => Mathf.Max(1, Mathf.RoundToInt(value * Mathf.Min(sx, sy)));
+
+            Color32 neon = magenta ? _palette.NeonMagenta : _palette.NeonCyan;
+            Color32 halo = WithAlpha(neon, 68);
+            Color32 scanline = WithAlpha(neon, 76);
+            Color32 core = WithAlpha(neon, 245);
+
+            int lean = risesRight ? X(7f) : -X(7f);
+            int bottomLeftX = X(19f) - lean / 2;
+            int bottomRightX = X(45f) - lean / 2;
+            int bottomY = Y(47f);
+            int topY = Y(89f);
+            int topLeftX = bottomLeftX + lean;
+            int topRightX = bottomRightX + lean;
+
+            // 1차 넓은 알파 = 국소 halo, 2차 2px 코어 = 픽셀 패널 프레임.
+            DrawSlantedNeonFrame(
+                texture,
+                bottomLeftX,
+                bottomRightX,
+                bottomY,
+                topLeftX,
+                topRightX,
+                topY,
+                T(5f),
+                halo);
+            DrawSlantedNeonFrame(
+                texture,
+                bottomLeftX,
+                bottomRightX,
+                bottomY,
+                topLeftX,
+                topRightX,
+                topY,
+                T(2f),
+                core);
+
+            // 패널 내부의 끊긴 스캔라인은 텍스트가 아니라 기술 장치의 판독용 glyph다.
+            for (int gy = 57; gy <= 79; gy += 8)
+            {
+                int y = Y(gy);
+                int drift = Mathf.RoundToInt(lean * ((y - bottomY) / (float)Mathf.Max(1, topY - bottomY)));
+                DrawThickLine(
+                    texture,
+                    X(23f) - lean / 2 + drift,
+                    y,
+                    X(29f) - lean / 2 + drift,
+                    y,
+                    T(1f),
+                    scanline);
+                DrawThickLine(
+                    texture,
+                    X(34f) - lean / 2 + drift,
+                    y,
+                    X(41f) - lean / 2 + drift,
+                    y,
+                    T(1f),
+                    scanline);
+            }
+
+            if (magenta)
+            {
+                // 고장 난 홀로 패널: 끊긴 X와 중앙 회로 마디. 문자/방향 표식은 아니다.
+                DrawThickLine(texture, X(25f), Y(61f), X(38f), Y(78f), T(2f), core);
+                DrawThickLine(texture, X(38f), Y(61f), X(32f), Y(69f), T(2f), core);
+                DrawThickLine(texture, X(29f), Y(74f), X(25f), Y(79f), T(2f), core);
+                FillRect(texture, X(30f), Y(68f), T(4f), T(4f), core);
+                FillRect(texture, X(39f), Y(55f), T(3f), T(3f), core);
+            }
+            else
+            {
+                // 충전/전력 패널: 번개형 회로 glyph. gameplay teal 마커와 다른 시안 팔레트다.
+                DrawThickLine(texture, X(35f), Y(79f), X(28f), Y(68f), T(2f), core);
+                DrawThickLine(texture, X(28f), Y(68f), X(35f), Y(68f), T(2f), core);
+                DrawThickLine(texture, X(35f), Y(68f), X(29f), Y(57f), T(2f), core);
+                FillRect(texture, X(39f), Y(54f), T(3f), T(3f), core);
+            }
+
+            texture.Apply(false, true);
+            Vector2 pivot = new Vector2(
+                sourceSprite.pivot.x / sourceSprite.rect.width,
+                sourceSprite.pivot.y / sourceSprite.rect.height);
+            cached = CreateSprite(texture, pivot, sourceSprite.pixelsPerUnit);
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        private static void DrawSlantedNeonFrame(
+            Texture2D texture,
+            int bottomLeftX,
+            int bottomRightX,
+            int bottomY,
+            int topLeftX,
+            int topRightX,
+            int topY,
+            int thickness,
+            Color32 color)
+        {
+            DrawThickLine(
+                texture, bottomLeftX, bottomY, bottomRightX, bottomY, thickness, color);
+            DrawThickLine(
+                texture, topLeftX, topY, topRightX, topY, thickness, color);
+            DrawThickLine(
+                texture, bottomLeftX, bottomY, topLeftX, topY, thickness, color);
+            DrawThickLine(
+                texture, bottomRightX, bottomY, topRightX, topY, thickness, color);
+        }
+
+        /// <summary>
+        /// Facility 벽 네온이 바닥에 만드는 별도 색층. 원본 바닥에 빛을 굽지 않아
+        /// FOV·높이·젖음 상태와 독립적으로 끄고 다시 만들 수 있다.
+        /// </summary>
+        internal Sprite GetFacilityNeonLightPoolSprite(EnvironmentAccentMode accentMode)
+        {
+            bool magenta = accentMode == EnvironmentAccentMode.NeonMagenta;
+            if (!magenta && accentMode != EnvironmentAccentMode.NeonCyan) return null;
+
+            string key = magenta ? "facility-neon-pool-magenta" : "facility-neon-pool-cyan";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            const int width = 128;
+            const int height = 64;
+            var texture = NewTexture(width, height);
+            Color32 source = magenta ? _palette.NeonMagenta : _palette.NeonCyan;
+            for (int py = 0; py < height; py++)
+            for (int px = 0; px < width; px++)
+            {
+                float diamond =
+                    Mathf.Abs((px - 63.5f) / 64f) +
+                    Mathf.Abs((py - 31.5f) / 32f);
+                if (diamond > 0.96f) continue;
+
+                bool brokenEdge = diamond > 0.70f && ((px + py * 3) & 3) > 1;
+                int alpha = diamond < 0.30f
+                    ? 56
+                    : diamond < 0.62f ? 36 : brokenEdge ? 12 : 20;
+                // 젖은 콘크리트의 짧은 수평 반사 군집. 긴 블룸 띠는 만들지 않는다.
+                if (diamond < 0.52f && (py % 11 == 0) && ((px / 5) & 1) == 0)
+                    alpha = Mathf.Min(72, alpha + 18);
+                texture.SetPixel(
+                    px,
+                    py,
+                    new Color32(source.r, source.g, source.b, (byte)alpha));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f), 128f);
             _spriteCache[key] = cached;
             return cached;
         }

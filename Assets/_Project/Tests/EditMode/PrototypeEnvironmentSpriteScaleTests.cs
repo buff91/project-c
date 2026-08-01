@@ -45,6 +45,20 @@ namespace ProjectC.Tests.EditMode
                 new PrototypePalette(null, fallback));
         }
 
+        private static PrototypeEnvironmentSprites NewEnvironment(IsoVisualCatalog catalog) =>
+            new PrototypeEnvironmentSprites(
+                new PrototypeSpriteCache(),
+                new PrototypePalette(
+                    catalog,
+                    new PrototypePalette.Fallbacks(
+                        Color.black,
+                        Color.gray,
+                        Color.black,
+                        Color.black,
+                        Color.cyan,
+                        Color.black,
+                        Color.black)));
+
         [Test]
         public void ToneMapped_64Regime_KeepsSourcePpuAndWorldSize()
         {
@@ -145,6 +159,84 @@ namespace ProjectC.Tests.EditMode
                 odd, new Color32(84, 74, 66, 255), extruded: false, hubFaces: false);
 
             Assert.AreSame(odd, mapped, "64×32 정수 배가 아닌 소스는 가공 없이 원본을 돌려준다.");
+        }
+
+        [Test]
+        public void ToneMapped_NeonModes_PreserveCyanAndRemapCoolScreenToMagenta()
+        {
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            var environment = NewEnvironment(catalog);
+            Color32 cyan = environment.ToneMapEnvironmentPixel(
+                new Color32(34, 220, 228, 255),
+                catalog.dungeonWall,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonCyan);
+            Color32 magenta = environment.ToneMapEnvironmentPixel(
+                new Color32(42, 214, 70, 255),
+                catalog.dungeonWall,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta);
+
+            Assert.AreEqual(catalog.dungeonNeonCyan, cyan);
+            Assert.AreEqual(catalog.dungeonNeonMagenta, magenta);
+        }
+
+        [Test]
+        public void ToneMapped_SignalMode_KeepsGameplayTealSeparateFromDecorativeCyan()
+        {
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            var environment = NewEnvironment(catalog);
+            Color32 source =
+                new Color32(34, 210, 218, 255);
+
+            Color32 mapped = environment.ToneMapEnvironmentPixel(
+                source,
+                catalog.dungeonWall,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal);
+
+            Assert.AreEqual(catalog.dungeonMagic, mapped);
+            Assert.AreNotEqual(catalog.dungeonNeonCyan, mapped);
+        }
+
+        [Test]
+        public void DungeonAtmosphereBackdrop_IsCameraAspectSprite_IndependentOfDungeonGeometry()
+        {
+            var environment = NewEnvironment();
+
+            Sprite backdrop = environment.GetDungeonAtmosphereBackdropSprite();
+            Sprite cached = environment.GetDungeonAtmosphereBackdropSprite();
+
+            Assert.AreEqual(320f, backdrop.rect.width);
+            Assert.AreEqual(180f, backdrop.rect.height);
+            Assert.AreEqual(16f / 9f, backdrop.bounds.size.x / backdrop.bounds.size.y, 0.0001f);
+            Assert.AreSame(backdrop, cached, "분위기층은 방 좌표 없이 한 장을 재사용해야 한다.");
+        }
+
+        [Test]
+        public void FacilityNeonWallOverlay_KeepsSourceCanvasPpuAndPivot()
+        {
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            var environment = NewEnvironment(catalog);
+            Sprite source = MakeReadableSprite(64, 112, 128f, "facility-window");
+
+            Sprite overlay = environment.GetFacilityNeonWallOverlaySprite(
+                source,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta,
+                risesRight: true);
+
+            Assert.NotNull(overlay);
+            Assert.AreEqual(source.rect.size, overlay.rect.size);
+            Assert.AreEqual(source.pixelsPerUnit, overlay.pixelsPerUnit);
+            Assert.AreEqual(
+                source.pivot.x / source.rect.width,
+                overlay.pivot.x / overlay.rect.width,
+                0.0001f);
+            Assert.AreEqual(
+                source.pivot.y / source.rect.height,
+                overlay.pivot.y / overlay.rect.height,
+                0.0001f);
+            Assert.IsNull(environment.GetFacilityNeonWallOverlaySprite(
+                source,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal,
+                risesRight: true));
         }
     }
 }

@@ -8,6 +8,7 @@ reduces local color noise while preserving the richer material rendering that
 was lost in the earlier code-drawn placeholder pass.
 """
 
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,10 +36,10 @@ BACKDROP_SIZE = (128, 64)
 
 # 배경은 미탐색 구조를 드러내지 않는 한 장짜리 다이아몬드다. 모든 색은
 # project-c-torchstone.gpl의 공용 토큰이며 최종 저장 전에 다시 팔레트 잠금한다.
-BACKDROP_PANEL = (31, 31, 27, 255)
-BACKDROP_SHADOW = (43, 39, 34, 255)
+BACKDROP_PANEL = (21, 23, 29, 255)
+BACKDROP_SHADOW = (5, 7, 12, 255)
 BACKDROP_SEAM = (10, 13, 19, 255)
-BACKDROP_EDGE = (74, 64, 56, 255)
+BACKDROP_EDGE = (44, 49, 56, 255)
 
 
 @dataclass(frozen=True)
@@ -90,19 +91,58 @@ SPECS = (
 )
 
 
+def _is_magenta_chroma(pixel: tuple[int, int, int, int]) -> bool:
+    red, green, blue, alpha = pixel
+    return (
+        alpha > 0
+        and red > 70
+        and blue > 50
+        and red + blue > green * 2 + 80
+    )
+
+
 def strip_chroma_spill(cell: Image.Image) -> None:
-    """Drop opaque magenta fringe left by generated chroma-key edges."""
+    """Drop only magenta chroma connected to the exterior background.
+
+    Transparent pixels are traversable so detached edge fringe is still cleaned. Opaque
+    non-chroma pixels stop the fill, preserving enclosed magenta and cyan neon accents.
+    """
+    width, height = cell.size
     pixels = cell.load()
-    for y in range(cell.height):
-        for x in range(cell.width):
-            red, green, blue, alpha = pixels[x, y]
-            is_magenta_spill = (
-                red > 70
-                and blue > 50
-                and red + blue > green * 2 + 80
-            )
-            if is_magenta_spill:
-                pixels[x, y] = (red, green, blue, 0)
+    visited = bytearray(width * height)
+    pending: deque[tuple[int, int]] = deque()
+
+    def enqueue(px: int, py: int) -> None:
+        index = py * width + px
+        if visited[index]:
+            return
+        pixel = pixels[px, py]
+        if pixel[3] != 0 and not _is_magenta_chroma(pixel):
+            return
+        visited[index] = 1
+        pending.append((px, py))
+
+    for px in range(width):
+        enqueue(px, 0)
+        enqueue(px, height - 1)
+    for py in range(1, height - 1):
+        enqueue(0, py)
+        enqueue(width - 1, py)
+
+    while pending:
+        px, py = pending.popleft()
+        red, green, blue, alpha = pixels[px, py]
+        if _is_magenta_chroma((red, green, blue, alpha)):
+            pixels[px, py] = (red, green, blue, 0)
+
+        if px > 0:
+            enqueue(px - 1, py)
+        if px + 1 < width:
+            enqueue(px + 1, py)
+        if py > 0:
+            enqueue(px, py - 1)
+        if py + 1 < height:
+            enqueue(px, py + 1)
 
 
 def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
@@ -156,6 +196,38 @@ def build_sprite(source: Image.Image, size: tuple[int, int]) -> Image.Image:
     return reduce_colors(resized)
 
 
+def build_floor_sprite(source: Image.Image) -> Image.Image:
+    """Extract one top-only panel from the generated multi-panel floor slab.
+
+    The source cell is a 2x2-ish presentation slab with a baked front edge. Scaling the
+    whole slab into 128x64 makes its internal panel grid look like the tile axes and then
+    duplicates the side wall that the runtime already draws. The clean upper panel is the
+    centered diamond in the top half of the trimmed source.
+    """
+    left = source.width // 4
+    right = source.width - left
+    bottom = max(1, source.height // 2)
+    panel = source.crop((left, 0, right, bottom)).resize(
+        BACKDROP_SIZE,
+        Image.Resampling.BOX,
+    )
+    panel = reduce_colors(panel)
+
+    # Runtime owns elevation sides. Keep only the canonical 2:1 top face and touch all
+    # four canvas edges so Unity's Aseprite importer cannot trim a 128x64 tile smaller.
+    alpha = Image.new("L", BACKDROP_SIZE, 0)
+    pixels = alpha.load()
+    for py in range(BACKDROP_SIZE[1]):
+        for px in range(BACKDROP_SIZE[0]):
+            diamond = abs((px - 63.5) / 64) + abs((py - 31.5) / 32)
+            if diamond <= 1:
+                pixels[px, py] = 255
+    for px, py in ((64, 0), (127, 32), (64, 63), (0, 32)):
+        pixels[px, py] = 255
+    panel.putalpha(alpha)
+    return panel
+
+
 def build_dungeon_backdrop() -> Image.Image:
     """Build a low-contrast full-floor backing plate for the FOV void.
 
@@ -172,7 +244,23 @@ def build_dungeon_backdrop() -> Image.Image:
             if diamond > 1:
                 continue
 
+            # 방 구조가 아닌 공용 환기 덕트/케이블 실루엣. 전체 생성 영역에 같은
+            # 패턴을 늘여 쓰므로 미탐색 복도나 문 위치를 암시하지 않는다.
+            vertical_cable = (
+                px in (24, 25, 102, 103) and 16 <= py <= 47
+            )
+            cable_joint = (
+                py in (18, 19, 44, 45) and
+                (18 <= px <= 32 or 96 <= px <= 110)
+            )
+            vent_slats = (
+                45 <= px <= 82 and
+                py in (18, 19, 23, 24, 28, 29)
+            )
+
             if diamond > 0.975:
+                color = BACKDROP_EDGE
+            elif vertical_cable or cable_joint or vent_slats:
                 color = BACKDROP_EDGE
             elif (px * 13 + py * 7) % 47 == 0:
                 color = BACKDROP_SHADOW
@@ -224,7 +312,12 @@ def main() -> None:
 
     written = 0
     for spec in SPECS:
-        sprite = build_sprite(extract_cell(sheet, spec.cell_index), spec.size)
+        source = extract_cell(sheet, spec.cell_index)
+        sprite = (
+            build_floor_sprite(source)
+            if spec.source_name == "floor"
+            else build_sprite(source, spec.size)
+        )
         for output_index, output_name in enumerate(spec.output_names):
             # Every second directional output is the mirrored partner.
             output = (

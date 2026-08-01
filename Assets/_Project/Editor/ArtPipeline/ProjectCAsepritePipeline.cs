@@ -23,6 +23,31 @@ namespace ProjectC.EditorTools
         // 128-레짐: 바닥 타일 128×64px = 월드 1.0×0.5 유닛. PrototypeSpriteCanvas의
         // 절차 생성 상수(64)와 다른 것이 정상이다 — 스프라이트는 각자 PPU를 갖는다.
         private const float PixelsPerUnit = 128f;
+        private const string TextureImporterSettingsProperty =
+            "m_TextureImporterSettings";
+        private const string TextureReadableProperty = "m_IsReadable";
+
+        private static readonly Vector2Int FloorCanvasSize = new Vector2Int(128, 64);
+        private static readonly Vector2Int ActorCanvasSize = new Vector2Int(96, 128);
+        private static readonly string[] PngFallbackRoots =
+        {
+            "Assets/_Project/Art/Environment/",
+            "Assets/_Project/Art/Runtime/"
+        };
+        private static readonly string[] B2DirectionalFloorPrefixes =
+        {
+            "env-floor-b2-parking-stop-view-",
+            "env-floor-b2-fallen-sign-view-"
+        };
+        private static readonly string[] RequiredActorTags =
+        {
+            SpriteClipTags.Idle,
+            SpriteClipTags.Walk,
+            SpriteClipTags.Attack,
+            SpriteClipTags.Hit,
+            SpriteClipTags.Fall,
+            SpriteClipTags.Death
+        };
 
         private static readonly Dictionary<string, string> CatalogSlots =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -42,6 +67,14 @@ namespace ProjectC.EditorTools
                 { "env-floor-service", "hospitalFloorService" },
                 { "env-floor-b2-parking-stop", "b2ParkingWheelStopFloor" },
                 { "env-floor-b2-fallen-sign", "b2FallenWayfindingFloor" },
+                { "env-floor-b2-parking-stop-view-0", "b2ParkingWheelStopFloorView0" },
+                { "env-floor-b2-parking-stop-view-1", "b2ParkingWheelStopFloorView1" },
+                { "env-floor-b2-parking-stop-view-2", "b2ParkingWheelStopFloorView2" },
+                { "env-floor-b2-parking-stop-view-3", "b2ParkingWheelStopFloorView3" },
+                { "env-floor-b2-fallen-sign-view-0", "b2FallenWayfindingFloorView0" },
+                { "env-floor-b2-fallen-sign-view-1", "b2FallenWayfindingFloorView1" },
+                { "env-floor-b2-fallen-sign-view-2", "b2FallenWayfindingFloorView2" },
+                { "env-floor-b2-fallen-sign-view-3", "b2FallenWayfindingFloorView3" },
                 { "env-stairs", "stairs" },
                 { "env-ladder", "ladder" },
                 { "env-stairs-up", "stairsUp" },
@@ -117,6 +150,11 @@ namespace ProjectC.EditorTools
             };
 
         private static bool _catalogSyncQueued;
+        private static bool _readablePropertyWarningLogged;
+        private static readonly Dictionary<string, HashSet<string>>
+            PendingRemovedSourcePaths =
+                new Dictionary<string, HashSet<string>>(
+                    StringComparer.OrdinalIgnoreCase);
 
         private void OnPreprocessAsset()
         {
@@ -133,6 +171,8 @@ namespace ProjectC.EditorTools
             string[] movedAssets,
             string[] movedFromAssetPaths)
         {
+            RecordRemovedSources(deletedAssets, movedAssets, movedFromAssetPaths);
+
             if (!ContainsAsepriteSource(importedAssets) &&
                 !ContainsAsepriteSource(deletedAssets) &&
                 !ContainsAsepriteSource(movedAssets) &&
@@ -140,6 +180,42 @@ namespace ProjectC.EditorTools
                 return;
 
             QueueCatalogSync();
+        }
+
+        private static void RecordRemovedSources(
+            IEnumerable<string> deletedAssets,
+            string[] movedAssets,
+            string[] movedFromAssetPaths)
+        {
+            foreach (string deletedPath in deletedAssets ?? Array.Empty<string>())
+                RecordRemovedSource(deletedPath, movedToPath: null);
+
+            int movedCount = Math.Min(
+                movedAssets?.Length ?? 0,
+                movedFromAssetPaths?.Length ?? 0);
+            for (int index = 0; index < movedCount; index++)
+                RecordRemovedSource(movedFromAssetPaths[index], movedAssets[index]);
+        }
+
+        private static void RecordRemovedSource(
+            string oldPath,
+            string movedToPath)
+        {
+            if (!IsAsepriteSourcePath(oldPath) ||
+                !TryGetCatalogSlot(oldPath, out _))
+                return;
+
+            string assetName = Path.GetFileNameWithoutExtension(oldPath);
+            if (!PendingRemovedSourcePaths.TryGetValue(
+                    assetName,
+                    out HashSet<string> paths))
+            {
+                paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                PendingRemovedSourcePaths.Add(assetName, paths);
+            }
+
+            paths.Add(oldPath);
+            paths.Add(movedToPath ?? string.Empty);
         }
 
         public static bool IsAsepriteSourcePath(string path)
@@ -151,6 +227,68 @@ namespace ProjectC.EditorTools
             string extension = Path.GetExtension(path);
             return extension.Equals(".aseprite", StringComparison.OrdinalIgnoreCase) ||
                    extension.Equals(".ase", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool RequiresReadableTexture(string sourcePath)
+        {
+            string assetName = Path.GetFileNameWithoutExtension(sourcePath);
+            return IsFloorAssetName(assetName) ||
+                   assetName.StartsWith("env-wall-", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool TryGetExpectedCanvasSize(
+            string sourcePath,
+            out Vector2Int canvasSize)
+        {
+            string assetName = Path.GetFileNameWithoutExtension(sourcePath);
+            if (IsFloorAssetName(assetName))
+            {
+                canvasSize = FloorCanvasSize;
+                return true;
+            }
+
+            if (assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase))
+            {
+                canvasSize = ActorCanvasSize;
+                return true;
+            }
+
+            canvasSize = default;
+            return false;
+        }
+
+        private static bool IsFloorAssetName(string assetName) =>
+            assetName.Equals("env-floor", StringComparison.OrdinalIgnoreCase) ||
+            assetName.StartsWith("env-floor-", StringComparison.OrdinalIgnoreCase);
+
+        public static string[] MissingRequiredActorTags(IEnumerable<string> clipNames)
+        {
+            var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (clipNames != null)
+            {
+                foreach (string clipName in clipNames)
+                {
+                    string tag = ActorAnimationBake.TagFromClipName(clipName);
+                    if (tag != null)
+                        present.Add(tag);
+                }
+            }
+
+            return RequiredActorTags.Where(tag => !present.Contains(tag)).ToArray();
+        }
+
+        public static string[] MissingRequiredB2ViewSources(
+            IEnumerable<string> sourcePaths)
+        {
+            var sourceNames = new HashSet<string>(
+                (sourcePaths ?? Array.Empty<string>())
+                    .Select(Path.GetFileNameWithoutExtension),
+                StringComparer.OrdinalIgnoreCase);
+            return B2DirectionalFloorPrefixes
+                .SelectMany(prefix => Enumerable.Range(0, 4)
+                    .Select(view => $"{prefix}{view}"))
+                .Where(assetName => !sourceNames.Contains(assetName))
+                .ToArray();
         }
 
         public static bool TryGetCatalogSlot(string sourcePath, out string slotName)
@@ -237,9 +375,61 @@ namespace ProjectC.EditorTools
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.aniso = 1;
 
+            if (RequiresReadableTexture(path) &&
+                !TrySetTextureReadable(importer, readable: true) &&
+                !_readablePropertyWarningLogged)
+            {
+                _readablePropertyWarningLogged = true;
+                Debug.LogWarning(
+                    "[Project-C Aseprite] Unity 2D Aseprite Importer의 readable " +
+                    $"직렬화 속성을 찾지 못했습니다: {path}");
+            }
+
             SetUncompressed(importer, BuildTarget.StandaloneOSX);
             SetUncompressed(importer, BuildTarget.Android);
             SetUncompressed(importer, BuildTarget.iOS);
+        }
+
+        private static bool TrySetTextureReadable(
+            AsepriteImporter importer,
+            bool readable)
+        {
+            var serializedImporter = new SerializedObject(importer);
+            serializedImporter.UpdateIfRequiredOrScript();
+            SerializedProperty textureSettings =
+                serializedImporter.FindProperty(TextureImporterSettingsProperty);
+            SerializedProperty readableProperty =
+                textureSettings?.FindPropertyRelative(TextureReadableProperty);
+            if (readableProperty == null)
+                return false;
+
+            if (readableProperty.boolValue != readable)
+            {
+                readableProperty.boolValue = readable;
+                serializedImporter.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            return true;
+        }
+
+        private static bool TryGetTextureReadable(
+            AsepriteImporter importer,
+            out bool readable)
+        {
+            var serializedImporter = new SerializedObject(importer);
+            serializedImporter.UpdateIfRequiredOrScript();
+            SerializedProperty textureSettings =
+                serializedImporter.FindProperty(TextureImporterSettingsProperty);
+            SerializedProperty readableProperty =
+                textureSettings?.FindPropertyRelative(TextureReadableProperty);
+            if (readableProperty == null)
+            {
+                readable = false;
+                return false;
+            }
+
+            readable = readableProperty.boolValue;
+            return true;
         }
 
         private static void SetUncompressed(AsepriteImporter importer, BuildTarget buildTarget)
@@ -264,6 +454,16 @@ namespace ProjectC.EditorTools
             };
         }
 
+        private static Dictionary<string, string[]> DrainRemovedSourcePaths()
+        {
+            var snapshot = PendingRemovedSourcePaths.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.OrderBy(path => path, StringComparer.Ordinal).ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+            PendingRemovedSourcePaths.Clear();
+            return snapshot;
+        }
+
         private static void SyncCatalog(bool logResult)
         {
             IsoVisualCatalog catalog =
@@ -275,46 +475,17 @@ namespace ProjectC.EditorTools
             }
 
             string[] sources = FindAsepriteSources();
+            int changed = SynchronizeSpriteSlots(
+                catalog,
+                sources,
+                DrainRemovedSourcePaths(),
+                out int bound);
+
             var duplicateNames = sources
                 .GroupBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
                 .Where(group => group.Count() > 1)
                 .Select(group => group.Key)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var serializedCatalog = new SerializedObject(catalog);
-            int changed = 0;
-            int bound = 0;
-
-            foreach (string path in sources)
-            {
-                string assetName = Path.GetFileNameWithoutExtension(path);
-                if (duplicateNames.Contains(assetName) ||
-                    !TryGetCatalogSlot(path, out string slotName))
-                    continue;
-
-                Sprite sprite = SelectFirstFrame(
-                    AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>());
-                if (sprite == null)
-                    continue;
-
-                SerializedProperty slot = serializedCatalog.FindProperty(slotName);
-                if (slot == null)
-                {
-                    Debug.LogError(
-                        $"[Project-C Aseprite] IsoVisualCatalog 슬롯이 없습니다: {slotName}");
-                    continue;
-                }
-
-                bound++;
-                if (slot.objectReferenceValue == sprite)
-                    continue;
-
-                slot.objectReferenceValue = sprite;
-                changed++;
-            }
-
-            if (changed > 0)
-                serializedCatalog.ApplyModifiedPropertiesWithoutUndo();
 
             // 액터 애니메이션 베이크 — 태그별 AnimationClip 서브에셋을 프레임 배열로 굽는다.
             // actorKey는 Sprite 슬롯 필드명 계약(CatalogSlots)을 그대로 재사용한다.
@@ -382,6 +553,135 @@ namespace ProjectC.EditorTools
             }
         }
 
+        public static int SynchronizeSpriteSlots(
+            IsoVisualCatalog catalog,
+            IEnumerable<string> sourcePaths,
+            IReadOnlyDictionary<string, string[]> removedSourcePaths,
+            out int bound)
+        {
+            bound = 0;
+            if (catalog == null)
+                return 0;
+
+            string[] sources = (sourcePaths ?? Array.Empty<string>()).ToArray();
+            var duplicateNames = sources
+                .GroupBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var activeSourceNames = sources
+                .Select(Path.GetFileNameWithoutExtension)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var removedByName = new Dictionary<string, HashSet<string>>(
+                StringComparer.OrdinalIgnoreCase);
+            if (removedSourcePaths != null)
+            {
+                foreach (KeyValuePair<string, string[]> pair in removedSourcePaths)
+                {
+                    removedByName[pair.Key] = new HashSet<string>(
+                        pair.Value ?? Array.Empty<string>(),
+                        StringComparer.OrdinalIgnoreCase);
+                }
+            }
+
+            var serializedCatalog = new SerializedObject(catalog);
+            int changed = 0;
+
+            // 현재 존재하는 정식 원본이 항상 우선이다.
+            foreach (string path in sources)
+            {
+                string assetName = Path.GetFileNameWithoutExtension(path);
+                if (duplicateNames.Contains(assetName) ||
+                    !TryGetCatalogSlot(path, out string slotName))
+                    continue;
+
+                Sprite sprite = SelectFirstFrame(
+                    AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>());
+                if (sprite == null)
+                    continue;
+
+                SerializedProperty slot = serializedCatalog.FindProperty(slotName);
+                if (slot == null)
+                {
+                    Debug.LogError(
+                        $"[Project-C Aseprite] IsoVisualCatalog 슬롯이 없습니다: {slotName}");
+                    continue;
+                }
+
+                bound++;
+                if (slot.objectReferenceValue == sprite)
+                    continue;
+
+                slot.objectReferenceValue = sprite;
+                changed++;
+            }
+
+            // 삭제/이동 이벤트에서 실제로 빠져나간 Aseprite 참조만 복구한다.
+            // 다른 Aseprite/PNG를 사용자가 수동으로 꽂은 슬롯은 경로가 일치하지 않아 보존된다.
+            foreach (KeyValuePair<string, string> mapping in CatalogSlots)
+            {
+                if (activeSourceNames.Contains(mapping.Key) ||
+                    !removedByName.TryGetValue(
+                        mapping.Key,
+                        out HashSet<string> removedPaths))
+                    continue;
+
+                SerializedProperty slot = serializedCatalog.FindProperty(mapping.Value);
+                if (slot == null)
+                    continue;
+
+                Sprite current = slot.objectReferenceValue as Sprite;
+                if (!WasRemovedSourceReference(current, removedPaths))
+                    continue;
+
+                Sprite fallback = FindPngFallback(mapping.Key);
+                if (current != null && current == fallback)
+                    continue;
+
+                // current가 Missing으로 null처럼 보여도 대입을 수행해 직렬화된 stale GUID를 지운다.
+                slot.objectReferenceValue = fallback;
+                changed++;
+            }
+
+            if (changed > 0)
+                serializedCatalog.ApplyModifiedPropertiesWithoutUndo();
+            return changed;
+        }
+
+        private static bool WasRemovedSourceReference(
+            Sprite current,
+            IReadOnlyCollection<string> removedPaths)
+        {
+            if (removedPaths == null || removedPaths.Count == 0)
+                return false;
+            if (current == null)
+                return true;
+
+            string currentPath = AssetDatabase.GetAssetPath(current);
+            if (string.IsNullOrEmpty(currentPath))
+                return removedPaths.Contains(string.Empty);
+
+            return removedPaths.Any(path =>
+                !string.IsNullOrEmpty(path) &&
+                string.Equals(path, currentPath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static Sprite FindPngFallback(string assetName)
+        {
+            foreach (string root in PngFallbackRoots)
+            {
+                string path = $"{root}{assetName}.png";
+                Sprite fallback = AssetDatabase.LoadAssetAtPath<Sprite>(path) ??
+                                  AssetDatabase.LoadAllAssetsAtPath(path)
+                                      .OfType<Sprite>()
+                                      .FirstOrDefault();
+                if (fallback != null)
+                    return fallback;
+            }
+
+            return null;
+        }
+
         private static List<string> CollectProblems(IEnumerable<string> sources)
         {
             string[] paths = sources.ToArray();
@@ -394,6 +694,14 @@ namespace ProjectC.EditorTools
             {
                 problems.Add(
                     $"중복 파일명 '{duplicate.Key}': {string.Join(", ", duplicate)}");
+            }
+
+            string[] missingB2Views = MissingRequiredB2ViewSources(paths);
+            if (missingB2Views.Length > 0)
+            {
+                problems.Add(
+                    "B2 방향 원본 세트 불완전(view-0..3 필수) — 누락: " +
+                    string.Join(", ", missingB2Views));
             }
 
             foreach (string path in paths)
@@ -415,14 +723,77 @@ namespace ProjectC.EditorTools
                     problems.Add($"임포트 규격 불일치(재임포트 필요): {path}");
                 }
 
-                if (SelectFirstFrame(
-                        AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>()) == null)
+                Sprite firstSprite = SelectFirstFrame(
+                    AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>());
+                if (firstSprite == null)
                     problems.Add($"Sprite 프레임이 없음: {path}");
+                else
+                    CollectCanvasProblems(path, importer, firstSprite, problems);
 
                 CollectClipProblems(path, problems);
             }
 
             return problems;
+        }
+
+        private static void CollectCanvasProblems(
+            string path,
+            AsepriteImporter importer,
+            Sprite firstSprite,
+            List<string> problems)
+        {
+            if (TryGetExpectedCanvasSize(path, out Vector2Int expectedCanvas) &&
+                (Mathf.RoundToInt(importer.canvasSize.x) != expectedCanvas.x ||
+                 Mathf.RoundToInt(importer.canvasSize.y) != expectedCanvas.y))
+            {
+                problems.Add(
+                    $"캔버스 규격 불일치({expectedCanvas.x}×{expectedCanvas.y} 필수, " +
+                    $"현재 {importer.canvasSize.x:0}×{importer.canvasSize.y:0}): {path}");
+            }
+
+            string assetName = Path.GetFileNameWithoutExtension(path);
+            if (IsFloorAssetName(assetName))
+            {
+                Rect rect = firstSprite.rect;
+                if (Mathf.RoundToInt(rect.width) != FloorCanvasSize.x ||
+                    Mathf.RoundToInt(rect.height) != FloorCanvasSize.y)
+                {
+                    problems.Add(
+                        $"바닥 첫 Sprite 규격 불일치(128×64 필수, " +
+                        $"현재 {rect.width:0}×{rect.height:0}): {path}");
+                }
+
+                Vector2 expectedPivot = new Vector2(0.5f, 0.5f);
+                bool importerPivotMismatch =
+                    importer.pivotSpace != PivotSpaces.Canvas ||
+                    importer.pivotAlignment != SpriteAlignment.Custom ||
+                    Vector2.Distance(importer.customPivotPosition, expectedPivot) > 0.0001f;
+                Vector2 spritePivot = new Vector2(
+                    firstSprite.pivot.x / Mathf.Max(1f, rect.width),
+                    firstSprite.pivot.y / Mathf.Max(1f, rect.height));
+                if (importerPivotMismatch ||
+                    Vector2.Distance(spritePivot, expectedPivot) > 0.0001f)
+                {
+                    problems.Add(
+                        "바닥 피봇 규격 불일치(Canvas 중앙 0.5,0.5 필수): " + path);
+                }
+            }
+
+            if (!RequiresReadableTexture(path))
+                return;
+
+            if (!TryGetTextureReadable(importer, out bool readable))
+            {
+                problems.Add(
+                    "Unity 2D Aseprite Importer의 readable 직렬화 속성을 " +
+                    $"확인할 수 없음: {path}");
+            }
+            else if (!readable)
+            {
+                problems.Add(
+                    "환경 텍스처 Read/Write 비활성 — 톤매핑/단차 생성이 " +
+                    $"원본 폴백함(재임포트 필요): {path}");
+            }
         }
 
         /// <summary>
@@ -468,7 +839,17 @@ namespace ProjectC.EditorTools
                     problems.Add($"원샷 태그 '{clip.name}'가 루프로 임포트됨 — Aseprite Tag Repeat=1 확인: {path}");
             }
 
-            if (hasTaggedClip && !hasIdle)
+            if (actor && hasTaggedClip)
+            {
+                string[] missing = MissingRequiredActorTags(
+                    clips.Select(clip => clip.name));
+                if (missing.Length > 0)
+                {
+                    problems.Add(
+                        $"액터 필수 태그 누락({string.Join("/", missing)}): {path}");
+                }
+            }
+            else if (hasTaggedClip && !hasIdle)
                 problems.Add($"태그 클립이 있는데 idle이 없음 — 재생기의 기본 상태가 비게 된다: {path}");
         }
 

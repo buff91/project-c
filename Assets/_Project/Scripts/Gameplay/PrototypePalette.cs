@@ -8,7 +8,8 @@ namespace ProjectC.Gameplay
     /// 던전 환경 역할색의 해석기 — `IsoVisualCatalog` 슬롯이 채워져 있으면 그 값을,
     /// 비어 있으면 인스펙터 폴백을 준다. 그리기 코드는 이 한 곳만 물어보고 카탈로그를 직접 보지 않는다.
     ///
-    /// 역할색의 의미(청흑 void · 웜 그레이 석재 · 토치 골드 물리광원 · 틸 마법/출구)는
+    /// 역할색의 의미(청흑 void · 냉회색 콘크리트 · 토치 골드 물리광원 · 틸 마법/출구 ·
+    /// 시안/마젠타 장식 네온)는
     /// `docs/STATUS.md`의 "던전 공통 톤"과 `project-c-torchstone.gpl` 18색 마스터 팔레트를 따른다.
     /// 여기서 새 색을 발명하지 않는다 — 슬롯을 늘릴 일이면 카탈로그를 먼저 늘린다.
     /// </summary>
@@ -129,6 +130,16 @@ namespace ProjectC.Gameplay
 
         internal Color32 Magic =>
             _catalog != null ? _catalog.dungeonMagic : _fallback.Accent;
+
+        internal Color32 NeonCyan =>
+            _catalog != null
+                ? _catalog.dungeonNeonCyan
+                : new Color32(61, 225, 232, 255);
+
+        internal Color32 NeonMagenta =>
+            _catalog != null
+                ? _catalog.dungeonNeonMagenta
+                : new Color32(230, 68, 184, 255);
 
         /// <summary>
         /// 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도로만 구분한다 — 석재색 자체는

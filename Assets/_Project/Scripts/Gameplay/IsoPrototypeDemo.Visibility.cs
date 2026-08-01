@@ -11,6 +11,8 @@ namespace ProjectC.Gameplay
     /// </summary>
     public partial class IsoPrototypeDemo
     {
+        private SpriteRenderer _dungeonAtmosphereBackdrop;
+
         private void RefreshFloorVisibility()
         {
             if (_dungeon == null) return;
@@ -441,6 +443,8 @@ namespace ProjectC.Gameplay
             if (!shouldShow)
             {
                 if (_dungeonFogBackdrop != null) _dungeonFogBackdrop.enabled = false;
+                if (_dungeonAtmosphereBackdrop != null)
+                    _dungeonAtmosphereBackdrop.enabled = false;
                 return;
             }
 
@@ -459,6 +463,7 @@ namespace ProjectC.Gameplay
                 roomSize,
                 roomSize,
                 baseElevation);
+            RefreshDungeonAtmosphereBackdrop(frame);
             _dungeonFogBackdrop.sprite = GetDungeonFogBackdropSprite();
             _dungeonFogBackdrop.transform.position = new Vector3(frame.Center.x, frame.Center.y, 0f);
 
@@ -469,9 +474,53 @@ namespace ProjectC.Gameplay
                 1f);
             _dungeonFogBackdrop.color =
                 visualCatalog != null && visualCatalog.dungeonBackdrop != null
-                    ? new Color32(255, 255, 255, 64)
+                    ? new Color32(255, 255, 255, 176)
                     : Color.white;
             _dungeonFogBackdrop.enabled = true;
+        }
+
+        /// <summary>
+        /// 카메라 뒤를 채우는 서비스 샤프트 분위기층. 맵/가시 타일 좌표를 입력받지 않는 한 장이라
+        /// Unknown의 방·복도 구조를 드러내지 않으며, 전역 블룸 없이 픽셀 실루엣만 제공한다.
+        /// </summary>
+        private void RefreshDungeonAtmosphereBackdrop(DungeonFogBackdropFrame fallbackFrame)
+        {
+            if (_dungeonAtmosphereBackdrop == null)
+            {
+                var backdrop = new GameObject("Dungeon Atmosphere Backdrop");
+                backdrop.transform.SetParent(_visualRoot, false);
+                _dungeonAtmosphereBackdrop = backdrop.AddComponent<SpriteRenderer>();
+                _dungeonAtmosphereBackdrop.sortingLayerName =
+                    DungeonFogBackdropLayout.SortingLayerName;
+                _dungeonAtmosphereBackdrop.sortingOrder = -10;
+            }
+
+            Sprite sprite = EnvironmentSprites.GetDungeonAtmosphereBackdropSprite();
+            _dungeonAtmosphereBackdrop.sprite = sprite;
+
+            Camera camera = _configuredCamera != null ? _configuredCamera : Camera.main;
+            float halfHeight = camera != null && camera.orthographic
+                ? camera.orthographicSize
+                : playCameraSize;
+            float aspect = camera != null && camera.aspect > 0f
+                ? camera.aspect
+                : 16f / 9f;
+            Vector2 center = camera != null
+                ? new Vector2(camera.transform.position.x, camera.transform.position.y)
+                : fallbackFrame.Center;
+
+            const float overscan = 1.08f;
+            float targetWidth = halfHeight * 2f * aspect * overscan;
+            float targetHeight = halfHeight * 2f * overscan;
+            Vector2 spriteSize = sprite != null ? sprite.bounds.size : Vector2.one;
+            _dungeonAtmosphereBackdrop.transform.position =
+                new Vector3(center.x, center.y, 0f);
+            _dungeonAtmosphereBackdrop.transform.localScale = new Vector3(
+                targetWidth / Mathf.Max(0.01f, spriteSize.x),
+                targetHeight / Mathf.Max(0.01f, spriteSize.y),
+                1f);
+            _dungeonAtmosphereBackdrop.color = Color.white;
+            _dungeonAtmosphereBackdrop.enabled = sprite != null;
         }
 
         private Transform _elevationMarkerRoot;
@@ -986,8 +1035,11 @@ namespace ProjectC.Gameplay
                     decoration: hospitalDressing ? decoration : -1)
                 : null;
             PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode =
-                !torch && hospitalDressing && decoration == 2
-                    ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal
+                !torch && hospitalDressing && decoration == 0
+                    ? PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonCyan
+                    : !torch && hospitalDressing &&
+                      (decoration == 1 || decoration == 2)
+                        ? PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta
                     : torch
                         ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal
                         : PrototypeEnvironmentSprites.EnvironmentAccentMode.None;
@@ -1016,7 +1068,67 @@ namespace ProjectC.Gameplay
                             ? "rearWallTorchRisingRight"
                             : "rearWallTorchRisingLeft"));
             }
+            if (mapped != null &&
+                (accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonCyan ||
+                 accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta))
+            {
+                CreateFacilityNeonWallOverlay(
+                    wall,
+                    mapped,
+                    pos,
+                    flip,
+                    accentMode,
+                    renderer.sortingOrder);
+                CreateFacilityNeonPool(pos, accentMode);
+            }
             _rearWallRenderers.Add(renderer, pos);
+        }
+
+        private void CreateFacilityNeonWallOverlay(
+            GameObject wall,
+            Sprite sourceSprite,
+            GridPos pos,
+            bool risesRight,
+            PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode,
+            int baseSortingOrder)
+        {
+            Sprite sprite = EnvironmentSprites.GetFacilityNeonWallOverlaySprite(
+                sourceSprite,
+                accentMode,
+                risesRight);
+            if (sprite == null) return;
+
+            var overlay = new GameObject(
+                accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta
+                    ? "Magenta Neon Panel"
+                    : "Cyan Neon Panel");
+            overlay.transform.SetParent(wall.transform, false);
+            var renderer = overlay.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = baseSortingOrder + 1;
+            renderer.color = new Color(1f, 1f, 1f, VisibilityAlpha(pos));
+            // 플레이어 뒤에서 벽이 페이드될 때 패널만 얼굴 위에 남지 않게 같은 목록에 넣는다.
+            _rearWallRenderers.Add(renderer, pos);
+        }
+
+        private void CreateFacilityNeonPool(
+            GridPos pos,
+            PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode)
+        {
+            Sprite sprite = EnvironmentSprites.GetFacilityNeonLightPoolSprite(accentMode);
+            if (sprite == null || _wallRoot == null) return;
+
+            var pool = new GameObject(
+                accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta
+                    ? $"Magenta Neon Pool {pos}"
+                    : $"Cyan Neon Pool {pos}");
+            pool.transform.SetParent(_wallRoot, false);
+            pool.transform.position = VisualPosition(pos);
+            var renderer = pool.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
+            Color tint = ElevationTint(pos);
+            renderer.color = new Color(tint.r, tint.g, tint.b, VisibilityAlpha(pos));
         }
 
         private void UpdatePlayerOccluders(float deltaTime, bool instant = false)
@@ -1272,7 +1384,12 @@ namespace ProjectC.Gameplay
                 return new Color(lit, lit, lit, 1f);
 
             // 웜(불·등잔·등불) vs 쿨(개구부 새어드는 빛) 균형으로 색조를 정한다.
-            float warmth = carried * carriedWarmth + warm - cool;
+            // 폐 아케이드 내부의 휴대광은 색을 드러내는 중립 키라이트다. 앰버는 실제
+            // 비상등·화염에만 남겨 벽 네온과 콘크리트가 다시 갈색으로 뭉개지지 않게 한다.
+            bool cyberFacility =
+                (_dungeon?.Region ?? DungeonRegionProfile.Facility) ==
+                    DungeonRegionProfile.Facility;
+            float warmth = carried * (cyberFacility ? 0f : carriedWarmth) + warm - cool;
             Color hue = Color.white;
             if (warmth > 0f)
                 hue = Color.Lerp(Color.white, WarmLightColor, Mathf.Clamp01(warmth) * lightHueStrength);
@@ -1300,6 +1417,20 @@ namespace ProjectC.Gameplay
         {
             if (_playerRenderer == null) return;
             _playerRenderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
+        }
+
+        private void ApplyMovingActorVisualSorting(
+            SpriteRenderer renderer,
+            GridPos from,
+            GridPos to,
+            float progress)
+        {
+            if (renderer == null) return;
+            renderer.sortingOrder = _grid.iso.SortingOrderDuringMove(
+                SortingAnchor(from),
+                SortingAnchor(to),
+                progress,
+                1);
         }
 
         private static int TileSortOffset(TileKind kind)

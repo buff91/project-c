@@ -6,8 +6,10 @@ v0.3.3 아케이드 재발주: 소스가 폐병원 보드에서 아케이드 소
 구판을 유지한다 — 코드의 hospital* 슬롯명과 같은 이유다.
 """
 
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from PIL import Image
 
@@ -57,15 +59,59 @@ def _is_chroma(pixel: tuple[int, int, int, int]) -> bool:
     return red >= 150 and blue >= 130 and green <= 110 and red + blue >= green * 3
 
 
+def _remove_edge_connected_chroma(
+    image: Image.Image,
+    predicate: Callable[[tuple[int, int, int, int]], bool],
+) -> None:
+    """Remove only chroma reachable from the exterior background.
+
+    Transparent pixels are traversable so a detached fringe around the subject is still
+    considered exterior. Opaque non-chroma pixels stop the fill, preserving cyan and
+    magenta lights enclosed by the wall silhouette.
+    """
+    width, height = image.size
+    pixels = image.load()
+    visited = bytearray(width * height)
+    pending: deque[tuple[int, int]] = deque()
+
+    def enqueue(px: int, py: int) -> None:
+        index = py * width + px
+        if visited[index]:
+            return
+        pixel = pixels[px, py]
+        if pixel[3] != 0 and not predicate(pixel):
+            return
+        visited[index] = 1
+        pending.append((px, py))
+
+    for px in range(width):
+        enqueue(px, 0)
+        enqueue(px, height - 1)
+    for py in range(1, height - 1):
+        enqueue(0, py)
+        enqueue(width - 1, py)
+
+    while pending:
+        px, py = pending.popleft()
+        red, green, blue, alpha_value = pixels[px, py]
+        if alpha_value != 0 and predicate((red, green, blue, alpha_value)):
+            pixels[px, py] = (red, green, blue, 0)
+
+        if px > 0:
+            enqueue(px - 1, py)
+        if px + 1 < width:
+            enqueue(px + 1, py)
+        if py > 0:
+            enqueue(px, py - 1)
+        if py + 1 < height:
+            enqueue(px, py + 1)
+
+
 def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
     x = index % 3 * CELL_SIZE[0]
     y = index // 3 * CELL_SIZE[1]
     cell = sheet.crop((x, y, x + CELL_SIZE[0], y + CELL_SIZE[1])).convert("RGBA")
-    pixels = cell.load()
-    for py in range(cell.height):
-        for px in range(cell.width):
-            if _is_chroma(pixels[px, py]):
-                pixels[px, py] = (5, 7, 12, 0)
+    _remove_edge_connected_chroma(cell, _is_chroma)
 
     alpha = cell.getchannel("A").point(
         lambda value: 255 if value >= ALPHA_CUTOFF else 0
@@ -77,36 +123,10 @@ def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
     return cell.crop(bounds)
 
 
-# 2026-07-30 정합 패스 — 드레싱이 1차 슬라이스 기본 셀과 갈라진 두 지점을 conform에서 잡는다:
-# 벽은 grey-* 램프(청회색)로 잠겨 웜 브라운 기본 벽과 색온도가 어긋났고, 바닥 오버레이는
-# 기본 바닥(V≈0.40)보다 밝아 드레싱 타일이 체커보드 얼룩으로 떴다.
-WARM_BAND = (40, 235)  # 웜 시프트 적용 명도 대역 — 청보라 암부·순백 하이라이트는 남긴다(.gpl 원리)
-WARM_SAT_MAX = 0.28  # 저채도 몸통만 민다 — 스크린·간판 악센트는 제 색을 지킨다
-WARM_GAIN = (1.18, 1.00, 0.78)  # grey-* 최근접을 tile-* 최근접으로 뒤집는 실측 최소 게인
+# 바닥 오버레이만 기본 바닥 명도에 맞춘다. 벽 몸통은 생성 소스의 중립/쿨 grey-* 램프를
+# 그대로 팔레트 잠금해야 한다. 과거 WARM_GAIN 시프트는 모든 아케이드 패널을 웜 브라운으로
+# 밀어 네온 시설이 일반 산업 폐허처럼 보이게 만들었다.
 FLOOR_VALUE_SCALE = 0.92
-
-
-def warm_shift_walls(cell: Image.Image) -> Image.Image:
-    """벽 몸통(저채도 콘크리트)을 기본 벽이 잠긴 웜 스톤(tile-*) 램프 쪽으로 민다."""
-    shifted = cell.copy()
-    pixels = shifted.load()
-    for py in range(shifted.height):
-        for px in range(shifted.width):
-            red, green, blue, alpha_value = pixels[px, py]
-            if alpha_value == 0:
-                continue
-            peak = max(red, green, blue)
-            if not WARM_BAND[0] <= peak <= WARM_BAND[1]:
-                continue
-            if peak and (peak - min(red, green, blue)) / peak > WARM_SAT_MAX:
-                continue
-            pixels[px, py] = (
-                min(255, round(red * WARM_GAIN[0])),
-                green,
-                min(255, round(blue * WARM_GAIN[2])),
-                alpha_value,
-            )
-    return shifted
 
 
 def dim_floor_overlay(cell: Image.Image) -> Image.Image:
@@ -149,7 +169,8 @@ def build_outputs(
     outputs: dict[str, Image.Image] = {}
     for spec in SPECS:
         cell = extract_cell(sheet, spec.cell_index)
-        cell = dim_floor_overlay(cell) if spec.size == (128, 64) else warm_shift_walls(cell)
+        if spec.size == (128, 64):
+            cell = dim_floor_overlay(cell)
         sprite = build_sprite(cell, spec.size)
         if spec.size == (128, 64):
             # 생성 소스의 바닥은 장식 주변에 의도적인 빈 공간이 있다. 이 이미지를
