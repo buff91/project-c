@@ -4,12 +4,15 @@ import contextlib
 import copy
 import io
 import json
+import os
 import sqlite3
 import sys
 import tempfile
 import unittest
 import unittest.mock
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 
@@ -29,7 +32,9 @@ from art_review import (
     alias_index,
     derive_asset_type,
     enforce_color_area_limits,
+    format_duration,
     image_metrics,
+    progress_view,
 )
 from art_asset import (
     detect_border_color,
@@ -38,8 +43,11 @@ from art_asset import (
 )
 from art_recipe_tool import parse_assignment, set_nested
 from art_runner import (
+    JobProgress,
     approve_candidate,
     build_parser,
+    estimate_text,
+    notify_desktop,
     decide_candidate_shot,
     process_action,
     process_job,
@@ -1756,6 +1764,223 @@ class ReferenceResolutionTests(unittest.TestCase):
         shot = parser.parse_args(["shot-approve", "idle"])
         self.assertIsNone(shot.candidate_id)
         self.assertEqual("idle", shot.shot_id)
+
+
+class JobProgressTests(unittest.TestCase):
+    """발주가 도는 동안 밖에서 진행을 볼 수 있어야 한다."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.store = ReviewStore(self.root / "review.sqlite3")
+        self.recipe = RecipeRegistry().get("actor-slinger-idle-v1")
+        self.job_id = self.store.create_job(
+            self.recipe,
+            requested_by="test",
+            candidate_count=2,
+            base_seed=1,
+        )
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def reporter(self, units_total: int = 4) -> JobProgress:
+        return JobProgress(
+            self.store,
+            self.job_id,
+            units_total=units_total,
+            min_interval=0.0,
+        )
+
+    def job(self) -> Any:
+        return self.store.get_job(self.job_id)
+
+    def test_claim_stamps_started_at_and_clears_old_progress(self) -> None:
+        self.store.set_job_progress(self.job_id, {"stage": "stale"})
+        claimed = self.store.claim_job()
+        self.assertEqual(self.job_id, claimed["id"])
+        self.assertIsNotNone(claimed["started_at"])
+        self.assertIsNone(claimed["progress_json"])
+        self.assertIsNone(claimed["finished_at"])
+
+    def test_finished_states_stamp_finished_at(self) -> None:
+        self.store.claim_job()
+        self.store.set_job_status(self.job_id, "awaiting_review")
+        self.assertIsNotNone(self.job()["finished_at"])
+
+    def test_reporter_tracks_units_and_sampler_steps(self) -> None:
+        reporter = self.reporter()
+        reporter.start_unit(candidate=1, shot="idle")
+        reporter.callback(
+            {
+                "type": "progress",
+                "node_title": "KSampler",
+                "data": {"value": 7, "max": 28},
+            }
+        )
+        view = progress_view(self.job())
+        self.assertEqual(4, view["units_total"])
+        self.assertEqual(0, view["units_done"])
+        self.assertEqual("KSampler", view["node"])
+        self.assertEqual(7, view["step"])
+        self.assertAlmostEqual(0.0625, view["fraction"], places=4)
+
+        reporter.finish_unit()
+        view = progress_view(self.job())
+        self.assertEqual(1, view["units_done"])
+        self.assertEqual(25, view["percent"])
+
+    def test_reporter_survives_a_vanished_row(self) -> None:
+        reporter = self.reporter()
+        with self.store.connect() as connection:
+            connection.execute(
+                "DELETE FROM jobs WHERE id = ?",
+                (self.job_id,),
+            )
+        reporter.start_unit(candidate=1)
+
+    def test_progress_view_estimates_the_remaining_time(self) -> None:
+        self.store.claim_job()
+        reporter = self.reporter()
+        reporter.start_unit(candidate=1)
+        reporter.finish_unit()
+        view = progress_view(self.job(), unit_seconds=120.0)
+        self.assertEqual("running", view["status"])
+        self.assertIsNotNone(view["remaining_seconds"])
+        self.assertIsNotNone(view["eta_text"])
+
+    def test_queued_jobs_report_no_progress(self) -> None:
+        view = progress_view(self.job())
+        self.assertIsNone(view["fraction"])
+        self.assertIsNone(view["remaining_seconds"])
+
+    def test_unit_seconds_uses_finished_jobs_only(self) -> None:
+        self.assertIsNone(self.store.unit_seconds())
+        self.finish_job(self.job_id, units=4, seconds=400)
+        self.assertAlmostEqual(100.0, self.store.unit_seconds())
+        self.assertAlmostEqual(
+            100.0,
+            self.store.unit_seconds(recipe_id=self.recipe.id),
+        )
+        self.assertIsNone(self.store.unit_seconds(recipe_id="other-recipe"))
+
+    def test_unit_seconds_takes_the_median_of_samples(self) -> None:
+        for seconds in (100, 400, 700):
+            job_id = self.store.create_job(
+                self.recipe,
+                requested_by="test",
+                candidate_count=1,
+                base_seed=seconds,
+            )
+            self.finish_job(job_id, units=1, seconds=seconds)
+        self.assertAlmostEqual(400.0, self.store.unit_seconds())
+
+    def test_failed_jobs_do_not_feed_the_estimate(self) -> None:
+        self.finish_job(self.job_id, units=4, seconds=400, status="failed")
+        self.assertIsNone(self.store.unit_seconds())
+
+    def test_estimate_text_stays_silent_without_history(self) -> None:
+        self.assertIsNone(estimate_text(self.store, self.recipe, 2))
+        self.finish_job(self.job_id, units=4, seconds=400)
+        text = estimate_text(self.store, self.recipe, 2)
+        self.assertIn("예상", text)
+        self.assertIn("2장", text)
+
+    def test_format_duration_reads_in_the_right_unit(self) -> None:
+        self.assertEqual("?", format_duration(None))
+        self.assertEqual("45초", format_duration(45))
+        self.assertEqual("40분", format_duration(2400))
+        self.assertEqual("2.0시간", format_duration(7200))
+
+    def test_finished_job_keeps_the_numbers_the_estimate_needs(self) -> None:
+        """진행 기록을 끝에 지우면 다음 발주의 예상 시간이 사라진다."""
+        job = self.store.claim_job()
+
+        def fake_submit(_recipe: Any, **kwargs: Any) -> list[Path]:
+            output_dir = kwargs["output_dir"]
+            output_dir.mkdir(parents=True, exist_ok=True)
+            path = output_dir / "raw.png"
+            Image.new("RGBA", (8, 8), (30, 40, 50, 255)).save(path)
+            return [path]
+
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                unittest.mock.patch("art_runner.submit_prompt", fake_submit)
+            )
+            stack.enter_context(
+                unittest.mock.patch(
+                    "art_runner.comfy_batch.request_json",
+                    return_value={},
+                )
+            )
+            notify = stack.enter_context(
+                unittest.mock.patch("art_runner.notify_desktop")
+            )
+            process_job(
+                self.store,
+                job,
+                comfy_url="http://127.0.0.1:1",
+                output_root=self.root / "outputs",
+                timeout=1,
+            )
+
+        finished = self.job()
+        self.assertEqual("awaiting_review", finished["status"])
+        self.assertIsNotNone(finished["finished_at"])
+        view = progress_view(finished)
+        self.assertEqual(2, view["units_total"])
+        self.assertEqual(2, view["units_done"])
+        self.assertEqual("완료", view["stage"])
+        self.assertEqual(1, notify.call_count)
+
+        # 실제 발주는 분 단위라 초 해상도로도 표본이 남는다. 테스트는 한 초
+        # 안에 끝나므로 시작 시각만 물려 "표본이 살아 있다"를 확인한다.
+        with self.store.connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET started_at = ? WHERE id = ?",
+                (
+                    (
+                        datetime.fromisoformat(finished["finished_at"])
+                        - timedelta(seconds=400)
+                    ).isoformat(timespec="seconds"),
+                    self.job_id,
+                ),
+            )
+        self.assertAlmostEqual(200.0, self.store.unit_seconds())
+
+    def test_notification_is_opt_out(self) -> None:
+        with unittest.mock.patch("art_runner.subprocess.run") as run:
+            with unittest.mock.patch.dict(
+                os.environ,
+                {"PROJECTC_ART_NOTIFY": "0"},
+            ):
+                notify_desktop("제목", "본문")
+            run.assert_not_called()
+
+    def finish_job(
+        self,
+        job_id: str,
+        *,
+        units: int,
+        seconds: int,
+        status: str = "awaiting_review",
+    ) -> None:
+        started = datetime(2026, 8, 1, 12, 0, tzinfo=timezone.utc)
+        finished = started + timedelta(seconds=seconds)
+        self.store.set_job_progress(
+            job_id,
+            {"stage": "완료", "units_total": units, "units_done": units},
+        )
+        self.store.set_job_status(job_id, status)
+        with self.store.connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET started_at = ?, finished_at = ? WHERE id = ?",
+                (
+                    started.isoformat(timespec="seconds"),
+                    finished.isoformat(timespec="seconds"),
+                    job_id,
+                ),
+            )
 
 
 if __name__ == "__main__":

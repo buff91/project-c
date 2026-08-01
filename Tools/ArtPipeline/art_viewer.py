@@ -25,6 +25,7 @@ from urllib.parse import unquote, urlparse
 from art_review import (
     ReviewError,
     ReviewStore,
+    progress_view,
     project_path,
 )
 
@@ -171,6 +172,29 @@ def build_index(
             )
         )
     return tuple(views)
+
+
+def running_jobs(
+    store: ReviewStore,
+    *,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """진행 스트립이 읽는 값. CLI `progress`와 같은 `progress_view`를 쓴다."""
+    fallback = store.unit_seconds()
+    rows = [
+        row
+        for row in store.list_jobs(limit=limit)
+        if row["status"] in {"queued", "running"}
+    ]
+    rows.reverse()
+    return [
+        {
+            "id": str(row["id"]),
+            "recipe_id": str(row["recipe_id"]),
+            **progress_view(row, unit_seconds=fallback),
+        }
+        for row in rows
+    ]
 
 
 def image_path(
@@ -434,6 +458,18 @@ button[disabled] { opacity: 0.5; cursor: progress; }
   color: #7fd1ff; }
 .result.error { color: #ff8f8f; }
 .missing, .empty { color: #8fa3b0; }
+#progress { margin: 0 0 20px; display: grid; gap: 8px; }
+.job { background: #141d26; border: 1px solid #223243; border-radius: 8px;
+  padding: 10px 12px; }
+.job-head { display: flex; gap: 10px; align-items: baseline;
+  flex-wrap: wrap; font-size: 12px; color: #b9c8d2; }
+.job-head code { color: #cfe3f0; }
+.job-head .eta { margin-left: auto; color: #7fd1ff; }
+.track { height: 6px; margin-top: 8px; background: #0a0f14;
+  border-radius: 999px; overflow: hidden; }
+.track span { display: block; height: 100%; background: #2f7d4f;
+  transition: width 0.4s ease; }
+.track.queued span { background: #3b5468; }
 </style>
 </head>
 <body>
@@ -441,8 +477,55 @@ button[disabled] { opacity: 0.5; cursor: progress; }
 <p class="hint">카드의 <code>^N</code>은 CLI 별칭과 같은 번호다 —
 <code>art_runner.py approve ^2</code>처럼 쓴다. 판정은 즉시 같은 DB에 남고,
 변형·준비·애니 초안은 워커 큐로 들어간다.</p>
+<section id="progress" hidden></section>
 <div class="grid">__CARDS__</div>
 <script>
+const strip = document.getElementById("progress");
+const escapeText = (value) => {
+  const node = document.createElement("span");
+  node.textContent = value == null ? "" : String(value);
+  return node.innerHTML;
+};
+let sawRunning = false;
+async function pollProgress() {
+  try {
+    const response = await fetch("/progress");
+    if (!response.ok) return;
+    const jobs = await response.json();
+    strip.hidden = jobs.length === 0;
+    strip.innerHTML = jobs.map((job) => {
+      const percent = job.percent == null ? 0 : job.percent;
+      const units = job.units_total
+        ? `${job.units_done}/${job.units_total}장`
+        : "";
+      const node = job.node
+        ? `${escapeText(job.node)}${
+            job.step != null && job.step_max
+              ? ` ${job.step}/${job.step_max}`
+              : ""
+          }`
+        : escapeText(job.stage || job.status);
+      const eta = job.eta_text ? `남은 ${escapeText(job.eta_text)}` : "";
+      return `<article class="job">
+        <div class="job-head"><code>${escapeText(job.id)}</code>
+        <span>${escapeText(job.recipe_id)}</span>
+        <span>${units}</span><span>${node}</span>
+        <span class="eta">${eta}</span></div>
+        <div class="track ${job.status === "running" ? "" : "queued"}">
+        <span style="width: ${percent}%"></span></div>
+      </article>`;
+    }).join("");
+    // 큐가 비는 순간 한 번만 새로 그린다 — 완료된 후보가 격자에 나타나야 한다.
+    const running = jobs.length > 0;
+    if (sawRunning && !running) window.location.reload();
+    sawRunning = running;
+  } catch (error) {
+    /* 워커가 없거나 서버가 내려간 동안에는 조용히 넘어간다 */
+  }
+}
+pollProgress();
+setInterval(pollProgress, 4000);
+
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
@@ -539,6 +622,11 @@ def make_handler(
                     page.encode("utf-8"),
                     "text/html; charset=utf-8",
                 )
+                return
+            if path == "/progress":
+                with lock:
+                    jobs = running_jobs(store)
+                self._send_json(HTTPStatus.OK, jobs)
                 return
             match = IMAGE_ROUTE.match(path)
             if match is None:

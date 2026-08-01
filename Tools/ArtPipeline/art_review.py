@@ -69,6 +69,7 @@ VALID_JOB_STATES = {
     "complete",
     "cancelled",
 }
+FINISHED_JOB_STATES = {"awaiting_review", "failed", "complete", "cancelled"}
 VALID_CANDIDATE_STATES = {
     "generated",
     "approved",
@@ -144,6 +145,88 @@ def utc_now() -> str:
 def make_id(prefix: str) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     return f"{prefix}-{stamp}-{secrets.token_hex(3)}"
+
+
+def elapsed_seconds(start: str | None, end: str | None) -> float | None:
+    if not start or not end:
+        return None
+    try:
+        return (
+            datetime.fromisoformat(end) - datetime.fromisoformat(start)
+        ).total_seconds()
+    except ValueError:
+        return None
+
+
+def format_duration(seconds: float | None) -> str:
+    """사람이 읽는 소요 시간. 발주는 분 단위가 기본 눈금이다."""
+    if seconds is None:
+        return "?"
+    seconds = max(0.0, float(seconds))
+    if seconds < 90:
+        return f"{seconds:.0f}초"
+    minutes = seconds / 60
+    if minutes < 90:
+        return f"{minutes:.0f}분"
+    return f"{minutes / 60:.1f}시간"
+
+
+def progress_view(
+    row: Any,
+    *,
+    unit_seconds: float | None = None,
+) -> dict[str, Any]:
+    """job 행 하나를 CLI·뷰어가 같이 쓰는 진행 표시로 바꾼다."""
+    raw = row["progress_json"] if "progress_json" in row.keys() else None
+    progress: dict[str, Any] = {}
+    if raw:
+        try:
+            loaded = json.loads(raw)
+            if isinstance(loaded, dict):
+                progress = loaded
+        except json.JSONDecodeError:
+            progress = {}
+    total = int(progress.get("units_total") or 0)
+    done = int(progress.get("units_done") or 0)
+    step = progress.get("step")
+    step_max = progress.get("step_max")
+    within = 0.0
+    if isinstance(step, (int, float)) and isinstance(step_max, (int, float)):
+        if step_max:
+            within = min(1.0, max(0.0, float(step) / float(step_max)))
+    fraction: float | None = None
+    if total > 0:
+        fraction = min(1.0, (done + within) / total)
+    running = row["status"] == "running"
+    elapsed = (
+        elapsed_seconds(row["started_at"], utc_now())
+        if running
+        else elapsed_seconds(row["started_at"], row["finished_at"])
+    )
+    remaining: float | None = None
+    if running and total > 0:
+        left = max(0.0, total - (done + within))
+        rate = unit_seconds
+        if done > 0 and elapsed:
+            rate = elapsed / (done + within) if (done + within) else rate
+        if rate:
+            remaining = left * rate
+    return {
+        "status": row["status"],
+        "units_total": total or None,
+        "units_done": done,
+        "fraction": fraction,
+        "percent": round(fraction * 100) if fraction is not None else None,
+        "stage": progress.get("stage"),
+        "shot": progress.get("shot"),
+        "candidate": progress.get("candidate"),
+        "node": progress.get("node"),
+        "step": step,
+        "step_max": step_max,
+        "elapsed_seconds": elapsed,
+        "remaining_seconds": remaining,
+        "eta_text": format_duration(remaining) if remaining else None,
+    }
 
 
 RECENT_ALIASES = frozenset({"latest", "last", "^"})
@@ -1422,6 +1505,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     parent_candidate_id TEXT,
     batch_id TEXT,
     batch_item_id TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    progress_json TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     error TEXT
@@ -1579,7 +1665,13 @@ class ReviewStore:
                     "PRAGMA table_info(jobs)"
                 ).fetchall()
             }
-            for column in ("batch_id", "batch_item_id"):
+            for column in (
+                "batch_id",
+                "batch_item_id",
+                "started_at",
+                "finished_at",
+                "progress_json",
+            ):
                 if column not in job_columns:
                     connection.execute(
                         f"ALTER TABLE jobs ADD COLUMN {column} TEXT"
@@ -1876,10 +1968,11 @@ class ReviewStore:
             connection.execute(
                 """
                 UPDATE jobs
-                SET status = 'running', updated_at = ?, error = NULL
+                SET status = 'running', updated_at = ?, started_at = ?,
+                    finished_at = NULL, progress_json = NULL, error = NULL
                 WHERE id = ? AND status = 'queued'
                 """,
-                (now, row["id"]),
+                (now, now, row["id"]),
             )
             return connection.execute(
                 "SELECT * FROM jobs WHERE id = ?",
@@ -1895,15 +1988,86 @@ class ReviewStore:
     ) -> None:
         if status not in VALID_JOB_STATES:
             raise ReviewError(f"Invalid job status {status!r}")
+        now = utc_now()
+        finished = now if status in FINISHED_JOB_STATES else None
         with self.connect() as connection:
             connection.execute(
                 """
                 UPDATE jobs
-                SET status = ?, updated_at = ?, error = ?
+                SET status = ?, updated_at = ?, error = ?,
+                    finished_at = COALESCE(?, finished_at)
                 WHERE id = ?
                 """,
-                (status, utc_now(), error, job_id),
+                (status, now, error, finished, job_id),
             )
+
+    def set_job_progress(
+        self,
+        job_id: str,
+        progress: dict[str, Any] | None,
+    ) -> None:
+        """워커가 지금 어디쯤인지 DB에 남긴다.
+
+        발주는 장당 수백 초라 콘솔 로그만으로는 밖에서 진행을 볼 수 없다.
+        CLI·뷰어가 같은 값을 읽도록 상태 DB를 유일한 통로로 쓴다.
+        """
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET progress_json = ? WHERE id = ?",
+                (canonical_json(progress) if progress else None, job_id),
+            )
+
+    def unit_seconds(
+        self,
+        *,
+        recipe_id: str | None = None,
+        sample: int = 20,
+    ) -> float | None:
+        """완료된 job에서 잰 장당 초의 중앙값.
+
+        문서의 실측 표를 사람이 옮겨 적는 대신 실제 이력에서 낸다. 표본이
+        없으면 None — 추정치를 지어내지 않는다.
+        """
+        clause = "AND recipe_id = ?" if recipe_id else ""
+        params: list[Any] = [recipe_id] if recipe_id else []
+        params.append(max(1, sample))
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT started_at, finished_at, progress_json
+                FROM jobs
+                WHERE started_at IS NOT NULL
+                  AND finished_at IS NOT NULL
+                  AND status IN ('awaiting_review', 'complete')
+                  {clause}
+                ORDER BY finished_at DESC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
+        samples: list[float] = []
+        for row in rows:
+            units = 0
+            if row["progress_json"]:
+                try:
+                    units = int(
+                        json.loads(row["progress_json"]).get("units_total", 0)
+                    )
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    units = 0
+            if units <= 0:
+                continue
+            elapsed = elapsed_seconds(row["started_at"], row["finished_at"])
+            if elapsed is None or elapsed <= 0:
+                continue
+            samples.append(elapsed / units)
+        if not samples:
+            return None
+        samples.sort()
+        middle = len(samples) // 2
+        if len(samples) % 2:
+            return samples[middle]
+        return (samples[middle - 1] + samples[middle]) / 2
 
     def cancel_job(self, job_id: str) -> None:
         with self.connect() as connection:

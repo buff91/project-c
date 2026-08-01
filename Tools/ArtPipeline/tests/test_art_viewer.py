@@ -330,6 +330,35 @@ class ViewerTests(unittest.TestCase):
         self.assertIn(">^1</span>", page)
         self.assertIn(">^2</span>", page)
 
+    def test_progress_strip_lists_queued_and_running_jobs(self) -> None:
+        queued = self.store.create_job(
+            self.recipe,
+            requested_by="test",
+            candidate_count=1,
+            base_seed=400,
+        )
+        self.store.claim_job()
+        self.store.set_job_progress(
+            self.job_id,
+            {"stage": "generating", "units_total": 2, "units_done": 1},
+        )
+        jobs = art_viewer.running_jobs(self.store)
+        self.assertEqual([self.job_id, queued], [job["id"] for job in jobs])
+        self.assertEqual("running", jobs[0]["status"])
+        self.assertEqual(50, jobs[0]["percent"])
+        self.assertEqual("queued", jobs[1]["status"])
+        self.assertIsNone(jobs[1]["percent"])
+
+    def test_progress_strip_ignores_finished_jobs(self) -> None:
+        self.store.claim_job()
+        self.store.set_job_status(self.job_id, "awaiting_review")
+        self.assertEqual([], art_viewer.running_jobs(self.store))
+
+    def test_page_carries_the_progress_strip(self) -> None:
+        page = art_viewer.render_page(art_viewer.build_index(self.store))
+        self.assertIn('<section id="progress"', page)
+        self.assertIn('fetch("/progress")', page)
+
     def test_host_guard_only_accepts_localhost(self) -> None:
         self.assertTrue(art_viewer.host_is_local("127.0.0.1:8787", 8787))
         self.assertTrue(art_viewer.host_is_local("localhost:8787", 8787))

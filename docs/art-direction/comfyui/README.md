@@ -309,6 +309,9 @@ python3 Tools/ArtPipeline/art_runner.py animation <candidate-id> \
 python3 Tools/ArtPipeline/art_runner.py work --once
 ```
 
+발주가 어디까지 왔는지는 `art_runner.py progress --watch`(또는 뷰어 상단 스트립)로 본다.
+`submit` 은 이 표가 아니라 **완료된 job의 실측 중앙값**으로 예상 시간을 stderr에 낸다.
+
 생성된 후보를 Slack 없이 판정하려면 `python3 Tools/ArtPipeline/art_runner.py review`로 로컬
 뷰어를 띄운다. 후보 ID를 손으로 옮겨 적는 대신 `approve ^2`·`prepare`(선택기)처럼 별칭을 쓴다 —
 둘 다 [`../ART_REVIEW_AUTOMATION.md`](../ART_REVIEW_AUTOMATION.md) §3-b-1·§3-b-2가 소유한다.

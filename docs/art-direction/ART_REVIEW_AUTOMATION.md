@@ -316,7 +316,8 @@ Slack 버튼, Slack `/art` 명령, 로컬 CLI는 같은 SQLite 상태 DB와 작�
 | 한 샷 시험 | `/art shot <recipe-id> <shot-id> [count]` | `art_runner.py submit <recipe-id> --shot <shot-id> --count <n>` | 전체 세트를 만들기 전에 포즈·효과 한 장만 검증 |
 | 배치 목록 | `/art batches` | `art_runner.py batches` | 등록된 다용도 배치 확인 |
 | 배치 실행 | `/art batch style-sampler` | `art_runner.py batch-submit style-sampler` | 용도별 후보를 한꺼번에 큐에 등록 |
-| 활성 큐 | `/art queue` | `art_runner.py queue` | 대기·실행·실패 job 확인 |
+| 활성 큐 | `/art queue` | `art_runner.py queue` | 대기·실행·실패 job 확인(진행률·남은 시간 포함) |
+| 진행 표시 | — | `art_runner.py progress [--watch]` | 지금 도는 job이 몇 장째·어느 노드·남은 시간 |
 | 최근 작업 | `/art status` | `art_runner.py jobs` | 완료 항목을 포함한 최근 job 확인 |
 | 대기 취소 | `/art cancel <job-id>` | `art_runner.py cancel <job-id>` | 아직 시작하지 않은 job만 취소 |
 | 실패 재시도 | `/art retry <job-id>` | `art_runner.py retry <job-id>` | 실패한 job만 같은 설정으로 재큐잉 |
@@ -385,6 +386,32 @@ python3 Tools/ArtPipeline/art_runner.py review
 버튼은 Slack·CLI와 **같은 판정 함수**를 호출한다. 채택은 즉시 승인 스냅샷을 만들고, 변형·준비·
 애니 초안은 워커 큐에 들어간다 — 뷰어는 UI일 뿐 새 상태 머신이 아니다. 서버는 localhost 로만
 답하고(`Host` 검사), 이미지 경로는 요청이 아니라 DB·샷 매니페스트에서 되찾는다.
+
+### 3-b-1-1. 진행 표시와 완료 알림
+
+발주는 장당 수백 초라 "돌고는 있나"를 밖에서 볼 수 있어야 한다. 워커가 진행 좌표를 상태 DB에
+쓰고(`jobs.progress_json`), CLI와 뷰어가 **같은 값**을 읽는다.
+
+```bash
+python3 Tools/ArtPipeline/art_runner.py progress --watch
+```
+
+```text
+ART-...-7ce10f  running  actor-slinger-idle-v1  [██████░░░░░░]  50%  1/3장  남은 5분  KSampler 14/28
+ART-...-2d7201  queued   actor-slinger-idle-v1
+```
+
+- 뷰어(`review`)는 같은 값을 페이지 상단 스트립에 4초마다 갱신하고, 큐가 비는 순간 한 번
+  새로 그린다 — 방금 끝난 후보가 격자에 나타나야 하기 때문이다.
+- `queue`의 JSON에도 `progress`(퍼센트·남은 시간·현재 노드)가 붙는다.
+- **발주 전 예상 시간**: `submit`·`compose-submit`이 job ID를 stdout에, 예상 시간을 stderr에
+  낸다(`예상 40분 — 11장 × 이 레시피 중앙값 221초`). 값은 문서의 실측 표가 아니라 **완료된
+  job의 실제 소요 시간 중앙값**이다 — 레시피별 표본이 없으면 전체 이력으로, 그것도 없으면
+  아무 말도 하지 않는다(추정치를 지어내지 않는다).
+- **완료 알림**: job이 끝나거나 실패하면 macOS 알림을 띄운다. `PROJECTC_ART_NOTIFY=0`으로 끈다.
+
+남은 시간은 첫 장이 끝나기 전에는 이력 중앙값을, 그 뒤에는 **이번 실행의 실측 속도**를 쓴다.
+배경 부하로 장당 시간이 흔들리므로(`comfyui/README.md` §7-a-1의 실측) 초반 추정은 넓게 본다.
 
 ### 3-b-2. 후보·job ID 별칭
 
@@ -480,6 +507,7 @@ python3 Tools/ArtPipeline/art_runner.py work
 상태:
 
 ```bash
+python3 Tools/ArtPipeline/art_runner.py progress --watch
 python3 Tools/ArtPipeline/art_runner.py jobs
 python3 Tools/ArtPipeline/art_runner.py queue
 python3 Tools/ArtPipeline/art_runner.py batch-runs

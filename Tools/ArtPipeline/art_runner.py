@@ -43,8 +43,11 @@ from art_review import (
     UNITY_SLOT_SOURCE,
     VALID_ASSET_TYPES,
     WorkflowTypeRegistry,
+    elapsed_seconds,
     enforce_color_area_limits,
+    format_duration,
     image_metrics,
+    progress_view,
     make_id,
     project_path,
     relative_project_path,
@@ -85,6 +88,7 @@ def submit_prompt(
     output_dir: Path,
     comfy_url: str,
     timeout: float,
+    progress: comfy_batch.ProgressCallback | None = None,
 ) -> list[Path]:
     prompt = comfy_batch.load_prompt(recipe.workflow_path)
     comfy_batch.apply_overrides(prompt, recipe.assignments(seed, shot))
@@ -96,6 +100,7 @@ def submit_prompt(
         timeout=timeout,
         poll_interval=1.0,
         workflow_path=recipe.workflow_path,
+        progress=progress or comfy_batch.console_progress,
     )
     image_outputs = [
         path for path in outputs
@@ -231,6 +236,140 @@ def game_scale_preview(
     return destination
 
 
+class JobProgress:
+    """워커가 도는 동안 job의 현재 위치를 상태 DB에 흘려보낸다.
+
+    발주 한 장이 수백 초라 "돌고는 있나"를 밖에서 볼 수 있어야 한다. 콘솔
+    로그는 백그라운드 서비스에서 아무도 보지 않으므로 DB가 유일한 통로다.
+    """
+
+    def __init__(
+        self,
+        store: ReviewStore,
+        job_id: str,
+        *,
+        units_total: int,
+        min_interval: float = 1.0,
+    ) -> None:
+        self.store = store
+        self.job_id = job_id
+        self.units_total = max(1, units_total)
+        self.min_interval = min_interval
+        self.units_done = 0
+        self.state: dict[str, Any] = {
+            "stage": "starting",
+            "units_total": self.units_total,
+            "units_done": 0,
+        }
+        self.last_write = 0.0
+        self.flush(force=True)
+
+    def flush(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        if not force and now - self.last_write < self.min_interval:
+            return
+        self.last_write = now
+        self.state["units_done"] = self.units_done
+        self.state["updated_at"] = utc_now()
+        try:
+            self.store.set_job_progress(self.job_id, dict(self.state))
+        except ReviewError:
+            pass
+
+    def start_unit(
+        self,
+        *,
+        candidate: int,
+        shot: str | None = None,
+    ) -> None:
+        self.state.update(
+            {
+                "stage": "generating",
+                "candidate": candidate,
+                "shot": shot,
+                "node": None,
+                "step": None,
+                "step_max": None,
+            }
+        )
+        self.flush(force=True)
+
+    def finish_unit(self) -> None:
+        self.units_done = min(self.units_total, self.units_done + 1)
+        self.state.update({"node": None, "step": None, "step_max": None})
+        self.flush(force=True)
+
+    def stage(self, stage: str) -> None:
+        """단계 이름만 바꾼다.
+
+        끝난 job의 진행 기록은 지우지 않는다 — `units_total`이 남아 있어야
+        다음 발주의 예상 시간을 이 job의 실측에서 낼 수 있다.
+        """
+        self.state["stage"] = stage
+        self.flush(force=True)
+
+    def callback(self, event: dict[str, Any]) -> None:
+        """comfy_batch 이벤트를 job 좌표로 옮긴다."""
+        comfy_batch.console_progress(event)
+        event_type = str(event.get("type", ""))
+        data = event.get("data") or {}
+        if event_type == "executing":
+            self.state["node"] = event.get("node_title")
+            self.state["step"] = None
+            self.state["step_max"] = None
+            self.flush(force=True)
+        elif event_type == "progress":
+            self.state["node"] = event.get("node_title") or self.state["node"]
+            self.state["step"] = data.get("value")
+            self.state["step_max"] = data.get("max")
+            self.flush()
+
+
+def notify_desktop(title: str, message: str) -> None:
+    """발주가 끝난 걸 알린다 — 40분짜리를 눈으로 폴링하지 않도록.
+
+    macOS 알림만 지원하고, 실패해도 워커를 멈추지 않는다.
+    """
+    if os.environ.get("PROJECTC_ART_NOTIFY", "1") == "0":
+        return
+    if sys.platform != "darwin":
+        return
+    script = (
+        f"display notification {json.dumps(message, ensure_ascii=False)} "
+        f"with title {json.dumps(title, ensure_ascii=False)}"
+    )
+    try:
+        subprocess.run(
+            ["osascript", "-e", script],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def estimate_text(
+    store: ReviewStore,
+    recipe: Recipe,
+    candidate_count: int,
+) -> str | None:
+    """발주 전 예상 시간. 표본이 없으면 아무 말도 하지 않는다."""
+    units = max(1, len(recipe.shots) if recipe.is_multi_shot else 1)
+    units *= max(1, candidate_count)
+    unit_seconds = store.unit_seconds(recipe_id=recipe.id)
+    scope = "이 레시피"
+    if unit_seconds is None:
+        unit_seconds = store.unit_seconds()
+        scope = "전체 이력"
+    if unit_seconds is None:
+        return None
+    return (
+        f"예상 {format_duration(unit_seconds * units)}"
+        f" — {units}장 × {scope} 중앙값 {unit_seconds:.0f}초"
+    )
+
+
 def write_shot_manifest(
     destination: Path,
     *,
@@ -273,12 +412,21 @@ def process_job(
     output_root: Path,
     timeout: float,
 ) -> None:
+    reporter: JobProgress | None = None
     try:
         recipe = recipe_from_job(job)
         recipe.validate_files()
         output_dir = output_root / job["id"]
         output_dir.mkdir(parents=True, exist_ok=True)
         comfy_batch.request_json(comfy_url, "/system_stats", timeout=10.0)
+        shots_per_candidate = (
+            len(recipe.shots) if recipe.is_multi_shot else 1
+        )
+        reporter = JobProgress(
+            store,
+            job["id"],
+            units_total=job["candidate_count"] * shots_per_candidate,
+        )
         for index in range(job["candidate_count"]):
             ordinal = index + 1
             seed = int(job["base_seed"]) + index
@@ -289,6 +437,7 @@ def process_job(
                 manifest_shots: list[dict[str, Any]] = []
                 for shot in recipe.shots:
                     shot_dir = candidate_dir / "shots" / shot.id
+                    reporter.start_unit(candidate=ordinal, shot=shot.id)
                     outputs = submit_prompt(
                         recipe,
                         seed=seed,
@@ -296,7 +445,9 @@ def process_job(
                         output_dir=shot_dir,
                         comfy_url=comfy_url,
                         timeout=timeout,
+                        progress=reporter.callback,
                     )
+                    reporter.finish_unit()
                     source = outputs[0]
                     raw_shot = shot_dir / "raw.png"
                     if source.resolve() != raw_shot.resolve():
@@ -313,6 +464,7 @@ def process_job(
                             "raw_path": relative_project_path(raw_shot),
                         }
                     )
+                reporter.stage("정리")
                 normalize_rows = recipe.output.get("normalize_rows")
                 if isinstance(normalize_rows, dict):
                     key_tolerance = int(recipe.output.get("key_tolerance", 48))
@@ -335,6 +487,7 @@ def process_job(
                     shots=manifest_shots,
                 )
             else:
+                reporter.start_unit(candidate=ordinal)
                 outputs = submit_prompt(
                     recipe,
                     seed=seed,
@@ -342,7 +495,9 @@ def process_job(
                     output_dir=candidate_dir,
                     comfy_url=comfy_url,
                     timeout=timeout,
+                    progress=reporter.callback,
                 )
+                reporter.finish_unit()
                 source = outputs[0]
                 if source.resolve() != destination.resolve():
                     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -366,14 +521,29 @@ def process_job(
                 raw_path=destination,
                 metrics=metrics,
             )
+        reporter.stage("완료")
         store.set_job_status(job["id"], "awaiting_review")
         store.enqueue_outbox("job_ready", {"job_id": job["id"]})
+        finished = store.get_job(job["id"])
+        took = format_duration(
+            elapsed_seconds(finished["started_at"], finished["finished_at"])
+        )
+        notify_desktop(
+            "아트 발주 완료",
+            f"{job['recipe_id']} · 후보 {job['candidate_count']}세트 · {took}",
+        )
     except Exception as exc:
         message = str(exc)
+        if reporter is not None:
+            reporter.stage("실패")
         store.set_job_status(job["id"], "failed", error=message)
         store.enqueue_outbox(
             "job_failed",
             {"job_id": job["id"], "error": message},
+        )
+        notify_desktop(
+            "아트 발주 실패",
+            f"{job['recipe_id']} — {message[:120]}",
         )
         raise
 
@@ -1383,7 +1553,8 @@ def command_submit(args: argparse.Namespace) -> None:
     if args.shot:
         recipe = recipe.only_shot(args.shot)
     recipe.validate_files()
-    job_id = ReviewStore(args.db).create_job(
+    store = ReviewStore(args.db)
+    job_id = store.create_job(
         recipe,
         requested_by=args.requested_by,
         candidate_count=args.count,
@@ -1392,6 +1563,7 @@ def command_submit(args: argparse.Namespace) -> None:
         parent_candidate_id=args.parent_candidate,
     )
     print(job_id)
+    print_estimate(store, recipe, args.count)
 
 
 def command_compose_submit(args: argparse.Namespace) -> None:
@@ -1464,6 +1636,94 @@ def command_compose_submit(args: argparse.Namespace) -> None:
         parent_candidate_id=args.source_candidate,
     )
     print(job_id)
+    print_estimate(store, recipe, args.count)
+
+
+def print_estimate(
+    store: ReviewStore,
+    recipe: Recipe,
+    candidate_count: int,
+) -> None:
+    """job ID는 stdout, 예상 시간은 stderr — 스크립트 파싱을 깨지 않는다."""
+    estimate = estimate_text(store, recipe, candidate_count)
+    if estimate:
+        print(estimate, file=sys.stderr)
+    ahead = len(store.list_jobs(status="queued", limit=50))
+    if ahead > 1:
+        print(f"앞에 대기 중인 job {ahead - 1}건", file=sys.stderr)
+
+
+def progress_bar(fraction: float | None, width: int = 12) -> str:
+    if fraction is None:
+        return " " * width
+    filled = int(round(min(1.0, max(0.0, fraction)) * width))
+    return "█" * filled + "░" * (width - filled)
+
+
+def progress_line(row: Any, view: dict[str, Any]) -> str:
+    percent = view["percent"]
+    head = (
+        f"{row['id']}  {row['status']:<8} {row['recipe_id']:<32}"
+    )
+    if row["status"] != "running":
+        return head
+    units = ""
+    if view["units_total"]:
+        units = f"  {view['units_done']}/{view['units_total']}장"
+    detail = ""
+    if view["node"]:
+        step = ""
+        if view["step"] is not None and view["step_max"]:
+            step = f" {view['step']}/{view['step_max']}"
+        detail = f"  {view['node']}{step}"
+    remaining = (
+        f"  남은 {view['eta_text']}" if view["eta_text"] else ""
+    )
+    return (
+        f"{head}  [{progress_bar(view['fraction'])}]"
+        f"  {percent if percent is not None else '?'}%"
+        f"{units}{remaining}{detail}"
+    )
+
+
+def command_progress(args: argparse.Namespace) -> None:
+    """지금 큐가 어디까지 왔는지 한 화면으로 본다."""
+    store = ReviewStore(args.db)
+    while True:
+        fallback = store.unit_seconds()
+        rows = [
+            row
+            for row in store.list_jobs(limit=args.limit)
+            if row["status"] in {"queued", "running"}
+        ]
+        if args.json:
+            json_print(
+                [
+                    {
+                        "id": row["id"],
+                        "recipe_id": row["recipe_id"],
+                        **progress_view(row, unit_seconds=fallback),
+                    }
+                    for row in rows
+                ]
+            )
+        elif not rows:
+            print("도는 job 없음")
+        else:
+            for row in reversed(rows):
+                print(
+                    progress_line(
+                        row,
+                        progress_view(row, unit_seconds=fallback),
+                    )
+                )
+        if not args.watch or STOP_REQUESTED:
+            return
+        time.sleep(args.interval)
+        if STOP_REQUESTED:
+            return
+        if not args.json:
+            print("—" * 40)
 
 
 def command_jobs(args: argparse.Namespace) -> None:
@@ -1489,7 +1749,8 @@ def command_job(args: argparse.Namespace) -> None:
 
 
 def command_queue(args: argparse.Namespace) -> None:
-    jobs = ReviewStore(args.db).list_jobs(limit=args.limit)
+    store = ReviewStore(args.db)
+    jobs = store.list_jobs(limit=args.limit)
     visible = (
         jobs
         if args.all
@@ -1499,7 +1760,16 @@ def command_queue(args: argparse.Namespace) -> None:
             if job["status"] in {"queued", "running", "failed"}
         ]
     )
-    json_print([row_dict(job) for job in visible])
+    fallback = store.unit_seconds()
+    json_print(
+        [
+            {
+                **row_dict(job),
+                "progress": progress_view(job, unit_seconds=fallback),
+            }
+            for job in visible
+        ]
+    )
 
 
 def command_job_control(args: argparse.Namespace) -> None:
@@ -2018,6 +2288,13 @@ def build_parser() -> argparse.ArgumentParser:
     queue.add_argument("--limit", type=int, default=50)
     queue.add_argument("--all", action="store_true")
     queue.set_defaults(handler=command_queue)
+
+    progress_cmd = subparsers.add_parser("progress")
+    progress_cmd.add_argument("--limit", type=int, default=50)
+    progress_cmd.add_argument("--watch", action="store_true")
+    progress_cmd.add_argument("--interval", type=float, default=5.0)
+    progress_cmd.add_argument("--json", action="store_true")
+    progress_cmd.set_defaults(handler=command_progress)
 
     review = subparsers.add_parser("review")
     review.add_argument("--host", default=art_viewer.DEFAULT_HOST)
