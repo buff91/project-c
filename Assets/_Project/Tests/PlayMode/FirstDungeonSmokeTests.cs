@@ -52,6 +52,64 @@ namespace ProjectC.Tests.PlayMode
             Assert.NotNull(hub);
             Assert.IsTrue(hub.hubMode);
 
+            RegisterHubInteractionForTest(
+                hub,
+                HubLayout.Entry.East,
+                "stale-test",
+                "낡은 등록");
+            Assert.IsTrue(hub.TryFindAdjacentInteraction(out _, out string staleLabel));
+            Assert.AreEqual("낡은 등록", staleLabel);
+
+            hub.BuildPrototype();
+            Assert.IsFalse(
+                hub.TryFindAdjacentInteraction(out _, out _),
+                "허브 재빌드 뒤에도 이전 레지스트리 항목이 남았다.");
+            // PlayMode의 Destroy는 프레임 끝에 반영되므로, 새 프롭을 찾기 전에
+            // 이전 Generated Visuals 루트가 실제로 정리되도록 한 프레임 넘긴다.
+            yield return null;
+
+            GameObject merchant = GameObject.Find("Merchant");
+            GameObject campfireLight = GameObject.Find("campfire Light 6,4");
+            Assert.NotNull(merchant);
+            Assert.NotNull(campfireLight);
+            Assert.NotNull(GameObject.Find("Stash"));
+            Assert.NotNull(GameObject.Find("Codex"));
+            Vector3 merchantPosition = merchant.transform.position;
+            Vector3 lightPosition = campfireLight.transform.position;
+
+            hub.RotateView(1);
+            yield return null;
+            Assert.Greater(
+                (merchant.transform.position - merchantPosition).sqrMagnitude,
+                0.0001f,
+                "허브 프롭이 시점 회전 뒤 새 투영 위치로 이동하지 않았다.");
+            Assert.Greater(
+                (campfireLight.transform.position - lightPosition).sqrMagnitude,
+                0.0001f,
+                "허브 광원이 시점 회전 뒤 새 투영 위치로 이동하지 않았다.");
+
+            hub.RotateView(-1);
+            yield return null;
+            Assert.Less(
+                (merchant.transform.position - merchantPosition).sqrMagnitude,
+                0.0001f,
+                "허브 프롭이 원래 시점의 투영 위치로 돌아오지 않았다.");
+            Assert.Less(
+                (campfireLight.transform.position - lightPosition).sqrMagnitude,
+                0.0001f,
+                "허브 광원이 원래 시점의 투영 위치로 돌아오지 않았다.");
+
+            string requestedHubInteraction = null;
+            hub.HubInteractionRequested += id => requestedHubInteraction = id;
+            InvokeTileTap(hub, HubLayout.Merchant);
+            float interactionDeadline = Time.realtimeSinceStartup + 5f;
+            yield return new WaitUntil(() =>
+                requestedHubInteraction != null ||
+                Time.realtimeSinceStartup >= interactionDeadline);
+            Assert.AreEqual("merchant", requestedHubInteraction);
+            yield return null;
+            Assert.AreEqual("상인", hub.ContextInteractionLabel);
+
             hub.BeginSelectedDungeon();
             yield return WaitForScene(FrontEndFlow.DungeonScene);
             yield return null;
@@ -502,6 +560,34 @@ namespace ProjectC.Tests.PlayMode
 
             selectDungeon.Invoke(hubHud, new object[] { dungeonId });
             enterDungeon.Invoke(hubHud, null);
+        }
+
+        private static void InvokeTileTap(IsoPrototypeDemo demo, GridPos target)
+        {
+            MethodInfo handleTileTapped = typeof(IsoPrototypeDemo).GetMethod(
+                "HandleTileTapped",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(handleTileTapped);
+            handleTileTapped.Invoke(demo, new object[] { target, true });
+        }
+
+        private static void RegisterHubInteractionForTest(
+            IsoPrototypeDemo demo,
+            GridPos position,
+            string id,
+            string label)
+        {
+            FieldInfo hubWorldField = typeof(IsoPrototypeDemo).GetField(
+                "_hubWorld",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(hubWorldField);
+            object hubWorld = hubWorldField.GetValue(demo);
+            Assert.NotNull(hubWorld);
+            MethodInfo register = hubWorld.GetType().GetMethod(
+                "RegisterInteraction",
+                BindingFlags.Instance | BindingFlags.Public);
+            Assert.NotNull(register);
+            register.Invoke(hubWorld, new object[] { position, id, label });
         }
 
         private static IEnumerator LoadScene(string sceneName)
