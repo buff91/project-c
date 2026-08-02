@@ -310,6 +310,11 @@ def main() -> None:
     if sheet.size != (1536, 1024):
         raise ValueError(f"unexpected source sheet size: {sheet.size}")
 
+    # 기본 벽과 벽 작업등은 B2 품질 패스의 조용한 공용 shell이 정식 주인이다.
+    # 구 고해상도 시트를 다시 처리해도 네이티브 픽셀 벽을 덮어쓰지 않는다.
+    from process_b2_prop_quality_v4 import build_source_assets
+
+    b2_quality = build_source_assets().outputs
     written = 0
     for spec in SPECS:
         source = extract_cell(sheet, spec.cell_index)
@@ -320,11 +325,13 @@ def main() -> None:
         )
         for output_index, output_name in enumerate(spec.output_names):
             # Every second directional output is the mirrored partner.
-            output = (
-                sprite
-                if output_index % 2 == 0
-                else sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            )
+            output = b2_quality.get(output_name)
+            if output is None:
+                output = (
+                    sprite
+                    if output_index % 2 == 0
+                    else sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+                )
             save(output, output_name)
             written += 1
 

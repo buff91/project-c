@@ -4,6 +4,10 @@
 >
 > 범위: 단일 원정자 `actor-knight` 한 종의 생성 입력, 런타임 스프라이트,
 > 6개 상태 태그, Unity 카탈로그 연결과 PC Game View 확인까지.
+>
+> **상태:** 아래는 초기 vertical slice의 역사 기록이다. 현재 런타임 기준은
+> `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`에서 마감한 `96×128` 단일
+> `Frame_0`이며, 방향별 6태그를 수작업 승인하기 전까지 `SurvivorAnimationApproved=false`다.
 
 ## 화면에서 출발한 판단
 

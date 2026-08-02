@@ -93,27 +93,28 @@ namespace ProjectC.Core
                 p.EnemySpawns.AddRange(TakeRandom(guardPool, 1 + depth, random));
             }
 
-            // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 높은 단을 쓴다.
+            // 북쪽 방 바닥이 전부 특수 타일로 채워지는 경우는 없지만, 방어적으로 후면 기준점을 쓴다.
             if (p.EnemySpawns.Count == 0)
                 p.EnemySpawns.Add(p.At(p.StairX, p.RaisedY));
         }
 
         /// <summary>
-        /// 최심층 보스 아레나의 랜드마크(제단) 한 칸. 뒤쪽 올라온 단(dais)의 후면-중앙
-        /// Floor 타일을 결정론적으로 고른다 — RNG를 쓰지 않아 생성 스트림을 흔들지 않는다.
-        /// 적·아이템은 낮은 북쪽 방(BaseElevation)에만 스폰되므로 올라온 단과 겹치지 않는다.
+        /// 최심층 보스 아레나의 랜드마크(제단) 한 칸. 북쪽 방 후면-중앙 Floor 타일을
+        /// 결정론적으로 고른다 — RNG를 쓰지 않아 생성 스트림을 흔들지 않는다.
+        /// 층내 높이를 쓰면 올라온 단(dais), 평탄한 던전이면 기준 평면에 둔다.
         /// </summary>
         private static void PlaceBossLandmark(GridMap map, FloorPlan p, int floorCount)
         {
             if (!DungeonBossArenaRules.IsArenaFloor(p.ProgressIndex, floorCount)) return;
 
+            int elevation = p.BaseElevation + (p.UsesLocalElevation ? 1 : 0);
             for (int y = p.Height - 1; y >= p.RaisedY; y--)
             for (int dx = 0; dx <= p.UpperMaxX - p.UpperMinX; dx++)
             {
                 foreach (int x in new[] { p.StairX - dx, p.StairX + dx })
                 {
                     if (x < p.UpperMinX || x > p.UpperMaxX) continue;
-                    var pos = new GridPos(x, y, p.BaseElevation + 1);
+                    var pos = new GridPos(x, y, elevation);
                     if (map.Get(pos)?.kind != TileKind.Floor) continue;
                     p.Landmark = pos;
                     return;
@@ -196,7 +197,8 @@ namespace ProjectC.Core
             var candidates = new List<GridPos>();
             foreach (GridPos entrance in entranceFloor.UpperRoomCells())
             {
-                // 사다리 컬럼은 캐치워크가 +2단에 얹히는 자리라 비켜 둔다.
+                // 계획 단계가 정한 서비스 컬럼은 비워 둔다. 층내 높이를 쓰는 던전에서는
+                // 캐치워크 사다리가 이 열을 쓰며, 평탄한 던전에서도 seed별 설비 위치를 안정시킨다.
                 if (entrance.x == entranceFloor.LadderX) continue;
 
                 var landing = new GridPos(entrance.x, entrance.y, landingFloor.BaseElevation);
@@ -259,6 +261,8 @@ namespace ProjectC.Core
         /// </summary>
         private static void PlaceCatwalk(GridMap map, FloorPlan p, int floorCount)
         {
+            if (!p.UsesLocalElevation) return;
+
             int depth = p.ProgressIndex;
             if (DungeonBossArenaRules.IsArenaFloor(depth, floorCount)) return;
 

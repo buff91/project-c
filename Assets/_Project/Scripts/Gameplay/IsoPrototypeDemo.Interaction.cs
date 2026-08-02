@@ -14,10 +14,13 @@ namespace ProjectC.Gameplay
         /// </summary>
         private void HandleStepRequested(int dx, int dy)
         {
-            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+            if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
+            if (_bombAiming) return;
 
+            ClearDropFocus(restoreSelection: true);
             int x = _playerPos.x + dx;
             int y = _playerPos.y + dy;
             // 계단 승강 커버: 위 → 같은 높이 → 아래 순으로 존재하는 타일을 고른다.
@@ -52,8 +55,13 @@ namespace ProjectC.Gameplay
         /// </summary>
         public void InteractAdjacent()
         {
-            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+            if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
+                return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
+            if (_bombAiming) return;
+
+            if (TryConfirmArmedDrop())
                 return;
 
             if (TryActivateHubPortal() || TryActivateCurrentConnector())
@@ -230,9 +238,11 @@ namespace ProjectC.Gameplay
         /// <summary>대기(턴 스킵): 제자리에서 행동 1회를 소비하고 적 턴만 돌린다.</summary>
         public void WaitTurn()
         {
-            if (!Application.isPlaying || _resolvingAction || _bombAiming ||
+            if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
+            if (_bombAiming) return;
 
             if (_runTelemetry != null) _runTelemetry.waitActions++;
             InteractionFeedback?.Invoke("대기 — 주변을 살핀다");
@@ -276,6 +286,20 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            // 명시적 층 보기에서는 원격 투척만 예외다. 다른 층과 현재 층 모두 직접 조작하지 않는다.
+            if (IsVerticalLookActive)
+            {
+                if (_bombAiming && VerticalThrowRules.Supports(_bombAimKind) &&
+                    IsVerticalLookTarget(target))
+                {
+                    HandleBombAimTap(target);
+                    return;
+                }
+
+                RejectWorldActionWhileVerticalLooking();
+                return;
+            }
+
             if (viewMode == DungeonViewMode.Play &&
                 !_visibleTiles.Contains(target) &&
                 !_exploredTiles.Contains(target) &&
@@ -285,11 +309,27 @@ namespace ProjectC.Gameplay
                 return;
             }
 
+            if (WorldInputRules.IsReadOnlyVerticalPreview(
+                    viewMode == DungeonViewMode.DebugAll,
+                    _dungeon.Height.FloorIndex(target.elevation),
+                    _activeFloorIndex,
+                    _verticalPreviewTiles.Contains(target)))
+            {
+                ClearDropFocus(restoreSelection: true);
+                InteractionFeedback?.Invoke(
+                    "개구부 너머 미리보기 — 현재 층에서는 직접 조작할 수 없다");
+                return;
+            }
+
             if (_bombAiming)
             {
                 HandleBombAimTap(target);
                 return;
             }
+
+            TileData targetTile = _grid.Map.Get(target);
+            if (targetTile == null || targetTile.kind != TileKind.Hole)
+                ClearDropFocus(restoreSelection: true);
 
             // 사다리/층 전환 타일 위에서는 자기 자신 탭이 곧 사용이다.
             // 그 외 타일에서만 액션 휠을 연다.
@@ -341,7 +381,6 @@ namespace ProjectC.Gameplay
                 return;
             }
 
-            TileData targetTile = _grid.Map.Get(target);
             if (SecretRoomRules.IsSecretDoor(targetTile))
             {
                 if (TryFindApproach(target, out List<GridPos> secretPath))
@@ -351,8 +390,15 @@ namespace ProjectC.Gameplay
 
             if (targetTile != null && targetTile.kind == TileKind.Hole)
             {
-                if (TryFindApproach(target, out List<GridPos> dropPath))
-                    StartPlayerAction(target, ApproachAndDrop(dropPath, target));
+                if (viewMode == DungeonViewMode.DebugAll)
+                {
+                    if (TryFindApproach(target, out List<GridPos> debugDropPath))
+                        StartPlayerAction(target, ApproachAndDrop(debugDropPath, target));
+                }
+                else
+                {
+                    TryHandleDropHoleTap(target);
+                }
                 return;
             }
 
@@ -459,6 +505,29 @@ namespace ProjectC.Gameplay
 
         private void HandleBombAimTap(GridPos target)
         {
+            if (IsVerticalLookActive)
+            {
+                if (!VerticalThrowRules.Supports(_bombAimKind))
+                {
+                    InteractionFeedback?.Invoke("이 장비는 다른 층으로 사용할 수 없다");
+                    return;
+                }
+                if (!TryResolveVerticalThrow(target, out VerticalThrowPath verticalPath))
+                {
+                    InteractionFeedback?.Invoke($"개구부 경로 밖 · 투척 사거리 {bombThrowRange}");
+                    return;
+                }
+
+                if (_bombAimKind == ItemKind.OilFlask)
+                    StartPlayerAction(
+                        target, ThrowOil(target, verticalPath), preserveVerticalLook: true);
+                else
+                    StartPlayerAction(
+                        target, ThrowBomb(target, _bombAimKind, verticalPath),
+                        preserveVerticalLook: true);
+                return;
+            }
+
             // 단검은 타일이 아니라 적을 조준한다.
             if (_bombAimKind == ItemKind.ThrowingKnife)
             {

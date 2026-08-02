@@ -14,6 +14,23 @@ namespace ProjectC.Core
         public CombatantState CrushedOccupant;
     }
 
+    /// <summary>상태를 바꾸지 않고 계산한 낙하 착지와 피해. HUD와 실제 판정이 같은 계산을 쓴다.</summary>
+    public readonly struct FallPreview
+    {
+        public GridPos Landing { get; }
+        public int DropCells { get; }
+        public int FloorsFallen { get; }
+        public int Damage { get; }
+
+        public FallPreview(GridPos landing, int dropCells, int floorsFallen, int damage)
+        {
+            Landing = landing;
+            DropCells = dropCells;
+            FloorsFallen = floorsFallen;
+            Damage = damage;
+        }
+    }
+
     /// <summary>
     /// 모든 낙하 트리거의 수렴점 TryFall(). (GDD §5.3, M4)
     /// 구멍 진입·약한 바닥 붕괴·넉백 등 어떤 이유로든 낙하가 시작되면
@@ -55,6 +72,35 @@ namespace ProjectC.Core
         }
 
         /// <summary>
+        /// 실제 낙하와 같은 착지·피해를 계산하되 전투 참가자 상태는 바꾸지 않는다.
+        /// 의도적 낙하 확인 UI는 반드시 이 경로를 써야 실제 결과와 갈라지지 않는다.
+        /// </summary>
+        public static bool TryPreview(
+            GridMap map,
+            DungeonHeightModel height,
+            GridPos from,
+            int minElevation,
+            int safeFallHeight,
+            out FallPreview preview)
+        {
+            if (map == null) throw new ArgumentNullException(nameof(map));
+            if (height == null) throw new ArgumentNullException(nameof(height));
+
+            preview = default;
+            GridPos? landingOrNull = map.FindLandingBelow(from, minElevation);
+            if (!landingOrNull.HasValue) return false;
+
+            GridPos landing = landingOrNull.Value;
+            int dropCells = from.elevation - landing.elevation;
+            preview = new FallPreview(
+                landing,
+                dropCells,
+                height.FloorIndex(from.elevation) - height.FloorIndex(landing.elevation),
+                DamageForDrop(dropCells, height.ElevationsPerFloor, safeFallHeight));
+            return true;
+        }
+
+        /// <summary>
         /// from 칸(구멍/허공)에서 낙하를 처리한다. 착지점이 없으면(무저갱) null.
         /// faller 의 위치·HP, 착지점 점유자의 HP 를 여기서 직접 갱신한다 — 연출은 호출부가.
         /// </summary>
@@ -71,27 +117,29 @@ namespace ProjectC.Core
             if (height == null) throw new ArgumentNullException(nameof(height));
             if (faller == null) throw new ArgumentNullException(nameof(faller));
 
-            GridPos? landingOrNull = map.FindLandingBelow(from, minElevation);
-            if (!landingOrNull.HasValue) return null;
+            if (!TryPreview(
+                    map,
+                    height,
+                    from,
+                    minElevation,
+                    safeFallHeight,
+                    out FallPreview preview))
+                return null;
 
-            GridPos landing = landingOrNull.Value;
-            // 낙뎀은 실제 낙하 칸수(가속 곡선) 기준. FloorsFallen은 연출·텔레메트리용으로 남긴다.
-            int dropCells = from.elevation - landing.elevation;
-            int floorsFallen = height.FloorIndex(from.elevation) - height.FloorIndex(landing.elevation);
-            int damage = DamageForDrop(dropCells, height.ElevationsPerFloor, safeFallHeight);
+            GridPos landing = preview.Landing;
 
             var result = new FallResult
             {
-                FloorsFallen = floorsFallen,
-                Damage = damage
+                FloorsFallen = preview.FloorsFallen,
+                Damage = preview.Damage
             };
 
-            faller.TakeDamage(damage);
+            faller.TakeDamage(preview.Damage);
 
             CombatantState occupant = FindLivingAt(others, faller, landing);
             if (occupant != null)
             {
-                occupant.TakeDamage(damage);
+                occupant.TakeDamage(preview.Damage);
                 result.CrushedOccupant = occupant;
             }
 

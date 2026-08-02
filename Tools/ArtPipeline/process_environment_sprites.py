@@ -53,16 +53,33 @@ def add_floor_under(asset: Image.Image, floor: Image.Image, output_name: str) ->
     return composed
 
 
+def build_canonical_wall_outputs() -> dict[str, Image.Image]:
+    """Return the current B2-owned base/light walls for this legacy writer.
+
+    This processor still owns several old environment conversions, but the
+    32x56 generated wall inputs are no longer valid runtime assets.  Reusing the
+    canonical writer here prevents a full legacy regeneration from silently
+    downgrading the approved 64x112 wall family.
+    """
+    from process_b2_prop_quality_v4 import build_source_assets
+
+    current = build_source_assets().outputs
+    names = (
+        "env-wall-rising-right",
+        "env-wall-rising-left",
+        "env-wall-torch-rising-right",
+        "env-wall-torch-rising-left",
+    )
+    return {name: current[name].copy() for name in names}
+
+
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
 
     floor = fit_to_canvas("floor-alpha.png", "env-floor.png", (64, 32))
 
-    wall = fit_to_canvas("wall-right-alpha.png", "env-wall-rising-right.png", (32, 56))
-    save_mirror(wall, "env-wall-rising-left.png")
-
-    torch = fit_to_canvas("wall-torch-right-alpha.png", "env-wall-torch-rising-right.png", (32, 56))
-    save_mirror(torch, "env-wall-torch-rising-left.png")
+    for name, image in build_canonical_wall_outputs().items():
+        image.save(OUTPUT / f"{name}.png", optimize=True)
 
     closed_door = fit_to_canvas("door-closed-right-alpha.png", "env-door-closed-rising-right.png", (64, 80), 1)
     closed = add_floor_under(closed_door, floor, "env-door-closed-rising-right.png")

@@ -219,6 +219,19 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void B2CrackedFloorFor_PrefersDedicatedSlot_ThenFacilityFallback()
+        {
+            Sprite facilityCracked = MakeSprite();
+            Sprite b2Cracked = MakeSprite();
+            _catalog.hospitalFloorCracked = facilityCracked;
+
+            Assert.AreSame(facilityCracked, _catalog.B2CrackedFloorFor());
+
+            _catalog.b2CrackedFloor = b2Cracked;
+            Assert.AreSame(b2Cracked, _catalog.B2CrackedFloorFor());
+        }
+
+        [Test]
         public void B2FloorDressingFor_SelectsFourViews_ThenLegacyFallback()
         {
             Sprite parkingLegacy = MakeSprite();
@@ -302,6 +315,138 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void B2BarrelBayFloorFor_RequiresCompleteTwoCellFourViewSet()
+        {
+            Sprite[] service = { MakeSprite(), MakeSprite(), MakeSprite(), MakeSprite() };
+            Sprite[] drain = { MakeSprite(), MakeSprite(), MakeSprite(), MakeSprite() };
+            _catalog.b2BarrelBayServiceFloorView0 = service[0];
+            _catalog.b2BarrelBayServiceFloorView1 = service[1];
+            _catalog.b2BarrelBayServiceFloorView2 = service[2];
+            _catalog.b2BarrelBayServiceFloorView3 = service[3];
+            _catalog.b2BarrelBayDrainFloorView0 = drain[0];
+            _catalog.b2BarrelBayDrainFloorView1 = drain[1];
+            _catalog.b2BarrelBayDrainFloorView2 = drain[2];
+            _catalog.b2BarrelBayDrainFloorView3 = drain[3];
+
+            Assert.IsTrue(_catalog.HasCompleteB2BarrelBayFloor);
+            for (int view = 0; view < 4; view++)
+            {
+                Assert.AreSame(service[view], _catalog.B2BarrelBayFloorFor(false, view));
+                Assert.AreSame(drain[view], _catalog.B2BarrelBayFloorFor(true, view));
+            }
+            Assert.AreSame(service[3], _catalog.B2BarrelBayFloorFor(false, -1));
+            Assert.AreSame(drain[0], _catalog.B2BarrelBayFloorFor(true, 4));
+
+            _catalog.b2BarrelBayDrainFloorView2 = null;
+            Assert.IsFalse(_catalog.HasCompleteB2BarrelBayFloor);
+            for (int view = 0; view < 4; view++)
+            {
+                Assert.IsNull(_catalog.B2BarrelBayFloorFor(false, view));
+                Assert.IsNull(_catalog.B2BarrelBayFloorFor(true, view));
+            }
+        }
+
+        [Test]
+        public void B2MacroFloorFor_RequiresCompleteFourRoleFourViewSet()
+        {
+            var sprites = new Sprite[4, 4];
+            for (int role = 0; role < 4; role++)
+            for (int view = 0; view < 4; view++)
+            {
+                Sprite sprite = MakeSprite();
+                sprites[role, view] = sprite;
+                typeof(IsoVisualCatalog)
+                    .GetField($"b2MacroFloorRole{role}View{view}")
+                    .SetValue(_catalog, sprite);
+            }
+
+            Assert.IsTrue(_catalog.HasCompleteB2MacroFloor);
+            for (int role = 0; role < 4; role++)
+            for (int view = 0; view < 4; view++)
+                Assert.AreSame(sprites[role, view], _catalog.B2MacroFloorFor(role, view));
+            Assert.AreSame(sprites[2, 3], _catalog.B2MacroFloorFor(2, -1));
+            Assert.AreSame(sprites[3, 0], _catalog.B2MacroFloorFor(3, 4));
+            Assert.IsNull(_catalog.B2MacroFloorFor(-1, 0));
+            Assert.IsNull(_catalog.B2MacroFloorFor(4, 0));
+
+            _catalog.b2MacroFloorRole1View2 = null;
+            Assert.IsFalse(_catalog.HasCompleteB2MacroFloor);
+            for (int role = 0; role < 4; role++)
+            for (int view = 0; view < 4; view++)
+                Assert.IsNull(_catalog.B2MacroFloorFor(role, view));
+        }
+
+        [Test]
+        public void B2RoomFloorLighting_PreservesMeanAndRetainsTwentyPercentLocalContrast()
+        {
+            var local = new[]
+            {
+                new Color(0.4f, 0.5f, 0.6f, 0.35f),
+                new Color(0.6f, 0.6f, 0.6f, 0.7f),
+                new Color(0.8f, 0.7f, 0.6f, 1f),
+            };
+            Color reference = B2RoomFloorLighting.Average(local);
+            Assert.That(reference.r, Is.EqualTo(0.6f).Within(0.0001f));
+            Assert.That(reference.g, Is.EqualTo(0.6f).Within(0.0001f));
+            Assert.That(reference.b, Is.EqualTo(0.6f).Within(0.0001f));
+
+            Color low = B2RoomFloorLighting.Coherent(reference, local[0]);
+            Color middle = B2RoomFloorLighting.Coherent(reference, local[1]);
+            Color high = B2RoomFloorLighting.Coherent(reference, local[2]);
+            Assert.That(low.r, Is.EqualTo(0.56f).Within(0.0001f));
+            Assert.That(middle.r, Is.EqualTo(0.6f).Within(0.0001f));
+            Assert.That(high.r, Is.EqualTo(0.64f).Within(0.0001f));
+            Assert.That((low.r + middle.r + high.r) / 3f,
+                Is.EqualTo(reference.r).Within(0.0001f));
+            Assert.That(high.r - low.r,
+                Is.EqualTo((local[2].r - local[0].r) *
+                    B2RoomFloorLighting.LocalLightRetention).Within(0.0001f));
+            Assert.That(low.a, Is.EqualTo(local[0].a).Within(0.0001f));
+            Assert.That(middle.a, Is.EqualTo(local[1].a).Within(0.0001f));
+            Assert.That(high.a, Is.EqualTo(local[2].a).Within(0.0001f));
+        }
+
+        [Test]
+        public void B2RoomFloorLighting_EmptyAverageIsNeutralWhite()
+        {
+            Assert.AreEqual(Color.white, B2RoomFloorLighting.Average(System.Array.Empty<Color>()));
+        }
+
+        [Test]
+        public void ActorGroundingPresentation_WorldTintCombinesStateElevationAndLocalLight()
+        {
+            Color result = ActorGroundingPresentation.WorldTint(
+                new Color(0.8f, 0.5f, 0.25f, 0.7f),
+                new Color(0.75f, 0.8f, 0.9f, 0.2f),
+                new Color(0.6f, 0.7f, 0.8f, 0.1f));
+
+            Assert.That(result.r, Is.EqualTo(0.36f).Within(0.0001f));
+            Assert.That(result.g, Is.EqualTo(0.28f).Within(0.0001f));
+            Assert.That(result.b, Is.EqualTo(0.18f).Within(0.0001f));
+            Assert.That(result.a, Is.EqualTo(0.7f).Within(0.0001f));
+        }
+
+        [Test]
+        public void ActorGroundingPresentation_ShadowKeepsReadableDarkTileFloor()
+        {
+            float dark = ActorGroundingPresentation.ShadowTintAlpha(0.55f, 0f);
+            float middle = ActorGroundingPresentation.ShadowTintAlpha(0.55f, 0.5f);
+            float bright = ActorGroundingPresentation.ShadowTintAlpha(0.55f, 1f);
+
+            Assert.That(dark, Is.EqualTo(0.3575f).Within(0.0001f));
+            Assert.That(middle, Is.GreaterThan(dark));
+            Assert.That(bright, Is.EqualTo(0.55f).Within(0.0001f));
+        }
+
+        [Test]
+        public void ActorGroundingPresentation_PlayerFootprintStaysBelowHalfOpacity()
+        {
+            Assert.That(
+                ActorGroundingPresentation.PlayerFootprintAlpha,
+                Is.InRange(0.35f, 0.49f));
+        }
+
+        [Test]
         public void RearWallFor_UsesHospitalDecorationBeforeBaseWall()
         {
             Sprite baseWall = MakeSprite();
@@ -317,6 +462,37 @@ namespace ProjectC.Tests
             Assert.AreSame(window, _catalog.RearWallFor(false, true, 1));
             Assert.AreSame(cabinet, _catalog.RearWallFor(false, true, 2));
             Assert.AreSame(baseWall, _catalog.RearWallFor(false, true, 3));
+        }
+
+        [Test]
+        public void B2ServiceWallSegmentFor_RequiresCompleteDirectionalStrip()
+        {
+            Sprite segment0Right = MakeSprite();
+            Sprite segment0Left = MakeSprite();
+            Sprite segment1Right = MakeSprite();
+            Sprite segment1Left = MakeSprite();
+            Sprite segment2Right = MakeSprite();
+            Sprite segment2Left = MakeSprite();
+            _catalog.b2ServiceWallSegment0RisingRight = segment0Right;
+            _catalog.b2ServiceWallSegment0RisingLeft = segment0Left;
+            _catalog.b2ServiceWallSegment1RisingRight = segment1Right;
+            _catalog.b2ServiceWallSegment1RisingLeft = segment1Left;
+            _catalog.b2ServiceWallSegment2RisingRight = segment2Right;
+            _catalog.b2ServiceWallSegment2RisingLeft = segment2Left;
+
+            Assert.AreSame(segment0Right, _catalog.B2ServiceWallSegmentFor(0, true));
+            Assert.AreSame(segment0Left, _catalog.B2ServiceWallSegmentFor(0, false));
+            Assert.AreSame(segment1Right, _catalog.B2ServiceWallSegmentFor(1, true));
+            Assert.AreSame(segment1Left, _catalog.B2ServiceWallSegmentFor(1, false));
+            Assert.AreSame(segment2Right, _catalog.B2ServiceWallSegmentFor(2, true));
+            Assert.AreSame(segment2Left, _catalog.B2ServiceWallSegmentFor(2, false));
+            Assert.IsNull(_catalog.B2ServiceWallSegmentFor(-1, true));
+            Assert.IsNull(_catalog.B2ServiceWallSegmentFor(3, false));
+
+            _catalog.b2ServiceWallSegment1RisingLeft = null;
+            Assert.IsNull(_catalog.B2ServiceWallSegmentFor(0, true));
+            Assert.IsNull(_catalog.B2ServiceWallSegmentFor(1, false));
+            Assert.IsNull(_catalog.B2ServiceWallSegmentFor(2, true));
         }
 
         [Test]

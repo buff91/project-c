@@ -27,6 +27,10 @@ namespace ProjectC.Gameplay
 
         private Button _rotateLeft;
         private Button _rotateRight;
+        private Button _verticalViewUp;
+        private Button _verticalViewCurrent;
+        private Button _verticalViewDown;
+        private Label _verticalViewState;
         private Button _modeButton;
         private Button _combatButton;
         private Button _interactButton;
@@ -77,6 +81,8 @@ namespace ProjectC.Gameplay
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
         private Button _waitButton;
+        private VisualElement _turnPill;
+        private Label _turnLabel;
         private Button _gameMenuButton;
         private VisualElement _gameMenuModal;
         private VisualElement _inventoryModal;
@@ -88,6 +94,7 @@ namespace ProjectC.Gameplay
         private ResponsiveUiLayout _responsiveLayout;
         private bool _developmentViewportRefreshRequested;
         private bool _reopenSettingsAfterViewportRefresh;
+        private VerticalLookMode _lastVerticalLookMode = (VerticalLookMode)(-1);
 
         private IsoTapInput _tapInput;
 
@@ -139,6 +146,9 @@ namespace ProjectC.Gameplay
             // 필드를 남겨두면 재활성화 시 BindDocument가 같은 요소로 판단해 재구독을 건너뛴다.
             RebindButton(ref _rotateLeft, null, RotateLeft);
             RebindButton(ref _rotateRight, null, RotateRight);
+            RebindButton(ref _verticalViewUp, null, LookUp);
+            RebindButton(ref _verticalViewCurrent, null, LookCurrent);
+            RebindButton(ref _verticalViewDown, null, LookDown);
             RebindButton(ref _modeButton, null, ToggleViewMode);
             RebindButton(ref _combatButton, null, ToggleCombatMode);
             RebindButton(ref _interactButton, null, PerformInteraction);
@@ -225,6 +235,12 @@ namespace ProjectC.Gameplay
                 root, demo, "settings-button", CloseTransientOverlays);
             RebindButton(ref _rotateLeft, root.Q<Button>("rotate-left"), RotateLeft);
             RebindButton(ref _rotateRight, root.Q<Button>("rotate-right"), RotateRight);
+            RebindButton(ref _verticalViewUp, root.Q<Button>("vertical-view-up"), LookUp);
+            RebindButton(
+                ref _verticalViewCurrent,
+                root.Q<Button>("vertical-view-current"),
+                LookCurrent);
+            RebindButton(ref _verticalViewDown, root.Q<Button>("vertical-view-down"), LookDown);
             RebindButton(ref _modeButton, root.Q<Button>("mode-button"), ToggleViewMode);
             RebindButton(ref _combatButton, root.Q<Button>("combat-button"), ToggleCombatMode);
             RebindButton(ref _interactButton, root.Q<Button>("interact-button"), PerformInteraction);
@@ -234,6 +250,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _menuButton, root.Q<Button>("menu-button"), ReturnToCamp);
 
             _viewLabel = root.Q<Label>("view-label");
+            _verticalViewState = root.Q<Label>("vertical-view-state");
             _depthLabel = root.Q<Label>("depth-label");
             _depthCaption = root.Q<Label>("depth-caption");
             _floorLabel = root.Q<Label>("floor-label");
@@ -260,6 +277,8 @@ namespace ProjectC.Gameplay
             _gameoverKills = root.Q<Label>("gameover-kills");
             _minimapView = root.Q<VisualElement>("minimap-view");
             RebindButton(ref _waitButton, root.Q<Button>("wait-button"), HandleWaitClicked);
+            _turnPill = root.Q<VisualElement>(className: "turn-pill");
+            _turnLabel = _turnPill?.Q<Label>(className: "turn-label");
             RebindButton(ref _gameMenuButton, root.Q<Button>("game-menu-button"), OpenGameMenu);
             RebindButton(ref _menuResume, root.Q<Button>("menu-resume"), CloseGameMenu);
             RebindButton(ref _menuLobby, root.Q<Button>("menu-lobby"), GoToLobbyKeepingSave);
@@ -280,9 +299,11 @@ namespace ProjectC.Gameplay
             _bossHealthValue = root.Q<Label>("boss-health-value");
             _bossObjective = root.Q<Label>("boss-objective");
             BindReadouts(root);
+            _lastVerticalLookMode = (VerticalLookMode)(-1);
             UpdateMinimap();
             UpdateHpDisplay();
             UpdateViewLabel();
+            UpdateVerticalViewControls();
             UpdateFloorLabel();
             UpdateModeLabel();
             UpdateCombatLabel();
@@ -352,6 +373,21 @@ namespace ProjectC.Gameplay
             if (demo != null) demo.RotateView(1);
         }
 
+        private void LookUp()
+        {
+            if (demo != null) demo.LookUp();
+        }
+
+        private void LookCurrent()
+        {
+            if (demo != null) demo.LookCurrent();
+        }
+
+        private void LookDown()
+        {
+            if (demo != null) demo.LookDown();
+        }
+
         private void ToggleViewMode()
         {
             if (demo != null) demo.ToggleViewMode();
@@ -417,6 +453,12 @@ namespace ProjectC.Gameplay
                     _displaySettings.Close();
                     return;
                 }
+                if (demo != null && demo.CancelThrowAim())
+                    return;
+                if (demo != null && demo.CancelDropConfirmation())
+                    return;
+                if (demo != null && demo.CancelVerticalLook())
+                    return;
                 if (_gameMenuModal != null && _gameMenuModal.ClassListContains("is-open"))
                     CloseGameMenu();
                 else

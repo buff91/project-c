@@ -87,6 +87,7 @@ MonoBehaviour:
   hospitalFloorService: {fileID: -5116192764051695462, guid: e4612de303e4d49d08e50dddf8a692ed, type: 3}
   b2ParkingWheelStopFloor: {fileID: 21300000, guid: 673f679c9db88471bb4773e9dd1cf875, type: 3}
   b2FallenWayfindingFloor: {fileID: 21300000, guid: 8e05213acfebb450598cb3681c3da8f1, type: 3}
+  b2CrackedFloor: {fileID: -3244434740991104653, guid: 7bfb04eb87cf6409385c59b303ab1440, type: 3}
   b2ParkingWheelStopFloorView0: {fileID: -7663427411360604691, guid: cc8b8f729ae7e4aa89cda80c39ff4dd1, type: 3}
   b2ParkingWheelStopFloorView1: {fileID: 7458450914469590535, guid: 185db519741984d099db3573e4a4a929, type: 3}
   b2ParkingWheelStopFloorView2: {fileID: 3279833622342314907, guid: 406c1a6ce7baa4a819b1e7537014a420, type: 3}
@@ -95,6 +96,30 @@ MonoBehaviour:
   b2FallenWayfindingFloorView1: {fileID: -3280673575726565241, guid: 92fb681c96b144cae92d1eefbfa0f526, type: 3}
   b2FallenWayfindingFloorView2: {fileID: -7312188156469278615, guid: f911b21ea8cfa450996d6565164641c3, type: 3}
   b2FallenWayfindingFloorView3: {fileID: 183686844213091506, guid: cd4cf454336054c71a928352bd15b623, type: 3}
+  b2BarrelBayServiceFloorView0: {fileID: -3592795838515870317, guid: 9b5db2afb93d3497c82c23f370de892f, type: 3}
+  b2BarrelBayServiceFloorView1: {fileID: 5491330121453295511, guid: 4aa1cadfc86534364abb35d22cade127, type: 3}
+  b2BarrelBayServiceFloorView2: {fileID: 8327771916061590245, guid: f14f044e50c3247ad80673ad49b7637d, type: 3}
+  b2BarrelBayServiceFloorView3: {fileID: -8720636184910708250, guid: d4332288674294ed79cbe40fb4903cff, type: 3}
+  b2BarrelBayDrainFloorView0: {fileID: -7781260185979620530, guid: f18162330235545c2b62272e77d1ed66, type: 3}
+  b2BarrelBayDrainFloorView1: {fileID: -3160523644816858548, guid: a65e65b29899b4fe6a7c7931b92c6845, type: 3}
+  b2BarrelBayDrainFloorView2: {fileID: -3699714566210081704, guid: b0196ed1c12a24a74ace3e6b601ce2e9, type: 3}
+  b2BarrelBayDrainFloorView3: {fileID: -3713645542340600222, guid: 78a44aa31dda3422297e70742c5aa6d5, type: 3}
+  b2MacroFloorRole0View0: {fileID: 3862993708404745574, guid: fb9c4e7f9c5894636b51588e9cf82342, type: 3}
+  b2MacroFloorRole0View1: {fileID: 8197546402656332094, guid: 1c283521ae66f4c38a32b987e56d0a3c, type: 3}
+  b2MacroFloorRole0View2: {fileID: 3621584660320826915, guid: 2d1bb16a2a38542d4b8bb6dff740ac8c, type: 3}
+  b2MacroFloorRole0View3: {fileID: -5097093154529031570, guid: 204fad403f6a04f47b7528ca523d6ee9, type: 3}
+  b2MacroFloorRole1View0: {fileID: 7079538363707308571, guid: e0b383ff017cf49d18e43565d2b2a66a, type: 3}
+  b2MacroFloorRole1View1: {fileID: 6021694630266463840, guid: 31a30bc6f1f0146e3885f307fe5d8f22, type: 3}
+  b2MacroFloorRole1View2: {fileID: -3548772736619256151, guid: beb1632ffdfee4809963cab9395b8036, type: 3}
+  b2MacroFloorRole1View3: {fileID: 7293244240109617157, guid: e4f6d4f65810c45a594457e1b50a9ac0, type: 3}
+  b2MacroFloorRole2View0: {fileID: 2304130114062424275, guid: 15121e5f74c0e41baa483b8fac44b9de, type: 3}
+  b2MacroFloorRole2View1: {fileID: -5899623626810099290, guid: 3a13ff56b1e1f4ba6b56264ddfaf820e, type: 3}
+  b2MacroFloorRole2View2: {fileID: -395312444584017403, guid: d82eae11b67fe4f018d27e4526b6da56, type: 3}
+  b2MacroFloorRole2View3: {fileID: -710398480798628323, guid: c42457b48cf364b13be9049565e95c25, type: 3}
+  b2MacroFloorRole3View0: {fileID: 4059480125617598369, guid: 4e0dd44fb047e44aa87b6cb88e37606c, type: 3}
+  b2MacroFloorRole3View1: {fileID: -3497968690767680490, guid: 7e19bb41ea9ba436480caeda557d139c, type: 3}
+  b2MacroFloorRole3View2: {fileID: -4089428534649044620, guid: afb8016dafd4b46ff986b9a352f377ba, type: 3}
+  b2MacroFloorRole3View3: {fileID: -693333002997068618, guid: 2f6c85df69ae24a8190176e0f3437f24, type: 3}
   stairs: {fileID: 0}
   ladder: {fileID: 0}
   stairsUp: {fileID: 0}
@@ -115,14 +140,20 @@ MonoBehaviour:
   doorOpenRisingLeft: {fileID: 21300000, guid: dd845dc51149645118be70c6bb1afe95, type: 3}
   rearWallRisingRight: {fileID: 7997243774186166987, guid: a2cc39b1e8e1f42a082ec9d95e85abaf, type: 3}
   rearWallRisingLeft: {fileID: -7982629042104604584, guid: 4289214b718104eab8888534c6cbc9e1, type: 3}
-  rearWallTorchRisingRight: {fileID: 21300000, guid: e4fee66e8f20847d0afdb8c2b9aecbcd, type: 3}
-  rearWallTorchRisingLeft: {fileID: 21300000, guid: 85c190b2bdbd4460f884c2e85b7a710b, type: 3}
+  rearWallTorchRisingRight: {fileID: -2708036034976607851, guid: 9be65019b63a143dfae77ace3b883e6c, type: 3}
+  rearWallTorchRisingLeft: {fileID: 7262351186309669158, guid: 794e8d99e3c9746d38919c501aa506d3, type: 3}
   hospitalWallPipesRisingRight: {fileID: 7585233026971736164, guid: c3bffb426929c4fceabc45d6b7871e84, type: 3}
   hospitalWallPipesRisingLeft: {fileID: 9042569773538280550, guid: f4eedd073e33c4e38a322f95838da8f5, type: 3}
   hospitalWallWindowRisingRight: {fileID: 7001827312818820769, guid: 70b3b2d156829429496f27901a07e812, type: 3}
   hospitalWallWindowRisingLeft: {fileID: 3552670020806883358, guid: fbe289dc0baee45eeb338f48ceedcc34, type: 3}
   hospitalWallCabinetRisingRight: {fileID: -7252545050943076929, guid: dc1b9deab07bb444896c3804c56f844d, type: 3}
   hospitalWallCabinetRisingLeft: {fileID: 1406182190971816784, guid: 3874507661acc40ad9d37ff5496c91d5, type: 3}
+  b2ServiceWallSegment0RisingRight: {fileID: -8914030923427678561, guid: 890fa92307581444d8256ee76fe255fb, type: 3}
+  b2ServiceWallSegment0RisingLeft: {fileID: 4251015150128539105, guid: ae9bcb1c4002147c596d67c9eb15b708, type: 3}
+  b2ServiceWallSegment1RisingRight: {fileID: -8474100418441287066, guid: f44feafa0a4694ec2bff7860dbb33ff6, type: 3}
+  b2ServiceWallSegment1RisingLeft: {fileID: 2179710402608939611, guid: fa5ff06174d784d738231c702a1d584a, type: 3}
+  b2ServiceWallSegment2RisingRight: {fileID: -7397176767601278091, guid: ebb33566a55424e27b2cc7bbcd673d53, type: 3}
+  b2ServiceWallSegment2RisingLeft: {fileID: -4789080993051798811, guid: dfcdf57cee4d04978958bf00acb4e520, type: 3}
   player: {fileID: 21300000, guid: 48d2ea6b1bb084f7597ade7612f514f7, type: 3}
   knight: {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
   ranger: {fileID: 21300000, guid: 379fcd188cbc941219ab49f853188ad1, type: 3}
@@ -134,79 +165,13 @@ MonoBehaviour:
   arcDrone: {fileID: 0}
   graveWarden: {fileID: 0}
   merchant: {fileID: 21300000, guid: 3d7833257dfec46fc91f747f23ebb9ab, type: 3}
-  explosiveBarrel: {fileID: 21300000, guid: 4c8099366907c4441ba6cb466d3b2e32, type: 3}
+  explosiveBarrel: {fileID: 1901274577315484116, guid: 3ba37de61fb384dc68595e27b46393be, type: 3}
   hubCampfire: {fileID: 21300000, guid: 0d4841f04d8f249c78fb4baf1c37d8f3, type: 3}
   hubStash: {fileID: 21300000, guid: 4de93aa50691b462fbe39861ff7be8ed, type: 3}
   hubPortal: {fileID: 21300000, guid: e4d1ff0e00f914136a4586cb9c473035, type: 3}
-  playerFootprint: {fileID: 21300000, guid: 63e3ddf2470b3425f9a80b064b7dfd7d, type: 3}
-  selection: {fileID: 21300000, guid: e4d063a3610f0444096a92a37d8a4634, type: 3}
-  actorAnimations:
-  - actorKey: knight
-    clips:
-    - tag: attack
-      loop: 0
-      frames:
-      - {fileID: 5528483142515249879, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 8321575434059696624, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -2472610717621283188, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -2472610717621283188, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.100000024
-      - 0.19999999
-      - 0.29
-      length: 0.29999998
-    - tag: death
-      loop: 0
-      frames:
-      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -2331016288782734604, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.14999999
-      length: 0.16
-    - tag: fall
-      loop: 0
-      frames:
-      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -3615641753278937825, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.13
-      length: 0.14
-    - tag: hit
-      loop: 0
-      frames:
-      - {fileID: -7868191235343111395, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -7868191235343111395, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.11
-      length: 0.12
-    - tag: idle
-      loop: 1
-      frames:
-      - {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 235372570033119444, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.14999999
-      length: 0.16
-    - tag: walk
-      loop: 1
-      frames:
-      - {fileID: -2882790841634084083, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: 3653833645730265374, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -1626408373476521225, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -4964891802342872153, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      - {fileID: -4964891802342872153, guid: f2854a5d093764c048dd671622c3ab53, type: 3}
-      frameStartTimes:
-      - 0
-      - 0.099999994
-      - 0.20000002
-      - 0.3
-      - 0.39000002
-      length: 0.4
+  playerFootprint: {fileID: -2278404114831012380, guid: 8424ee3ec39fb48799680394124c8569, type: 3}
+  selection: {fileID: 1556140406095140674, guid: d1b1ac52207914bb2b08143bf7d623a6, type: 3}
+  actorAnimations: []
   environmentAnimations: []
   potion: {fileID: 21300000, guid: a7a56b266ed4a49e3b2234db75fcf583, type: 3}
   bomb: {fileID: 21300000, guid: 52c7ba7074469415dacd16d036c373a3, type: 3}

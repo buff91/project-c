@@ -16,6 +16,8 @@ namespace ProjectC.Tests
             Assert.IsTrue(selected.IsAvailable);
             Assert.Greater(selected.Seed, 0);
             Assert.AreEqual(10, selected.FloorCount);
+            Assert.IsFalse(selected.UsesLocalElevation,
+                "첫 던전은 층내 단차 없이 층간 수직성만 사용한다");
             Assert.NotNull(selected.Boss);
             Assert.AreSame(MonsterRoster.GraveWarden, selected.Boss.Archetype);
             StringAssert.DoesNotContain("기사", selected.RouteLabel);
@@ -47,6 +49,8 @@ namespace ProjectC.Tests
             Assert.IsTrue(dungeon.IsAvailable);
             Assert.AreEqual(DungeonRegionProfile.Flooded, dungeon.Region);
             Assert.AreEqual(DungeonProgressDirection.Inward, dungeon.Direction);
+            Assert.IsTrue(dungeon.UsesLocalElevation,
+                "다른 던전의 층내 높이 능력까지 전역으로 끄지 않는다");
             Assert.IsNull(dungeon.Boss);
             Assert.IsTrue(dungeon.HasEntryCue);
             StringAssert.Contains("냉기 장비", dungeon.RouteLabel);

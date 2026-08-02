@@ -25,7 +25,7 @@
 
 ---
 
-## `IsoPrototypeDemo` — 관심사별 20개 파셜
+## `IsoPrototypeDemo` — 관심사별 23개 파셜
 
 한 `partial class IsoPrototypeDemo`(MonoBehaviour)를 다음 파일들이 나눠 소유한다.
 상태(필드·프로퍼티·이벤트)와 방 빌드·수명주기는 본체에, 나머지는 관심사별 파셜에 있다.
@@ -42,20 +42,24 @@
 | `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브/던전 고정 `playCameraSize` + 플레이어 추종) |
 | `IsoPrototypeDemo.Interaction.cs` | 탭/스텝/인접 상호작용·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
+| `IsoPrototypeDemo.Projectiles.cs` | 같은 층 포물선·Hole 경유 3구간 투사체·폭발 순간 연출(판정/소비 없음) |
 | `IsoPrototypeDemo.Targeting.cs` | 투척 가능 칸/FOV 기반 월드 조준 범위 마커의 생성·정리·시점 회전 추종 |
+| `IsoPrototypeDemo.VerticalFocus.cs` | Hole hover/armed 상태·착지/피해 힌트·국소 FOV 강조·착지 마커·낙하 확인/취소 |
+| `IsoPrototypeDemo.VerticalLook.cs` | active floor와 분리된 위/현재/아래 보기 상태·passive FOV 부분집합·카메라 초점·층간 투척 경로 연결·월드 입력 잠금 |
 | `IsoPrototypeDemo.Movement.cs` | 경로 이동·문/비밀문/낙하 접근·auto-travel·플로어 전환 |
 | `IsoPrototypeDemo.RunLifecycle.cs` | 세이브/체크포인트/이어하기·던전 전환·정산/생환·텔레메트리 종료 |
 | `IsoPrototypeDemo.Hub.cs` | 메타 저장을 시설 개방 스냅샷으로 변환해 `HubWorldPresenter` 호출 + 원정자 기본 상태 적용 (영웅 프롭·잠금은 제거됨) |
 | `IsoPrototypeDemo.Enemies.cs` | 적 스폰·AI 턴·활성화 |
 | `IsoPrototypeDemo.Falls.cs` | 낙하/넉백/폭발 **연출**. 순서는 `Core/HazardSequence`가 정하고 여기서는 `HazardStep`을 애니메이션·문구·텔레메트리·뷰 동기화로 옮기기만 한다 |
 | `IsoPrototypeDemo.RestSites.cs` | 휴식 지점(모닥불) |
-| `IsoPrototypeDemo.DungeonDressing.cs` | 첫 던전 B2의 비충돌 완성형 바닥 드레싱 후보·예약 좌표·스프라이트 매핑. 선택 판정은 Core `DungeonDressingPlacementRules`가 소유한다 |
+| `IsoPrototypeDemo.DungeonDressing.cs` | 첫 던전 B2의 히어로 룸 계획을 소비해 폭발통·바닥 군집·방향형 드레싱·서비스 벽을 스프라이트로 매핑한다 |
+| `IsoPrototypeDemo.Foundation.cs` | B2 시작방 전면 face·고정 월드 코너 지지대를 별도 비게임플레이 루트로 만들고 room-coherent light/FOV alpha를 적용한다 |
 | `IsoPrototypeDemo.Extraction.cs` | 비상 탈출구·비상 송출기 렌더와 생환 선택 진입 |
 | `IsoPrototypeDemo.Rescue.cs` | 갇힌 동료 프롭 렌더·구출 처리. 배치·판정은 Core(`ShelterNpcRoster`·`DungeonFloorInfo.RescueNpc`)가 소유한다 — `BossArena`와 같은 모양. 한 판에 동료가 여럿이라 **상태를 목록으로 든다**(스칼라 한 벌이면 뒤 NPC가 앞 것을 덮어써 참조 잃은 GameObject 가 씬에 남았다) |
 | `IsoPrototypeDemo.BossArena.cs` | 보스 아레나 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | FOV·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림 |
-| `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 *(main 브랜치 기능, 병합됨)* |
+| `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 + 플레이어 안정 상태 world tint·접지 AO + B2 시작방 Floor 전용 room-coherent light presentation |
 | `IsoPrototypeDemo.Sprites.cs` | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
 ## 절차 생성 임시 아트 — `IsoPrototypeDemo` **밖의** 독립 클래스
@@ -69,8 +73,9 @@
 | `PrototypeSpriteCanvas.cs` | 저수준 드로잉 프리미티브(`NewTexture`·`FillRect`·`DrawThickLine`·`Blend`)와 **64×32/PPU 상수 SSOT**. `using static`으로 끌어다 쓴다 |
 | `PrototypeSpriteCache.cs` | 키 → 스프라이트 캐시. 두 팩토리가 공유한다 |
 | `PrototypePalette.cs` | 던전 역할색 해석 — `IsoVisualCatalog` 슬롯이 있으면 그 값, 없으면 인스펙터 폴백. 그리기 코드는 여기만 묻는다 |
-| `PrototypeActorSprites.cs` | 액터·몬스터·아이템·프롭·랜드마크·FX. 팔레트도 안 쓰고 **캐시만** 의존한다 |
+| `PrototypeActorSprites.cs` | 액터·몬스터·아이템·프롭·랜드마크·FX + 작은 3단 접촉 AO. 팔레트도 안 쓰고 **캐시만** 의존한다 |
 | `PrototypeEnvironmentSprites.cs` | 타일·벽·문·비밀문·안개·광원 타일. 캐시 + 팔레트 의존 |
+| `PrototypeEnvironmentSprites.Foundation.cs` | B2 전용 face-only 10px fascia와 12×38 코너 지지대 픽셀. 윗면·충돌·격자를 모르는 절차 프레젠테이션 |
 | `TileVisualFacts.cs` | 호스트가 풀어 넘기는 격자 사실 묶음(진행 맥락·전면 여부·평면 방향·비밀문 힌트·허브 여부) |
 
 > 리팩토링 시 픽셀 동일성은 **씬 렌더 지문**으로 검증했다 — `IsoPrototype`/`Hub` 씬을 빌드해
@@ -93,7 +98,7 @@
 
 ## Gameplay — 그 밖의 씬 서비스·패널·스토어
 
-위 세 표(파셜 20 + 절차 아트 6 + HUD 8 = 34개)에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
+위 세 표에 잡히지 않는 나머지 `Scripts/Gameplay` 파일들.
 예전에는 이 표가 없어서 Gameplay 절반이 문서 어디에도 없었다 —
 `InventoryPanelController` 같은 큰 파일을 이름으로 찾을 방법이 없었다.
 
@@ -103,11 +108,12 @@
 | `HubWorldPresenter.cs` | 시설 개방 불변 스냅샷과 주입된 씬/비주얼 의존성으로 허브 프롭·광원을 생성하고 상호작용·재투영 앵커를 함께 등록. `MetaStore`·플레이어 상태·루트 초기화는 모른다 |
 | `HubWorldRegistry.cs` | 허브 상호작용 id/표시 라벨과 프롭·광원 격자 앵커를 소유. 빌드 초기화·조회·시점 재투영을 한 경계로 묶되 GameObject 수명은 소유하지 않는다 |
 | `GridSortingObject.cs` | 격자 위 스프라이트의 월드 위치·`sortingOrder`를 `IsoGrid` 규칙으로 갱신. 정렬 계산을 개별 오브젝트가 하지 않게 하는 장치 |
+| `FloorFoundationPresentation.cs` | B2 후보 칸에서 현재 화면의 실제 열린 전면과 회전 불변 볼록 코너 지지대를 수집하는 순수 프레젠테이션 계산. collider·입력·게임 상태 없음 |
 | `IsoGridGizmo.cs` | Scene 뷰에서 아이소 격자를 다이아몬드로 그려 좌표 변환을 눈으로 검증(에셋 없이) |
 | `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환. **입력 추상화 레이어** — Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고(`#if` 6곳) 게임 로직에는 `GridPos`만 넘긴다 |
 | `IsoVisualCatalog.cs` | `ScriptableObject` — 논리 타일/오브젝트 → 교체 가능한 픽셀아트 스프라이트 매핑 + 던전 역할색 슬롯. 빈 슬롯은 절차 생성 스프라이트로 대체된다(`PrototypePalette`가 여기를 먼저 묻는다) |
 | `ActorAnimationSet.cs` | `ScriptableObject` — Aseprite 태그 하나를 구운 프레임 시퀀스(`SpriteClip`). 타이밍을 "프레임 시작 시각 + 클립 총 길이"로 저장해 가변 지속시간을 무손실로 옮긴다 |
-| `SpriteClipAnimator.cs` | 베이크된 태그 클립의 경량 재생기 — **Animator를 쓰지 않고 `renderer.sprite`만 만진다**(position·scale·color는 CombatFx 코루틴 소유라 겹치면 싸운다). 시야 밖에서는 얼어붙는다 |
+| `SpriteClipAnimator.cs` | 베이크된 태그 클립의 경량 재생기 — **Animator를 쓰지 않고 `renderer.sprite`만 만진다**(position·scale은 CombatFx, 안정 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals` 소유). 시야 밖에서는 얼어붙는다 |
 | `CombatStatusFxAnimator.cs` | 액터에 붙는 상태이상 픽셀 아이콘. 파티클 시스템 없이 위치·크기·알파만 갱신 |
 | `FloatingTextSpawner.cs` | 피격/회복 수치를 머리 위로 띄우는 플로팅 텍스트(`FloatingTextKind`) |
 | `DOTweenBootstrap.cs` | DOTween 전역 초기화(`RuntimeInitializeOnLoadMethod`). **현재 실사용처는 없다** — 트윈은 전부 수기 코루틴이다(아래 "통합 후보") |
@@ -140,7 +146,7 @@
 
 | 파일 | 담당 |
 |------|------|
-| `GridPos.cs` | 논리 좌표 `(x, y, elevation)`. elevation은 층 번호가 아니라 **연속 높이값**이라 한 층 안에서도 높이차가 있다 |
+| `GridPos.cs` | 논리 좌표 `(x, y, elevation)`. elevation은 층 번호가 아니라 **연속 높이값**이라 한 층 안의 높이도 표현할 수 있다. 실제 생성 여부는 던전 정책이다 |
 | `GridMap.cs` | Dictionary 기반 **희소** 타일 저장소 + 칸 간 명시적 링크(사다리·층 전환). 넓고 대부분 비어 있는 다층 던전이라 배열을 쓰지 않는다 |
 | `TileData.cs` | `TileKind` 열거와 칸 속성. 수직 시야 차단은 SSOT 표 참조 |
 | `IsoGrid.cs` | 격자 ↔ 월드/화면 좌표 변환과 정렬값 계산. **정렬 규칙이 흩어지지 않도록 여기 한 곳**(SSOT 표 참조) |
@@ -150,7 +156,7 @@
 | `VerticalTraversalRules.cs` | 수직 이동 수단의 자동 발동 범위와 사다리 월드 표현 크기. 층 전환 계단은 밟는 즉시, 사다리는 명시적 상호작용 |
 | `VerticalRouteCue.cs` | 수직 이동 수단을 처음 봤을 때의 짧은 설명(`VerticalRouteRole` 6종). 색이 아니라 "어떻게 생겼고 무엇을 하면 어디로 가는지"를 말한다 |
 | `TravelRules.cs` | 자동 이동 스텝 수와 인터럽트 우선순위(피해 > 새 적 > 새 아이템). 스냅샷은 호출부가 만든다 |
-| `WorldInputRules.cs` | 화면에 겹친 타일 후보들 중 하나 고르기 — 조작 층에 가까운 것(`LayerPriority`) 우선, 같으면 렌더 정렬 순서 |
+| `WorldInputRules.cs` | 화면에 겹친 타일 후보들 중 하나 고르기 — 조작 층에 가까운 것(`LayerPriority`) 우선, 같으면 렌더 정렬 순서. Hole 반대편 미리보기는 PLAY에서 읽기 전용 |
 
 ### 시야·조명·표현 규칙
 
@@ -162,7 +168,7 @@
 | `GridLighting.cs` | 타일 단위 광량 0..1. Light2D를 쓰지 않고 `SpriteRenderer.color` 틴트에 곱한다 — FOV가 "무엇이 보이나"라면 여기는 "얼마나 밝은가"이고 안개 3상태(알파)와 직교한다 |
 | `SpriteClipRules.cs` | `SpriteClipTags` 6종 상수 + 시간 → 프레임 인덱스(`FrameAt`). 베이크(에디터)와 재생(Gameplay)이 이 상수를 공유한다 — 문자열이 갈라지면 클립이 **조용히** 무시된다 |
 | `CombatPresentationRules.cs` | 같은 피해 처리 위에 얹는 연출 계열(`CombatImpactKind`). 전투 판정과 분리 |
-| `EnemyPresentationRules.cs` | FOV에 종속되는 적 전투 피드백 공개 여부 + 턴 기반 시체 수명 |
+| `EnemyPresentationRules.cs` | FOV에 종속되는 적 몸체/전투 피드백 공개 범위를 분리(다른 층 Hole 미리보기는 몸체만) + 턴 기반 시체 수명 |
 
 ### 전투·상태이상·상호작용
 
@@ -173,7 +179,9 @@
 | `InteractionApproachRules.cs` | 밟지 않고 옆에서 쓰는 대상까지의 접근 경로. 적 점유 칸을 A*의 차단 조건으로 넣어 실제 우회로를 찾고, 완료 조건(같은 높이의 상하좌우 인접)을 생산자·소비자가 공유한다 |
 | `TurnManager.cs` | 플레이어 행동 1회 + 적 전체를 한 턴으로 묶는 상태 머신(`TurnPhase`) |
 | `StatusEffects.cs` | `StatusKind`(화상·빙결·중독)와 부여/상쇄. 중독은 화염·빙결과 무관하게 독립 지속 |
-| `FallRules.cs` | **모든 낙하 트리거의 수렴점 `TryFall`**. 낙하 칸수 → 낙뎀 곡선 → 착지 충돌을 한 곳에서. 플레이어와 몬스터가 같은 경로 |
+| `FallRules.cs` | **모든 낙하 트리거의 수렴점 `TryFall`**. 상태를 바꾸지 않는 `TryPreview`와 실제 낙하가 착지·낙차·피해 계산을 공유한다. 낙하 칸수 → 낙뎀 곡선 → 착지 충돌은 플레이어와 몬스터가 같은 경로 |
+| `HoleInteractionRules.cs` | Hole 첫 탭 arm/재탭 confirm 판정 + 상태를 바꾸지 않는 착지층·낙차·장비 반영 예상 피해·진행상 의미 계산 |
+| `VerticalThrowRules.cs` | 실제 Hole↔landing을 지나는 인접 층 광역 투척. 지원 아이템·양쪽 평면 LoS·경로 비용과 `VerticalThrowPath`를 소유 |
 | `Interactions.cs` | `OilRules`(기름 살포·발화) · `BombRules`(+`BombResult`). **`BombRules.ForEachBlastCell`이 3×3 순회 SSOT**(SSOT 표 참조) |
 | `HazardSequence.cs` | 낙하·폭발 연쇄의 **순서**(피해→상태→원소 반응→넉백→유폭). 규칙이 아니라 규칙을 엮는 차례를 소유하고, 일어난 일을 `HazardStep` 목록으로 남겨 연출이 재생만 하게 한다 |
 | `WaterRules.cs` | 젖음·연쇄 결빙 + **`WetPoolFlood`(젖은 웅덩이 4방향 확산 SSOT)가 이 파일에 산다** — 파일 이름과 타입 이름이 다르니 찾을 때 주의 |
@@ -198,9 +206,9 @@
 |------|------|
 | `DungeonLayout.cs` | `DungeonFloorInfo`·`DungeonLayout`·`FloorPlan`·`DungeonGenerator.Generate`+헬퍼. 난이도·콘텐츠의 유일한 키는 `ProgressIndex`(고도가 아니다). 방 기하는 `FloorPlan`이 소유한다(SSOT 표 참조) |
 | `DungeonGenerator.Planning.cs` | seed로 층 하나의 골격 치수를 뽑는다 |
-| `DungeonGenerator.Carving.cs` | **타일을 실제로 쓴다**(`map.Set`) — 바닥·벽·계단·개구부 조각 |
+| `DungeonGenerator.Carving.cs` | **타일을 실제로 쓴다**(`map.Set`) — 평탄 던전은 base elevation만, 허용 던전은 raised row와 층내 Stairs/Ladder까지 카브. 개구부 조각도 여기 |
 | `DungeonGenerator.Placement.cs` | **좌표만 고른다** — 아이템·적·휴식처·탈출구·비밀문 자리. 파셜 경계 기준은 SSOT 표 참조 |
-| `DungeonCatalog.cs` | 허브에서 고르는 원정지 목록(`DungeonDefinition`). 지역·보스·층수·seed가 여기서 묶인다 |
+| `DungeonCatalog.cs` | 허브에서 고르는 원정지 목록(`DungeonDefinition`). 지역·보스·층수·seed와 던전별 `UsesLocalElevation` 정책이 여기서 묶인다 |
 | `DungeonDirectionRules.cs` | `DungeonProgressDirection`(하강/상승/Inward)과 방향 의존 문구·층 라벨. **규칙은 방향을 타지 않지만 안내 문구는 반드시 탄다** |
 | `DungeonMetaContext.cs` | 생성기가 알아야 하는 판 넘는 진행 상태를 값 하나로 묶는다. `default`는 "아무것도 해금 안 됨"이 아니라 **"제약 없음"** — 테스트·미리보기가 메타 없이도 같은 던전을 만들어야 해서다 |
 | `DungeonBandProfile.cs` | 지역 프로파일(`DungeonRegionProfile`) × 깊이의 콘텐츠 변주. **스탯·AI는 지역을 타지 않는다** — 지역이 가르는 것은 혼합·밀도·무대 확률(SSOT 표 참조) |
@@ -211,6 +219,7 @@
 | `DungeonRestRules.cs` | 던전 내부 제한 휴식처의 배치 간격과 회복량 |
 | `DungeonPropPlacementRules.cs` | 위험 프롭이 입구·필수 점유 좌표를 덮지 않도록 안전한 일반 바닥 후보를 고른다 |
 | `DungeonDressingPlacementRules.cs` | B2 완성형 바닥 장식을 입구·주요 동선·점유 좌표와 겹치지 않는 도달 가능한 외곽 일반 바닥에 결정론적으로 고른다 |
+| `B2HeroRoomLayoutRules.cs` | 첫 던전 진행 지수 0에만 적용되는 프레젠테이션 좌표 계획. 시작방 컴포넌트·닫힌 문 포함 진출선·폭발통·좌우 드레싱·바닥/벽 군집을 map/RNG 변경 없이 함께 고른다 |
 | `SecretRoomRules.cs` | 비밀문 개수와 발견 판정. 공개 전에는 벽처럼 막고 공개되면 열린 문이 된다 |
 | `ExtractionRules.cs` | 중간 생환 층. 잦으면 판돈이 사라지고 없으면 최종 구역까지 한 번의 결정이라 **정해진 층에만** 둔다 — 배고픔과 짝을 이룬다 |
 | `ElevatorShaftRules.cs` | 보스를 잡아 전원이 들어온 뒤에야 움직이는 복귀 수단. GDD의 "통로로 뛰어내려 하강"을 **수치가 막아서**(낙뎀 곡선 vs HP) 낙하가 아니라 탑승이 됐다 |
@@ -261,7 +270,7 @@
 | 아이템 짧은 라벨(HUD) | `ItemCatalog.ShortLabel` |
 | 아이템 분류·표시·경제·백팩 크기 | `ItemCatalog`의 `ItemDefinition` 표 |
 | 블라스트 3×3 순회 | `BombRules.ForEachBlastCell(center, visit)` (`Interactions.cs`). `OilRules`·`ShockRules`·`WaterRules`·`SecretRoomRules`가 전부 이걸 부른다 — 예전에는 같은 이중 루프가 여러 파일에 손으로 적혀 있어 한 곳만 반경이 달라져도 조용히 갈렸다 |
-| 투척 가능 칸 순회 | `BombRules.ForEachThrowTarget(map, from, maxRange, visit)` — 실제 `CanThrow`와 조준 월드 마커가 공유한다 |
+| 투척 가능 칸 순회 | 같은 elevation=`BombRules.ForEachThrowTarget`; 인접 층 Hole 경로=`VerticalThrowRules.ForEachThrowTarget` — 각각 실제 확정 판정과 조준 월드 마커가 공유한다 |
 | 젖은 웅덩이 4방향 확산 | `WetPoolFlood.Collect(map, center, onVisit)` — **파일은 `Core/WaterRules.cs` 안에 있다.** `WaterRules.ChainFreeze`(결빙)와 `ShockRules.DischargeDetailed`(감전)가 공유한다. 두 벌로 두면 같은 웅덩이가 얼 때와 통전될 때 다른 모양이 된다 |
 | 북쪽 방 입구 칸·방 rect 순회 | `FloorPlan.UpperRoomEntrance` / `IsUpperRoomEntrance(pos)` / `UpperRoomCells()` / `BranchCells()`. 생성기의 하드코딩 방 기하가 전부 여기로 모였다 — 예전에는 `(VerticalX, UpperMinY)` 비교가 손으로 적혀 있어 방 형상을 바꿀 때 하나만 빠뜨리면 입구가 막힌 층이 나왔다. **순회 순서(`x` 외곽 → `y` 내곽)가 곧 RNG 소비 순서**라 바꾸면 생성기 지문이 깨진다 |
 | 생성기 파셜 경계 | **타일을 바꾸면 `Carving`, 좌표만 고르면 `Placement`.** `PlaceRestSite`가 `map.Set`을 한 번도 하지 않는데 Carving에 있어서 이 기준으로 옮겼다 |
@@ -273,6 +282,7 @@
 | 깊이 구간 경계·라벨 | `DungeonDepthBandRules` (판정과 `RangeLabel`이 같은 상수 사용) |
 | 콘텐츠 변주 수치 (지역 × 깊이) | `DungeonBandProfiles` (지역은 필수 인자 — 기본값 없음) |
 | 던전 → 지역 매핑 | `DungeonDefinition.Region` → `DungeonLayout.Region` (생성기·런타임 스폰 공용) |
+| 던전 → 층내 높이 생성 정책 | `DungeonDefinition.UsesLocalElevation` → `DungeonGenerator.Generate` (`false`여도 EPF=4·층간 규칙 유지) |
 | 생성기 출력 회귀 | `DungeonGeneratorGoldenTests` 지문 (불변식 테스트가 못 잡는 배치 변화용) |
 | 텔레메트리 구간 롤업 | `RunTelemetry.RefreshBands` (파생 값 — 저장·요약 직전 재계산) |
 | 보스 접근 전조 문구 | `DungeonBossArenaRules.TryApproachCue` — **진행 방향을 인자로 받는다.** 예전에는 "한 층 아래"로 고정이라 상승 던전(폐 아케이드 복합타워)에서 정반대를 가리켰다 |

@@ -47,6 +47,29 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void TryPreview_MatchesTryFallWithoutMutatingFallerFirst()
+        {
+            var map = new GridMap();
+            var from = new GridPos(2, 2, 4);
+            var landing = new GridPos(2, 2, 0);
+            map.Set(from, TileKind.Hole);
+            map.Set(landing, TileKind.Floor);
+            var faller = new CombatantState("hero", from, 10, 1);
+
+            Assert.IsTrue(FallRules.TryPreview(
+                map, Height, from, 0, safeFallHeight: 2, out FallPreview preview));
+            Assert.AreEqual(from, faller.Position);
+            Assert.AreEqual(10, faller.Hp);
+
+            FallResult result = FallRules.TryFall(
+                map, Height, faller, from, 0, null, safeFallHeight: 2);
+            Assert.AreEqual(preview.Landing, result.FinalPosition);
+            Assert.AreEqual(preview.FloorsFallen, result.FloorsFallen);
+            Assert.AreEqual(preview.Damage, result.Damage);
+            Assert.AreEqual(10 - preview.Damage, faller.Hp);
+        }
+
+        [Test]
         public void TryFall_InFloorDrop_AppliesSmallDamage_ButZeroFloorsFallen()
         {
             var map = new GridMap();

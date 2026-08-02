@@ -64,19 +64,29 @@
   분리하며, 적·소품의 `actorVisualScale`은 0.72를 유지한다. 메인 원정자만
   `playerVisualScale` 0.80으로 키워 회색 벽 앞에서도 실루엣을 읽히게 하고, HP·마커·접촉 그림자는
   격자 크기에 남긴다.
-  메인 원정자는 정식 `actor-knight.aseprite`의 호흡기·폐허 방호구 실루엣이며
-  `idle/walk/attack/hit/fall/death` 태그가 카탈로그에 연결돼 있다. 액터 레시피는 conform 뒤
-  불투명 픽셀 기준 teal 4%·warning 2% 상한을 자동 검사한다.
+  메인 원정자는 `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`를
+  `process_actor_knight_grounded_v1.py`로 마감한 정식 `actor-knight.aseprite`다. `96×128` 단일
+  `Frame_0`에 하드 알파·24색 역할 팔레트·2×2 클러스터와 한 발 기준선을 고정했다.
+  `SurvivorAnimationApproved=false`라 방향별 6태그 애니메이션은 아직 재생하지 않는다. 안정 상태
+  몸체색은 상태색 × elevation tint × `TileLightColor`이고, 두 발 사이에는 작은 3단 접촉 AO만
+  남긴다. 상시 플레이어 표식과 선택/공격 대상 표식도 각각 틸/앰버의 열린 코너 틱으로 줄였으며
+  `marker-player.aseprite`·`marker-target.aseprite`가 정식 원본이다.
 - **다층 월드 입력**: `IsoTapInput.TilePicker`가 실제 렌더된 아이소 다이아몬드를
   `VisualPosition` 기준으로 고른다. 겹치면 **현재 활성 층 → Hole 미리보기 층 →
   같은 레이어의 렌더 정렬 순서**다. 전체 elevation 역산 방식으로 되돌리지 말 것.
 - **위험 프롭 시작 배치**: 폭발통은 `DungeonPropPlacementRules`가 시작점에서 최소 2칸 떨어진
   일반 바닥 중 적·아이템·계단·시설 좌표가 아닌 곳을 고른다. 격자상 다른 칸이어도 90도 회전
   시 입구와 같은 화면 세로축에 포개지는 대각선 좌표는 제외하며, 안전 좌표가 없으면 생성하지
-  않는다. PC 시작 화면 근거는 `docs/captures/barrel-safe-start-v2.png`다.
+    않는다. PC 시작 화면 근거는 `docs/captures/barrel-safe-start-v2.png`다.
+- **첫 던전 층내 평탄화**: 폐 아케이드 복합타워의 모든 생성 타일은 해당 층 base elevation
+  (`LocalHeight 0`)에 있다. 일반 층내 `Stairs`·층내 사다리·캐치워크는 생성하지 않는다.
+  `ElevationsPerFloor=4`, `StairsUp/Down`, Hole/WeakFloor, 창문 낙하, 엘리베이터는 그대로다.
+  층내 높이 규칙과 raised 자산은 다른 원정지·수제 세트피스를 위한 엔진 능력으로 남아 있다.
 - **수직 이동 의미**:
-  - `Stairs`: 같은 던전 층의 elevation을 **걸어서** 이동. **±1 단만** 담당한다.
-  - `Ladder`: **계단과 다른 것이다** — 한 번에 여러 단을 오르고, **명시적 링크로만** 통과한다
+  - `Stairs`: 층내 높이를 허용한 원정지에서 같은 던전 층의 elevation을 **걸어서** 이동한다.
+    **±1 단만** 담당한다.
+  - `Ladder`: 층내 높이를 허용한 원정지의 엔진 규칙이며 **계단과 다른 것이다** — 한 번에 여러 단을
+    오르고, **명시적 링크로만** 통과한다
     (`GridPathfinder`의 걷기 인접 규칙에서 빠져 있다. 사다리 칸 위에 걸어 올라서는 것은 그대로 된다).
     첫 입력은 사다리 발판까지 이동해 부착하는 데서 멈추고, 해당 타일에서 **두 번째 자기 탭/Space**로
     오르내린다. 비주얼 길이는 실제 단차까지만.
@@ -94,6 +104,9 @@
     `DungeonFloorInfo.HoleTiles`가 1급이고 `Hole`은 대표 칸으로 남는다(샤프트 연출·엘리베이터
     충돌처럼 한 점이면 충분한 곳용). 집합 판정이 필요한 두 곳만 목록을 쓴다 — 2층 관통 금지와
     약한 바닥(개구부 **둘레**). 약한 바닥은 밟으면 개구부가 되므로 둘이 같은 판정 함수를 쓴다.
+    현재 층의 보이는 Hole은 포인터 hover에서 착지 창과 청록 충돌점 마커를 미리 강조하고, 첫 탭에서
+    목적 층·후퇴/지름길/위험·장비 반영 예상 피해를 호박색 armed 상태로 고정한다. 이 첫 탭은 이동/턴을
+    쓰지 않으며 같은 Hole 재클릭 또는 Space에서만 접근 후 낙하한다. 다른 입력/Escape는 취소한다.
   - PLAY에서는 현재 층만 기본 표시하며 다른 층은 Hole 국소 미리보기 외에는 숨긴다.
 - **FOV/전투 정보**: Unknown/Explored/Visible 3상태. 시야 밖 적의 피해·사망 UI는
   공개하지 않으며, 시체는 기본 3턴 뒤 월드와 탭 대상에서 제거한다.
@@ -102,14 +115,26 @@
   방까지 드러났다(같은 코드가 지키는 불변식과 정면으로 충돌했다). 반경 상한(1~6, 기본 4,
   씬 직렬화 값도 4)은 남긴다 — 이제 "박스 크기"가 아니라 **FOV 사거리**이며, 플레이어 시야(6)보다
   짧게 둬서 개구부 너머는 "엿보는" 정보로 남는다.
+  미리보기 FOV 안의 다른 층 적은 중립색 몸체만 반투명 표시하고 HP·상태·인지 정보는 숨긴다. 명시적으로 겨눈
+  층간 폭발은 실루엣 피격 플래시와 맞은 수만 확인시키되 피해 수치·상태 결과는 공개하지 않는다. AI는
+  같은 층 활성 규칙을 유지하며 아이템도 숨긴다. passive 타일/적은 읽기 전용이다. PC `▲/◆/▼` 층 보기로
+  실제 개구부가 보이는 인접 층만 무턴 포커스할 수 있고, 이때도 active floor는 불변이며 이동·대기·상호작용은
+  잠긴다. HUD는 현재/보기 층을 동시에 쓰고 잠긴 행동 버튼도 비활성화한다. focus는 passive FOV의 교집합만
+  밝히므로 벽 뒤 정보는 추가로 열리지 않는다.
   시야선·수직 개구부 투시·근접 도달 기하·FOV 컬럼 해석의 SSOT는 모두 `SightRules`다
   (`CombatRules`·`GridVisibility`는 위임). 수직은 실제 개구부만 통과하고, 컬럼은 span으로 봐서
-  지면과 머리 위 구조물(캐치워크)이 함께 잡힌다.
+  지면과 머리 위 구조물(캐치워크)이 함께 잡힌다. 첫 던전은 캐치워크를 생성하지 않지만 이 규칙은
+  다른 원정지를 위한 엔진 계약으로 유지한다.
 - **투척 조준**: 폭발물·냉각재 수류탄·연료통은 조준에 들어가면 현재 FOV 안에서 실제로 투척 가능한
   타일을 아이템 색의 낮은 알파 바닥 마커로 표시한다. 투척 볼트는 사거리·시야선이 성립하는
   보이는 적 칸만 표시한다. 표시는 `BombRules.ForEachThrowTarget`/`CombatRules`와 실제 판정을
   공유하므로 벽 뒤·사거리 밖·Unknown 타일을 정보로 누설하지 않는다. 2560×1440 PC HUD와
   폭탄 조준을 함께 승인한 실화면 근거는 `docs/captures/throw-range-hud-qhd.png`다.
+  층 보기 중에는 `VerticalThrowRules`의 실제 Hole 경로·양쪽 LoS·경로 비용을 통과한 선택 층 바닥만
+  표시하며, 미리보기와 확정이 같은 `VerticalThrowPath`를 쓴다. 폭발물·냉각재·기름만 가능하고 투척 볼트와
+  일반 원거리 공격은 다른 층에 닿지 않는다. 투사체는 입구→반대편 endpoint→목표로 꺾여 날아간다.
+  양방향 PC 실화면은 `docs/captures/vertical-look-{down,up}-throw.png`다. 둘 다 active floor·턴 불변 상태에서
+  현재/보기 층 표기·잠긴 행동 레일·실제 유효 타일을 함께 보인다.
 - **첫 던전/보스**: 첫 목적지는 **폐 아케이드 복합타워(상승, `B2 → … → 8F` + 옥상 출구)** 10개 층 단일 던전이다
   (GDD §10.1). **생성기가 방향을 읽으므로 표시와 구조가 일치한다** — 층 인덱스가 0에서 +9로 올라가고
   진출 계단이 `StairsUp`이며 진행 최종 층(+9)은 공간 최하단(0)과 다르다.
@@ -198,13 +223,13 @@
     `DungeonGenerator.Placement`). 침수된 금고는 연료통을 빼고 그 자리를 냉기 도구에 넘긴다 —
     기름이 물 위에서 지역 반응을 흐리기 때문이다.
   - **지역 인자에 기본값을 두지 않는다**(옛 `ForFloor` 역산 붕괴의 재발 방지).
-  - **폐 아케이드 복합타워 출력은 불변임을 지문으로 고정했다**(`DungeonGeneratorGoldenTests`) — 세이브가
-    seed 재생성이라 조용한 배치 변화가 곧 이어하기 붕괴다. 불변식 테스트로는 안 잡힌다.
-    현재 값은 `8fbf82c8067b1cb3`(상승 10층) / `02411906bef8b09f`(하강 3층)이며 **두 번 갱신됐다**.
-    갱신할 때는 "무엇만 바뀌었는가"를 함께 증명한다 — 사다리 때는 **링크만**(타일 배치 동일,
-    `PlaceCatwalk`이 RNG를 안 써서 하강 지문이 그대로였던 것이 증거), 개구부 때는 **개구부에 붙은
-    칸만**(성장 루프가 난수를 안 써서 뽑는 횟수가 같고, 상한을 1로 되돌리면 옛 지문이 재현됐다).
-    즉 **기존 세이브는 같은 던전을 계속 연다.**
+  - **폐 아케이드 복합타워 출력은 골든 지문으로 고정한다**(`DungeonGeneratorGoldenTests`) — 세이브가
+    seed 재생성이라 조용한 배치 변화는 불변식 테스트만으로 잡히지 않는다. 층내 평탄화로 상승 10층
+    지문을 `1df3a0399ab01947`로 의도적으로 갱신했다. 변경 범위는 raised row·층내 계단/사다리·캐치워크
+    제거와 보스 제단의 base elevation 이동이며, 방 계획의 RNG 소비·층간 링크·Hole 규칙은 유지한다.
+    비평탄 생성 회귀는 `02411906bef8b09f`(일반 하강 3층)와 `5548343b47f0621a`(Flooded 상승 10층)로
+    별도 고정한다. 기존 체크포인트는 좌표가 아니라 seed·진행 층을 저장하므로 무효화하지 않고,
+    기록된 층 입구에서 새 평탄 지형을 재생성해 이어간다.
   - **침수된 금고 개방**: `Flooded`는 `isAvailable: true`이며 허브 선택 → 10개 구역 →
     보스 없는 최종 구역 출구 완주 경로를 PlayMode 스모크로 고정했다. 중반부터 `ArcDrone`과
     웅덩이·빙결·감전 무대가 함께 나타나며, 2026-07-26 플레이 캡처에서 지역 신호색과
@@ -250,18 +275,23 @@
     `SurvivorAnimationApproved=false`로 플레이어 `SpriteClipAnimator`를 붙이지 않고 카탈로그
     첫 Sprite `Frame_0`에 정지한다. 임시 런타임 오버레이 `PlayerCyberAccent`도 제거했으며,
     흉부 트리아지 화면·비대칭 의료 리그는 승인 프레임 자체에 흡수해야 한다.
+  - **원정자 접지 정적 v1(2026-08-02)** — 위 자동 조립 초안은 현재 런타임 원본이 아니다.
+    승인 컨셉·실화면 카메라·픽셀 재질 레퍼런스를 함께 사용한 built-in ImageGen 소스를
+    `process_actor_knight_grounded_v1.py`로 `96×128` 단일 프레임에 마감하고 정식 Aseprite로
+    교체했다. 플레이어에도 적과 같은 local light를 적용하고 접촉 그림자를 작은 AO로 줄였다.
+    틸 상시 발판과 앰버 대상 링은 열린 코너 틱으로 교체해 발·AO·바닥 재질을 가리지 않는다.
+    피벗·배율·격자·이동·공격·FOV는 불변이며 애니메이션 승인 게이트도 계속 닫혀 있다.
   - **M5 2차 슬라이스 반영됨(2026-07-30)** — hospital* 드레싱 9슬롯(바닥 그레이트/균열/
     서비스 + 상승 벽 3종×좌우)이 `environment-neon-dressing-v1` 레시피(C03 채택)로
     아케이드 어휘(자판기·꺼진 홀로 패널·상태 패널, 바닥은 균열선+전단지)로 교체됐다 —
     코드 슬롯명·출력 파일명 계약은 구판 유지. 채택은 §1-d 게이트(후보 바닥 3×3 + 라이더
     합성, `docs/captures/arcade-dressing-gate-v1.png`)를 거쳤고, 마감 프로세서
     (`process_hospital_dressing_v1.py`)에 despeckle 패스를 추가했다.
-    - **정합 패스(같은 날)** — 첫 반영본에서 드레싱 벽이 grey-* 램프(청회색)로 잠겨
-      1차 슬라이스의 웜 브라운 기본 벽과 색온도가 갈라졌고, 드레싱 바닥이 기본 바닥
-      (V≈0.40)보다 밝아 체커보드 얼룩이 떴다. 프로세서에 결정론적 정합(저채도 벽 몸통
-      웜 시프트 → tile-* 램프 유도, 바닥 오버레이 명도 ×0.92)을 넣어 재마감했다 —
-      스크린·간판 악센트와 청보라 암부는 건드리지 않는다(회귀 테스트 포함).
-      캡처: `docs/captures/arcade-dressing-live-v2.png` (v1은 정합 전 비교본).
+    - **정합 패스(같은 날, 현재 계약 교정)** — 첫 반영본에서 드레싱 바닥이 기본 바닥
+      (V≈0.40)보다 밝아 체커보드 얼룩이 떠 바닥 오버레이 명도만 ×0.92로 낮췄다. 시험했던
+      전역 `WARM_GAIN`은 네온 시설의 쿨 grey-* 몸통까지 웜 브라운으로 밀어 제거했다.
+      현재 `process_hospital_dressing_v1.py`는 벽 몸통의 쿨 그레이와 시안/마젠타 악센트를
+      보존하고, 바닥만 명도 정합한다(회귀 테스트 포함).
   - **M5 3차 슬라이스 반영됨(2026-07-30)** — 기존 소품 4종(모닥불 드럼·폭발 배럴·
     포탈·은닉처)을 `arcade-props-neon-v1` 레시피(C04 채택, 라이더 합성 게이트)로
     §1-d 플랫 클러스터 문법으로 재마감했다. 실루엣·역할색(모닥불 토치 골드 = 허브 웜
@@ -279,6 +309,118 @@
     쓰고, 그것도 없으면 같은 화면축 parity → 첫 존재 슬롯 순으로 내려가 사라지지 않는다.
     캡처: `docs/captures/b2-dressing-placement-v1.png`,
     `docs/captures/b2-aseprite-axis-q0-v1.png`, `docs/captures/b2-aseprite-axis-q1-v1.png`.
+    - **히어로 룸 군집 패스(2026-08-02)** — 위 요소를 개별 해시로 흩뿌리지 않고
+      `B2HeroRoomLayoutRules`의 한 계획으로 묶었다. 적용 범위는 첫 던전 진행 지수 0뿐이며,
+      다른 던전의 첫 구역에는 B2 주차장 아트가 새지 않는다. 현행 6×5 시작방과 지형은 그대로 두고,
+      닫힌 문을 열고 지나갈 실제 Entry→진출 계단 경로를 clear spine으로 예약한다. 폭발통은 왼쪽
+      service/grate 군집, 범퍼·쓰러진 안내판은 오른쪽 진출 측 군집에 두며 중앙은 기본 바닥으로
+      비운다. 시작방 벽도 시점 해시를 빼고, 복도로 열린 +Y 면이 아니라 실제 외곽인 입구 뒤 -Y 벽의
+      고정 비상등 양옆 두 칸만 서비스 패널로 묶는다. 목표 시안은
+      `docs/art-direction/project-c-b2-hero-room-target-v2.png`, PC 가로 실화면은
+      `docs/captures/b2-hero-room-layout-q0-v1.png`·`docs/captures/b2-hero-room-layout-q1-v1.png`다.
+      두 회전에서 같은 물리 벽 군집과 같은 좌우 기능 구역이 유지된다. map 타일·링크·RNG는 수정하지
+      않아 생성 골든과 체크포인트 형상은 불변이다.
+    - **B2 연속 서비스 벽 승격(2026-08-02)** — 두 개의 큰 발광 패널과 중앙 generic 등잔을
+      나란히 놓던 임시 조합을, `env-wall-b2-service-segment-{0,1,2}-rising-{right,left}`
+      여섯 Aseprite 원본으로 교체했다. 방향별 세 장은 `192×176` master에서 한 번에 팔레트
+      잠금·despeckle한 뒤 잘라 상부 캡·케이블 트레이·하부 배관이 경계를 공유한다. 카탈로그는
+      여섯 슬롯 완전 세트에서만 켜고, 누락 시 세 칸 전체를 기존 벽으로 폴백한다. 중앙 `(3,0)`의
+      고정 sconce 판정은 실제 앰버 광원을 위해 유지하되 generic torch 애니메이션과 대형 네온
+      오버레이/바닥광은 전용 벽 위에 얹지 않는다. 실화면은
+      `docs/captures/b2-service-wall-q0-live-v1.png`·`b2-service-wall-q1-live-v1.png`, 반대편
+      누출 검사는 `b2-service-wall-q2-ghost-check-v1.png`다. 지형·이동·FOV 좌표는 불변이다.
+    - **B2 배럴 유출 방지 베이 승격(2026-08-02)** — 기존 베이지 service/grate 두 셀을
+      `env-floor-b2-barrel-bay-{service,drain}-view-{0,1,2,3}` 여덟 Aseprite 원본으로 교체했다.
+      각 시점의 두 셀은 `192×96` master에서 공용 바닥 합성·팔레트 잠금·despeckle을 먼저 거친 뒤
+      `128×64` 셀로 잘라 호스와 녹 배수 띠가 경계에서 이어진다. 여덟 슬롯 완전 세트에서만 켜며,
+      배럴은 밀기·폭발 가능한 별도 프롭으로 남고 지형·충돌·이동·공격·FOV는 불변이다. 인접 고정
+      sconce는 실제 앰버 광원을 유지하되 벽 강조와 generic idle 애니메이션을 낮추고, 코너에서는
+      service→drain 축의 바깥 벽 한 면에만 패널을 그려 중복을 막는다. 실화면은
+      `docs/captures/b2-barrel-bay-q{0,1,2,3}-live-v1.png`다.
+    - **B2 오른쪽 진출 드레싱 v3(2026-08-02)** — 주차 범퍼·쓰러진 안내판을 최종 캔버스에서
+      직접 만든 4시점 Aseprite로 다시 마감했다. 범퍼는 낮은 검정 고무/강철과 앰버 끝단,
+      안내판은 바닥에 누운 비대칭 파손 판재다. `process_b2_parking_dressing_v3.py`는 1~2px
+      클러스터·hard alpha·공용 팔레트를 고정하며 두 역할만 `Signal` 톤매핑을 탄다. 배치는
+      카탈로그 순서가 아니라 named role로 `(5,2)` 범퍼·`(5,1)` 안내판·`(5,3)` cracked를 고정하고,
+      벽 매립 단말 아래 `(5,0)`은 비운다. 지형·충돌·이동·공격·FOV는 불변이다. conform 비교는
+      `docs/captures/b2-right-dressing-conform-preview-v3.png`, 최종 4시점은
+      `docs/captures/b2-prop-quality-q{0,1,2,3}-live-v3.png`다.
+    - **B2 진출 균열 바닥 v1(2026-08-02)** — `(5,1)`이 전역 구판
+      `env-floor-cracked`의 밝고 두꺼운 파손판처럼 보이던 문제를 전용
+      `env-floor-b2-cracked` Aseprite로 교체했다. 공용 바닥 실루엣 위에 작은 박리·가는 균열·
+      극소량 녹만 남기고 측면·구멍·커버·앰버 신호를 제거했다. 방향 seam이 없는 평면 손상이라
+      단일 슬롯을 네 시점에 공유하고, 슬롯 누락 시에만 전역 cracked로 폴백한다. 배치 좌표와
+      지형·충돌·이동·공격·FOV는 불변이며 실화면은
+      `docs/captures/b2-cracked-floor-q{0,1,2,3}-live-v1.png`다.
+    - **B2 2×2 연속 바닥 Macro v1(2026-08-02)** — 시작방의 일반 바닥 30장이 각각 다른 명암과
+      중앙 무늬를 가진 체크무늬처럼 읽히는 문제를 줄이기 위해, 기본 seed 1977의 깨끗한
+      `(3,1)·(4,1)·(3,2)·(4,2)` 네 셀에 하나의 연속 마모 덩어리를 배치했다. top-down master를
+      시점별로 먼저 회전·투영하고 마지막에 네 물리 역할로 잘라 만든
+      `env-floor-b2-macro-role-{0..3}-view-{0..3}` 16개 Aseprite가 모두 있을 때만 켠다. clean
+      2×2 블록이 없거나 슬롯 하나라도 빠지면 네 셀 전부 일반 바닥으로 원자 폴백한다. 기존
+      clear spine·특수 드레싱·지형·높이·이동·공격·FOV·정렬은 바꾸지 않았다. conform 비교와
+      q0..q3 실화면은 `docs/captures/b2-macro-floor-conform-preview-v1.png` 및
+      `docs/captures/b2-macro-floor-q{0,1,2,3}-live-v1.png`다.
+    - **B2 방 단위 바닥 조명 v1(2026-08-02)** — 매크로 밖에 남은 큰 회색/갈색 체크무늬는
+      바닥 원본이 아니라 `TileLightColor`가 플레이어·sconce·방향 그림자를 셀마다 단색으로 곱한
+      결과였다. `dungeonDarkness`만 끈 진단본
+      `docs/captures/b2-floor-light-diagnostic-darkness-off-v1.png`에서 동일 원본 바닥이 한 면으로
+      읽히는 것으로 분리 확인했다. 이제 현재 보이는 B2 시작방 Floor들의 local RGB 평균을 방 기준광으로
+      삼고, 바닥 렌더러에만 local 차이를 20% 남겨 합성한다. 방 평균 밝기는 보존하면서 큰 셀 간 명암
+      분산만 1/5로 줄인다. 벽·적 액터·아이템·배럴은 기존 국소광을 유지하고, FOV 알파·wet/oiled 색·
+      이동/공격 오버레이·비B2 바닥·Core 조명 규칙은 불변이다. 4시점 실화면은
+      `docs/captures/b2-floor-light-coherence-q{0,1,2,3}-live-v1.png`다.
+    - **B2 바닥 foundation 접지 v1(2026-08-02)** — 셀별 윗면과 분리된 순수 프레젠테이션 루트가
+      현재 화면의 실제 전면 두 면에만 `64×42`·PPU 64·pivot y=26 face-only 스프라이트를 붙인다.
+      10 logical px fascia는 이웃 셀 사이에서 이어지고 이음매는 드물게만 나타난다. 월드의 같은 볼록
+      모서리에 고정되는 `12×38` 지지대도 화면 앞쪽에 보이는 것만 남긴다. 면/지지대는
+      `Dungeon Backdrop` sorting order 1/2라 Default 바닥 뒤, 안개 백드롭 앞에 있으며 별도
+      collider·입력·격자·FOV·전투 상태를 만들지 않는다. 4시점 PC 실화면은
+      `docs/captures/foundation-grounding-q{0,1,2,3}-live-v2.png`다.
+    - **B2 배경 프롭 품질 수직 슬라이스 v2(2026-08-02)** — 승인 q0 방향판을 입력으로 만든
+      built-in ImageGen 제작 원화 `project-c-b2-prop-production-sheet-v2.png`를 직접 잘라 쓰지 않고,
+      `process_b2_prop_quality_v4.py`가 당시 64×112 벽 14종과 128×128 원통형 연료 셀을 최종 캔버스에서
+      재구성했다. `promote_b2_prop_quality_v2.sh`가 런타임 PNG와 정식 Aseprite를 함께 승격하며,
+      구 canonical writer들도 v4 생성기로 위임되어 재생성 때 구 아트로 되돌아가지 않는다.
+      뒤쪽 봉인 단말·좌측 서비스 스파인·오른쪽 낮은 군집을 물리 좌표에 고정했고, 반대 두 벽에는
+      비기능 저채도 설비 패널만 하나씩 둔다. B2 안에서는 HUD 안전영역에 방+가장 가까운 실제 문을
+      맞추는 4시점 카메라를 쓰며 수직 보기 우선순위는 유지한다. 정식 원본 64/64 검증과 PC 4시점
+      화면 승인을 마쳤다: `docs/captures/b2-prop-quality-q{0,1,2,3}-live-v3.png`.
+    - **B2 벽체 연속성·접합 리듬 교정(2026-08-03 작업 트리)** — 제작 원화의 독립 패널 알파를 벽 외곽으로
+      쓰던 탓에 64×32px 인접 투영 간격에서 셀마다 검은 틈이 생기던 문제를 고쳤다. v4 writer가
+      모든 벽의 RGB 디테일은 보존하되 알파를 하나의 64×112 아이소 벽면 계약으로 고정하고, 비어 있던
+      가장자리는 구조 셸 재료로 연장한다. 서비스 세 칸은 192×176 master에서 공용 상단 캡·하부
+      kick plate를 적용한 뒤 다시 분할하며, 테스트가 양 seam 78행 이상 접촉·단일 연결요소·중앙
+      foot datum y=96..98을 고정한다. 런타임 벽 피벗도 타일 중심→바깥 중심의 0.5 지점에 놓아 바닥
+      실제 경계와 일치시켰다. 후속 RGB 마감은 원화의 독립 카드용 전고 밝은 end-cap을 방향별 12px
+      결합면에서 공통 저채도 접합주로 바꾸고, face-relative 2px cap과 어두운 연속 plinth로 셀 반복과
+      밝은 점선형 발선을 줄였다. 중앙 호스·벤트·단말, exact alpha, 피벗·PPU·서비스 master는 유지한다.
+      게임 규칙·격자·정렬·FOV는 불변이다. 2026-08-03 작업 트리에서 ArtPipeline 276/276,
+      Core shim 1127/1127, Unity EditMode 1367/1367, PlayMode 11/11, Aseprite 64/64 및 콘솔 에러 0을
+      확인했다. 최종 4시점은 `docs/captures/b2-wall-joinery-q{0,1,2,3}-live-v5.png`다.
+    - **B2 기본 벽 저주파 재질 변주 v1(2026-08-03 작업 트리)** — built-in ImageGen 소스와 생성 기록을
+      `project-c-b2-wall-material-source-v1.{png,prompt.md}`에 보관하고, `process_b2_prop_quality_v4.py`가
+      조용한 기본 셸과 작은 수리판이 있는 비발광 유지보수 셸 두 종으로 결정론적 마감한다. 둘은 같은
+      64×112 알파·12px 결합면·상단 cap·하단 plinth를 유지하며, 생성 보드의 대각 균열 후보는
+      비밀문·파괴 가능 벽 신호로 오독될 수 있어 승격하지 않았다. 기존 `env-wall-window-rising-*`
+      legacy 슬롯은 B2에서 창이나 광원이 아닌 두 번째 유지보수 재질로 재사용한다.
+      `B2HeroRoomLayoutRules`는 서비스 세그먼트·설비·단말을 우선한 뒤 남은 물리 벽 bay의 홀짝을
+      월드 좌표로 고정해 기본/유지보수 재질을 고른다. seed와 카메라 회전에 독립적이며 벽 배치·충돌·
+      정렬·FOV·이동·공격 규칙은 불변이다. 구 v1/32×56 생성 진입점도 현재 v4 writer로 위임해
+      재생성 회귀를 막았다. 4시점 실기 승인본은
+      `docs/captures/b2-wall-material-q{0,1,2,3}-live-v1.png`다. Core shim 1127/1127,
+      ArtPipeline 279/279, Telemetry 18/18, Unity EditMode 1367/1367, PlayMode 11/11,
+      Aseprite 64/64 및 최종 콘솔 에러 0을 확인했다.
+    - **공용 바닥 재료 품질 v1(2026-08-02)** — built-in ImageGen의
+      `project-c-shared-floor-material-source-v1.{png,prompt.md}`에서 저주파 마모 배치만 취하고,
+      `process_shared_floor_material_v1.py`가 기존 128×64·4,098px hard-alpha 다이아와 공용 팔레트,
+      외곽 3px 중간톤을 결정론적으로 다시 만들었다. 원본 가시 픽셀은 `grey-4` 91.996%와 세 개의
+      넓은 마모 덩어리 `grey-3` 8.004%이며, 두 값 모두 런타임 `.28-.50` 구간의 `Stone` 한 역할로
+      매핑돼 Shadow/Light/Outline 얼룩을 타일마다 찍지 않는다. 정식 `env-floor.aseprite`와 PNG
+      폴백은 가시 픽셀이 같고, `floor`는 Aseprite, `raisedFloor/lowerFloor`는 전용 원본 전까지 같은
+      PNG를 가리킨다. 새 base를 굽는 밴드·Facility·B2 파생 바닥도 함께 재생성했다. 지형·피벗·
+      정렬·이동·공격·FOV는 불변이며 4시점 실화면은
+      `docs/captures/shared-floor-material-q{0,1,2,3}-live-v1.png`다.
   - **M5 4차 슬라이스 반영됨(2026-07-30)** — 하행 계단 특수 소스를
     `environment-neon-stairs-v1`(C04 채택)로 교체해 `env-stairs-down-rising-*` 2종
     재마감 — 마지막 병원판 환경 소스 소거. 판정은 최종 크기 드라이런 비교
@@ -340,9 +482,9 @@
   색 목록과 설계 규칙의 SSOT는 `.gpl` 파일 자신이다 — 헤더 주석이 규칙을 소유한다.
   기본 환경은 청흑 void와
   횃불에 데워진 웜 그레이·토프 석재, 물리 광원은 토치 골드, 마법/출구는 틸로 읽히게 한다.
-  깊이별 변주는 이 공통 톤 위에서만
-  제한적으로 적용하며, 같은 던전 층의 `LocalHeight`는 색상 테마가 아니라 명도와 전면 두께로 구분한다.
-  **깊이 변주의 통로는 세 가지뿐이다** — 밴드 스프라이트 슬롯, 구조(캐치워크 길이), 광원 밀도(등잔 희소도).
+  깊이별 변주는 이 공통 톤 위에서만 제한적으로 적용한다. 층내 높이를 쓰는 다른 원정지는
+  `LocalHeight`를 색상 테마가 아니라 명도와 전면 두께로 구분한다. 첫 던전의 깊이 변주는
+  **밴드 스프라이트/드레싱과 광원 밀도**로 만든다. 구조(캐치워크 길이)는 비평탄 던전에서만 사용한다.
   **밴드 바닥 6종이 도착했다(2026-07-30, 플랜 v2 배치 1-1)** — `env-floor-{mid,deep,boss}(-raised)`가
   `environment-band-floors-v1` 레시피(2라운드 C04 채택)로 마감돼 카탈로그 밴드 슬롯 6개에
   연결됐고, 절차 오버레이(`BandOverlayColor`) 임시 대행은 자동 비활성됐다
@@ -350,6 +492,7 @@
   mid 냉각수 얼룩 / deep 균열+철근+물때 / boss hazard 조각+틸 심 하나. conform이
   웜 가드·non-boss 틸 억제·명도 게이트(§1-c)를 강제한다 — 판정·마감 근거는
   `docs/captures/band-floors-{gate,conform}-v1.png` · 소스 prompt.md.
+  `-raised` 3종은 첫 던전에서는 비활성이며, 층내 높이를 허용한 원정지용 교체 자산으로 보존한다.
   `DungeonSurfaceFor`의 석재색은 모든 깊이에서 같아야 한다(테스트로 고정). 값은 `DungeonBandProfile`.
 - **Aseprite 파이프라인**: `com.unity.2d.aseprite 5.0.3`을 사용한다.
   최종 아트 SSOT는 `Assets/_Project/Art/Source/Aseprite`의 `.aseprite`/`.ase` 원본이다.
@@ -358,12 +501,13 @@
   원본을 저장하면 Unity의 전처리에서 임포트 규격을 적용하고, 후처리 지연 콜백에서 카탈로그와
   애니메이션 세트를 동기화하므로 평소 PNG export나 수동 재연결은 필요 없다. 바닥은 128×64
   중앙 피봇, 액터는 96×128 캔버스를 검증하며 `env-floor*`/`env-wall-*`은 런타임 톤매핑을 위해
-  Read/Write를 자동 활성화한다. `e0c0967`(2026-08-01)의
-  `Validate Sources`는 Aseprite 원본 **28개**(`env-*` 26개 + 액터 2개)를 통과했다.
+  Read/Write를 자동 활성화한다. 초기 `e0c0967`(2026-08-01)의 28개 기준에서 확장되어,
+  2026-08-02 작업 트리의 `Validate Sources`는 Aseprite 원본 **61개 / 카탈로그 슬롯 61개**를
+  통과했다.
   나아가 임포터가 만든 AnimationClip에서 **sprite 커브만** 뽑아 태그 클립으로 굽고
   액터는 `catalog.actorAnimations`, 환경 루프는 `catalog.environmentAnimations`에 싣는다 —
-  transform/color 커브는 의도적으로 버린다(액터 루트의
-  position·scale·color는 전투 FX가 소유하므로 여기서 건드리면 둘이 싸운다). 원샷 태그
+  transform/color 커브는 의도적으로 버린다(position·scale은 전투 FX, 안정 상태 color는
+  `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가 소유하므로 여기서 건드리면 둘이 싸운다). 원샷 태그
   (attack/hit/fall/death)가 루프로 임포트되거나, 태그 규약 밖 클립이 있거나, 태그 클립이 있는데
   idle이 없으면 파이프라인 검증에서 걸린다. 환경은 `prop-campfire`, `prop-portal`,
   좌·우 상승 벽 횃불 4슬롯의 `idle` 태그만 베이크하며, 태그가 없으면 첫 프레임 정적 폴백을
@@ -385,11 +529,10 @@
   자동 계승한다. 기본 화면은 대상·이번 내용·결과 다양성만 받고 모델·전체 프롬프트·seed·Steps·
   CFG·denoise는 `고급 설정`에서만 편집한다. 메인 원정자 `actor-knight`, 정적 환경 9슬롯,
   환경 idle 루프 4슬롯이 이 합성 레지스트리에 등록돼 있다.
-  **메인 원정자 vertical slice의 Unity 연결은 2026-07-28 완료했지만 현재 초안이 이를
-  대체했다.** `knight` 카탈로그 슬롯과 `actorAnimations`는 같은 `actor-knight.aseprite`를
-  보되, 2026-07-31의 11프레임 메딕 자동 조립 초안은 방향·프레임 일관성 승인을 받지 못했다.
-  그래서 현재 플레이어는 `Frame_0` 정적 Sprite만 사용한다. 생성·판정 이력은
-  `docs/art-direction/player-character-vertical-slice.md`가 소유한다.
+  2026-07-28 vertical slice와 2026-07-31의 11프레임 메딕 자동 조립은 생성·판정 이력으로만
+  남는다(`docs/art-direction/player-character-vertical-slice.md`). 현재 `knight` 카탈로그 슬롯은
+  `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`에서 다시 만든 단일 프레임
+  `actor-knight.aseprite`를 보며, `actorAnimations`는 승인된 플레이어 타임라인을 제공하지 않는다.
   `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
   실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
   `apply_requests`만 Codex Spark Scheduled가 실제 Unity/Aseprite 참조를 조사해 적용한다.
@@ -419,7 +562,8 @@
   클립이 조용히 무시되는 일이 없다. 시간 → 프레임 선택 수학은 `SpriteClipRules.FrameAt`이며
   UnityEngine 무의존이라 shim에서 경계까지 검증된다.
   - 재생기 `SpriteClipAnimator`는 **Animator를 쓰지 않고 `renderer.sprite`만 만진다.**
-    나머지(position·scale·color)는 전투 FX와 `ApplyEnemyVisuals`의 소유라 침범하지 않는다.
+    position·scale은 전투 FX가, 안정 상태 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가
+    소유하므로 침범하지 않는다.
   - 시야 밖(`renderer.enabled == false`)에서는 얼어붙었다가 다시 보이면 그 프레임부터 이어간다 —
     그래서 재동기화 코드가 없고, 안 보이는 액터의 Update가 이른 반환으로 끝난다.
   - 클립 없는 태그 요청은 전부 no-op이라 PNG 폴백(정지 1프레임) 액터와 그대로 공존한다.
@@ -547,16 +691,15 @@
     계획 전문은 `~/.claude/plans/calm-mapping-storm.md`.
 - **최근 검증 기준** — **숫자에는 반드시 기준 커밋 해시를 함께 적는다.** 해시 없는 개수는
   언제 잰 것인지 알 수 없어 검증이 아니라 소문이 되고, 실제로 낡은 채 여러 세션을 살아남았다.
-  - Core shim `./Tools/CoreTests/run-core-tests.sh` **1080/1080 통과** (`e0c0967`,
-    2026-08-01 실측, 5s).
-  - ArtPipeline Python 회귀 **168/168 통과** (`e0c0967`, 2026-08-01 실측, 27s).
+  - Core shim `./Tools/CoreTests/run-core-tests.sh` **1126/1126 통과** (`35c6316` +
+    2026-08-02 작업 트리 실측).
+  - ArtPipeline Python 회귀 **237/237 통과** (`35c6316` + 2026-08-02 작업 트리 실측).
     `COMFY_LEASE_CHUNK=0` 으로 돌린다 — 리스가 켜져 있으면 실제 발주가 쥔 락에 걸린다.
-  - B2 방향축 + 공용 바닥 후처리 Python 회귀 **7/7 통과** (`e0c0967`,
-    2026-08-01 실측, 0.1s).
-  - Unity EditMode `ProjectC.Tests.EditMode` **1291/1291 통과** (`e0c0967` 직전 작업 트리,
-    2026-08-01 에디터 실측, 7.4s).
-  - Unity PlayMode `ProjectC.Tests.PlayMode` **10/10 통과** (`e0c0967` 직전 작업 트리,
-    같은 세션, 12.5s) —
+  - Telemetry Python 회귀 **18/18 통과** (`35c6316` + 2026-08-02 작업 트리 실측).
+  - Unity EditMode `ProjectC.Tests.EditMode` **1362/1362 통과** (`35c6316` +
+    2026-08-02 작업 트리 에디터 실측, 31.2s).
+  - Unity PlayMode `ProjectC.Tests.PlayMode` **11/11 통과** (`35c6316` + 같은 작업 트리·세션,
+    13.3s) —
     ① 허브 시설 생성·회전 재투영·상인 id/라벨 배선 → 폐 아케이드 복합타워 B2 → 8F 보스 →
     출구(치트 훅과 SPACE 경로 양쪽)
     ② 침수된 금고 1구역 → 보스 없는 최종 구역 출구
@@ -569,8 +712,11 @@
     ⑨ 메타 정산 성공 뒤 체크포인트가 남은 크래시 재현 → 같은 `runId`의 전리품·반입 장비·
     완료 의뢰·기록을 재지급하지 않음
     ⑩ 같은 허브 인스턴스에서 시설 잠금→개방→재잠금을 재빌드해 최신 메타·프롭·상호작용·
-    광원 수와 `Generated Visuals` 단일 루트를 보존.
-  - 128-레짐 전환(`4ab4438`) 뒤 재임포트·컴파일도 현재 세션에서 **에러 0**을 다시 확인했다.
+    광원 수와 `Generated Visuals` 단일 루트를 보존
+    ⑪ 아래 보기에서 일반 월드 행동을 막고 수직 폭발물만 한 턴을 소비한 뒤 현재층으로 복귀.
+  - Aseprite `Validate Sources` **61개 원본 통과**, 최종 재임포트·검증 뒤 Unity 콘솔
+    **에러 0** (`35c6316` + 2026-08-02 작업 트리 에디터 실측).
+    128-레짐 전환(`4ab4438`) 뒤 재임포트·컴파일도 당시 세션에서 **에러 0**을 확인했다.
     최초 확인 기준은 `9d6a37e`였고, 그 전 세 커밋(`4ab4438`·`581445a`·`fa6ac29`)은 에디터
     검증 없이 shim만 돌았던 구간이다.
   - 그 앞 기준선은 `42266cc`의 EditMode 1043, 개구부 확장 `3744f04`의 Core 881 / EditMode 1005였다.
@@ -638,12 +784,14 @@
   아트 쪽에서 결손 둘이 드러났다.
   - **개구부 차폐 — 확정.** 실제 미리보기 **36칸** vs 옛 박스 방식이었다면 42칸이고, 가려진 6칸이
     전부 **닫힌 문(9,7) 너머 북쪽 방**이었다. 문 타일 자체는 미리보기에 들어온다("그 칸까지만").
-  - **사다리 추격 단절 — 확정.** 같은 출발·도착에 `canClimb=true`는 2칸 경로,
+  - **사다리 추격 단절 — 엔진 규칙 확정.** 같은 출발·도착에 `canClimb=true`는 2칸 경로,
     `false`는 **경로 없음**. 생성된 던전의 사다리 링크가 밴드별로 갈리는 것도 확인했다 —
     초반은 `e0→e1`(±1단), 중후반은 `e12→e14`(+2단 곧장)이고 중간 발판은 **링크가 없다**.
+    이 캡처는 비평탄 생성 능력의 과거 검증이며 현재 첫 던전에서는 해당 구조를 생성하지 않는다.
   - **`CanClimb` 기본값 false가 값을 했다.** 신규 합선 드론이 명시하지 않아 자동으로 못 오른다 —
     인간형(약탈자·투석 약탈자)만 true, 기계·무정형(경비 드론·슬러지·합선 드론)과 보스는 false.
   - **보스 접근 전조 — 규칙 확정, 화면 노출은 미확인.** 진행지수 8 한 곳에서만 뜨고 상승 방향
     문구("한 층 **위**에서")이며 처치 후 침묵한다(`90165eb` 수정이 살아 있다). 다만 **치트 층 점프로는
     화면에 안 뜬다** — 계단으로 실제 진입해야 하므로 실플레이에서 본다.
-  - **남은 것**: 깊이별 벽 등잔 밀도 기울기와 캐치워크 격자 룩은 이 세션에서 판단하기 어려웠다.
+  - **남은 것**: 첫 던전의 깊이별 벽 등잔 밀도 기울기는 이 세션에서 판단하기 어려웠다.
+    캐치워크 격자 룩은 층내 높이를 실제 사용하는 원정지의 백로그로 이동한다.

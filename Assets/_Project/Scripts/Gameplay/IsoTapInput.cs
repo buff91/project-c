@@ -219,8 +219,10 @@ namespace ProjectC.Gameplay
         {
             if (!trackHover)
             {
+                bool hadHover = _hovered.HasValue;
                 _hovered = null;
                 _lastHoverPoint = new Vector2(float.NaN, float.NaN);
+                if (hadHover) TileHovered?.Invoke(null);
                 return;
             }
 
@@ -240,6 +242,18 @@ namespace ProjectC.Gameplay
 
             _hovered = hovered;
             TileHovered?.Invoke(hovered);
+        }
+
+        /// <summary>
+        /// 시점 회전이나 카메라 이동 뒤 포인터가 움직이지 않아도 다음 프레임에 다시 픽한다.
+        /// 현재 hover를 먼저 지워 소비자가 오래된 칸을 강조하지 않게 한다.
+        /// </summary>
+        public void InvalidateHover()
+        {
+            bool hadHover = _hovered.HasValue;
+            _hovered = null;
+            _lastHoverPoint = new Vector2(float.NaN, float.NaN);
+            if (hadHover) TileHovered?.Invoke(null);
         }
 
         /// <summary>탭과 같은 선택자를 쓴다 — 조준선이 가리키는 칸과 탭이 고르는 칸이 갈리면 안 된다.</summary>

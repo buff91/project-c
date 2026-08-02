@@ -89,6 +89,13 @@ namespace ProjectC.Gameplay
             Vector3 holeWorld = _grid.GridToWorld(hole);
             Vector3 landingWorld = _grid.GridToWorld(landing);
             Color original = _playerRenderer.color;
+            Camera dropCamera = configureMainCamera
+                ? (_configuredCamera != null ? _configuredCamera : Camera.main)
+                : null;
+            Vector3 cameraStart = dropCamera != null
+                ? dropCamera.transform.position
+                : Vector3.zero;
+            Vector3 cameraLanding = new Vector3(landingWorld.x, landingWorld.y, cameraStart.z);
 
             float elapsed = 0f;
             const float hopDuration = 0.14f;
@@ -113,6 +120,8 @@ namespace ProjectC.Gameplay
                 ApplyMovingActorVisualSorting(_playerRenderer, hole, landing, eased);
                 _player.transform.localScale = Vector3.one * Mathf.Lerp(1f, 0.72f, Mathf.Sin(t * Mathf.PI));
                 _playerRenderer.color = new Color(original.r, original.g, original.b, Mathf.Lerp(1f, 0.35f, Mathf.Sin(t * Mathf.PI)));
+                if (dropCamera != null)
+                    dropCamera.transform.position = Vector3.Lerp(cameraStart, cameraLanding, eased);
                 yield return null;
             }
 

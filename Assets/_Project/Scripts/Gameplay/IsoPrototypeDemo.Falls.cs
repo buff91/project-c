@@ -245,11 +245,21 @@ namespace ProjectC.Gameplay
             return agent != null && IsEnemyVisibleToPlayer(agent);
         }
 
+        /// <summary>
+        /// 층 보기에서 직접 겨눈 폭발은 HP/상태 수치를 공개하지 않지만, 화면에 보이는
+        /// 실루엣이 맞았다는 최소 피드백까지 숨기지는 않는다.
+        /// </summary>
+        private bool IsCombatantImpactVisible(CombatantState combatant)
+        {
+            if (IsCombatantVisibleToPlayer(combatant)) return true;
+            return combatant != null && IsVerticalLookTarget(combatant.Position);
+        }
+
         private IEnumerator PlayBlastDamage(HazardStep step)
         {
             int visibleHitCount = 0;
             foreach (CombatantState damaged in step.Actors)
-                if (IsCombatantVisibleToPlayer(damaged))
+                if (IsCombatantImpactVisible(damaged))
                     visibleHitCount++;
             InteractionFeedback?.Invoke(
                 visibleHitCount > 0 ? $"BOOM · {visibleHitCount} HIT" : "BOOM");

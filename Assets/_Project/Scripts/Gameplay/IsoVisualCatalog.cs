@@ -86,6 +86,8 @@ namespace ProjectC.Gameplay
         public Sprite b2ParkingWheelStopFloor;
         [Tooltip("기본 바닥과 합성된 쓰러진 아케이드 안내판 — 비충돌 장식")]
         public Sprite b2FallenWayfindingFloor;
+        [Tooltip("B2 진출부의 평평한 균열·마모 바닥 — 비충돌 장식")]
+        public Sprite b2CrackedFloor;
         [Tooltip("주차 범퍼 4분기 화면 방향 — view 0..3")]
         public Sprite b2ParkingWheelStopFloorView0;
         public Sprite b2ParkingWheelStopFloorView1;
@@ -96,6 +98,36 @@ namespace ProjectC.Gameplay
         public Sprite b2FallenWayfindingFloorView1;
         public Sprite b2FallenWayfindingFloorView2;
         public Sprite b2FallenWayfindingFloorView3;
+        [Tooltip("배럴 유출 방지 베이의 service/ring 셀 — view 0..3")]
+        public Sprite b2BarrelBayServiceFloorView0;
+        public Sprite b2BarrelBayServiceFloorView1;
+        public Sprite b2BarrelBayServiceFloorView2;
+        public Sprite b2BarrelBayServiceFloorView3;
+        [Tooltip("배럴 유출 방지 베이의 drain/grate 셀 — view 0..3")]
+        public Sprite b2BarrelBayDrainFloorView0;
+        public Sprite b2BarrelBayDrainFloorView1;
+        public Sprite b2BarrelBayDrainFloorView2;
+        public Sprite b2BarrelBayDrainFloorView3;
+        [Tooltip("2×2 연속 주차 바닥의 물리 role 0 — view 0..3")]
+        public Sprite b2MacroFloorRole0View0;
+        public Sprite b2MacroFloorRole0View1;
+        public Sprite b2MacroFloorRole0View2;
+        public Sprite b2MacroFloorRole0View3;
+        [Tooltip("2×2 연속 주차 바닥의 물리 role 1 — view 0..3")]
+        public Sprite b2MacroFloorRole1View0;
+        public Sprite b2MacroFloorRole1View1;
+        public Sprite b2MacroFloorRole1View2;
+        public Sprite b2MacroFloorRole1View3;
+        [Tooltip("2×2 연속 주차 바닥의 물리 role 2 — view 0..3")]
+        public Sprite b2MacroFloorRole2View0;
+        public Sprite b2MacroFloorRole2View1;
+        public Sprite b2MacroFloorRole2View2;
+        public Sprite b2MacroFloorRole2View3;
+        [Tooltip("2×2 연속 주차 바닥의 물리 role 3 — view 0..3")]
+        public Sprite b2MacroFloorRole3View0;
+        public Sprite b2MacroFloorRole3View1;
+        public Sprite b2MacroFloorRole3View2;
+        public Sprite b2MacroFloorRole3View3;
 
         public Sprite stairs;
         public Sprite ladder;
@@ -130,6 +162,14 @@ namespace ProjectC.Gameplay
         public Sprite hospitalWallWindowRisingLeft;
         public Sprite hospitalWallCabinetRisingRight;
         public Sprite hospitalWallCabinetRisingLeft;
+
+        [Header("B2 연속 서비스 벽 (물리 x 순서 0..2)")]
+        public Sprite b2ServiceWallSegment0RisingRight;
+        public Sprite b2ServiceWallSegment0RisingLeft;
+        public Sprite b2ServiceWallSegment1RisingRight;
+        public Sprite b2ServiceWallSegment1RisingLeft;
+        public Sprite b2ServiceWallSegment2RisingRight;
+        public Sprite b2ServiceWallSegment2RisingLeft;
 
         [Header("액터와 소품")]
         public Sprite player;
@@ -473,6 +513,114 @@ namespace ProjectC.Gameplay
                 b2FallenWayfindingFloorView3);
         }
 
+        public Sprite B2CrackedFloorFor() =>
+            b2CrackedFloor != null ? b2CrackedFloor : hospitalFloorCracked;
+
+        /// <summary>
+        /// B2 폭발통 아래 service 셀과 인접 drain 셀의 한 쌍. 여덟 슬롯이 모두
+        /// 승격됐을 때만 켜서 회전 중 한쪽 셀만 구판 베이지 타일로 돌아가는 일을 막는다.
+        /// </summary>
+        public bool HasCompleteB2BarrelBayFloor =>
+            b2BarrelBayServiceFloorView0 != null &&
+            b2BarrelBayServiceFloorView1 != null &&
+            b2BarrelBayServiceFloorView2 != null &&
+            b2BarrelBayServiceFloorView3 != null &&
+            b2BarrelBayDrainFloorView0 != null &&
+            b2BarrelBayDrainFloorView1 != null &&
+            b2BarrelBayDrainFloorView2 != null &&
+            b2BarrelBayDrainFloorView3 != null;
+
+        public Sprite B2BarrelBayFloorFor(bool drain, int viewQuarterTurns)
+        {
+            if (!HasCompleteB2BarrelBayFloor)
+                return null;
+
+            int view = NormalizeQuarterTurns(viewQuarterTurns);
+            if (drain)
+            {
+                switch (view)
+                {
+                    case 1: return b2BarrelBayDrainFloorView1;
+                    case 2: return b2BarrelBayDrainFloorView2;
+                    case 3: return b2BarrelBayDrainFloorView3;
+                    default: return b2BarrelBayDrainFloorView0;
+                }
+            }
+
+            switch (view)
+            {
+                case 1: return b2BarrelBayServiceFloorView1;
+                case 2: return b2BarrelBayServiceFloorView2;
+                case 3: return b2BarrelBayServiceFloorView3;
+                default: return b2BarrelBayServiceFloorView0;
+            }
+        }
+
+        /// <summary>
+        /// 2×2 연결 바닥은 16개 슬롯 전체가 하나의 원자적 자산이다. 일부만 연결되면
+        /// 내부 무늬가 끊기므로 모든 role에서 null을 돌려 일반 바닥 폴백을 강제한다.
+        /// </summary>
+        public bool HasCompleteB2MacroFloor =>
+            b2MacroFloorRole0View0 != null &&
+            b2MacroFloorRole0View1 != null &&
+            b2MacroFloorRole0View2 != null &&
+            b2MacroFloorRole0View3 != null &&
+            b2MacroFloorRole1View0 != null &&
+            b2MacroFloorRole1View1 != null &&
+            b2MacroFloorRole1View2 != null &&
+            b2MacroFloorRole1View3 != null &&
+            b2MacroFloorRole2View0 != null &&
+            b2MacroFloorRole2View1 != null &&
+            b2MacroFloorRole2View2 != null &&
+            b2MacroFloorRole2View3 != null &&
+            b2MacroFloorRole3View0 != null &&
+            b2MacroFloorRole3View1 != null &&
+            b2MacroFloorRole3View2 != null &&
+            b2MacroFloorRole3View3 != null;
+
+        public Sprite B2MacroFloorFor(int role, int viewQuarterTurns)
+        {
+            if (!HasCompleteB2MacroFloor || role < 0 || role > 3)
+                return null;
+
+            int view = NormalizeQuarterTurns(viewQuarterTurns);
+            switch (role)
+            {
+                case 0:
+                    switch (view)
+                    {
+                        case 1: return b2MacroFloorRole0View1;
+                        case 2: return b2MacroFloorRole0View2;
+                        case 3: return b2MacroFloorRole0View3;
+                        default: return b2MacroFloorRole0View0;
+                    }
+                case 1:
+                    switch (view)
+                    {
+                        case 1: return b2MacroFloorRole1View1;
+                        case 2: return b2MacroFloorRole1View2;
+                        case 3: return b2MacroFloorRole1View3;
+                        default: return b2MacroFloorRole1View0;
+                    }
+                case 2:
+                    switch (view)
+                    {
+                        case 1: return b2MacroFloorRole2View1;
+                        case 2: return b2MacroFloorRole2View2;
+                        case 3: return b2MacroFloorRole2View3;
+                        default: return b2MacroFloorRole2View0;
+                    }
+                default:
+                    switch (view)
+                    {
+                        case 1: return b2MacroFloorRole3View1;
+                        case 2: return b2MacroFloorRole3View2;
+                        case 3: return b2MacroFloorRole3View3;
+                        default: return b2MacroFloorRole3View0;
+                    }
+            }
+        }
+
         private static Sprite B2FloorDressingFor(
             int viewQuarterTurns,
             Sprite legacy,
@@ -526,8 +674,43 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
+        /// B2 시작방 전용 연속 벽. 여섯 방향 슬롯이 모두 승격됐을 때만 사용해
+        /// 부분 임포트 중 한 칸만 새 아트로 바뀌는 이음새 회귀를 막는다.
+        /// </summary>
+        public Sprite B2ServiceWallSegmentFor(int segment, bool risesRight)
+        {
+            bool complete =
+                b2ServiceWallSegment0RisingRight != null &&
+                b2ServiceWallSegment0RisingLeft != null &&
+                b2ServiceWallSegment1RisingRight != null &&
+                b2ServiceWallSegment1RisingLeft != null &&
+                b2ServiceWallSegment2RisingRight != null &&
+                b2ServiceWallSegment2RisingLeft != null;
+            if (!complete)
+                return null;
+
+            switch (segment)
+            {
+                case 0:
+                    return risesRight
+                        ? b2ServiceWallSegment0RisingRight
+                        : b2ServiceWallSegment0RisingLeft;
+                case 1:
+                    return risesRight
+                        ? b2ServiceWallSegment1RisingRight
+                        : b2ServiceWallSegment1RisingLeft;
+                case 2:
+                    return risesRight
+                        ? b2ServiceWallSegment2RisingRight
+                        : b2ServiceWallSegment2RisingLeft;
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
         /// 벽 등잔이 없는 Facility 후면 벽 일부만 드레싱으로 교체한다(hospital* 슬롯명은 구판 유지).
-        /// decoration은 월드 좌표와 시점으로 만든 0..7 해시라 같은 화면에서는 결정론적이다.
+        /// decoration은 물리 벽면 좌표로 만든 0..7 값이다. 시점을 돌려도 같은 설비가 남아야 한다.
         /// </summary>
         public Sprite RearWallFor(bool torch, bool risesRight, int decoration)
         {

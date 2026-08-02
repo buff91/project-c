@@ -38,6 +38,7 @@ namespace ProjectC.Tests
             Assert.AreEqual(VerticalRouteRole.OpeningDown, down.Role);
             Assert.AreEqual("B2 ▼", down.WorldLabel);
             StringAssert.Contains("뛰어내린다", down.Detail);
+            StringAssert.Contains("재클릭/SPACE", down.Detail);
             Assert.AreEqual(VerticalRouteRole.OpeningUp, up.Role);
             Assert.AreEqual("B1 ▲", up.WorldLabel);
             StringAssert.Contains("올려다볼", up.Detail);

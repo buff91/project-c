@@ -14,6 +14,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (PotionCount <= 0)
             {
                 InteractionFeedback?.Invoke("NO POTIONS");
@@ -34,12 +35,13 @@ namespace ProjectC.Gameplay
         /// "OPEN"/"CLOSE"/"PUSH", 없으면 null — HUD 가 매 프레임 폴링해 버튼을 숨긴다.
         /// </summary>
         public string ContextInteractionLabel =>
-            !Application.isPlaying || _resolvingAction ||
+            !Application.isPlaying || _resolvingAction || IsVerticalLookActive ||
             _playerState == null || !_playerState.IsAlive || _runSummary.Ended
                 ? null
-                : TryGetCurrentConnectorInteraction(out string connectorLabel)
-                    ? connectorLabel
-                    : TryFindAdjacentInteraction(out _, out string label) ? label : null;
+                : DropContextInteractionLabel ??
+                  (TryGetCurrentConnectorInteraction(out string connectorLabel)
+                      ? connectorLabel
+                      : TryFindAdjacentInteraction(out _, out string label) ? label : null);
 
         /// <summary>상호작용 버튼 실행 — 스페이스바/액션 휠과 같은 경로.</summary>
         public void PerformContextInteraction() => InteractAdjacent();
@@ -63,6 +65,12 @@ namespace ProjectC.Gameplay
                 _playerState == null || !_playerState.IsAlive)
                 return;
 
+            if (IsVerticalLookActive && !VerticalThrowRules.Supports(kind))
+            {
+                InteractionFeedback?.Invoke("다른 층에는 폭탄·냉각재·기름만 던질 수 있다");
+                return;
+            }
+
             bool alreadyAimingThis = _bombAiming && _bombAimKind == kind;
             if (!alreadyAimingThis && _inventory.Count(kind) <= 0)
             {
@@ -81,19 +89,33 @@ namespace ProjectC.Gameplay
         private void SetBombAiming(bool aiming)
         {
             _bombAiming = aiming;
-            // 호버 추적은 조준 중에만 켠다 — 켜 두면 매 프레임 렌더된 타일을 전부 훑는다.
-            if (_input != null) _input.trackHover = aiming;
+            if (aiming) ClearDropFocus(restoreSelection: true);
             if (!aiming) _aimHoverCell = null;
+            // 폭탄 조준 또는 화면에 보이는 Hole이 있을 때만 픽 비용을 낸다.
+            UpdateWorldHoverTracking();
+            _input?.InvalidateHover();
             RefreshThrowRangePreview();
             // 조준 종류 전환도 HUD 하이라이트에 반영돼야 하므로 상태가 같아도 알린다.
             BombAimingChanged?.Invoke(aiming);
         }
 
+        /// <summary>HUD Escape가 메뉴보다 먼저 투척 조준 한 단계만 취소할 때 사용한다.</summary>
+        public bool CancelThrowAim()
+        {
+            if (!_bombAiming) return false;
+            SetBombAiming(false);
+            InteractionFeedback?.Invoke("AIM CANCELED");
+            return true;
+        }
+
         /// <summary>선택 마커를 옮기고 행동 코루틴을 잠금 래퍼로 시작한다. (탭 분기 공통 꼬리)</summary>
-        private void StartPlayerAction(GridPos target, IEnumerator action)
+        private void StartPlayerAction(
+            GridPos target,
+            IEnumerator action,
+            bool preserveVerticalLook = false)
         {
             PositionSelection(target);
-            _moveRoutine = StartCoroutine(RunPlayerAction(action));
+            _moveRoutine = StartCoroutine(RunPlayerAction(action, preserveVerticalLook));
         }
 
         private bool TryFindApproach(GridPos target, out List<GridPos> path)
@@ -106,13 +128,20 @@ namespace ProjectC.Gameplay
         /// 플레이어 행동 코루틴 공통 래퍼. 진행 중 입력 잠금(_resolvingAction)과
         /// 핸들 해제를 한 곳에서 처리해, 개별 행동이 잠금 해제를 잊을 수 없게 한다.
         /// </summary>
-        private IEnumerator RunPlayerAction(IEnumerator action)
+        private IEnumerator RunPlayerAction(
+            IEnumerator action,
+            bool preserveVerticalLook = false)
         {
             _resolvingAction = true;
             _travelCancelRequested = false;
+            ClearDropFocus(restoreSelection: false);
+            if (!preserveVerticalLook)
+                ExitVerticalLook(announce: false);
+            UpdateWorldHoverTracking();
             yield return action;
             _resolvingAction = false;
             _moveRoutine = null;
+            UpdateWorldHoverTracking();
         }
 
         private IEnumerator AutoDescend()
@@ -266,6 +295,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (_inventory.Count(ItemKind.CannedFood) <= 0)
             {
                 InteractionFeedback?.Invoke("NO FOOD");
@@ -282,6 +312,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (_inventory.Count(ItemKind.EnergyCell) <= 0)
             {
                 InteractionFeedback?.Invoke("에너지 셀이 없다");
@@ -347,18 +378,23 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator ThrowOil(GridPos target)
+        private IEnumerator ThrowOil(
+            GridPos target,
+            VerticalThrowPath? verticalPath = null)
         {
             SetBombAiming(false);
             _inventory.TryUse(ItemKind.OilFlask);
             _runTelemetry?.RecordItemUsed(ItemKind.OilFlask, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
-            yield return AnimateProjectile(_playerPos, target);
+            yield return AnimateProjectile(_playerPos, target, verticalPath);
             List<GridPos> splashed = OilRules.Splash(_grid.Map, target);
             InteractionFeedback?.Invoke($"OIL SPLASHED ×{splashed.Count} — 불이 닿으면 발화한다");
             Debug.Log($"[Item] 기름 살포 {target}: {splashed.Count}칸");
             RefreshFloorVisibility();
+
+            if (verticalPath.HasValue)
+                ExitVerticalLook(announce: false);
 
             yield return ResolveEnemyPhase();
         }
@@ -394,6 +430,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || hubMode || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (recipeIndex < 0 || recipeIndex >= CraftingRules.Recipes.Length) return;
 
             Recipe recipe = CraftingRules.Recipes[recipeIndex];
@@ -426,6 +463,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction ||
                 _playerState == null || !_playerState.IsAlive)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (_inventory.Count(ItemKind.RecallScroll) <= 0)
             {
                 InteractionFeedback?.Invoke("NO SCROLLS");
@@ -467,7 +505,10 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator ThrowBomb(GridPos target, ItemKind kind)
+        private IEnumerator ThrowBomb(
+            GridPos target,
+            ItemKind kind,
+            VerticalThrowPath? verticalPath = null)
         {
             SetBombAiming(false);
             _inventory.TryUse(kind);
@@ -475,68 +516,15 @@ namespace ProjectC.Gameplay
             InventoryChanged?.Invoke();
 
             bool fiery = kind != ItemKind.FrostBomb;
-            yield return AnimateProjectile(_playerPos, target);
+            yield return AnimateProjectile(_playerPos, target, verticalPath);
             yield return ResolveExplosion(target, fiery ? bombDamage : frostBombDamage, fiery);
+
+            if (verticalPath.HasValue)
+                ExitVerticalLook(announce: false);
 
             if (_playerState.IsAlive)
                 yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator AnimateBlast(GridPos center, bool fiery = true)
-        {
-            CombatImpactKind impact = fiery
-                ? CombatImpactKind.Fire
-                : CombatImpactKind.Frost;
-            StartCoroutine(ShakeCamera(
-                CombatPresentationRules.ShakeStrength(impact) * 1.55f,
-                fiery ? 0.18f : 0.14f));
-
-            var blast = new GameObject("Bomb Blast");
-            blast.transform.SetParent(_visualRoot, false);
-            blast.transform.position = _grid.GridToWorld(center) + Vector3.up * 0.18f;
-            var renderer = blast.AddComponent<SpriteRenderer>();
-            renderer.sprite = ActorSprites.GetBlastSprite(fiery);
-            renderer.sortingOrder = OverlaySorting.Blast;
-
-            float elapsed = 0f;
-            const float duration = 0.24f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float scale = Mathf.Lerp(0.5f, 2.6f, SmoothStep(t));
-                blast.transform.localScale = new Vector3(scale, scale, 1f);
-                Color color = renderer.color;
-                color.a = 1f - t * t;
-                renderer.color = color;
-                yield return null;
-            }
-
-            Destroy(blast);
-        }
-
-        private IEnumerator AnimateProjectile(GridPos from, GridPos to)
-        {
-            var projectile = new GameObject("Ranged Projectile");
-            projectile.transform.SetParent(_visualRoot, false);
-            var renderer = projectile.AddComponent<SpriteRenderer>();
-            renderer.sprite = ActorSprites.GetProjectileSprite();
-            renderer.sortingOrder = OverlaySorting.Projectile;
-
-            Vector3 start = _grid.GridToWorld(from) + Vector3.up * 0.42f;
-            Vector3 end = _grid.GridToWorld(to) + Vector3.up * 0.42f;
-            float elapsed = 0f;
-            const float duration = 0.2f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                projectile.transform.position = Vector3.Lerp(start, end, t) +
-                                                Vector3.up * (Mathf.Sin(t * Mathf.PI) * 0.24f);
-                yield return null;
-            }
-
-            Destroy(projectile);
-        }
     }
 }

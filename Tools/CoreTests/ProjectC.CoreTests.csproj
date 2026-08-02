@@ -52,10 +52,12 @@
       Unity 타입을 쓴다면 이 목록에 한 줄 추가한다 (빌드 에러가 그걸 알려준다).
     -->
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/AtomicJsonStoreTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/B2FoundationSpriteTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentSaveProfileTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentViewportServiceTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DisplaySettingsDataTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/FloorFoundationPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubUiBindingRegistryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubWorldRegistryTests.cs" />
@@ -71,6 +73,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RunTelemetryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SaveStoreCompatibilityTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RuntimeSpriteGroundingTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SharedFloorAssetContractTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteOcclusionTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/TitleEntryRoutingTests.cs" />
   </ItemGroup>

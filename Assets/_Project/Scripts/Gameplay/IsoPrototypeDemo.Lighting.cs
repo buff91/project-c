@@ -99,6 +99,9 @@ namespace ProjectC.Gameplay
                 !HasPlanarTile(pos.x, pos.y + 1, floor) ||
                 !HasPlanarTile(pos.x, pos.y - 1, floor);
             if (!edge) return false;
+            if (_b2HeroRoomLayout != null &&
+                _b2HeroRoomLayout.TryGetWallSconce(pos, out bool authoredSconce))
+                return authoredSconce;
             return SconcePlacement.IsSconce(
                 pos.x, pos.y, dungeonSeed, WallSconceRarityFor(floor));
         }
@@ -121,6 +124,35 @@ namespace ProjectC.Gameplay
             _staticCoolField != null && _staticCoolField.TryGetValue(pos, out float v) ? v : 0f;
 
         /// <summary>
+        /// B2 시작방 바닥만 방 단위의 한 조명 덩어리로 묶는다. 기존 타일별 조명은 벽·액터·소품에
+        /// 그대로 남겨 광원 위치를 보여 주고, 바닥 RGB만 방 평균 쪽으로 모아 128px 다이아마다
+        /// 밝기가 뚝 끊기는 체크무늬를 억제한다. FOV 알파·원소 상태·조준 오버레이와는 별도 축이다.
+        /// </summary>
+        private Dictionary<GridPos, Color> BuildB2CoherentFloorLightField()
+        {
+            if (_b2HeroRoomLayout == null ||
+                _grid == null ||
+                viewMode == DungeonViewMode.DebugAll ||
+                !dungeonDarkness)
+                return null;
+
+            var localLights = new Dictionary<GridPos, Color>();
+            foreach (GridPos pos in _b2HeroRoomLayout.RoomCells)
+            {
+                if (!_visibleTiles.Contains(pos) || _grid.Map.Get(pos)?.kind != TileKind.Floor)
+                    continue;
+                localLights[pos] = TileLightColor(pos);
+            }
+            if (localLights.Count == 0) return null;
+
+            Color reference = B2RoomFloorLighting.Average(localLights.Values);
+            var coherent = new Dictionary<GridPos, Color>(localLights.Count);
+            foreach (KeyValuePair<GridPos, Color> pair in localLights)
+                coherent[pair.Key] = B2RoomFloorLighting.Coherent(reference, pair.Value);
+            return coherent;
+        }
+
+        /// <summary>
         /// 벽·융기 지형 발치의 방향성 캐스트 그림자 배수. 고정 키 라이트가 +x/+y 쪽에서
         /// 온다고 보고, 그 방향 이웃이 벽이거나 더 높으면 이 타일을 살짝 어둡게 한다.
         /// 월드 고정 방향이라 시점을 돌리면 그림자도 반대편에서 보인다.
@@ -141,11 +173,31 @@ namespace ProjectC.Gameplay
         {
             var obj = new GameObject("Contact Shadow");
             obj.transform.SetParent(parent, false);
-            obj.transform.localPosition = new Vector3(0f, -0.03f, 0f);
+            obj.transform.localPosition = new Vector3(0f, -0.01f, 0f);
             var renderer = obj.AddComponent<SpriteRenderer>();
             renderer.sprite = ActorSprites.GetContactShadowSprite();
             renderer.color = new Color32(0, 0, 0, 0);
             return renderer;
+        }
+
+        /// <summary>
+        /// 플레이어도 적·바닥과 같은 월드 광원을 받는다. 상태색만 적용하던 구 경로는 밝은 스티커처럼
+        /// 분리됐고, 특히 흰 재킷이 어두운 B2 바닥에서 허공에 떠 보였다.
+        /// </summary>
+        private void ApplyPlayerVisuals()
+        {
+            if (_playerRenderer == null || _playerState == null || _dungeon == null) return;
+
+            GridPos pos = _playerState.Position;
+            _playerRenderer.color = ActorGroundingPresentation.WorldTint(
+                CombatantTint(_playerState),
+                ElevationTint(pos),
+                TileLightColor(pos));
+            UpdateContactShadow(
+                _playerShadow,
+                pos,
+                _playerRenderer.sortingOrder,
+                _playerState.IsAlive);
         }
 
         /// <summary>
@@ -164,9 +216,55 @@ namespace ProjectC.Gameplay
             Color light = TileLightColor(groundPos);
             float lit = Mathf.Max(light.r, Mathf.Max(light.g, light.b)); // 얼마나 밝은가
             Color32 v = Palette.Void;
-            int alpha = Mathf.Clamp(
-                Mathf.RoundToInt(255f * contactShadowStrength * lit), 0, 255);
+            int alpha = Mathf.RoundToInt(
+                255f * ActorGroundingPresentation.ShadowTintAlpha(
+                    contactShadowStrength,
+                    lit));
             shadow.color = new Color32(v.r, v.g, v.b, (byte)alpha);
         }
+    }
+
+    /// <summary>B2 시작방의 바닥 전용 조명 분산 규칙. 런타임 상태와 무관한 수치부만 분리한다.</summary>
+    internal static class B2RoomFloorLighting
+    {
+        internal const float LocalLightRetention = 0.2f;
+
+        internal static Color Average(IEnumerable<Color> samples)
+        {
+            Color sum = Color.clear;
+            int count = 0;
+            foreach (Color sample in samples)
+            {
+                sum += sample;
+                count++;
+            }
+            if (count == 0) return Color.white;
+            return sum / count;
+        }
+
+        internal static Color Coherent(Color roomReference, Color local)
+        {
+            Color result = Color.Lerp(roomReference, local, LocalLightRetention);
+            result.a = local.a;
+            return result;
+        }
+    }
+
+    /// <summary>액터의 안정 상태 월드 틴트와 접촉 AO 수치 계약.</summary>
+    internal static class ActorGroundingPresentation
+    {
+        internal const float ShadowLightFloor = 0.65f;
+        internal const float PlayerFootprintAlpha = 0.46f;
+
+        internal static Color WorldTint(Color state, Color elevation, Color light) =>
+            new Color(
+                state.r * elevation.r * light.r,
+                state.g * elevation.g * light.g,
+                state.b * elevation.b * light.b,
+                state.a);
+
+        internal static float ShadowTintAlpha(float strength, float light) =>
+            Mathf.Clamp01(strength) *
+            Mathf.Lerp(ShadowLightFloor, 1f, Mathf.Clamp01(light));
     }
 }

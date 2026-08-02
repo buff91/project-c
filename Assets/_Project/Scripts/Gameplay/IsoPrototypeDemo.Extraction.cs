@@ -106,6 +106,7 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _resolvingAction || hubMode ||
                 _playerState == null || !_playerState.IsAlive || _runSummary.Ended)
                 return;
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (_inventory.Count(ItemKind.ExtractionBeacon) <= 0)
             {
                 InteractionFeedback?.Invoke("NO BEACON");

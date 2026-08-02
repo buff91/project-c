@@ -47,22 +47,26 @@ namespace ProjectC.Core
             if (p.SecretDoor.HasValue)
                 map.Set(p.SecretDoor.Value, TileKind.SecretDoor);
 
-            // 북쪽 방의 뒤쪽을 한 단 올리고 계단으로 연결한다.
-            for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
-            for (int y = p.RaisedY; y < height; y++)
+            // 층내 높이를 쓰는 던전만 북쪽 방 뒤쪽을 한 단 올린다.
+            // 첫 던전은 한 층=한 이동 평면이라 이 블록을 통째로 건너뛴다.
+            if (p.UsesLocalElevation)
             {
-                map.Remove(new GridPos(x, y, p.BaseElevation));
-                map.Set(new GridPos(x, y, p.BaseElevation + 1), TileKind.Floor);
-            }
-            map.Set(new GridPos(p.StairX, p.RaisedY - 1, p.BaseElevation), TileKind.Stairs);
+                for (int x = p.UpperMinX; x <= p.UpperMaxX; x++)
+                for (int y = p.RaisedY; y < height; y++)
+                {
+                    map.Remove(new GridPos(x, y, p.BaseElevation));
+                    map.Set(new GridPos(x, y, p.BaseElevation + 1), TileKind.Floor);
+                }
+                map.Set(new GridPos(p.StairX, p.RaisedY - 1, p.BaseElevation), TileKind.Stairs);
 
-            // 계단과 떨어진 위치에 사다리를 하나 더 둔다. 아래/위 발판을 모두 금색 사다리
-            // 타일로 표시하고 명시적 링크로 연결해, 같은 층 높이 이동임을 데이터로도 구분한다.
-            var ladderBottom = new GridPos(p.LadderX, p.RaisedY - 1, p.BaseElevation);
-            var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
-            map.Set(ladderBottom, TileKind.Ladder);
-            map.Set(ladderTop, TileKind.Ladder);
-            map.Connect(ladderBottom, ladderTop);
+                // 계단과 떨어진 위치에 사다리를 하나 더 둔다. 아래/위 발판을 모두 금색 사다리
+                // 타일로 표시하고 명시적 링크로 연결해, 같은 층 높이 이동임을 데이터로도 구분한다.
+                var ladderBottom = new GridPos(p.LadderX, p.RaisedY - 1, p.BaseElevation);
+                var ladderTop = new GridPos(p.LadderX, p.RaisedY, p.BaseElevation + 1);
+                map.Set(ladderBottom, TileKind.Ladder);
+                map.Set(ladderTop, TileKind.Ladder);
+                map.Connect(ladderBottom, ladderTop);
+            }
 
             // 캐치워크(+2단)는 밴드 길이와 아레나 여부를 알아야 하므로 배치 단계(PlaceCatwalk)에서 얹는다.
 

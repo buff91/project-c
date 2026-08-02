@@ -18,7 +18,8 @@ namespace ProjectC.Core
             bool forceSecretBranch,
             DungeonProgressDirection direction,
             ShelterNpcDefinition pendingNpc,
-            DungeonRegionProfile region)
+            DungeonRegionProfile region,
+            bool usesLocalElevation)
         {
             var p = new FloorPlan
             {
@@ -26,6 +27,7 @@ namespace ProjectC.Core
                 Height = height,
                 ProgressIndex = depth,
                 Region = region,
+                UsesLocalElevation = usesLocalElevation,
                 // 부호만 방향을 탄다. Inward 는 층을 아래로 쌓지만 그건 렌더·컬링을 위한
                 // 내부 규약이고 플레이어에게는 수평 진입으로 읽힌다(DungeonDirectionRules 참조).
                 FloorIndex = DungeonDirectionRules.FloorIndexFor(direction, depth)

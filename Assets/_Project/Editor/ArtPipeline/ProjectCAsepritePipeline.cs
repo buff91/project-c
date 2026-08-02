@@ -28,7 +28,10 @@ namespace ProjectC.EditorTools
         private const string TextureReadableProperty = "m_IsReadable";
 
         private static readonly Vector2Int FloorCanvasSize = new Vector2Int(128, 64);
+        private static readonly Vector2Int WallCanvasSize = new Vector2Int(64, 112);
         private static readonly Vector2Int ActorCanvasSize = new Vector2Int(96, 128);
+        private static readonly Vector2Int ExplosiveBarrelCanvasSize =
+            new Vector2Int(128, 128);
         private static readonly string[] PngFallbackRoots =
         {
             "Assets/_Project/Art/Environment/",
@@ -37,7 +40,22 @@ namespace ProjectC.EditorTools
         private static readonly string[] B2DirectionalFloorPrefixes =
         {
             "env-floor-b2-parking-stop-view-",
-            "env-floor-b2-fallen-sign-view-"
+            "env-floor-b2-fallen-sign-view-",
+            "env-floor-b2-barrel-bay-service-view-",
+            "env-floor-b2-barrel-bay-drain-view-",
+            "env-floor-b2-macro-role-0-view-",
+            "env-floor-b2-macro-role-1-view-",
+            "env-floor-b2-macro-role-2-view-",
+            "env-floor-b2-macro-role-3-view-"
+        };
+        private static readonly string[] RequiredB2ServiceWallSources =
+        {
+            "env-wall-b2-service-segment-0-rising-right",
+            "env-wall-b2-service-segment-0-rising-left",
+            "env-wall-b2-service-segment-1-rising-right",
+            "env-wall-b2-service-segment-1-rising-left",
+            "env-wall-b2-service-segment-2-rising-right",
+            "env-wall-b2-service-segment-2-rising-left"
         };
         private static readonly string[] RequiredActorTags =
         {
@@ -67,6 +85,7 @@ namespace ProjectC.EditorTools
                 { "env-floor-service", "hospitalFloorService" },
                 { "env-floor-b2-parking-stop", "b2ParkingWheelStopFloor" },
                 { "env-floor-b2-fallen-sign", "b2FallenWayfindingFloor" },
+                { "env-floor-b2-cracked", "b2CrackedFloor" },
                 { "env-floor-b2-parking-stop-view-0", "b2ParkingWheelStopFloorView0" },
                 { "env-floor-b2-parking-stop-view-1", "b2ParkingWheelStopFloorView1" },
                 { "env-floor-b2-parking-stop-view-2", "b2ParkingWheelStopFloorView2" },
@@ -75,6 +94,30 @@ namespace ProjectC.EditorTools
                 { "env-floor-b2-fallen-sign-view-1", "b2FallenWayfindingFloorView1" },
                 { "env-floor-b2-fallen-sign-view-2", "b2FallenWayfindingFloorView2" },
                 { "env-floor-b2-fallen-sign-view-3", "b2FallenWayfindingFloorView3" },
+                { "env-floor-b2-barrel-bay-service-view-0", "b2BarrelBayServiceFloorView0" },
+                { "env-floor-b2-barrel-bay-service-view-1", "b2BarrelBayServiceFloorView1" },
+                { "env-floor-b2-barrel-bay-service-view-2", "b2BarrelBayServiceFloorView2" },
+                { "env-floor-b2-barrel-bay-service-view-3", "b2BarrelBayServiceFloorView3" },
+                { "env-floor-b2-barrel-bay-drain-view-0", "b2BarrelBayDrainFloorView0" },
+                { "env-floor-b2-barrel-bay-drain-view-1", "b2BarrelBayDrainFloorView1" },
+                { "env-floor-b2-barrel-bay-drain-view-2", "b2BarrelBayDrainFloorView2" },
+                { "env-floor-b2-barrel-bay-drain-view-3", "b2BarrelBayDrainFloorView3" },
+                { "env-floor-b2-macro-role-0-view-0", "b2MacroFloorRole0View0" },
+                { "env-floor-b2-macro-role-0-view-1", "b2MacroFloorRole0View1" },
+                { "env-floor-b2-macro-role-0-view-2", "b2MacroFloorRole0View2" },
+                { "env-floor-b2-macro-role-0-view-3", "b2MacroFloorRole0View3" },
+                { "env-floor-b2-macro-role-1-view-0", "b2MacroFloorRole1View0" },
+                { "env-floor-b2-macro-role-1-view-1", "b2MacroFloorRole1View1" },
+                { "env-floor-b2-macro-role-1-view-2", "b2MacroFloorRole1View2" },
+                { "env-floor-b2-macro-role-1-view-3", "b2MacroFloorRole1View3" },
+                { "env-floor-b2-macro-role-2-view-0", "b2MacroFloorRole2View0" },
+                { "env-floor-b2-macro-role-2-view-1", "b2MacroFloorRole2View1" },
+                { "env-floor-b2-macro-role-2-view-2", "b2MacroFloorRole2View2" },
+                { "env-floor-b2-macro-role-2-view-3", "b2MacroFloorRole2View3" },
+                { "env-floor-b2-macro-role-3-view-0", "b2MacroFloorRole3View0" },
+                { "env-floor-b2-macro-role-3-view-1", "b2MacroFloorRole3View1" },
+                { "env-floor-b2-macro-role-3-view-2", "b2MacroFloorRole3View2" },
+                { "env-floor-b2-macro-role-3-view-3", "b2MacroFloorRole3View3" },
                 { "env-stairs", "stairs" },
                 { "env-ladder", "ladder" },
                 { "env-stairs-up", "stairsUp" },
@@ -103,6 +146,12 @@ namespace ProjectC.EditorTools
                 { "env-wall-window-rising-left", "hospitalWallWindowRisingLeft" },
                 { "env-wall-cabinet-rising-right", "hospitalWallCabinetRisingRight" },
                 { "env-wall-cabinet-rising-left", "hospitalWallCabinetRisingLeft" },
+                { "env-wall-b2-service-segment-0-rising-right", "b2ServiceWallSegment0RisingRight" },
+                { "env-wall-b2-service-segment-0-rising-left", "b2ServiceWallSegment0RisingLeft" },
+                { "env-wall-b2-service-segment-1-rising-right", "b2ServiceWallSegment1RisingRight" },
+                { "env-wall-b2-service-segment-1-rising-left", "b2ServiceWallSegment1RisingLeft" },
+                { "env-wall-b2-service-segment-2-rising-right", "b2ServiceWallSegment2RisingRight" },
+                { "env-wall-b2-service-segment-2-rising-left", "b2ServiceWallSegment2RisingLeft" },
                 { "actor-player", "player" },
                 { "actor-knight", "knight" },
                 { "actor-ranger", "ranger" },
@@ -247,9 +296,23 @@ namespace ProjectC.EditorTools
                 return true;
             }
 
+            if (IsWallAssetName(assetName))
+            {
+                canvasSize = WallCanvasSize;
+                return true;
+            }
+
             if (assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase))
             {
                 canvasSize = ActorCanvasSize;
+                return true;
+            }
+
+            if (assetName.Equals(
+                    "prop-explosive-barrel",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                canvasSize = ExplosiveBarrelCanvasSize;
                 return true;
             }
 
@@ -260,6 +323,9 @@ namespace ProjectC.EditorTools
         private static bool IsFloorAssetName(string assetName) =>
             assetName.Equals("env-floor", StringComparison.OrdinalIgnoreCase) ||
             assetName.StartsWith("env-floor-", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsWallAssetName(string assetName) =>
+            assetName.StartsWith("env-wall-", StringComparison.OrdinalIgnoreCase);
 
         public static string[] MissingRequiredActorTags(IEnumerable<string> clipNames)
         {
@@ -287,6 +353,18 @@ namespace ProjectC.EditorTools
             return B2DirectionalFloorPrefixes
                 .SelectMany(prefix => Enumerable.Range(0, 4)
                     .Select(view => $"{prefix}{view}"))
+                .Where(assetName => !sourceNames.Contains(assetName))
+                .ToArray();
+        }
+
+        public static string[] MissingRequiredB2ServiceWallSources(
+            IEnumerable<string> sourcePaths)
+        {
+            var sourceNames = new HashSet<string>(
+                (sourcePaths ?? Array.Empty<string>())
+                    .Select(Path.GetFileNameWithoutExtension),
+                StringComparer.OrdinalIgnoreCase);
+            return RequiredB2ServiceWallSources
                 .Where(assetName => !sourceNames.Contains(assetName))
                 .ToArray();
         }
@@ -704,6 +782,15 @@ namespace ProjectC.EditorTools
                     string.Join(", ", missingB2Views));
             }
 
+            string[] missingB2ServiceWalls =
+                MissingRequiredB2ServiceWallSources(paths);
+            if (missingB2ServiceWalls.Length > 0)
+            {
+                problems.Add(
+                    "B2 서비스 벽 원본 세트 불완전(3세그먼트×좌우 필수) — 누락: " +
+                    string.Join(", ", missingB2ServiceWalls));
+            }
+
             foreach (string path in paths)
             {
                 if (!TryGetCatalogSlot(path, out _))
@@ -776,6 +863,24 @@ namespace ProjectC.EditorTools
                 {
                     problems.Add(
                         "바닥 피봇 규격 불일치(Canvas 중앙 0.5,0.5 필수): " + path);
+                }
+            }
+            else if (IsWallAssetName(assetName))
+            {
+                // Aseprite Importer는 투명 여백을 Sprite rect에서 trim한다. 벽은
+                // 64×112 canvas와 Canvas-space 피벗이 계약이고, trimmed rect 크기나
+                // 그 rect 안의 정규화 피벗을 64×112 값과 직접 비교하면 정상 자산도
+                // 외곽 세그먼트에서 실패한다.
+                Vector2 expectedPivot = ResolvePivotNormalized(path);
+                bool importerPivotMismatch =
+                    importer.pivotSpace != PivotSpaces.Canvas ||
+                    importer.pivotAlignment != SpriteAlignment.Custom ||
+                    Vector2.Distance(importer.customPivotPosition, expectedPivot) > 0.0001f;
+                if (importerPivotMismatch)
+                {
+                    problems.Add(
+                        $"벽 피봇 규격 불일치(Canvas {expectedPivot.x:0.###}," +
+                        $"{expectedPivot.y:0.###} 필수): {path}");
                 }
             }
 

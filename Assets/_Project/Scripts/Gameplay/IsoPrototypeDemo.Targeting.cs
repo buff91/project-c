@@ -20,9 +20,15 @@ namespace ProjectC.Gameplay
 
         private void HandleTileHovered(GridPos? cell)
         {
-            if (System.Nullable.Equals(cell, _aimHoverCell)) return;
+            bool aimChanged = !System.Nullable.Equals(cell, _aimHoverCell);
             _aimHoverCell = cell;
-            if (_bombAiming) RefreshThrowRangePreview();
+            if (_bombAiming)
+            {
+                if (aimChanged) RefreshThrowRangePreview();
+                return;
+            }
+
+            HandleVerticalFocusHover(cell);
         }
 
         private void RefreshThrowRangePreview()
@@ -49,6 +55,27 @@ namespace ProjectC.Gameplay
 
             CollectBlastPreviewCells();
 
+            if (IsVerticalLookActive)
+            {
+                VerticalThrowRules.ForEachThrowTarget(
+                    _grid.Map,
+                    _dungeon.Height,
+                    _playerPos,
+                    _bombAimKind,
+                    bombThrowRange,
+                    CanUseVerticalThrowNearEndpoint,
+                    (target, _) =>
+                    {
+                        if (IsVerticalLookTarget(target) &&
+                            !_blastPreviewCells.Contains(target))
+                            AddThrowRangeMarker(target, blast: false);
+                    });
+
+                foreach (GridPos cell in _blastPreviewCells)
+                    AddThrowRangeMarker(cell, blast: true);
+                return;
+            }
+
             BombRules.ForEachThrowTarget(
                 _grid.Map,
                 _playerPos,
@@ -73,9 +100,22 @@ namespace ProjectC.Gameplay
             GridPos? aim = _aimHoverCell.HasValue && IsVisibleAimTarget(_aimHoverCell.Value)
                 ? _aimHoverCell
                 : null;
-            if (!ThrowAimPreviewRules.TryResolveBlastCenter(
-                    _grid.Map, _playerPos, aim, _bombAimKind, bombThrowRange, out GridPos center))
+            GridPos center;
+            if (IsVerticalLookActive)
+            {
+                if (!aim.HasValue || !TryResolveVerticalThrow(aim.Value, out _)) return;
+                center = aim.Value;
+            }
+            else if (!ThrowAimPreviewRules.TryResolveBlastCenter(
+                         _grid.Map,
+                         _playerPos,
+                         aim,
+                         _bombAimKind,
+                         bombThrowRange,
+                         out center))
+            {
                 return;
+            }
 
             ThrowAimPreviewRules.ForEachBlastPreviewCell(_grid.Map, center, pos =>
             {
@@ -85,7 +125,9 @@ namespace ProjectC.Gameplay
         }
 
         private bool IsVisibleAimTarget(GridPos target) =>
-            viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target);
+            IsVerticalLookActive
+                ? _verticalLookTiles.Contains(target)
+                : viewMode == DungeonViewMode.DebugAll || _visibleTiles.Contains(target);
 
         private void AddThrowRangeMarker(GridPos pos, bool blast)
         {

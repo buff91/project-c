@@ -151,6 +151,61 @@
     font-size: var(--pc-fs-1);
 }
 
+.hud-root.hud-desktop .vertical-view-controls {
+    display: flex;
+    flex-direction: row;
+    height: 14px;
+    margin-top: 4px;
+}
+
+.hud-root.hud-desktop .vertical-view-button {
+    flex-grow: 1;
+    min-width: 0;
+    height: 14px;
+    padding: 0;
+    margin-left: 1px;
+    margin-right: 1px;
+    color: var(--pc-dim);
+    background-color: rgba(5, 7, 12, 0.72);
+    border-left-width: 1px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-inset);
+    border-top-color: var(--pc-inset);
+    border-right-color: var(--pc-inset);
+    border-bottom-color: var(--pc-inset);
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .vertical-view-button:hover,
+.hud-root.hud-desktop .vertical-view-button.is-selected {
+    color: var(--ink);
+    background-color: var(--pc-ui-accent);
+    border-left-color: var(--pc-ui-accent);
+    border-top-color: var(--pc-ui-accent);
+    border-right-color: var(--pc-ui-accent);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .vertical-view-button:disabled {
+    opacity: 0.28;
+}
+
+.hud-root.hud-desktop .vertical-view-state {
+    display: flex;
+    height: 10px;
+    margin-top: 2px;
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+.hud-root.hud-desktop .vertical-view-state.is-observing {
+    color: var(--pc-ice);
+}
+
 /* ── D · 층 스택 (우측) ──────────────────────────────────
    right:120 = 계기 묶음 왼쪽 끝(640-8-104=528)에서 8px 왼쪽. */
 
@@ -385,6 +440,18 @@
 
 .hud-root.hud-desktop .turn-label {
     font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .action-cluster > .mode-button:disabled,
+.hud-root.hud-desktop .action-cluster > .combat-button:disabled,
+.hud-root.hud-desktop .action-cluster > .interact-button:disabled,
+.hud-root.hud-desktop .resource-pill:disabled,
+.hud-root.hud-desktop .hud-mode-button:disabled {
+    opacity: 0.28;
+}
+
+.hud-root.hud-desktop .turn-pill.is-observing .turn-label {
+    color: var(--pc-ice);
 }
 
 /* ── 월드 액션 휠 ────────────────────────────────────────

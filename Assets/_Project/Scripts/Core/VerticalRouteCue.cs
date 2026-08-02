@@ -83,7 +83,7 @@ namespace ProjectC.Core
                         : new VerticalRouteCue(
                             VerticalRouteRole.OpeningDown,
                             $"바닥 개구부 · {destination}",
-                            "구멍 아래가 실제로 보인다. 구멍을 탭하면 아래층으로 뛰어내린다.",
+                            "구멍 아래가 실제로 보인다. 구멍을 탭해 착지와 피해를 확인하고, 재클릭/SPACE로 뛰어내린다.",
                             $"{destination} ▼");
                     return true;
                 default:

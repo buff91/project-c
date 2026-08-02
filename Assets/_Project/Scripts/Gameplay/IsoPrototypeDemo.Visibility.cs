@@ -13,20 +13,31 @@ namespace ProjectC.Gameplay
     {
         private SpriteRenderer _dungeonAtmosphereBackdrop;
 
+        /// <summary>
+        /// 평상시는 양방향 passive 창을 유지하지만 명시적 층 보기에서는 선택한 방향만 남긴다.
+        /// 반대 방향 잔상이 함께 보이면 세 층이 한 화면에 겹쳐 관찰 대상이 흐려진다.
+        /// </summary>
+        private bool IsPresentedVerticalPreview(GridPos pos) =>
+            _verticalPreviewTiles.Contains(pos) &&
+            (!IsVerticalLookActive || _verticalLookTiles.Contains(pos));
+
         private void RefreshFloorVisibility()
         {
             if (_dungeon == null) return;
 
             RecomputeVisibility();
+            RefreshVerticalLookAfterVisibility();
+            RefreshDropFocusAfterVisibility();
             RefreshDungeonFogBackdrop();
             EnsureStaticLightField();
+            Dictionary<GridPos, Color> b2FloorLightField = BuildB2CoherentFloorLightField();
 
             foreach (var pair in _tileRenderers)
             {
                 bool debugVisible = viewMode == DungeonViewMode.DebugAll;
                 bool visible = _visibleTiles.Contains(pair.Key);
                 bool explored = _exploredTiles.Contains(pair.Key);
-                bool vertical = _verticalPreviewTiles.Contains(pair.Key);
+                bool vertical = IsPresentedVerticalPreview(pair.Key);
                 int tileFloor = _dungeon.Height.FloorIndex(pair.Key.elevation);
                 TileData tileData = _grid.Map.Get(pair.Key);
                 pair.Value.sprite = GetTileSprite(tileData.kind, pair.Key);
@@ -45,7 +56,10 @@ namespace ProjectC.Gameplay
                     : tileData.wet
                         ? new Color(0.55f, 0.72f, 0.95f)
                         : Color.white;
-                Color light = TileLightColor(pair.Key);
+                Color light = b2FloorLightField != null &&
+                              b2FloorLightField.TryGetValue(pair.Key, out Color coherentFloorLight)
+                    ? coherentFloorLight
+                    : TileLightColor(pair.Key);
                 pair.Value.color = new Color(
                     baseColor.r * tint.r * light.r,
                     baseColor.g * tint.g * light.g,
@@ -54,12 +68,16 @@ namespace ProjectC.Gameplay
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
+            RebuildB2FloorFoundation(b2FloorLightField);
+
             // 가시성과 함께 높이 딤 틴트도 갱신돼야 하므로 개별 갱신 경로를 그대로 태운다.
             foreach (EnemyAgent enemy in _enemies)
             {
                 if (enemy.Root == null) continue;
                 ApplyEnemyVisuals(enemy);
             }
+
+            ApplyPlayerVisuals();
 
             foreach (ItemAgent item in _items)
             {
@@ -86,16 +104,24 @@ namespace ProjectC.Gameplay
             else if (_barrelRenderer != null)
             {
                 bool active = _dungeon.Height.FloorIndex(_barrelPos.elevation) == _activeFloorIndex;
-                bool visible = _visibleTiles.Contains(_barrelPos) || _verticalPreviewTiles.Contains(_barrelPos);
+                bool vertical = IsPresentedVerticalPreview(_barrelPos);
+                bool visible = _visibleTiles.Contains(_barrelPos) || vertical;
                 _barrelRenderer.enabled = viewMode == DungeonViewMode.DebugAll || visible;
+                Color barrelTint = ElevationTint(_barrelPos);
+                Color barrelLight = TileLightColor(_barrelPos);
                 _barrelRenderer.color = new Color(
-                    1f,
-                    1f,
-                    1f,
+                    barrelTint.r * barrelLight.r,
+                    barrelTint.g * barrelLight.g,
+                    barrelTint.b * barrelLight.b,
                     viewMode == DungeonViewMode.DebugAll
                         ? active ? 1f : debugAdjacentAlpha
-                        : _visibleTiles.Contains(_barrelPos) ? 1f : verticalPreviewAlpha);
+                        : _visibleTiles.Contains(_barrelPos) ? 1f : VisibilityAlpha(_barrelPos));
                 _barrel.transform.position = VisualPosition(_barrelPos);
+                UpdateContactShadow(
+                    _barrelShadow,
+                    _barrelPos,
+                    _barrelRenderer.sortingOrder,
+                    _barrelRenderer.enabled && _barrelRenderer.color.a > 0.01f);
             }
 
             RefreshBossExitSeal();
@@ -296,11 +322,11 @@ namespace ProjectC.Gameplay
             {
                 UpdateVerticalLandmarkTransform(landmark);
                 bool anchorVisible = _visibleTiles.Contains(landmark.Anchor);
-                bool anchorPreview = _verticalPreviewTiles.Contains(landmark.Anchor);
+                bool anchorPreview = IsPresentedVerticalPreview(landmark.Anchor);
                 bool destinationVisible = landmark.Destination.HasValue &&
                                           _visibleTiles.Contains(landmark.Destination.Value);
                 bool destinationPreview = landmark.Destination.HasValue &&
-                                          _verticalPreviewTiles.Contains(landmark.Destination.Value);
+                                          IsPresentedVerticalPreview(landmark.Destination.Value);
                 bool anchorOnActiveFloor =
                     _dungeon.Height.FloorIndex(landmark.Anchor.elevation) == _activeFloorIndex;
                 bool destinationOnActiveFloor =
@@ -726,6 +752,12 @@ namespace ProjectC.Gameplay
             if (_dungeon == null) return null;
             if (viewMode == DungeonViewMode.DebugAll) return "DEBUG · ALL FLOORS";
 
+            string verticalLook = BuildVerticalLookHintLabel();
+            if (!string.IsNullOrEmpty(verticalLook)) return verticalLook;
+
+            string dropFocus = BuildDropFocusHintLabel();
+            if (!string.IsNullOrEmpty(dropFocus)) return dropFocus;
+
             TileKind? playerTile = _grid.Map.Get(_playerPos)?.kind;
             if (playerTile == TileKind.Ladder)
                 return "사다리 부착 · 한 번 더 클릭 또는 SPACE";
@@ -873,6 +905,12 @@ namespace ProjectC.Gameplay
 
         private GridPos? FindPreviewPropPosition()
         {
+            // B2는 폭발통과 낮은 드레싱이 하나의 히어로 룸 계획을 공유한다.
+            // 기존 호출 순서(폭발통 생성 → 드레싱 준비)를 바꾸지 않고 여기서 지연 준비한다.
+            PrepareDungeonDressing();
+            if (_b2HeroRoomLayout?.Barrel.HasValue == true)
+                return _b2HeroRoomLayout.Barrel.Value;
+
             _dungeon.TryGetFloor(_activeFloorIndex, out DungeonFloorInfo active);
             var reserved = new HashSet<GridPos>();
             foreach (DungeonFloorInfo floor in _dungeon.Floors)
@@ -980,7 +1018,7 @@ namespace ProjectC.Gameplay
                         _activeFloorIndex,
                         _visibleTiles.Contains(pos),
                         _exploredTiles.Contains(pos),
-                        _verticalPreviewTiles.Contains(pos)))
+                        IsPresentedVerticalPreview(pos)))
                     continue;
 
                 if (!HasPlanarTile(pos.x + backA.x, pos.y + backA.y, floor))
@@ -999,7 +1037,7 @@ namespace ProjectC.Gameplay
                 pos.x + outward.x,
                 pos.y + outward.y,
                 pos.elevation));
-            wall.transform.position = Vector3.Lerp(center, outside, 0.46f);
+            wall.transform.position = RearWallPresentation.BoundaryPosition(center, outside);
 
             var renderer = wall.AddComponent<SpriteRenderer>();
             // 벽 횃불(비상등)의 밀도도 깊이 밴드를 따른다 — 광원 필드(IsWallSconceTile)와 같은
@@ -1012,53 +1050,96 @@ namespace ProjectC.Gameplay
             // 우연 말고는 겹치지 않았고, viewQuarterTurns 가 섞여 있어 시점을 돌리면 램프가
             // 순간이동했다. 이 벽이 서 있다는 것 자체가 pos 가 가장자리 타일이라는 뜻이므로
             // 빛 쪽의 edge 판정과 결과가 일치한다.
-            bool torch = SconcePlacement.IsSconce(
+            bool authoredB2Wall = TryGetB2HeroWallDecoration(
+                pos,
+                outward.x,
+                outward.y,
+                out int decoration);
+            bool torch = !authoredB2Wall && SconcePlacement.IsSconce(
                 pos.x, pos.y, dungeonSeed, torchRarity);
-            int decoration = torch
-                ? 0
-                : Mathf.Abs(
+            bool barrelBaySconceHost =
+                torch &&
+                visualCatalog != null &&
+                visualCatalog.HasCompleteB2BarrelBayFloor &&
+                IsB2BarrelBaySconceHost(pos);
+            // 코너 셀은 같은 cell-level sconce가 두 물리 벽에 복제될 수 있다. 베이는
+            // service→drain 축의 바깥 면 하나만 패널을 그리고 실제 TileLight는 유지한다.
+            bool renderedTorch =
+                torch &&
+                (!barrelBaySconceHost || IsB2BarrelBaySconceFace(pos, outward));
+            if (!renderedTorch && !authoredB2Wall)
+            {
+                // 비상등처럼 일반 벽 드레싱도 물리 좌표+seed에 고정한다. 시점 회전을
+                // 섞으면 같은 벽의 패널이 회전할 때마다 다른 설비로 바뀐다.
+                decoration = Mathf.Abs(
                     pos.x * 11 +
                     pos.y * 17 +
                     outward.x * 23 +
                     outward.y * 31 +
-                    _grid.iso.viewQuarterTurns * 7) % 8;
+                    dungeonSeed * 7) % 8;
+            }
             // 허브 벽은 휴식 공간 전용 따뜻한 팔레트를 사용한다. 던전 카탈로그는
             // 회전/계단/FOV 가독성 규칙을 보존하기 위해 그대로 둔다.
             bool hospitalDressing =
                 !hubMode &&
                 (_dungeon?.Region ?? DungeonRegionProfile.Facility) ==
                     DungeonRegionProfile.Facility;
-            Sprite mapped = !hubMode && visualCatalog != null
-                ? visualCatalog.RearWallFor(
-                    torch,
-                    risesRight: flip,
-                    decoration: hospitalDressing ? decoration : -1)
+            int serviceSegment = -1;
+            bool hasB2ServiceSlot =
+                !hubMode &&
+                TryGetB2ServiceWallSegment(
+                    pos,
+                    outward.x,
+                    outward.y,
+                    out serviceSegment);
+            Sprite mapped = hasB2ServiceSlot && visualCatalog != null
+                ? visualCatalog.B2ServiceWallSegmentFor(serviceSegment, flip)
                 : null;
+            bool usesB2ServiceStrip = mapped != null;
+            if (mapped == null && !hubMode && visualCatalog != null)
+            {
+                mapped = visualCatalog.RearWallFor(
+                    renderedTorch,
+                    risesRight: flip,
+                    decoration: hospitalDressing ? decoration : -1);
+            }
+            bool usesB2AuthoredSprite =
+                authoredB2Wall && mapped != null;
             PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode =
-                !torch && hospitalDressing && decoration == 0
+                usesB2AuthoredSprite
+                    ? PrototypeEnvironmentSprites.EnvironmentAccentMode.None
+                    : !renderedTorch && hospitalDressing && decoration == 0
                     ? PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonCyan
-                    : !torch && hospitalDressing &&
+                    : !renderedTorch && hospitalDressing &&
                       (decoration == 1 || decoration == 2)
                         ? PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta
-                    : torch
+                    : renderedTorch
                         ? PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal
                         : PrototypeEnvironmentSprites.EnvironmentAccentMode.None;
             renderer.sprite = hubMode
-                ? GetHubWallSprite(torch, decoration)
+                ? GetHubWallSprite(renderedTorch, decoration)
+                : usesB2AuthoredSprite
+                    ? mapped
                 : mapped != null
                     ? GetToneMappedEnvironmentSprite(
                         mapped,
                         Palette.Wall,
                         accentMode)
-                    : GetWallSprite(torch);
+                    : GetWallSprite(renderedTorch);
             renderer.flipX = mapped == null && flip;
             renderer.sortingOrder = _grid.iso.SortingOrder(pos, -1);
             Color wallTint = ElevationTint(pos);
             Color wallLight = TileLightColor(pos);
+            bool subduedB2BarrelBaySconce =
+                barrelBaySconceHost && renderedTorch;
+            float wallEmphasis = subduedB2BarrelBaySconce ? 0.68f : 1f;
             renderer.color = new Color(
-                wallTint.r * wallLight.r, wallTint.g * wallLight.g, wallTint.b * wallLight.b,
+                wallTint.r * wallLight.r * wallEmphasis,
+                wallTint.g * wallLight.g * wallEmphasis,
+                wallTint.b * wallLight.b * wallEmphasis,
                 VisibilityAlpha(pos));
-            if (torch && mapped != null && visualCatalog != null)
+            if (renderedTorch && mapped != null && visualCatalog != null &&
+                !usesB2ServiceStrip && !subduedB2BarrelBaySconce)
             {
                 AttachEnvironmentAnimator(
                     wall,
@@ -1068,7 +1149,7 @@ namespace ProjectC.Gameplay
                             ? "rearWallTorchRisingRight"
                             : "rearWallTorchRisingLeft"));
             }
-            if (mapped != null &&
+            if (!usesB2ServiceStrip && mapped != null &&
                 (accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonCyan ||
                  accentMode == PrototypeEnvironmentSprites.EnvironmentAccentMode.NeonMagenta))
             {
@@ -1189,6 +1270,29 @@ namespace ProjectC.Gameplay
                 ApplyOcclusionAlpha(renderer, landmark.BaseAlpha, occludes, deltaTime, instant);
             }
 
+            // 연료 셀도 회전하면 플레이어 앞쪽에 올 수 있다. 벽과 같은 화면 겹침 계약을
+            // 써야 정렬은 유지하면서 얼굴을 가릴 때만 비켜 준다.
+            if (_barrelRenderer != null && !_barrelExploded && _barrelRenderer.enabled)
+            {
+                float baseAlpha = VisibilityAlpha(_barrelPos);
+                bool occludes = fadePlayerOccluders &&
+                                (SpriteOcclusion.ShouldFade(
+                                     _barrelRenderer.bounds,
+                                     playerBounds,
+                                     _barrelRenderer.sortingOrder,
+                                     playerSortingOrder) ||
+                                 HigherElevationOverlapsPlayer(
+                                     _barrelPos,
+                                     _barrelRenderer.bounds,
+                                     playerBounds));
+                ApplyOcclusionAlpha(
+                    _barrelRenderer,
+                    baseAlpha,
+                    occludes,
+                    deltaTime,
+                    instant);
+            }
+
             UpdateContactShadow(
                 _playerShadow,
                 _playerState != null ? _playerState.Position : _playerPos,
@@ -1305,6 +1409,7 @@ namespace ProjectC.Gameplay
         }
 
         private static readonly Color ActiveTint = Color.white;
+        private static readonly Color ObservedFloorTint = new Color(0.78f, 0.88f, 0.96f);
         private static readonly Color InactiveTint = new Color(0.64f, 0.68f, 0.80f); // 차가운 비활성 톤 — 색상은 유지, 명도만 완화(v0.3.3 밝기 패스)
 
         /// <summary>
@@ -1315,6 +1420,7 @@ namespace ProjectC.Gameplay
         {
             if (viewMode == DungeonViewMode.DebugAll || _playerState == null || _dungeon == null)
                 return ActiveTint;
+            if (_verticalLookTiles.Contains(pos)) return ObservedFloorTint;
             return pos.elevation == _playerState.Position.elevation ? ActiveTint : InactiveTint;
         }
 
@@ -1326,7 +1432,15 @@ namespace ProjectC.Gameplay
                     ? 1f
                     : debugAdjacentAlpha;
             if (_visibleTiles.Contains(pos)) return 1f;
-            if (_verticalPreviewTiles.Contains(pos)) return verticalPreviewAlpha;
+            if (_verticalPreviewTiles.Contains(pos))
+            {
+                if (IsVerticalLookActive && !_verticalLookTiles.Contains(pos)) return 0f;
+                if (_verticalLookTiles.Contains(pos))
+                    return Mathf.Max(verticalPreviewAlpha, 0.86f);
+                return _focusedVerticalPreviewTiles.Contains(pos)
+                    ? Mathf.Max(verticalPreviewAlpha, 0.74f)
+                    : verticalPreviewAlpha;
+            }
             return exploredAlpha;
         }
 
@@ -1442,5 +1556,14 @@ namespace ProjectC.Gameplay
                 return 0;
             return kind == TileKind.Stairs || kind == TileKind.Ladder ? -1 : -2;
         }
+    }
+
+    /// <summary>벽 스프라이트의 피벗을 논리 타일과 바깥 칸 사이 실제 경계에 고정한다.</summary>
+    internal static class RearWallPresentation
+    {
+        internal const float TileBoundaryInterpolation = 0.5f;
+
+        internal static Vector3 BoundaryPosition(Vector3 center, Vector3 outside) =>
+            Vector3.LerpUnclamped(center, outside, TileBoundaryInterpolation);
     }
 }

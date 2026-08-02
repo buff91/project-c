@@ -16,7 +16,9 @@ namespace ProjectC.Gameplay
         {
             if (_interactButton == null) return;
             string label = demo != null ? demo.ContextInteractionLabel : null;
-            _interactButton.EnableInClassList("is-available", label != null);
+            bool available = label != null && (demo == null || !demo.IsVerticalLookActive);
+            _interactButton.EnableInClassList("is-available", available);
+            _interactButton.SetEnabled(available);
             if (_interactLabel != null)
                 _interactLabel.text = label ?? "상호작용";
         }
@@ -50,6 +52,61 @@ namespace ProjectC.Gameplay
                 _viewLabel.text = $"VIEW {(demo != null ? demo.ViewQuarterTurns + 1 : 1)}/4";
         }
 
+        private void UpdateVerticalViewControls()
+        {
+            bool hasDemo = demo != null;
+            VerticalLookMode mode = hasDemo
+                ? demo.VerticalLook
+                : VerticalLookMode.Current;
+            bool viewedFloorChanged = mode != _lastVerticalLookMode;
+            _lastVerticalLookMode = mode;
+
+            _verticalViewUp?.SetEnabled(hasDemo && demo.CanLookUp);
+            _verticalViewCurrent?.SetEnabled(hasDemo);
+            _verticalViewDown?.SetEnabled(hasDemo && demo.CanLookDown);
+
+            _verticalViewUp?.EnableInClassList(
+                "is-selected", mode == VerticalLookMode.Up);
+            _verticalViewCurrent?.EnableInClassList(
+                "is-selected", mode == VerticalLookMode.Current);
+            _verticalViewDown?.EnableInClassList(
+                "is-selected", mode == VerticalLookMode.Down);
+
+            bool observing = hasDemo && demo.IsVerticalLookActive;
+            if (_verticalViewState != null)
+            {
+                _verticalViewState.text = observing
+                    ? $"현재 {demo.ActiveFloorLabel}  ·  보기 {demo.ViewedFloorLabel}"
+                    : hasDemo ? $"현재 {demo.ActiveFloorLabel}" : "현재 --";
+                _verticalViewState.EnableInClassList("is-observing", observing);
+            }
+
+            // 보기 모드의 실제 입력 잠금과 HUD affordance를 일치시킨다. 폭탄/냉각재는
+            // 원격 조준 수단이라 유지하고, 회전·현재층 복귀도 계속 쓸 수 있다.
+            _modeButton?.SetEnabled(hasDemo && !observing);
+            _combatButton?.SetEnabled(hasDemo && !observing);
+            _waitButton?.SetEnabled(hasDemo && !observing);
+            _potionButton?.SetEnabled(hasDemo && !observing);
+            _turnPill?.EnableInClassList("is-observing", observing);
+            if (_turnLabel != null)
+                _turnLabel.text = observing ? "관찰" : "내 턴";
+
+            if (_verticalViewUp != null)
+                _verticalViewUp.tooltip = hasDemo && demo.CanLookUp
+                    ? $"윗층 {demo.FloorLabel(demo.ActiveFloorIndex + 1)} 보기"
+                    : "보이는 윗층 개구부가 없다";
+            if (_verticalViewCurrent != null)
+                _verticalViewCurrent.tooltip = hasDemo
+                    ? $"현재 플레이 층 {demo.ActiveFloorLabel}"
+                    : "현재 플레이 층";
+            if (_verticalViewDown != null)
+                _verticalViewDown.tooltip = hasDemo && demo.CanLookDown
+                    ? $"아랫층 {demo.FloorLabel(demo.ActiveFloorIndex - 1)} 보기"
+                    : "보이는 아랫층 개구부가 없다";
+
+            if (viewedFloorChanged) RebuildFloorStack();
+        }
+
         /// <summary>
         /// 층 계기 갱신. 이름은 그대로지만 역할이 바뀌었다 — <c>#floor-label</c>은 이제
         /// "▲ B1 · ▼ B3" 한 줄이 아니라 스택 위쪽 끝의 <b>경로 캡</b>이다.
@@ -59,7 +116,7 @@ namespace ProjectC.Gameplay
         private void UpdateFloorLabel()
         {
             if (_depthLabel != null)
-                _depthLabel.text = demo != null ? demo.ActiveFloorLabel : "B1";
+                _depthLabel.text = demo != null ? $"현재 {demo.ActiveFloorLabel}" : "현재 B1";
             if (_depthCaption != null)
                 _depthCaption.text = demo != null ? demo.StageLabel : "던전 1/3";
 

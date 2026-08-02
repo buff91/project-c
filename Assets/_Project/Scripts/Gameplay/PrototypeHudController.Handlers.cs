@@ -22,11 +22,13 @@ namespace ProjectC.Gameplay
             UpdateFloorLabel();
             UpdateMinimap();
             UpdateBossPanel();
+            UpdateVerticalViewControls();
         }
 
         private void HandleViewModeChanged(DungeonViewMode _)
         {
             UpdateModeLabel();
+            UpdateVerticalViewControls();
         }
 
         private void HandleCombatModeChanged(CombatActionMode _)
@@ -123,6 +125,7 @@ namespace ProjectC.Gameplay
         private void HandleVerticalContextChanged()
         {
             UpdateVerticalHintLabel();
+            UpdateVerticalViewControls();
             // 시야 갱신마다 호출된다 — 미니맵 안개 상태의 단일 갱신 지점.
             UpdateMinimap();
         }
@@ -156,6 +159,7 @@ namespace ProjectC.Gameplay
         private void HandleBombAimingChanged(bool _)
         {
             UpdateAimHighlights();
+            UpdateVerticalViewControls();
         }
 
         private void HandlePlayerHpChanged()

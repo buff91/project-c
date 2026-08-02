@@ -8,6 +8,22 @@ namespace ProjectC.Core
     /// </summary>
     public static class EnemyPresentationRules
     {
+        /// <summary>
+        /// 개구부 너머에서는 적의 존재(몸체)만 보여 준다. HP·상태·인지 아이콘 같은
+        /// 전투 정보는 <see cref="ShouldShowFeedback"/>가 계속 현재 층으로 제한한다.
+        /// </summary>
+        public static bool ShouldRenderActor(
+            bool debugAll,
+            int enemyFloorIndex,
+            int activeFloorIndex,
+            bool tileVisible,
+            bool verticalPreviewVisible)
+        {
+            return debugAll ||
+                   (enemyFloorIndex == activeFloorIndex && tileVisible) ||
+                   (enemyFloorIndex != activeFloorIndex && verticalPreviewVisible);
+        }
+
         public static bool ShouldShowFeedback(
             bool debugAll,
             int enemyFloorIndex,

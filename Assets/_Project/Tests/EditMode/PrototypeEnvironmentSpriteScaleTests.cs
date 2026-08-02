@@ -197,6 +197,30 @@ namespace ProjectC.Tests.EditMode
         }
 
         [Test]
+        public void ToneMapped_WoodMode_UnifiesNeutralFloorAndKeepsRustDecorative()
+        {
+            var catalog = ScriptableObject.CreateInstance<IsoVisualCatalog>();
+            var environment = NewEnvironment(catalog);
+
+            Color32 floor = environment.ToneMapEnvironmentPixel(
+                new Color32(107, 113, 120, 255),
+                catalog.dungeonStone,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.Wood);
+            Color32 rust = environment.ToneMapEnvironmentPixel(
+                new Color32(156, 90, 46, 255),
+                catalog.dungeonStone,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.Wood);
+            Color32 wornHighlight = environment.ToneMapEnvironmentPixel(
+                new Color32(204, 160, 94, 255),
+                catalog.dungeonStone,
+                PrototypeEnvironmentSprites.EnvironmentAccentMode.Wood);
+
+            Assert.AreEqual(catalog.dungeonStone, floor);
+            Assert.AreEqual(catalog.dungeonWood, rust);
+            Assert.AreEqual(catalog.dungeonWoodLight, wornHighlight);
+        }
+
+        [Test]
         public void DungeonAtmosphereBackdrop_IsCameraAspectSprite_IndependentOfDungeonGeometry()
         {
             var environment = NewEnvironment();
@@ -237,6 +261,20 @@ namespace ProjectC.Tests.EditMode
                 source,
                 PrototypeEnvironmentSprites.EnvironmentAccentMode.Signal,
                 risesRight: true));
+        }
+
+        [Test]
+        public void RearWallBoundaryPosition_IsExactTileEdgeMidpoint()
+        {
+            var center = new Vector3(1.25f, -0.5f, 0.2f);
+            var outside = new Vector3(0.75f, -0.25f, 0.2f);
+
+            Vector3 boundary = RearWallPresentation.BoundaryPosition(center, outside);
+
+            Assert.AreEqual(0.5f, RearWallPresentation.TileBoundaryInterpolation);
+            Assert.AreEqual(1.0f, boundary.x, 0.0001f);
+            Assert.AreEqual(-0.375f, boundary.y, 0.0001f);
+            Assert.AreEqual(0.2f, boundary.z, 0.0001f);
         }
     }
 }

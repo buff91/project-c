@@ -198,6 +198,18 @@ def main() -> None:
         Image.open(SOURCE).convert("RGBA"),
         Image.open(BASE_FLOOR).convert("RGBA"),
     )
+    # 호스 릴·비점등 보조 재질·티켓 단말은 B2 네이티브 벽 패밀리가 정식 주인이다.
+    # 구 아케이드 드레싱 보드를 다시 처리해도 승인된 wall-integrated 실루엣을 보존한다.
+    from process_b2_prop_quality_v4 import build_source_assets
+
+    b2_quality = build_source_assets().outputs
+    for name in tuple(outputs):
+        if (
+            name.startswith("env-wall-pipes-") or
+            name.startswith("env-wall-window-") or
+            name.startswith("env-wall-cabinet-")
+        ):
+            outputs[name] = b2_quality[name]
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for name, image in outputs.items():
         image.save(OUTPUT / f"{name}.png", optimize=True)

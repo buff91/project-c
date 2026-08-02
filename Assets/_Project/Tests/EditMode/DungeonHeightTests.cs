@@ -103,6 +103,58 @@ namespace ProjectC.Tests
     public class DungeonGeneratorTests
     {
         [Test]
+        public void FirstDungeon_UsesOneTraversableElevationPerFloor()
+        {
+            DungeonDefinition definition = DungeonCatalog.ById(DungeonCatalog.DefaultId);
+            var map = new GridMap();
+            DungeonLayout dungeon = DungeonGenerator.Generate(
+                map,
+                13,
+                13,
+                definition.FloorCount,
+                elevationsPerFloor: 4,
+                seed: definition.Seed,
+                direction: definition.Direction,
+                firstBuildingFloor: definition.FirstBuildingFloor,
+                region: definition.Region,
+                usesLocalElevation: definition.UsesLocalElevation);
+
+            Assert.AreEqual(4, dungeon.Height.ElevationsPerFloor,
+                "평탄화는 층간 stride를 줄이는 마이그레이션이 아니다");
+
+            foreach (DungeonFloorInfo floor in dungeon.Floors)
+            {
+                int[] localHeights = map.All()
+                    .Where(pair => dungeon.Height.FloorIndex(pair.Key.elevation) == floor.FloorIndex)
+                    .Select(pair => dungeon.Height.LocalHeight(pair.Key.elevation))
+                    .Distinct()
+                    .ToArray();
+
+                CollectionAssert.AreEqual(new[] { 0 }, localHeights,
+                    $"{floor.FloorIndex}층의 모든 타일은 기준 elevation에 있어야 한다");
+            }
+
+            DungeonFloorInfo arena = dungeon.Floors.Single(
+                floor => DungeonBossArenaRules.IsArenaFloor(
+                    floor.ProgressIndex, dungeon.Floors.Count));
+            Assert.IsTrue(arena.Landmark.HasValue, "평탄화해도 보스 제단은 유지해야 한다");
+            Assert.AreEqual(0, dungeon.Height.LocalHeight(arena.Landmark.Value.elevation));
+
+            Assert.IsFalse(map.All().Any(pair => pair.Value.kind == TileKind.Stairs),
+                "첫 던전에는 같은 층 ±1 이동용 계단을 생성하지 않는다");
+
+            foreach (var pair in map.All())
+            foreach (GridPos linked in map.LinksFrom(pair.Key))
+            {
+                bool sameFloor = dungeon.Height.FloorIndex(pair.Key.elevation) ==
+                                 dungeon.Height.FloorIndex(linked.elevation);
+                Assert.IsFalse(
+                    sameFloor && pair.Key.elevation != linked.elevation,
+                    $"첫 던전에 층내 높이 링크가 남았다: {pair.Key} -> {linked}");
+            }
+        }
+
+        [Test]
         public void Generate_CreatesThreeFloorsWithInternalHeightAndLinks()
         {
             var map = new GridMap();

@@ -120,10 +120,12 @@ ControlNet은 기존 게임 캡처/기존 스프라이트의 라인아트. 소�
 2. 기존 8종 96×128 재생성 — idle 베이스 포즈까지만 AI, 애니 프레임은 Aseprite 손작업.
 3. 진영 색 언어(§1-a) 적용: 적 4종 네온 포인트, 영웅 3종 틸 포인트, merchant 앰버.
 
-현재 `actor-knight.aseprite`의 11프레임 메딕 자동 조립 초안은 프레임 사이 해부·실루엣이 깨져
-정식 애니메이션으로 승인하지 않았다. 방향별 타임라인을 Aseprite에서 수작업하고 PC 화면 승인을
-받기 전까지 플레이어는 `Frame_0`에 정지한다. `PlayerCyberAccent` 런타임 오버레이는 제거했으며,
-흉부 트리아지 화면·비대칭 의료 리그는 승인 프레임 자체에 그린다.
+11프레임 메딕 자동 조립 초안은 프레임 사이 해부·실루엣이 깨져 현재 원본에서 교체했다.
+`project-c-expeditioner-grounded-source-v1.{png,prompt.md}`를
+`process_actor_knight_grounded_v1.py`로 마감한 `actor-knight.aseprite`는 `96×128` 단일
+`Frame_0`이며 하드 알파·24색 역할 팔레트·2×2 클러스터·한 발 기준선을 잠근다. 방향별
+타임라인을 Aseprite에서 수작업하고 PC 화면 승인을 받기 전까지
+`SurvivorAnimationApproved=false`를 유지한다.
 
 ### 배치 3 — 아케이드 소품 + 낙하/구멍 (ROADMAP §아케이드 소품과 합류 · v0.3.3 개정)
 자판기·네온 간판·홀로 패널·셔터 내린 점포·엘리베이터 통로 마감재 + `env-hole` 깊이 표현.
@@ -149,12 +151,71 @@ ControlNet은 기존 게임 캡처/기존 스프라이트의 라인아트. 소�
      반사와 발광 프레임·비문자 기술 glyph는 별도 렌더러가 소유한다. 맵 좌표를 받지 않는
      서비스 샤프트 실루엣 백드롭이 검은 여백을 채우되 Unknown 구조는 노출하지 않는다.
      원정자 위에 임시로 얹었던 `PlayerCyberAccent`(흉부 트리아지 화면·비대칭 의료 리그)는
-     프레임 실루엣과 따로 놀아 제거했다. 다음 마감은 같은 악센트를 `actor-knight.aseprite`
-     각 방향 프레임에 직접 흡수하고 타임라인을 화면 승인하는 수작업 패스다.
+     프레임 실루엣과 따로 놀아 제거했다. 후속 접지 v1은 정체성 악센트를 정적 원정자 본체에
+     흡수했고, 방향별 타임라인은 이 프레임을 기준으로 수작업한다.
+   - 2026-08-02 B2 히어로 룸 목표: `project-c-b2-hero-room-target-v2.png`. v1처럼 같은 타일에
+     네온만 더하지 않고 **서비스 벽 군집 + 왼쪽 위험/설비 구역 + 오른쪽 진출 드레싱 + 조용한
+     중앙**으로 덩어리를 재편한다. 런타임은 6×5 시작방과 단일 이동 평면을 유지하고, 닫힌 문을
+     포함한 실제 진출선을 비워 둔다. 신규 에셋 없이 현행 wall/grate/service/cracked/범퍼/안내판을
+     먼저 재배치하며, 차량·기둥·새 단차는 이 승인 범위가 아니다. 런타임 회전 비교는
+     `docs/captures/b2-hero-room-layout-q0-v1.png`·`docs/captures/b2-hero-room-layout-q1-v1.png`다.
+   - 같은 날 서비스 벽 후속 승격: `project-c-b2-service-wall-source-v1.png`를 방향별
+     `192×176` master로 보정한 뒤 3개의 `64×112` 셀로 분할했다. 시안 진단등–앰버 작업등–
+     마젠타 상태점만 남기고 기존 대형 네온 패널/바닥광은 제거했다. 여섯 Aseprite 슬롯 완전
+     세트에서만 활성화하며, q0/q1 실화면과 q2 누출 검사를
+     `docs/captures/b2-service-wall-*-v1.png`에 보관한다.
+   - 같은 날 왼쪽 위험/설비 구역 후속 승격: `project-c-b2-barrel-bay-source-v1.png`의 4시점
+     두 셀 베이를 service/ring–drain/grate `128×64` 여덟 슬롯으로 분할했다. 어두운 유출 방지
+     팬·빈 앵커 링·바닥 고정 호스·넓은 그레이트가 한 덩어리로 이어지며, 배럴 자체는 굽지 않아
+     밀리거나 파괴된 뒤에도 설비가 자연스럽게 남는다. 완전 세트에서만 활성화하고, 인접 sconce는
+     실제 광원을 유지하면서 시각 강조만 낮춘다. 4방향 실화면은
+     `docs/captures/b2-barrel-bay-q{0,1,2,3}-live-v1.png`에 보관한다.
    - B2 주차 범퍼·쓰러진 안내판은 각각 `view-0..3` 네 방향 Aseprite/카탈로그 슬롯으로
-     승격했다. 런타임은 완전 세트일 때 현재 시점의 90도 회전 수로 방향을 고른다. 부분 세트는
-     기존 무방향 슬롯을 전 시점에 쓰고, 그것도 없으면 같은 화면축 parity → 첫 존재 슬롯 순으로
-     내려간다. `Validate Sources`가 불완전한 방향 원본 세트를 경고한다.
+     승격했고, 2026-08-02 v2에서 mirror 반복을 실제 네 사분면 소스로 교체했다. 범퍼는 낮은
+     검정 고무/강철+닳은 앰버 끝단, 안내판은 거의 바닥에 누운 비대칭 파손 판재라 서로 다른
+     실루엣이고 둘 다 비충돌 장식으로 읽힌다. 두 셀은 위치·방향이 독립이므로 물리적으로 잇지
+     않고 공통 재질만 공유한다. 바닥은 중성 램프 정규화 후 일반 바닥과 같은 런타임 톤매핑을
+     받아 베이지 패치를 없앴다. `Validate Sources`가 불완전 세트를 경고하며 4방향 실화면은
+     `docs/captures/b2-right-dressing-q{0,1,2,3}-live-v2.png`다.
+   - 그 사이 `(5,1)` 균열 셀은 전역 구판을 재사용하지 않고 B2 전용
+     `env-floor-b2-cracked` 단일 Aseprite로 승격했다. 공용 바닥의 다이아·명도·알파는 보존하고
+     생성 소스에서는 작은 박리와 가는 균열만 취해, 높이·구멍·커버·앰버 판정 신호가 없는
+     조용한 표면 손상으로 읽힌다. 방향 seam이 없어 4시점 파생은 만들지 않으며 실화면은
+     `docs/captures/b2-cracked-floor-q{0,1,2,3}-live-v1.png`다.
+   - 같은 방의 일반 바닥이 30개의 독립 다이아 체크무늬로 읽히는 문제에는
+     `project-c-b2-macro-floor-source-v1.png` 한 장의 top-down 2×2 재질을 도입했다.
+     `process_b2_macro_floor_v1.py`가 top-down 회전 → 시점별 iso master 마감 → 네 물리 역할 분할
+     순서로 16개 Aseprite를 만들고, 기본 seed에서는 `(3,1)·(4,1)·(3,2)·(4,2)`에 하나의 연속
+     타이어/오일 마모와 끊긴 주차선을 놓는다. clean 블록·16슬롯 완전성은 원자 계약이며 이동·높이·
+     공격·FOV에는 의미가 없다. 비교는 `docs/captures/b2-macro-floor-conform-preview-v1.png`, 실화면은
+     `docs/captures/b2-macro-floor-q{0,1,2,3}-live-v1.png`다.
+   - 후속 진단에서 매크로 밖 체크무늬는 source 반복이 아니라 셀별 local light 곱임을 확인했다.
+     어둠만 끈 `b2-floor-light-diagnostic-darkness-off-v1.png`에서는 같은 타일이 연속 면으로 읽힌다.
+     따라서 visible B2 Floor의 평균 RGB는 보존하고 local contrast만 20% 남기는 room-coherent tint를
+     바닥 렌더러에만 적용했다. 벽·적 액터·소품은 원래 local light를 유지해 광원 위치감이 남고,
+     FOV 알파·wet/oiled·이동/공격 오버레이는 건드리지 않는다. 4시점 결과는
+     `docs/captures/b2-floor-light-coherence-q{0,1,2,3}-live-v1.png`다.
+   - 원정자 접지 v1에서는 플레이어도 상태색×elevation tint×`TileLightColor`를 받아 흰 스티커처럼
+     분리되지 않게 했고, 접촉 그림자는 두 발 사이의 작은 3단 AO로 줄였다. 상시 플레이어 표식과
+     선택/공격 대상 표식은 각각 틸/앰버 열린 코너 틱으로 다시 만들어 `marker-player`·
+     `marker-target` 정식 Aseprite로 승격했다. 발·AO·바닥 재질을 가리는 완전한 링은 쓰지 않는다.
+   - 이어서 B2 시작방 바닥을 하나의 구조 덩어리로 읽히게 하는 foundation v1을 마감했다. 기존
+     윗면과 분리된 `64×42` face-only 스프라이트의 10px fascia가 실제 화면 전면에서만 이어지고,
+     드문 `12×38` 지지대는 회전해도 같은 월드 볼록 모서리에 남는다. 별도 비게임플레이 루트와
+     `Dungeon Backdrop` order 1/2만 사용해 collider·입력·격자·FOV·전투는 불변이다. 4시점 결과는
+     `docs/captures/foundation-grounding-q{0,1,2,3}-live-v2.png`다.
+   - 공용 바닥 재료 v1은 `project-c-shared-floor-material-source-v1.{png,prompt.md}`에서 저주파
+     마모장만 취하고 결정론적 conform으로 기존 다이아·피벗·판정 계약을 보존했다. 원본은
+     `grey-4` 91.996% + 세 개의 넓은 마모 덩어리 `grey-3` 8.004%이며, 둘 다 런타임 `Stone` 한
+     역할로 합쳐져 Shadow/Light/Outline 무늬를 셀마다 찍지 않는다. base를 굽는 밴드·Facility·
+     B2 파생 바닥도 함께 재생성했으며 4시점 결과는
+     `docs/captures/shared-floor-material-q{0,1,2,3}-live-v1.png`다.
+   - 기본 벽 재질 v1은 `project-c-b2-wall-material-source-v1.{png,prompt.md}`에서 저주파 명암
+     덩어리 두 종만 취해 기존 64×112 셸의 exact alpha·결합면·cap·plinth에 합성했다. 기본 셸과
+     legacy window 슬롯의 비발광 유지보수 셸은 같은 재료군이며, 대각 균열 후보는 판정 신호 오독을
+     막기 위해 제외했다. B2의 서비스·설비·단말을 우선하고 남은 벽만 월드 좌표 홀짝으로 선택하므로
+     회전해도 같은 물리 재질이 남으며 배치·충돌·FOV·이동·공격은 불변이다. 4시점 결과는
+     `docs/captures/b2-wall-material-q{0,1,2,3}-live-v1.png`다.
 3. **무드 백드롭** — 비(非)타일 분위기 배경: 메인 메뉴(네온 시티 스카이라인 v2 —
    구 `main-menu-backdrop-source-v1` 교체), 허브 원경, 결과 화면, 층 진입 인터스티셜.
    `ui-*` 960×540/PPU 64 규격, 신호색 판독 규칙의 적용을 받지 않는 유일한 층위

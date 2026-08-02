@@ -148,6 +148,12 @@ covered face, hood up, pink scarf, magenta clothing`
 교체됐다. 최종 마감(보간·발 기준선·실루엣)은 여전히 Aseprite 손작업 몫이다.
 팔레트에는 `hair-blonde-1/2`가 추가됐다(절도 검사 통과 — 근거는 위 prompt.md).
 
+위 문단은 2026-07-31의 역사 기록이다. 2026-08-02에는 프레임 사이 해부가 깨진 자동 조립 초안을
+`project-c-expeditioner-grounded-source-v1.{png,prompt.md}` 기반의 접지 정적본으로 교체했다.
+`process_actor_knight_grounded_v1.py`가 하드 알파·24색 역할 팔레트·2×2 클러스터·한 발 기준선을
+적용하며, 현재 `actor-knight.aseprite`는 `96×128` 단일 `Frame_0`이다. 방향별 6태그를 PC 화면에서
+승인하기 전까지 `SurvivorAnimationApproved=false`를 유지한다.
+
 ## 5. 적용 순서
 
 1. 원정자(`actor-player`/`actor-knight` 슬롯) 후보 확정 → 팔레트 append → conform →

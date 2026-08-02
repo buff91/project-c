@@ -13,7 +13,7 @@ namespace ProjectC.Gameplay
     /// <see cref="TileVisualFacts"/> 로 풀어서 넘긴다 — 그래서 어떤 층·어떤 회전에서든
     /// 같은 입력이면 같은 그림이 나온다. 역할색은 <see cref="PrototypePalette"/> 한 곳만 묻는다.
     /// </summary>
-    internal sealed class PrototypeEnvironmentSprites
+    internal sealed partial class PrototypeEnvironmentSprites
     {
         private readonly PrototypeSpriteCache _spriteCache;
         private readonly PrototypePalette _palette;

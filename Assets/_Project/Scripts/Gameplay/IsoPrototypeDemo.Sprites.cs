@@ -56,13 +56,36 @@ namespace ProjectC.Gameplay
 
         private Sprite GetTileSprite(TileKind kind, GridPos pos)
         {
-            // B2의 낮은 장식은 바닥까지 합성된 완성형 타일이다. 이 경로로 들어와야
-            // 기존 FOV·조명·높이 틴트·회전·정렬을 전부 그대로 공유한다.
+            TileVisualFacts facts = TileFactsFor(kind, pos);
+            // 2×2 연속 바닥은 일반 바닥 재질이다. 완성형 소품의 Wood 경로가 아니라
+            // 표준 mapped-tile 경로를 써야 전면 셀의 단차 측면과 B2 표면 톤을 보존한다.
             if (kind == TileKind.Floor &&
-                TryGetDungeonFloorDressing(pos, out Sprite dressing))
-                return dressing;
+                TryGetB2MacroFloorSprite(pos, out Sprite macroFloor))
+            {
+                return EnvironmentSprites.GetMappedTileSprite(
+                    macroFloor,
+                    visualCatalog.DungeonSurfaceFor(facts.Context),
+                    facts.Extruded,
+                    facts.HubMode);
+            }
 
-            return EnvironmentSprites.GetTileSprite(kind, pos, TileFactsFor(kind, pos));
+            // B2의 낮은 장식은 바닥까지 합성된 완성형 타일이다. 이 경로로 들어와야
+            // 기존 FOV·조명·높이 틴트·회전·정렬을 전부 그대로 공유한다. 일반 바닥은
+            // 카탈로그 경로에서 dungeonStone으로 톤매핑되므로, 완성형 드레싱도 같은
+            // 표면 램프를 거쳐야 원본 env-floor의 밝은 베이지가 섬처럼 남지 않는다.
+            if (kind == TileKind.Floor &&
+                TryGetDungeonFloorDressing(
+                    pos,
+                    out Sprite dressing,
+                    out PrototypeEnvironmentSprites.EnvironmentAccentMode accentMode))
+            {
+                return GetToneMappedEnvironmentSprite(
+                    dressing,
+                    visualCatalog.DungeonSurfaceFor(facts.Context),
+                    accentMode);
+            }
+
+            return EnvironmentSprites.GetTileSprite(kind, pos, facts);
         }
 
         /// <summary>
@@ -84,13 +107,16 @@ namespace ProjectC.Gameplay
             DungeonVisualContext context = VisualContext(pos);
             return new TileVisualFacts(
                 context,
-                context.IsRaised || IsFrontEdge(pos),
+                context.IsRaised || (!IsB2HeroRoomCell(pos) && IsFrontEdge(pos)),
                 stair ? StairPlaneRisesRight(pos) : door && DoorPlaneRisesRight(pos),
                 kind == TileKind.SecretDoor && IsSecretDoorHinted(pos),
                 hubMode,
                 !hubMode &&
                 (_dungeon?.Region ?? DungeonRegionProfile.Facility) ==
-                    DungeonRegionProfile.Facility);
+                    DungeonRegionProfile.Facility &&
+                // B2 시작방은 좌표 해시로 타일을 흩뿌리지 않고 히어로 룸 계획이
+                // 선택한 설비/균열 군집만 쓴다. 나머지 방은 기존 희소 변주를 유지한다.
+                !IsB2HeroRoomCell(pos));
         }
 
         // 진행 지수는 레이아웃이 소유한다 — elevation 으로 역산하지 않는다(GDD §5.1).

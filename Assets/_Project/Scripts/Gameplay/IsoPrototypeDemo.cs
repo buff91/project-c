@@ -78,8 +78,14 @@ namespace ProjectC.Gameplay
         [Tooltip("96×128 액터 아트만 축소한다. HP·위치 마커·발판은 격자 크기를 유지한다.")]
         [Range(0.5f, 1f)] public float actorVisualScale = 0.72f;
 
-        [Tooltip("메인 원정자 전용 배율. 적·폭발통은 공용 액터 배율을 유지한다.")]
+        [Tooltip("메인 원정자 전용 배율. 적은 공용 액터 배율을 유지한다.")]
         [Range(0.5f, 1f)] public float playerVisualScale = 0.80f;
+
+        [Tooltip("B2 휴대 연료 셀의 화면 배율. 점유·폭발 판정과는 무관하다.")]
+        [Range(0.45f, 1f)] public float barrelVisualScale = 0.66f;
+
+        [Tooltip("연료 셀 자식 접촉 AO 배율. 본체와 함께 축소되어 한 칸짜리 검은 판이 되지 않게 한다.")]
+        [Range(0.4f, 1f)] public float barrelContactShadowScale = 0.78f;
 
         // 현재 actor-knight.aseprite는 11프레임 자동 조립 초안이라 프레임 간 해부·실루엣이
         // 일치하지 않는다. 정식 방향별 Aseprite 타임라인이 화면 승인되기 전까지 플레이어만
@@ -390,6 +396,7 @@ namespace ProjectC.Gameplay
         private GridPos _playerPos;
         private GameObject _barrel;
         private SpriteRenderer _barrelRenderer;
+        private SpriteRenderer _barrelShadow;
         private GridPos _barrelPos;
         private readonly List<EnemyAgent> _enemies = new List<EnemyAgent>();
         private readonly List<ItemAgent> _items = new List<ItemAgent>();
@@ -484,6 +491,11 @@ namespace ProjectC.Gameplay
             _input.WaitRequested += WaitTurn;
             _input.ActorPicker = PickEnemyTileAt;
             _input.TilePicker = PickVisibleTileAt;
+            if (Application.isPlaying)
+            {
+                UpdateWorldHoverTracking();
+                VerticalContextChanged?.Invoke();
+            }
 
             // 생성된 임시 스프라이트는 씬에 저장하지 않는다. 대신 씬을 열 때마다
             // 편집 모드 미리보기를 다시 만들어 Game 뷰가 비어 보이지 않게 한다.
@@ -520,6 +532,8 @@ namespace ProjectC.Gameplay
                     _input.TilePicker = null;
             }
             ClearThrowRangePreview();
+            SuspendDropFocus();
+            SuspendVerticalLook();
         }
 
         public void BuildPrototype()
@@ -622,6 +636,8 @@ namespace ProjectC.Gameplay
             _throwRangeMarkers.Clear();
             _blastPreviewCells.Clear();
             _aimHoverCell = null;
+            ResetDropFocusForBuild();
+            ResetVerticalLookForBuild();
             _hubWorld.Reset();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
@@ -796,7 +812,9 @@ namespace ProjectC.Gameplay
                     ? DungeonMetaContext.FromUnlocked(MetaStore.LoadOrNew().UnlockedItemKinds())
                     : DungeonMetaContext.Unrestricted,
                 // 지역도 던전별 데이터다 — 적 혼합·밀도·반응 무대가 여기서 갈린다.
-                DungeonSelection.Selected.Region);
+                DungeonSelection.Selected.Region,
+                // 층내 높이 사용 여부도 던전별 레이아웃 정책이다. 첫 던전은 한 층=한 이동 평면.
+                DungeonSelection.Selected.UsesLocalElevation);
             int startDepth = Mathf.Clamp(previewStartDepth, 0, _dungeon.Floors.Count - 1);
             _activeFloorIndex = _dungeon.Floors[startDepth].FloorIndex;
             _runSummary = new RunSummary(GlobalFloorIndex(_activeFloorIndex));
@@ -872,6 +890,9 @@ namespace ProjectC.Gameplay
             footprintRenderer.sprite = visualCatalog != null && visualCatalog.playerFootprint != null
                 ? visualCatalog.playerFootprint
                 : ActorSprites.GetPlayerFootprintSprite();
+            // 위치 표식은 항상 켜져 있으므로 선택 링·발·접촉 AO보다 먼저 소리를 낮춘다.
+            footprintRenderer.color = new Color(
+                1f, 1f, 1f, ActorGroundingPresentation.PlayerFootprintAlpha);
             footprintRenderer.sortingOrder = OverlaySorting.PlayerFootprint;
             _playerFootprint = footprint.transform;
 
@@ -966,9 +987,14 @@ namespace ProjectC.Gameplay
                     barrelSprite,
                     _barrelPos,
                     out _barrelRenderer);
-                // 격자 점유·밀기·폭발 판정은 그대로 두고, 화면 위계만 액터와 맞춘다.
-                // 128px 원화를 1:1로 두면 시작방에서 플레이어보다 큰 탱크처럼 보인다.
-                _barrel.transform.localScale = Vector3.one * actorVisualScale;
+                // 격자 점유·밀기·폭발 판정은 그대로 두고, 화면 위계만 짧은 휴대 연료 셀로 맞춘다.
+                _barrel.transform.localScale = Vector3.one * barrelVisualScale;
+                _barrelShadow = CreateContactShadow(_barrel.transform);
+                // AO를 한 칸 크기로 역확대하면 작은 셀 아래에 검은 판이 생긴다. 자식 배율을
+                // 별도로 낮춰 얇은 접지 흔적만 남기고 실제 월드 폭은 본체와 함께 줄인다.
+                if (_barrelShadow != null)
+                    _barrelShadow.transform.localScale =
+                        Vector3.one * barrelContactShadowScale;
             }
             else
             {
@@ -1104,11 +1130,25 @@ namespace ProjectC.Gameplay
             if (!Application.isPlaying || _playerState == null || Camera.main == null)
                 return null;
 
+            bool verticalAreaAim =
+                IsVerticalLookActive &&
+                _bombAiming &&
+                VerticalThrowRules.Supports(_bombAimKind);
+
             Vector3 world = Camera.main.ScreenToWorldPoint(screenPoint);
             EnemyAgent best = null;
             foreach (EnemyAgent enemy in _enemies)
             {
                 if (enemy.Renderer == null || !enemy.Renderer.enabled)
+                    continue;
+
+                // 일반 입력에서는 현재 FOV의 적만 잡는다. 명시적 층간 광역 조준에서는
+                // 원격 적 몸통을 그 발밑 타일로 바꿔 준다. 액터 picker를 통째로 끄면
+                // 솟아 있는 몸통의 화면 좌표가 뒤 타일로 역변환되어 엉뚱한 곳에 던져진다.
+                bool selectable = verticalAreaAim
+                    ? IsVerticalLookTarget(enemy.State.Position)
+                    : IsEnemyVisibleToPlayer(enemy);
+                if (!selectable)
                     continue;
                 Bounds bounds = enemy.Renderer.bounds;
                 if (world.x < bounds.min.x || world.x > bounds.max.x ||
@@ -1146,11 +1186,13 @@ namespace ProjectC.Gameplay
                                     (activeFloor &&
                                      (_visibleTiles.Contains(position) ||
                                       _exploredTiles.Contains(position))) ||
-                                    _verticalPreviewTiles.Contains(position);
+                                    IsPresentedVerticalPreview(position);
                 if (!inputVisible) continue;
 
                 Vector3 center = VisualPosition(position);
-                int layerPriority = activeFloor ? 2 : 1;
+                int layerPriority = _verticalLookTiles.Contains(position)
+                    ? 3
+                    : activeFloor ? 2 : 1;
                 candidates.Add(new WorldInputCandidate(
                     position,
                     center.x,
@@ -1185,6 +1227,7 @@ namespace ProjectC.Gameplay
             enemy.Brain?.OnDamaged(_playerPos);
             UpdateHealthBar(enemy.HpFill, enemy.State);
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
+            bool impactVisible = visibleToPlayer || IsVerticalLookTarget(enemy.State.Position);
             CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
             if (visibleToPlayer)
             {
@@ -1198,7 +1241,7 @@ namespace ProjectC.Gameplay
             Debug.Log($"[{source}] {enemy.State.Id}에게 {damage} 피해. " +
                       $"HP {enemy.State.Hp}/{enemy.State.MaxHp}");
 
-            if (visibleToPlayer && enemy.Renderer != null)
+            if (impactVisible && enemy.Renderer != null)
             {
                 enemy.Animator?.PlayOnce(SpriteClipTags.Hit);
                 yield return PlayCombatImpact(

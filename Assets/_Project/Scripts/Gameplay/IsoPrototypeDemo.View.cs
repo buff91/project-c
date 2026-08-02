@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 
@@ -5,32 +6,44 @@ namespace ProjectC.Gameplay
 {
     public partial class IsoPrototypeDemo
     {
+        // PC field-deck에서 우측 instrument/floor stack과 하단 dock을 제외한 실제 플레이 영역.
+        private static readonly Rect B2RoomHudSafeViewport =
+            new Rect(0.03f, 0.10f, 0.69f, 0.85f);
+        // 셀 중심 경계 밖으로 솟는 서비스 벽과 낮은 프롭의 실루엣 여백.
+        private static readonly Vector2 B2RoomCameraPadding = new Vector2(0.70f, 1.15f);
 
         public void RotateView(int direction)
         {
             if (_grid == null || _dungeon == null || _resolvingAction || direction == 0)
                 return;
 
+            ClearDropFocus(restoreSelection: true);
             _grid.iso.RotateView(direction);
             ApplyViewToVisuals();
             ConfigureCamera(Camera.main);
+            _input?.InvalidateHover();
             ViewRotationChanged?.Invoke(_grid.iso.viewQuarterTurns);
             Debug.Log($"[View] 아이소 시점 회전: {_grid.iso.viewQuarterTurns * 90}°");
         }
 
         public void ToggleViewMode()
         {
+            ExitVerticalLook(announce: false, refreshPresentation: false);
+            ClearDropFocus(restoreSelection: true);
             viewMode = viewMode == DungeonViewMode.Play
                 ? DungeonViewMode.DebugAll
                 : DungeonViewMode.Play;
             ApplyViewToVisuals();
             ConfigureCamera(Camera.main);
+            UpdateWorldHoverTracking();
+            _input?.InvalidateHover();
             ViewModeChanged?.Invoke(viewMode);
             Debug.Log($"[View] 던전 표시 모드: {viewMode}");
         }
 
         public void ToggleCombatMode()
         {
+            if (RejectWorldActionWhileVerticalLooking()) return;
             if (combatMode == CombatActionMode.Melee && !_playerLoadout.HasRanged)
             {
                 InteractionFeedback?.Invoke("원거리 장비가 없다");
@@ -119,18 +132,36 @@ namespace ProjectC.Gameplay
 
             _configuredCamera = camera;
             camera.orthographic = true;
-            Vector2 center = new Vector2(0f, -1.65f);
-            if (_playerState != null && (hubMode || viewMode == DungeonViewMode.Play))
+            OrthographicCameraFrame frame;
+            if (TryGetVerticalLookCameraFrame(
+                    camera.aspect,
+                    out Vector2 verticalCenter,
+                    out float verticalSize))
             {
-                Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
-                center = new Vector2(playerWorld.x, playerWorld.y);
+                frame = OrthographicCameraFraming.Follow(
+                    verticalCenter,
+                    hubMode,
+                    viewMode,
+                    verticalSize,
+                    debugCameraSize);
             }
-            OrthographicCameraFrame frame = OrthographicCameraFraming.Follow(
-                center,
-                hubMode,
-                viewMode,
-                playCameraSize,
-                debugCameraSize);
+            else if (!TryGetB2HeroRoomCameraFrame(camera.aspect, out frame))
+            {
+                Vector2 center = new Vector2(0f, -1.65f);
+                if (_playerState != null && (hubMode || viewMode == DungeonViewMode.Play))
+                {
+                    Vector3 playerWorld = _grid.GridToWorld(_playerState.Position);
+                    center = new Vector2(playerWorld.x, playerWorld.y);
+                }
+
+                frame = OrthographicCameraFraming.Follow(
+                    center,
+                    hubMode,
+                    viewMode,
+                    playCameraSize,
+                    debugCameraSize);
+            }
+
             camera.orthographicSize = frame.Size;
             camera.transform.position = new Vector3(frame.Center.x, frame.Center.y, -10f);
             _lastCameraAspect = camera.aspect;
@@ -138,6 +169,82 @@ namespace ProjectC.Gameplay
                 ? new Color32(9, 7, 14, 255)
                 : Palette.Void;
             camera.clearFlags = CameraClearFlags.SolidColor;
+        }
+
+        private bool TryGetB2HeroRoomCameraFrame(
+            float aspect,
+            out OrthographicCameraFrame frame)
+        {
+            frame = default;
+            if (hubMode ||
+                viewMode != DungeonViewMode.Play ||
+                _b2HeroRoomLayout == null ||
+                _playerState == null ||
+                _grid == null ||
+                _dungeon == null ||
+                !_b2HeroRoomLayout.ContainsRoomCell(_playerState.Position))
+                return false;
+
+            var projectedCenters = new List<Vector2>(_b2HeroRoomLayout.RoomCells.Count + 1);
+            foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
+            {
+                if (_dungeon.Height.FloorIndex(roomCell.elevation) != _activeFloorIndex)
+                    continue;
+
+                Vector3 world = _grid.GridToWorld(roomCell);
+                projectedCenters.Add(new Vector2(world.x, world.y));
+            }
+
+            if (TryFindClosestB2RoomDoor(out GridPos door))
+            {
+                Vector3 world = _grid.GridToWorld(door);
+                projectedCenters.Add(new Vector2(world.x, world.y));
+            }
+
+            if (projectedCenters.Count == 0) return false;
+            frame = OrthographicCameraFraming.FitProjectedBounds(
+                projectedCenters,
+                aspect,
+                B2RoomHudSafeViewport,
+                B2RoomCameraPadding,
+                playCameraSize);
+            return true;
+        }
+
+        private bool TryFindClosestB2RoomDoor(out GridPos closestDoor)
+        {
+            closestDoor = default;
+            bool found = false;
+            int closestDistance = int.MaxValue;
+            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
+            {
+                TileKind kind = pair.Value.kind;
+                if ((kind != TileKind.DoorClosed && kind != TileKind.DoorOpen) ||
+                    _dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex)
+                    continue;
+
+                int distance = int.MaxValue;
+                foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
+                    distance = Mathf.Min(distance, pair.Key.ManhattanTo(roomCell));
+
+                if (found &&
+                    (distance > closestDistance ||
+                     (distance == closestDistance && !ComesBefore(pair.Key, closestDoor))))
+                    continue;
+
+                found = true;
+                closestDistance = distance;
+                closestDoor = pair.Key;
+            }
+
+            return found;
+        }
+
+        private static bool ComesBefore(GridPos candidate, GridPos current)
+        {
+            if (candidate.x != current.x) return candidate.x < current.x;
+            if (candidate.y != current.y) return candidate.y < current.y;
+            return candidate.elevation < current.elevation;
         }
     }
 }

@@ -53,6 +53,13 @@
                     <ui:VisualElement class="ui-icon ui-rotate-right-icon" picking-mode="Ignore" />
                 </ui:Button>
             </ui:VisualElement>
+            <!-- PC 전용 수직 보기 레일. 공용 트리에 두되 base USS에서 숨기고 Desktop에서만 연다. -->
+            <ui:VisualElement name="vertical-view-controls" class="vertical-view-controls">
+                <ui:Button name="vertical-view-up" text="▲" class="vertical-view-button" tooltip="실제 개구부를 통해 윗층 보기" />
+                <ui:Button name="vertical-view-current" text="◆" class="vertical-view-button" tooltip="현재 플레이 층으로 돌아오기" />
+                <ui:Button name="vertical-view-down" text="▼" class="vertical-view-button" tooltip="실제 개구부를 통해 아랫층 보기" />
+            </ui:VisualElement>
+            <ui:Label name="vertical-view-state" text="현재 --" class="vertical-view-state" />
         </ui:VisualElement>
 
         <!-- D · 층 스택. "▲ B1 · ▼ B3" 텍스트 한 줄을 공간적 수직성 지표로 바꾼다 —

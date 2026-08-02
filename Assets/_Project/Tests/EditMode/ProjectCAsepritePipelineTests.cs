@@ -49,9 +49,10 @@ namespace ProjectC.Tests
                 "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite",
                 out Vector2Int actor));
             Assert.AreEqual(new Vector2Int(96, 128), actor);
-            Assert.IsFalse(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
                 "Assets/_Project/Art/Source/Aseprite/env-wall-rising-left.aseprite",
-                out _));
+                out Vector2Int wall));
+            Assert.AreEqual(new Vector2Int(64, 112), wall);
 
             Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(
                 "Assets/_Project/Art/Source/Aseprite/env-floor.aseprite"));
@@ -192,12 +193,58 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void CatalogSlot_MapsCompleteB2ServiceWall_WithWallPivots()
+        {
+            for (int segment = 0; segment < 3; segment++)
+            foreach (string direction in new[] { "right", "left" })
+            {
+                string fileName =
+                    $"env-wall-b2-service-segment-{segment}-rising-{direction}";
+                string slotName =
+                    $"b2ServiceWallSegment{segment}Rising" +
+                    (direction == "right" ? "Right" : "Left");
+                string path =
+                    $"Assets/_Project/Art/Source/Aseprite/{fileName}.aseprite";
+                Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(path, out string actual));
+                Assert.AreEqual(slotName, actual);
+                Assert.AreEqual(
+                    new Vector2(0.5f, 16f / 112f),
+                    ProjectCAsepritePipeline.ResolvePivotNormalized(path));
+                Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                    path,
+                    out Vector2Int canvas));
+                Assert.AreEqual(new Vector2Int(64, 112), canvas);
+                Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(path));
+            }
+        }
+
+        [Test]
+        public void CatalogSlot_MapsB2FuelCell_WithPropCanvasAndGroundedPivot()
+        {
+            const string path =
+                "Assets/_Project/Art/Source/Aseprite/prop-explosive-barrel.aseprite";
+
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetCatalogSlot(
+                path,
+                out string slot));
+            Assert.AreEqual("explosiveBarrel", slot);
+            Assert.AreEqual(
+                new Vector2(0.5f, 10f / 128f),
+                ProjectCAsepritePipeline.ResolvePivotNormalized(path));
+            Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                path,
+                out Vector2Int canvas));
+            Assert.AreEqual(new Vector2Int(128, 128), canvas);
+        }
+
+        [Test]
         public void CatalogSlot_MapsB2FloorDressing_WithCenteredPivots()
         {
             var expected = new (string fileName, string slot)[]
             {
                 ("env-floor-b2-parking-stop", "b2ParkingWheelStopFloor"),
                 ("env-floor-b2-fallen-sign", "b2FallenWayfindingFloor"),
+                ("env-floor-b2-cracked", "b2CrackedFloor"),
                 ("env-floor-b2-parking-stop-view-0", "b2ParkingWheelStopFloorView0"),
                 ("env-floor-b2-parking-stop-view-1", "b2ParkingWheelStopFloorView1"),
                 ("env-floor-b2-parking-stop-view-2", "b2ParkingWheelStopFloorView2"),
@@ -206,6 +253,30 @@ namespace ProjectC.Tests
                 ("env-floor-b2-fallen-sign-view-1", "b2FallenWayfindingFloorView1"),
                 ("env-floor-b2-fallen-sign-view-2", "b2FallenWayfindingFloorView2"),
                 ("env-floor-b2-fallen-sign-view-3", "b2FallenWayfindingFloorView3"),
+                ("env-floor-b2-barrel-bay-service-view-0", "b2BarrelBayServiceFloorView0"),
+                ("env-floor-b2-barrel-bay-service-view-1", "b2BarrelBayServiceFloorView1"),
+                ("env-floor-b2-barrel-bay-service-view-2", "b2BarrelBayServiceFloorView2"),
+                ("env-floor-b2-barrel-bay-service-view-3", "b2BarrelBayServiceFloorView3"),
+                ("env-floor-b2-barrel-bay-drain-view-0", "b2BarrelBayDrainFloorView0"),
+                ("env-floor-b2-barrel-bay-drain-view-1", "b2BarrelBayDrainFloorView1"),
+                ("env-floor-b2-barrel-bay-drain-view-2", "b2BarrelBayDrainFloorView2"),
+                ("env-floor-b2-barrel-bay-drain-view-3", "b2BarrelBayDrainFloorView3"),
+                ("env-floor-b2-macro-role-0-view-0", "b2MacroFloorRole0View0"),
+                ("env-floor-b2-macro-role-0-view-1", "b2MacroFloorRole0View1"),
+                ("env-floor-b2-macro-role-0-view-2", "b2MacroFloorRole0View2"),
+                ("env-floor-b2-macro-role-0-view-3", "b2MacroFloorRole0View3"),
+                ("env-floor-b2-macro-role-1-view-0", "b2MacroFloorRole1View0"),
+                ("env-floor-b2-macro-role-1-view-1", "b2MacroFloorRole1View1"),
+                ("env-floor-b2-macro-role-1-view-2", "b2MacroFloorRole1View2"),
+                ("env-floor-b2-macro-role-1-view-3", "b2MacroFloorRole1View3"),
+                ("env-floor-b2-macro-role-2-view-0", "b2MacroFloorRole2View0"),
+                ("env-floor-b2-macro-role-2-view-1", "b2MacroFloorRole2View1"),
+                ("env-floor-b2-macro-role-2-view-2", "b2MacroFloorRole2View2"),
+                ("env-floor-b2-macro-role-2-view-3", "b2MacroFloorRole2View3"),
+                ("env-floor-b2-macro-role-3-view-0", "b2MacroFloorRole3View0"),
+                ("env-floor-b2-macro-role-3-view-1", "b2MacroFloorRole3View1"),
+                ("env-floor-b2-macro-role-3-view-2", "b2MacroFloorRole3View2"),
+                ("env-floor-b2-macro-role-3-view-3", "b2MacroFloorRole3View3"),
             };
 
             foreach ((string fileName, string slot) in expected)
@@ -216,6 +287,11 @@ namespace ProjectC.Tests
                 Assert.AreEqual(
                     new Vector2(0.5f, 0.5f),
                     ProjectCAsepritePipeline.ResolvePivotNormalized(path));
+                Assert.IsTrue(ProjectCAsepritePipeline.TryGetExpectedCanvasSize(
+                    path,
+                    out Vector2Int canvas));
+                Assert.AreEqual(new Vector2Int(128, 64), canvas);
+                Assert.IsTrue(ProjectCAsepritePipeline.RequiresReadableTexture(path));
             }
         }
 
@@ -240,6 +316,38 @@ namespace ProjectC.Tests
                 new[] { "env-floor-b2-parking-stop-view-2" },
                 ProjectCAsepritePipeline.MissingRequiredB2ViewSources(
                     withoutParkingViewTwo));
+
+            string[] withoutBarrelBayDrainViewThree = sources
+                .Where(path => !path.EndsWith(
+                    "env-floor-b2-barrel-bay-drain-view-3.aseprite",
+                    System.StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "env-floor-b2-barrel-bay-drain-view-3" },
+                ProjectCAsepritePipeline.MissingRequiredB2ViewSources(
+                    withoutBarrelBayDrainViewThree));
+
+            string[] withoutMacroRoleTwoViewOne = sources
+                .Where(path => !path.EndsWith(
+                    "env-floor-b2-macro-role-2-view-1.aseprite",
+                    System.StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "env-floor-b2-macro-role-2-view-1" },
+                ProjectCAsepritePipeline.MissingRequiredB2ViewSources(
+                    withoutMacroRoleTwoViewOne));
+
+            CollectionAssert.IsEmpty(
+                ProjectCAsepritePipeline.MissingRequiredB2ServiceWallSources(sources));
+            string[] withoutServiceCenterLeft = sources
+                .Where(path => !path.EndsWith(
+                    "env-wall-b2-service-segment-1-rising-left.aseprite",
+                    System.StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "env-wall-b2-service-segment-1-rising-left" },
+                ProjectCAsepritePipeline.MissingRequiredB2ServiceWallSources(
+                    withoutServiceCenterLeft));
         }
 
         [Test]
@@ -467,7 +575,7 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void KnightSource_BakesSixTagsWithoutSwallowingLaterRanges()
+        public void KnightSource_GroundedStaticFrame_HasNoUnapprovedDraftAnimation()
         {
             const string source =
                 "Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite";
@@ -477,35 +585,19 @@ namespace ProjectC.Tests
             SerializedProperty canvas = serializedImporter.FindProperty("m_CanvasSize");
             Assert.IsNotNull(canvas);
             Assert.AreEqual(new Vector2Int(96, 128), canvas.vector2IntValue);
-            CollectionAssert.IsEmpty(ProjectCAsepritePipeline.MissingRequiredActorTags(
-                AssetDatabase.LoadAllAssetsAtPath(source)
-                    .OfType<AnimationClip>()
-                    .Select(clip => clip.name)));
+            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(source);
+            CollectionAssert.AreEqual(
+                new[] { "idle", "walk", "attack", "hit", "fall", "death" },
+                ProjectCAsepritePipeline.MissingRequiredActorTags(
+                    assets.OfType<AnimationClip>().Select(clip => clip.name)));
+
+            Sprite[] frames = assets.OfType<Sprite>().ToArray();
+            Assert.AreEqual(1, frames.Length);
+            Assert.AreEqual("Frame_0", frames[0].name);
 
             ActorAnimationSet set = ActorAnimationBake.ExtractSet(source, "knight");
-
-            // 기대값은 현재 원본의 스냅샷이다 — v0.3.3 치비 라이더 교체(2026-07-30) 기준.
-            // idle 1프레임, walk 는 contact-a/pass/contact-b/pass 4셀(pass 는 픽셀 동일해도
-            // 셀이 분리돼 개별 Sprite 로 구워진다). 각 수가 "그 태그의 프레임만" 세는 것이
-            // 태그 삼킴 회귀의 방어선이다.
-            Assert.AreEqual(6, set.clips.Count);
-            AssertClip("idle", true, 1);
-            AssertClip("walk", true, 4);
-            AssertClip("attack", false, 3);
-            AssertClip("hit", false, 1);
-            AssertClip("fall", false, 1);
-            AssertClip("death", false, 1);
-
-            void AssertClip(string tag, bool loop, int distinctFrames)
-            {
-                SpriteClip clip = set.Find(tag);
-                Assert.IsNotNull(clip, tag);
-                Assert.AreEqual(loop, clip.loop, tag);
-                Assert.AreEqual(
-                    distinctFrames,
-                    clip.frames.Where(frame => frame != null).Distinct().Count(),
-                    tag);
-            }
+            Assert.AreEqual(0, set.clips.Count);
+            Assert.IsFalse(IsoPrototypeDemo.SurvivorAnimationApproved);
         }
 
         [Test]

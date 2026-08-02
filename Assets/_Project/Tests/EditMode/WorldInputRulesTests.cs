@@ -7,6 +7,31 @@ namespace ProjectC.Tests
     public class WorldInputRulesTests
     {
         [Test]
+        public void IsReadOnlyVerticalPreview_OtherFloorPreview_IsReadOnly()
+        {
+            Assert.IsTrue(WorldInputRules.IsReadOnlyVerticalPreview(
+                debugAll: false,
+                targetFloorIndex: -1,
+                activeFloorIndex: 0,
+                isVerticalPreviewTile: true));
+        }
+
+        [Test]
+        public void IsReadOnlyVerticalPreview_ActiveFloorOrDebug_RemainsInteractive()
+        {
+            Assert.IsFalse(WorldInputRules.IsReadOnlyVerticalPreview(
+                debugAll: false,
+                targetFloorIndex: 0,
+                activeFloorIndex: 0,
+                isVerticalPreviewTile: true));
+            Assert.IsFalse(WorldInputRules.IsReadOnlyVerticalPreview(
+                debugAll: true,
+                targetFloorIndex: -1,
+                activeFloorIndex: 0,
+                isVerticalPreviewTile: true));
+        }
+
+        [Test]
         public void IsMapTile_ExistingWalkableTile_ReturnsTrue()
         {
             var map = new GridMap();

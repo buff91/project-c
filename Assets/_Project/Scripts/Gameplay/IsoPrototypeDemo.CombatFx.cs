@@ -249,7 +249,7 @@ namespace ProjectC.Gameplay
                 _playerRenderer,
                 StatusKind.Freeze,
                 active && _playerState.Statuses.Has(StatusKind.Freeze));
-            if (active) _playerRenderer.color = CombatantTint(_playerState);
+            if (active) ApplyPlayerVisuals();
         }
 
         private void SyncEnemyStatusVisuals(EnemyAgent enemy, bool visible)

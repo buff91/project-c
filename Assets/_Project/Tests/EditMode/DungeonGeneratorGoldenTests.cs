@@ -39,14 +39,21 @@ namespace ProjectC.Tests
         /// 뽑는 횟수가 그대로다(앵커 1 + 약한 바닥 1). 상한을 1로 되돌리면 위의 옛 지문이
         /// 그대로 재현되는 것으로 확인했다 — 즉 방·계단·적·아이템 배치는 <b>동일</b>하고
         /// 달라진 것은 개구부에 붙은 칸들뿐이다.</item>
+        /// <item><c>1df3a0399ab01947</c> — 첫 던전을 한 층=한 이동 평면으로 전환.
+        /// 방 계획과 RNG 스트림은 유지하고, 층내 raised row·Stairs·Ladder·catwalk만 제거했다.
+        /// elevation stride와 층간 링크·Hole은 그대로다.</item>
         /// </list>
         /// </summary>
         [Test]
         public void Ascending_ArcadeTowerShape_MatchesGoldenFingerprint()
         {
             Assert.AreEqual(
-                "8fbf82c8067b1cb3",
-                Fingerprint(DungeonProgressDirection.Ascend, floorCount: 10, firstBuildingFloor: -2),
+                "1df3a0399ab01947",
+                Fingerprint(
+                    DungeonProgressDirection.Ascend,
+                    floorCount: 10,
+                    firstBuildingFloor: -2,
+                    usesLocalElevation: false),
                 "아케이드 타워 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
         }
 
@@ -57,6 +64,19 @@ namespace ProjectC.Tests
                 "02411906bef8b09f",
                 Fingerprint(DungeonProgressDirection.Descend, floorCount: 3, firstBuildingFloor: -1),
                 "하강 던전 생성 출력이 달라졌다 — 의도한 변경인지 확인하고 지문을 갱신한다");
+        }
+
+        [Test]
+        public void Flooded_LocalElevationShape_RemainsAvailable()
+        {
+            Assert.AreEqual(
+                "5548343b47f0621a",
+                Fingerprint(
+                    DungeonProgressDirection.Ascend,
+                    floorCount: 10,
+                    firstBuildingFloor: -2,
+                    region: DungeonRegionProfile.Flooded),
+                "첫 던전 평탄화가 층내 높이를 쓰는 다른 지역의 출력을 바꾸면 안 된다");
         }
 
         /// <summary>
@@ -168,7 +188,11 @@ namespace ProjectC.Tests
 
         /// <summary>seed 여러 개의 전체 레이아웃을 직렬화해 FNV-1a 64 로 접는다.</summary>
         private static string Fingerprint(
-            DungeonProgressDirection direction, int floorCount, int firstBuildingFloor)
+            DungeonProgressDirection direction,
+            int floorCount,
+            int firstBuildingFloor,
+            DungeonRegionProfile region = DungeonRegionProfile.Facility,
+            bool usesLocalElevation = true)
         {
             var text = new StringBuilder();
             foreach (int seed in Seeds)
@@ -176,7 +200,10 @@ namespace ProjectC.Tests
                 var map = new GridMap();
                 DungeonLayout layout = DungeonGenerator.Generate(
                     map, 13, 13, floorCount, seed: seed,
-                    direction: direction, firstBuildingFloor: firstBuildingFloor);
+                    direction: direction,
+                    firstBuildingFloor: firstBuildingFloor,
+                    region: region,
+                    usesLocalElevation: usesLocalElevation);
 
                 text.Append("seed=").Append(seed).Append('\n');
                 AppendMap(text, map);

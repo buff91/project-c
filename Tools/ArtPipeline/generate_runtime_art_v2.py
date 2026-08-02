@@ -6,6 +6,7 @@ AI board in docs/art-direction/project-c-runtime-asset-board-v2.png is a design
 reference only; no pixels are sliced from it.  Re-running this script is stable.
 """
 
+import argparse
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -14,6 +15,8 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "Assets/_Project/Art/Runtime"
 T = (0, 0, 0, 0)
+_ONLY_NAME = None
+_WRITTEN = []
 
 P = {
     "outline": (10, 13, 18, 255),
@@ -61,6 +64,8 @@ def canvas(size=(48, 64)):
 
 
 def save(image: Image.Image, name: str) -> None:
+    if _ONLY_NAME is not None and name != _ONLY_NAME:
+        return
     OUTPUT.mkdir(parents=True, exist_ok=True)
     # 128-레짐 전환: 월드 스프라이트는 수백 개 드로잉 좌표를 재작성하는 대신
     # 저장 직전 NEAREST ×2로 승격한다(픽셀 패턴 동일). ui-* 는 UI Toolkit이
@@ -70,6 +75,7 @@ def save(image: Image.Image, name: str) -> None:
             (image.width * 2, image.height * 2), Image.Resampling.NEAREST
         )
     image.save(OUTPUT / f"{name}.png", optimize=True)
+    _WRITTEN.append(name)
 
 
 def px(draw, points, color):
@@ -301,22 +307,17 @@ def prop_chest():
 
 
 def prop_barrel():
-    im, d = canvas((64, 64))
-    d.ellipse((14, 11, 50, 27), fill=P["outline"])
-    d.rectangle((13, 19, 51, 52), fill=P["outline"])
-    d.ellipse((13, 43, 51, 58), fill=P["outline"])
-    d.rectangle((16, 20, 48, 49), fill=P["red_dark"])
-    d.ellipse((16, 14, 48, 26), fill=P["red"])
-    d.ellipse((19, 16, 45, 23), fill=P["brown_lit"])
-    d.rectangle((17, 24, 47, 28), fill=P["steel_dark"])
-    d.rectangle((17, 44, 47, 48), fill=P["steel_dark"])
-    d.line([(20, 20), (20, 50)], fill=P["red_lit"], width=2)
-    d.line([(43, 22), (44, 49)], fill=P["brown_dark"], width=2)
-    d.rectangle((25, 31, 39, 42), fill=P["bone"])
-    d.polygon([(27, 33), (31, 30), (36, 32), (38, 36), (35, 40), (29, 39)], fill=P["bone_lit"])
-    d.rectangle((29, 36, 31, 39), fill=P["red_dark"])
-    d.rectangle((34, 36, 36, 39), fill=P["red_dark"])
-    save(im, "prop-explosive-barrel")
+    name = "prop-explosive-barrel"
+    if _ONLY_NAME is not None and _ONLY_NAME != name:
+        return
+
+    # 이 슬롯의 정식 주인은 B2 네이티브 픽셀 생성기다. 공용 런타임 세트를
+    # 다시 만들어도 구 해골 드럼이 승인된 소형 연료 셀을 덮어쓰지 않게 위임한다.
+    from process_b2_prop_quality_v4 import build_source_assets
+
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    build_source_assets().outputs[name].save(OUTPUT / f"{name}.png", optimize=True)
+    _WRITTEN.append(name)
 
 
 def prop_campfire():
@@ -423,14 +424,37 @@ def item(name, kind):
     save(im, name)
 
 
-def marker(name, color, lit):
+def target_marker(name, color, lit):
+    """Selected tile: four readable brackets without turning the cell into a platform."""
     im, d = canvas((64, 32))
-    outer = [(32, 1), (62, 16), (32, 31), (2, 16)]
-    inner = [(32, 5), (56, 16), (32, 27), (8, 16)]
-    d.line(outer + [outer[0]], fill=P["outline"], width=3)
-    d.line(inner + [inner[0]], fill=color, width=2)
-    d.line([(32, 5), (56, 16)], fill=lit, width=1)
-    for x, y in [(32, 4), (56, 16), (32, 27), (8, 16)]:
+    corners = [
+        ((32, 2), (21, 7), (43, 7)),
+        ((61, 16), (50, 11), (50, 21)),
+        ((32, 29), (21, 24), (43, 24)),
+        ((2, 16), (13, 11), (13, 21)),
+    ]
+    for vertex, arm_a, arm_b in corners:
+        d.line([arm_a, vertex, arm_b], fill=P["outline"], width=4)
+        d.line([arm_a, vertex, arm_b], fill=color, width=2)
+        x, y = vertex
+        d.rectangle((x - 1, y - 1, x + 1, y + 1), fill=lit)
+    save(im, name)
+
+
+def player_marker(name, color, lit):
+    """Always-on locator: four short corner ticks, never a second full-tile ring."""
+    im, d = canvas((64, 32))
+    corners = [
+        ((32, 2), (24, 6), (40, 6)),
+        ((61, 16), (53, 12), (53, 20)),
+        ((32, 29), (24, 25), (40, 25)),
+        ((2, 16), (10, 12), (10, 20)),
+    ]
+    for vertex, arm_a, arm_b in corners:
+        # 어두운 백플레이트가 바닥 재질에서 틱을 분리하고, 얇은 틸 코어가 플레이어만 말한다.
+        d.line([arm_a, vertex, arm_b], fill=P["outline"], width=4)
+        d.line([arm_a, vertex, arm_b], fill=color, width=2)
+        x, y = vertex
         d.rectangle((x - 1, y - 1, x + 1, y + 1), fill=lit)
     save(im, name)
 
@@ -476,12 +500,21 @@ def main():
     item("item-herb", "herb")
     item("item-blast-powder", "powder")
     item("item-frost-shard", "shard")
-    marker("marker-player", P["teal"], P["teal_lit"])
-    marker("marker-target", P["gold"], P["gold_lit"])
+    player_marker("marker-player", P["teal"], P["teal_lit"])
+    target_marker("marker-target", P["gold"], P["gold_lit"])
     heart("ui-heart-full", True)
     heart("ui-heart-empty", False)
-    print(f"wrote 28 cohesive runtime sprites to {OUTPUT}")
+    print(f"wrote {len(_WRITTEN)} cohesive runtime sprite(s) to {OUTPUT}")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--only",
+        help="Write only this named sprite; other assets are rendered in memory but left untouched.",
+    )
+    args = parser.parse_args()
+    _ONLY_NAME = args.only
     main()
+    if _ONLY_NAME is not None and _ONLY_NAME not in _WRITTEN:
+        parser.error(f"unknown sprite name: {_ONLY_NAME}")

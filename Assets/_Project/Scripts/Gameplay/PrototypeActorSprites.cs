@@ -35,12 +35,16 @@ namespace ProjectC.Gameplay
             for (int py = 0; py < TilePixelHeight; py++)
             for (int px = 0; px < TilePixelWidth; px++)
             {
-                // 타일보다 작은 납작한 타원. py 중심을 살짝 아래(13.5)로 둬 발밑에 고이게 한다.
-                float d = Mathf.Abs((px - 31.5f) / 19f) + Mathf.Abs((py - 13.5f) / 9f);
-                if (d >= 1f) continue;
-                float k = 1f - d;
-                byte a = (byte)Mathf.RoundToInt(255f * k * k);
-                texture.SetPixel(px, py, new Color32(255, 255, 255, a));
+                // 한 칸짜리 부드러운 후광은 어두운 바닥 무늬에 묻고 액터를 오히려 띄웠다.
+                // 두 부츠 사이에만 남는 3단 픽셀 AO로 접지점을 먼저 읽게 한다.
+                float dx = (px - 31.5f) / 10.5f;
+                float dy = (py - 13.5f) / 3f;
+                float distance = dx * dx + dy * dy;
+                if (distance >= 1f) continue;
+                byte alpha = distance <= 0.24f
+                    ? (byte)230
+                    : distance <= 0.58f ? (byte)150 : (byte)72;
+                texture.SetPixel(px, py, new Color32(255, 255, 255, alpha));
             }
 
             texture.Apply(false, true);

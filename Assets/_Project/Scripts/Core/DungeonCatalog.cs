@@ -31,6 +31,13 @@ namespace ProjectC.Core
         /// </summary>
         public DungeonRegionProfile Region { get; }
 
+        /// <summary>
+        /// 절차 생성한 한 층 안에서 +1/+2 이동 높이를 사용하는가.
+        /// false여도 elevation stride와 층간 계단·Hole·낙하 규칙은 그대로 유지된다.
+        /// 던전별 레이아웃 정책이며 공유 가능한 <see cref="Region"/>의 속성이 아니다.
+        /// </summary>
+        public bool UsesLocalElevation { get; }
+
         public DungeonBossDefinition Boss { get; }
         public bool IsAvailable { get; }
 
@@ -59,9 +66,11 @@ namespace ProjectC.Core
             int firstBuildingFloor = -1,
             string entryTitle = null,
             string entryDetail = null,
-            DungeonRegionProfile region = DungeonRegionProfile.Facility)
+            DungeonRegionProfile region = DungeonRegionProfile.Facility,
+            bool usesLocalElevation = true)
         {
             Region = region;
+            UsesLocalElevation = usesLocalElevation;
             Id = id;
             DisplayName = displayName;
             Description = description;
@@ -127,7 +136,9 @@ namespace ProjectC.Core
                 // 이 한 줄이 "위로 올라가는 것이 유일한 길"과 "옥상이 목표"를 동시에 설명한다.
                 entryTitle: "지하 2층 · 기계실",
                 entryDetail: "쉘터의 배수 터널이 여기로 이어진다. 타워 정문 셔터는 오래전에 내려갔고, " +
-                    "지상으로 나가려면 죽은 상가를 타고 올라가야 한다."),
+                    "지상으로 나가려면 죽은 상가를 타고 올라가야 한다.",
+                // 첫 던전은 층간 구조를 수직성의 주 단위로 삼고, 각 층의 이동 바닥은 하나로 읽힌다.
+                usesLocalElevation: false),
             new DungeonDefinition(
                 "flooded-vault",
                 "침수된 금고",

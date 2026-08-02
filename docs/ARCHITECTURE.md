@@ -60,7 +60,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 논리 좌표는 `GridPos { int x, y, elevation }`이며 코드 전체의 딕셔너리 키다.
 
 ### 4.1 GridPos — 좌표 규약
-- `x`, `y` = 평면 좌표. `elevation` = **연속 높이값(층 번호 아님)**. 한 층 안에도 높이차가 있다.
+- `x`, `y` = 평면 좌표. `elevation` = **연속 높이값(층 번호 아님)**. 한 층 안의 높이도 표현할 수 있다.
 - 방향 규약: `North=+y`, `South=-y`, `East=+x`, `West=-x`. `Offset(dx,dy)`는 elevation 유지.
 - 거리 `ManhattanTo`/`ChebyshevTo`는 **둘 다 elevation을 무시**하고, 해시는 다항식 해시다(키 분포용).
 
@@ -120,6 +120,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   `LocalHeight(e) = e − floorIndex·stride` ∈ `[0,stride)`. `SameFloor` = 두 floorIndex 동일.
 - `DungeonVisualContext`가 `FloorIndex`/`ProgressIndex`/`Elevation`/`LocalHeight`를 **분리해** 제공 —
   비주얼 카탈로그가 raw elevation의 부호로 진행을 추론하지 않게 한다.
+- 평탄 던전도 stride 4를 유지하고 각 floor의 base elevation만 사용한다. 평탄화는 콘텐츠 생성 제약이며
+  좌표 모델·낙하 단위를 줄이는 마이그레이션이 아니다.
 
 > **진행 지수와 고도는 분리되어 있다.** `DungeonFloorInfo.ProgressIndex`는 생성기가 경로 순서대로
 > 부여하는 1급 데이터이고 난이도·구간·휴식처·탈출구·드랍·보스 판정이 이 값을 쓴다.
@@ -171,7 +173,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   (진입 = 한 행동으로 층 전환). Stairs/Ladder/Hole은 자동 전환 대상이 아니다.
 - `LadderWorldHeight`가 사다리 비주얼 길이를 실제 단차에서 계산한다(스프라이트 길이를 손으로 안 맞춘다).
 - **사다리는 계단과 다르다**: 계단은 ±1단을 걸어서(A\*), 사다리는 여러 단을 **링크로만**·오를 수 있는
-  종만. 캐치워크 층에서 `PlaceCatwalk`이 바닥↔캐치워크를 잇고 중간 발판 링크를 끊는 것
+  종만. 층내 높이를 허용한 던전의 캐치워크에서만 `PlaceCatwalk`이 바닥↔캐치워크를 잇고 중간 발판 링크를 끊는 것
   (`Disconnect` 후 `Connect`)이 이 대비를 "높은 곳은 사다리로만"으로 굳힌다.
 - Gameplay의 목적지 탭도 `TryGetAutomaticFloorDestination`을 그대로 물어본다. 따라서 층 전환 계단만
   입구 도착과 링크 이동을 합치고, 사다리는 입구에서 멈춘 뒤 두 번째 자기 탭/Space로 링크를 탄다.
@@ -184,11 +186,12 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ## 7. 절차적 던전 생성 (Procedural Generation)
 
 `DungeonGenerator.Generate(map, w, h, floorCount, elevationsPerFloor=4, seed=1977,`
-`direction=Descend, firstBuildingFloor=-1, meta=default, region=Facility)` — **아직 BSP도 랜덤워크도
+`direction=Descend, firstBuildingFloor=-1, meta=default, region=Facility, usesLocalElevation=true)` — **아직 BSP도 랜덤워크도
 아니다 — 의도된 발판(§7.4).** **축 정렬 3방 고정 템플릿 + 1칸 복도**를 유지한 채 단일
 `System.Random(seed)`가 모든 치수를 흔든다. 같은 seed = 같은 던전(그리기 순서가 고정이라 재현 보장).
 
-뒤쪽 인자 넷이 던전별 정체성이다: `direction`·`region`은 §7.5, `firstBuildingFloor`는 첫 층의 공간 층
+뒤쪽 인자 다섯이 던전별 정체성이다: `direction`·`region`·`usesLocalElevation`은 §7.5,
+`firstBuildingFloor`는 첫 층의 공간 층
 인덱스(폐 아케이드 복합타워 −2 = 지하 2층 시작), `meta`(`DungeonMetaContext`)는 미구출 NPC 층 같은 **판 간 상태를
 생성에 주입**한다. `meta`의 기본값은 "아무것도 해금 안 됨"이 아니라 **"제약 없음"**이라 테스트·미리보기가
 메타 없이 옛 던전을 그대로 낸다. 코드는 파셜 넷이고 경계 기준은 한 줄이다 — **타일을 바꾸면
@@ -197,13 +200,14 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 
 ### 7.1 층 템플릿
 ```
-(NW 분기 방·옵션, 비밀이면 SecretDoor) ─ 북쪽 방: 적 스폰 · 뒤쪽 한 단 높음(▲Stairs 걷기 / ▮Ladder 링크) · ○Hole 후보
+(NW 분기 방·옵션, 비밀이면 SecretDoor) ─ 북쪽 방: 적 스폰 · ○Hole 후보 · 후면 보스 제단/배경 여백
                                         └─ [문] ─ 세로 복도 ─┐
   남서 입구 방 (Entry / 귀환 Back, 물 웅덩이 후보) ─[문]─복도─ 남동 방 (아이템, 진출 Onward)
 ```
 - 방 사이 최소 1칸 간격 → 연결은 반드시 **문**을 통과한다(방 밀봉 불변식, 문은 `DoorClosed`로 생성).
-- 북쪽 방 X 범위는 **윗층과 겹치도록 제약**해 Hole 착지 컬럼이 항상 존재하게 하고, 뒤쪽 한 줄
-  (`RaisedY`)은 한 단 올려 `Stairs`(걷기)와 `Ladder`(링크 `Connect`)로 잇는다.
+- 북쪽 방 X 범위는 **윗층과 겹치도록 제약**해 Hole 착지 컬럼이 항상 존재하게 한다. 평탄한 첫 던전은
+  북쪽 방 전체를 base elevation에 새긴다. 층내 높이를 허용한 던전만 후면 밴드(`RaisedY`)를 한 단
+  올려 `Stairs`(걷기)와 `Ladder`(링크 `Connect`)로 잇는다.
 - 층 전환 샤프트는 depth 홀짝에 따라 좌/우 컬럼을 번갈아 놓는다(같은 타일에 겹치지 않게).
   연결 축은 공간이 아니라 **진행**이다 — `FloorPlan.Onward`↔다음 층 `Back`을 `map.Connect`로 잇고,
   **마지막 진행 층의 `Onward`만 링크가 없다 = 원정지 출구**다. 하강 던전에서는 그 층이 최하층이고
@@ -213,7 +217,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 7.2 생성 파이프라인 (순서 중요 — 뒤 패스가 앞 타일 상태를 읽음)
 1. **비밀 층 선택** `PickSecretDepths` — `SecretRoomRules.DesiredCount`만큼, **마지막 진행 층과
    구출 NPC 층을 뺀** 후보에서. NPC를 못 찾을 수 있는 숨은 방에 두면 해금이 영영 막힌다.
-2. **층별 계획+카브(진행 순)** — `PlanFloor` → `CarveFloor`. 방/복도/문/올림 바닥/계단/사다리/샤프트.
+2. **층별 계획+카브(진행 순)** — `PlanFloor` → `CarveFloor`. 방/복도/문/샤프트를 새기고,
+   `usesLocalElevation`일 때만 올림 바닥·층내 계단·층내 사다리를 추가한다.
    NW 분기 방(옵션, 비밀이면 `SecretDoor`). 이어서 `Onward`↔`Back` 링크를 잇는다(§7.1).
 3. **개구부 + WeakFloor**(모든 층 카브 후) — 순회는 진행 순이 아니라 **공간 순 위→아래**다.
    각 층이 "바로 윗층 착지 칸"을 피해야 하는데(2층 관통 금지) 그 값은 윗층을 먼저 처리해야 생긴다.
@@ -229,6 +234,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
    보스를 잡을 때 Gameplay가 `Connect`한다(§10.7). 해당 없는 던전에서는 패스가 아예 돌지 않는다.
 5. **층별 배치 10패스**(전부 최종 타일 상태 위에서) — 구출 NPC → 휴식처 → 물 웅덩이 → 적 스폰
    (문 뒤 북쪽 방만) → 아이템 → 장비 → 중간 탈출구 → 보스 제단 → 캐치워크 → 창문.
+   `PlaceCatwalk`은 `usesLocalElevation`일 때만 실제 배치한다.
    가운데 다섯(휴식처~장비)만 RNG를 쓰고 나머지는 **결정론 패스**라 지문(골든 테스트)을 흔들지 않는다.
 6. **조립** — `DungeonFloorInfo` → `DungeonLayout`.
 
@@ -256,10 +262,10 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 층 간 기둥 겹침으로 착지 컬럼 보존, 적은 문 뒤에만). 계획·난도·선행 작업은 `ROADMAP.md`의
 "던전 생성기 BSP/룸-앤-코리더 전환"이 소유한다.
 
-### 7.5 진행 방향과 지역 프로파일 (던전별 정체성 축)
+### 7.5 진행 방향·지역·층내 높이 (던전별 정체성 축)
 
-던전은 독립된 두 축으로 정체성을 갖고, 둘 다 **전역 스위치가 아니라 `DungeonCatalog`의 던전별
-데이터**로 `Generate` 인자에 실린다(§7). 두 축의 의미·라벨 규약은 [`SYSTEMS.md` — 다층
+던전은 독립된 세 축으로 정체성을 갖고, 모두 **전역 스위치가 아니라 `DungeonCatalog`의 던전별
+데이터**로 `Generate` 인자에 실린다(§7). 축의 의미·라벨 규약은 [`SYSTEMS.md` — 다층
 격자](SYSTEMS.md)가 소유하고, 여기서는 **누가 어디서 읽는가**만 적는다.
 - **`DungeonProgressDirection`**(`DungeonDirectionRules.cs`) — `Descend`/`Ascend`/`Inward`.
   코드에서 이 값이 실제로 바꾸는 곳은 넷뿐이다: 진출 계단이 `Onward`/`Back` 중 어느 공간 이름으로
@@ -271,6 +277,9 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   같은 결을 공유해도 표가 늘지 않는다. `ForDepth(region, depth)`가 적 조합 가중치·`ExtraEnemies`·
   분기/웅덩이 확률·캐치워크 길이의 SSOT이고 `MonsterRoster.PickForDepth`와 생성기 배치 패스가 이것만
   읽는다. 밴드 **경계**는 `DungeonDepthBandRules`가 따로 소유한다(섞으면 지역 수만큼 고쳐야 한다).
+- **`DungeonDefinition.UsesLocalElevation`** — 개별 던전의 절차 생성 층이 +1/+2 높이를 쓰는지 정한다.
+  false면 `CarveFloor`의 raised row·층내 `Stairs`/`Ladder`와 `PlaceCatwalk`을 생략한다.
+  폐 아케이드 복합타워만 false이며 stride·층간 계단·Hole·창문·엘리베이터는 영향을 받지 않는다.
 
 ---
 
@@ -521,6 +530,11 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   이벤트(`PlayerHpChanged`·`ActiveFloorChanged`·`ExitChoiceRequested`…)로 HUD와 느슨 결합한다.
 - `IsoPrototypeDemo.Targeting`은 투척 조준 상태를 실제 유효 칸의 낮은 알파 월드 데칼로 번역한다.
   Core의 투척/사선 판정을 재사용하고 FOV로 한 번 더 잘라 Unknown 정보를 노출하지 않는다.
+- B2 시작방 foundation은 **게임플레이 타일과 분리된 프레젠테이션 경로**다.
+  `FloorFoundationPresentation`이 현재 시점에 노출된 실제 화면 전면과 회전 불변 월드 볼록 모서리를
+  고르고, `IsoPrototypeDemo.Foundation`이 별도 `B2 Floor Foundation` 루트를 조립하며,
+  `PrototypeEnvironmentSprites.Foundation`이 face-only 10px fascia와 코너 지지대 픽셀만 만든다.
+  결과는 `Dungeon Backdrop` order 1/2에 놓이고 collider·입력·격자·FOV·전투 상태에는 등록되지 않는다.
 
 ### 11.2 씬 얇은 진입점 & 서비스
 - **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력→`GridPos`/액션(장치 추상화).
@@ -560,9 +574,10 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - `Core/SpriteClipRules` — 시간 → 프레임 인덱스(`FrameAt`) + 공식 태그 6종. UnityEngine 무의존이라 shim 테스트에 그대로 올라간다.
 - `Gameplay/ActorAnimationSet` — 베이크 산출물 그릇(`SpriteClip` = 프레임 배열 + **프레임 시작 시각** +
   클립 길이). 지속시간이 가변인 Aseprite 타이밍을 무손실로 옮기려 "시작 시각" 형태로 저장한다.
-- `Gameplay/SpriteClipAnimator` — 경량 재생기. **`renderer.sprite`만 만진다** — position·scale·color는
-  `CombatFx`가 소유하므로 겹치면 둘이 싸운다. 시야 밖에서는 시간이 얼어붙었다 이어가 재동기화가 없고,
-  클립 없는 태그는 no-op라 PNG 폴백(정지 1프레임) 액터와 공존한다.
+- `Gameplay/SpriteClipAnimator` — 경량 재생기. **`renderer.sprite`만 만진다** — position·scale은
+  `CombatFx`, 안정 상태 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가 소유하므로 겹치면 서로
+  싸운다. 시야 밖에서는 시간이 얼어붙었다 이어가 재동기화가 없고, 클립 없는 태그는 no-op라
+  PNG 폴백(정지 1프레임) 액터와 공존한다.
 - `Editor/ArtPipeline/ActorAnimationBake` — Aseprite 태그 → 카탈로그 슬롯 베이크. 배선은
   `IsoPrototypeDemo.AttachActorAnimator`(클립이 없으면 컴포넌트를 안 붙인다).
 

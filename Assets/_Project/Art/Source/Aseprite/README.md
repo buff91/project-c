@@ -33,11 +33,13 @@ Runtime PNG로 복구하고, 해당 PNG도 없으면 비운다. 다른 경로를
 - 수직 이동: `env-stairs`, `env-ladder`, `env-stairs-up`, `env-stairs-down`
 - 방향형: 기존 `env-*-rising-right/left`
 - B2 시점 방향형: `env-floor-b2-{parking-stop,fallen-sign}-view-0..3`
+- B2 2×2 연속 바닥: `env-floor-b2-macro-role-{0..3}-view-{0..3}`
 - 액터: `actor-player`, `actor-knight`, `actor-ranger`, `actor-alchemist`,
   `actor-goblin`, `actor-skeleton`, `actor-slime`, `actor-slinger`,
   `actor-grave-warden`, `actor-merchant`
 - 허브/소품: `prop-campfire`, `prop-stash`, `prop-portal`, `prop-explosive-barrel`
-- 아이템/마커: 기존 `item-*`, `marker-player`, `marker-target`
+- 아이템/마커: 기존 `item-*`, `marker-player`, `marker-target`. 두 마커는 각각 틸/앰버의 열린
+  코너 틱이며 바닥 전체를 두르는 링으로 만들지 않는다.
 
 파일명은 `IsoVisualCatalog` 슬롯 계약이다. 같은 이름의 원본을 두 폴더에 중복 저장하지 않는다.
 원본이 아직 없는 슬롯은 기존 PNG/런타임 임시 아트를 그대로 사용한다.
@@ -52,19 +54,39 @@ Runtime PNG로 복구하고, 해당 PNG도 없으면 비운다. 다른 경로를
 
 ## 현재 검증 스냅샷
 
-- `36a49a3` + 미커밋 작업 트리(2026-08-01)에서 `Validate Sources`가
-  **Aseprite 원본 28개**를 통과했다(`env-*` 26개 + 액터 2개).
+- 미커밋 작업 트리(2026-08-02)에서 `Validate Sources`가
+  **Aseprite 원본 64개 / 카탈로그 슬롯 64개**를 통과했다. 현재 집합에는 열린 코너 마커 2종과
+  B2 원통형 연료 셀 `prop-explosive-barrel.aseprite`가 포함된다.
 - B2 주차 범퍼와 쓰러진 안내판은 각각 `view-0..3` 네 방향 슬롯을 가지며, 네 슬롯이 모두
   있을 때만 현재 시점의 90도 회전 수로 하나를 고른다. 부분 승격이면 기존 무방향 슬롯을 네
   시점에 공통 사용하고, 그것도 없으면 같은 화면축 parity → 첫 존재 슬롯 순으로 안전 폴백한다.
+  v2 원본은 단순 mirror 반복이 아니라 2×2 생성 보드의 실제 네 시점을 유지한다.
   `Validate Sources`는 불완전한 `view-0..3` 원본 세트를 경고한다.
+- `env-floor-b2-cracked`는 방향 seam과 측면 두께가 없는 단일 평면 마모 슬롯이다. 네 시점이 같은
+  Aseprite를 공유하며, 전용 슬롯이 없을 때만 구 전역 `hospitalFloorCracked`로 폴백한다.
+- `env-floor-b2-macro-role-{0..3}-view-{0..3}`는 한 장의 top-down 2×2 재질을 네 시점으로 먼저
+  투영한 뒤 네 물리 역할로 자른 완전 세트다. 16개 중 하나라도 빠지면 부분 매크로를 그리지 않고
+  해당 네 셀을 모두 일반 바닥으로 폴백한다.
+
+## B2 배경 프롭 v2 제작 계보
+
+승인 방향판과 당시 실제 q0에서 만든 제작 원화는
+`docs/art-direction/project-c-b2-prop-production-sheet-v2.{png,prompt.md}`다. 이 원화는 직접
+slice하지 않는다. `process_b2_prop_quality_v4.py`가 최종 캔버스에서 기본/작업등/설비/단말/
+서비스 벽 14종과 원통형 연료 셀을 다시 만들고, `process_b2_parking_dressing_v3.py`가 낮은
+범퍼·안내판의 네 view를 만든다. `promote_b2_prop_quality_v2.sh`만 런타임 PNG와 이 폴더의
+Aseprite를 함께 승격하는 정식 진입점이다.
+
+현재 화면 승인본은 `docs/captures/b2-prop-quality-q{0,1,2,3}-live-v3.png`다. B2 배치에서 연료
+셀만 blocking/interactable이고, 범퍼·안내판·벽 단말은 비기능 드레싱이다.
 
 ## 원정자 애니메이션 안전장치
 
-현재 `actor-knight.aseprite`의 멀티프레임 자동 조립 초안은 프레임 사이 해부·실루엣이 깨져 있다.
-정식 방향별 Aseprite 타임라인이 화면 승인을 받기 전까지 `SurvivorAnimationApproved`는 `false`이며,
-플레이어에는 `SpriteClipAnimator`를 붙이지 않고 카탈로그 첫 Sprite인 `Frame_0`만 표시한다. 적
-애니메이션에는 이 게이트가 적용되지 않는다.
+현재 `actor-knight.aseprite`는 접지 품질을 먼저 잠근 `96×128` 단일 프레임 원정자다. 이전
+멀티프레임 자동 조립 초안은 교체됐고, 현재 `Frame_0`은 하드 알파·24색 역할 팔레트·2×2
+클러스터와 한 발 기준선을 사용한다. 소스·재현 기록은
+`docs/art-direction/project-c-expeditioner-grounded-source-v1.{png,prompt.md}`가 소유한다.
 
-런타임에서 캐릭터 위에 덧그리던 `PlayerCyberAccent`는 제거했다. 흉부 트리아지 화면·비대칭 의료
-리그 같은 정체성 악센트는 승인된 방향별 Aseprite 프레임 자체에 흡수한다.
+정식 방향별 Aseprite 타임라인이 화면 승인을 받기 전까지 `SurvivorAnimationApproved`는 `false`이며,
+플레이어에는 `SpriteClipAnimator`를 붙이지 않는다. `idle/walk/attack/hit/fall/death`를 수작업해
+승인한 뒤에만 게이트를 연다. 적 애니메이션에는 이 게이트가 적용되지 않는다.

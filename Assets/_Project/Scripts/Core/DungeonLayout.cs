@@ -247,7 +247,7 @@ namespace ProjectC.Core
 
     /// <summary>
     /// 다층 던전 생성기. 방–복도–문 연결 그래프와 층간 샤프트 규칙은 유지한 채
-    /// 방 크기/위치·복도·문·내부 계단·구멍·막다른 분기 방을 seed로 변형한다.
+    /// 방 크기/위치·복도·문·구멍·막다른 분기 방과 선택적 층내 높이를 seed로 변형한다.
     /// 같은 seed 는 항상 같은 던전을 만든다.
     /// </summary>
     public static partial class DungeonGenerator
@@ -261,6 +261,10 @@ namespace ProjectC.Core
         /// 가른다(<see cref="DungeonBandProfiles"/>). 기본값은 기준 지역이라 기존 호출부의
         /// 생성 결과가 바뀌지 않는다.
         /// </para>
+        /// <para>
+        /// <paramref name="usesLocalElevation"/>은 던전별 레이아웃 정책이다. false면 각 층의
+        /// 이동 바닥을 기준 elevation 하나에 두되, 층간 stride·개구부·낙하는 유지한다.
+        /// </para>
         /// </summary>
         public static DungeonLayout Generate(
             GridMap map,
@@ -272,7 +276,8 @@ namespace ProjectC.Core
             DungeonProgressDirection direction = DungeonProgressDirection.Descend,
             int firstBuildingFloor = -1,
             DungeonMetaContext meta = default,
-            DungeonRegionProfile region = DungeonRegionProfile.Facility)
+            DungeonRegionProfile region = DungeonRegionProfile.Facility,
+            bool usesLocalElevation = true)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (width < 9) throw new ArgumentOutOfRangeException(nameof(width));
@@ -305,7 +310,8 @@ namespace ProjectC.Core
                     secretDepths.Contains(depth),
                     direction,
                     meta.PendingNpcAt(depth),
-                    region);
+                    region,
+                    usesLocalElevation);
                 CarveFloor(map, plan, height, direction);
                 plans.Add(plan);
             }
@@ -484,6 +490,12 @@ namespace ProjectC.Core
             /// </summary>
             public DungeonRegionProfile Region;
 
+            /// <summary>
+            /// 이 던전이 절차 생성 층 안에서 +1/+2 이동 높이를 사용하는가.
+            /// false여도 elevation stride와 층간 수직 규칙은 그대로 유지된다.
+            /// </summary>
+            public bool UsesLocalElevation;
+
             public int BaseElevation;
             public int LeftMaxX;
             public int RightMinX;
@@ -525,7 +537,8 @@ namespace ProjectC.Core
                 pos.x == VerticalX && pos.y == UpperMinY;
 
             /// <summary>
-            /// 북쪽 방의 평면 칸 전체. 순서는 <c>x</c> 외곽 → <c>y</c> 내곽이며
+            /// 북쪽 방의 전술 배치 후보 칸. 후면 두 줄은 평탄한 던전에서도 보스 제단·배경 여백으로
+            /// 예약한다. 순서는 <c>x</c> 외곽 → <c>y</c> 내곽이며
             /// <b>생성 순서가 곧 RNG 소비 순서</b>라 바꾸면 지문(<c>DungeonGeneratorGoldenTests</c>)이 깨진다.
             /// </summary>
             public IEnumerable<GridPos> UpperRoomCells()
@@ -577,7 +590,8 @@ namespace ProjectC.Core
 
             public GridPos At(int x, int y)
             {
-                bool raised = y >= RaisedY && x >= UpperMinX && x <= UpperMaxX;
+                bool raised = UsesLocalElevation &&
+                              y >= RaisedY && x >= UpperMinX && x <= UpperMaxX;
                 return new GridPos(x, y, raised ? BaseElevation + 1 : BaseElevation);
             }
         }

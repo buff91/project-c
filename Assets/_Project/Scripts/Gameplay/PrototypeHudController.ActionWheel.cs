@@ -37,6 +37,7 @@ namespace ProjectC.Gameplay
         {
             if (_actionWheel == null || demo == null) return;
 
+            bool observing = demo.IsVerticalLookActive;
             bool hasInteraction = demo.TryFindAdjacentInteraction(out _, out string interactLabel);
             var slots = new[]
             {
@@ -46,7 +47,7 @@ namespace ProjectC.Gameplay
                     Tooltip = "한 턴 대기",
                     IconClass = "ui-wait-icon",
                     Action = () => demo.WaitTurn(),
-                    Enabled = true
+                    Enabled = !observing
                 },
                 new WheelSlot
                 {
@@ -54,7 +55,7 @@ namespace ProjectC.Gameplay
                     Tooltip = hasInteraction ? interactLabel : "현재 가능한 주변 행동 없음",
                     IconClass = "ui-interact-icon",
                     Action = () => demo.InteractAdjacent(),
-                    Enabled = hasInteraction
+                    Enabled = !observing && hasInteraction
                 },
                 new WheelSlot
                 {
@@ -62,7 +63,7 @@ namespace ProjectC.Gameplay
                     Tooltip = $"응급 키트 사용 · 보유 {demo.PotionCount}",
                     IconClass = "potion-icon",
                     Action = () => demo.UsePotion(),
-                    Enabled = demo.PotionCount > 0
+                    Enabled = !observing && demo.PotionCount > 0
                 },
                 new WheelSlot
                 {
@@ -94,7 +95,7 @@ namespace ProjectC.Gameplay
                         ? "ui-ranged-icon"
                         : "ui-melee-icon",
                     Action = () => demo.ToggleCombatMode(),
-                    Enabled = demo.HasRangedWeapon
+                    Enabled = !observing && demo.HasRangedWeapon
                 }
             };
 

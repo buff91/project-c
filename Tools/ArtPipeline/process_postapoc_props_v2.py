@@ -115,9 +115,18 @@ def main() -> None:
     if sheet.size != (CELL_SIZE * 2, CELL_SIZE * 2):
         raise ValueError(f"unexpected source sheet size: {sheet.size}")
 
+    # explosive barrel은 B2 수직 슬라이스가 네이티브 픽셀 연료 셀로 소유한다.
+    # 이 구판 배치 프로세서를 다시 실행해도 승인 자산이 되돌아가지 않게 위임한다.
+    from process_b2_prop_quality_v4 import build_source_assets
+
+    b2_quality = build_source_assets().outputs
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for spec in SPECS:
-        prop = build_prop(extract_cell(sheet, spec.cell_index), spec)
+        prop = (
+            b2_quality[spec.output_name]
+            if spec.output_name == "prop-explosive-barrel"
+            else build_prop(extract_cell(sheet, spec.cell_index), spec)
+        )
         prop.save(OUTPUT / f"{spec.output_name}.png", optimize=True)
 
     print(f"wrote {len(SPECS)} Collapsed Transit props to {OUTPUT}")

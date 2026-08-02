@@ -37,6 +37,17 @@ namespace ProjectC.Core
     public static class WorldInputRules
     {
         /// <summary>
+        /// 개구부 너머 다른 층은 정보를 읽는 창이지 이동·공격 대상이 아니다.
+        /// DebugAll은 검수 모드이므로 이 제한을 풀어 기존 전 층 조작을 보존한다.
+        /// </summary>
+        public static bool IsReadOnlyVerticalPreview(
+            bool debugAll,
+            int targetFloorIndex,
+            int activeFloorIndex,
+            bool isVerticalPreviewTile) =>
+            !debugAll && isVerticalPreviewTile && targetFloorIndex != activeFloorIndex;
+
+        /// <summary>
         /// 실제 타일이 정의된 좌표만 월드 탭으로 받는다.
         /// 벽처럼 이동 불가능한 타일도 맵 안이므로 true이며, 이후 상호작용 단계가 처리한다.
         /// </summary>

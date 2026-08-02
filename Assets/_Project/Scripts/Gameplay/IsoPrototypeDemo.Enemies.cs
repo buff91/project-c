@@ -411,9 +411,12 @@ namespace ProjectC.Gameplay
             GridPos pos = enemy.State.Position;
             enemy.Root.transform.position = VisualPosition(pos);
             enemy.Renderer.sortingOrder = _grid.iso.SortingOrder(SortingAnchor(pos), 1);
+            bool showFeedback = IsEnemyVisibleToPlayer(enemy);
             Color elevationTint = ElevationTint(pos);
-            Color tint = CombatantTint(enemy.State);
-            Color bossTint = enemy.IsBoss
+            // Hole 너머 몸체는 존재와 위치만 공개한다. 상태/보스 색을 그대로 쓰면
+            // HP 아이콘을 숨겨도 화상·빙결·보스 여부가 실루엣 색으로 새어 나온다.
+            Color tint = showFeedback ? CombatantTint(enemy.State) : Color.white;
+            Color bossTint = showFeedback && enemy.IsBoss
                 ? new Color(1f, 0.76f, 0.42f, 1f)
                 : Color.white;
             float alpha = enemy.State.IsAlive
@@ -423,23 +426,32 @@ namespace ProjectC.Gameplay
                     enemy.DeathTurn,
                     corpseLifetimeTurns);
             Color light = TileLightColor(pos);
+            bool verticalPreviewVisible =
+                viewMode == DungeonViewMode.Play && IsPresentedVerticalPreview(pos);
+            if (verticalPreviewVisible)
+                alpha *= VisibilityAlpha(pos);
             enemy.Renderer.color = new Color(
                 tint.r * elevationTint.r * bossTint.r * light.r,
                 tint.g * elevationTint.g * bossTint.g * light.g,
                 tint.b * elevationTint.b * bossTint.b * light.b,
                 alpha);
-            bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
-            SetSpriteHierarchyVisible(enemy.Root, visibleToPlayer);
-            UpdateContactShadow(enemy.Shadow, pos, enemy.Renderer.sortingOrder, visibleToPlayer);
-            SyncEnemyStatusVisuals(enemy, visibleToPlayer);
-            bool showHealthBar = visibleToPlayer && enemy.State.IsAlive;
+            bool renderActor = EnemyPresentationRules.ShouldRenderActor(
+                viewMode == DungeonViewMode.DebugAll,
+                _dungeon.Height.FloorIndex(pos.elevation),
+                _activeFloorIndex,
+                _visibleTiles.Contains(pos),
+                verticalPreviewVisible);
+            SetSpriteHierarchyVisible(enemy.Root, renderActor);
+            UpdateContactShadow(enemy.Shadow, pos, enemy.Renderer.sortingOrder, showFeedback);
+            SyncEnemyStatusVisuals(enemy, showFeedback);
+            bool showHealthBar = showFeedback && enemy.State.IsAlive;
             if (enemy.HpFill != null)
                 enemy.HpFill.gameObject.SetActive(showHealthBar);
             if (enemy.HpBackground != null)
                 enemy.HpBackground.gameObject.SetActive(showHealthBar);
             if (enemy.BossMarker != null)
                 enemy.BossMarker.gameObject.SetActive(showHealthBar);
-            UpdateMoodIcon(enemy, visibleToPlayer);
+            UpdateMoodIcon(enemy, showFeedback);
         }
 
         private void CompleteEnemyPhaseAndRefreshCorpses()
@@ -537,7 +549,7 @@ namespace ProjectC.Gameplay
             bool onFloor = _activeFloorIndex == _dungeon.FinalFloorIndex;
             bool seen = viewMode == DungeonViewMode.DebugAll ||
                         _visibleTiles.Contains(_bossExitPos) ||
-                        _verticalPreviewTiles.Contains(_bossExitPos);
+                        IsPresentedVerticalPreview(_bossExitPos);
             _bossExitSeal.SetActive(onFloor && seen);
             _bossExitSeal.transform.localScale = _bossDefeated
                 ? Vector3.one * 1.15f

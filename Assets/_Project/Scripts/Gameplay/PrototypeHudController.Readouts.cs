@@ -75,7 +75,10 @@ namespace ProjectC.Gameplay
                 var tick = new VisualElement { pickingMode = PickingMode.Ignore };
                 tick.AddToClassList("floor-tick");
                 bool current = floor.ProgressIndex == active;
-                if (current) tick.AddToClassList("is-current");
+                bool viewed = demo.IsVerticalLookActive &&
+                              floor.FloorIndex == demo.ViewedFloorIndex;
+                if (viewed) tick.AddToClassList("is-viewed");
+                else if (current) tick.AddToClassList("is-current");
                 else if (floor.ProgressIndex <= furthest) tick.AddToClassList("is-explored");
                 row.Add(tick);
 

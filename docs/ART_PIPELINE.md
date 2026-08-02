@@ -53,6 +53,36 @@ AI 결과를 그대로 잘라 쓰면 투영각, 광원, 픽셀 크기와 타일 
 환경→UI→액터처럼 서로 영향을 주는 묶음도 같은 순서로 직렬 승인한다. 소스가 바뀌었는데 이전
 Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 
+### B2 배경 프롭 제작 원화 → 네이티브 픽셀 승격
+
+B2 품질 수직 슬라이스는 승인 방향판
+`docs/art-direction/project-c-b2-prop-quality-target-q0-v1.png`와 당시 실제 q0를 입력 역할로 나눠
+built-in ImageGen 제작 원화 `docs/art-direction/project-c-b2-prop-production-sheet-v2.png`를 만들었다.
+정확한 프롬프트·입력 역할·원본 경로는 같은 이름의 `.prompt.md`가 소유한다. 이 PNG는 배치와
+실루엣 원화이며 Unity에 직접 연결하거나 사각형을 잘라 쓰지 않는다.
+
+- `process_b2_prop_quality_v4.py`: 최종 64×112에서 기본/유지보수/작업등/설비/단말/서비스 벽과
+  최종 128×128에서 원통형 연료 셀을 hard alpha·공용 팔레트·1~2px 클러스터로 다시 만든다.
+  벽은 제작 원화의 free-standing 알파를 외곽으로 쓰지 않는다. RGB 디테일을 공통 아이소 벽면
+  마스크 안에 넣고 가장자리를 구조 셸로 연장해, 64×32px 인접 투영에서 한 벽체로 접속시킨다.
+  원화의 독립 카드용 밝은 end-cap은 방향별 12px 결합면에서 저채도 공통 접합주로 치환한다.
+  상단 cap과 하단 plinth는 final face-relative 행에 직접 써서 경사선의 구멍·밝은 점선 접지를 막는다.
+  기본 벽 재질은 별도 `project-c-b2-wall-material-source-v1.{png,prompt.md}`의 넓은 명암 덩어리만
+  취한다. 조용한 모듈은 기본 셸에, 작은 수리판 모듈은 legacy `env-wall-window-rising-*` 슬롯의
+  비발광 유지보수 셸에 넣되 기존 exact alpha·결합면·cap·plinth는 바꾸지 않는다. 대각 균열 모듈은
+  비밀문·파괴 가능 벽 신호로 읽힐 수 있어 승격하지 않는다.
+- `process_b2_parking_dressing_v3.py`: 주차 범퍼·쓰러진 안내판의 네 물리 시점을 128×64
+  완성형 바닥으로 만들며 역할과 world-facing을 분리한다.
+- `promote_b2_prop_quality_v2.sh`: 후보를 런타임 PNG와 정식 Aseprite에 함께 승격하고 conform
+  보드를 `docs/captures/`에 보관한다. 구 `process_b2_prop_quality_v1.py`와 v1 promote 스크립트는
+  현재 v4/v2 진입점으로 위임하고, `process_environment_sprites.py`도 base/light 벽에는 v4 출력을
+  재사용하므로 전체 재생성이 이 슬라이스를 구판으로 덮어쓰지 않는다.
+
+화면 게이트는 AI가 별도로 그린 회전본이 아니라 같은 월드 좌표를 Unity에서 q0→q3로 회전해 검사한다.
+벽체 연속성·접합 리듬 승인본은 `docs/captures/b2-wall-joinery-q{0,1,2,3}-live-v5.png`, 후속 기본 벽
+재질 변주 승인본은 `docs/captures/b2-wall-material-q{0,1,2,3}-live-v1.png`다. 네 화면 모두에서 실제 문,
+중앙 직교 동선, 유일한 blocking/interactable 연료 셀, 통과 가능한 낮은 드레싱의 의미가 유지된다.
+
 ## 3. 첫 번째 실제 제작 묶음
 
 한 번에 전체 던전을 만들지 않는다. 아래 묶음으로 8×8 테스트 룸을 먼저 완성한다.
@@ -71,8 +101,8 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
 현재 구현 기준의 우선순위는 `docs/ROADMAP.md`와
 `docs/art-direction/project-c-art-improvement-plan-v2.md`가 소유한다.
 
-1. **메인 원정자**: `actor-knight`의 96×128 컨셉과 기본 스프라이트를 먼저 확정한다.
-   직업 실루엣을 고정하지 않고 장비가 정체성을 지도록 중립적인 생존자 체형·복장만 잠근다.
+1. **메인 원정자**: `actor-knight`의 96×128 컨셉과 정적 접지 `Frame_0`은 확정됐다.
+   방향별 6태그는 이 정적 기준을 보존해 Aseprite에서 손작업한다.
 2. **적 액터**: `actor-slinger`, `actor-grave-warden`의 96×128 기본 스프라이트를 확정한다.
    지금은 절차 폴백 크기가 기존 자산 액터보다 작아 플레이 화면에서 바로 결손으로 보인다.
 3. **환경 판독 자산**: mid/deep/boss 바닥 기본·raised 6종, `env-hole`,
@@ -91,6 +121,9 @@ Runtime PNG나 캡처를 그대로 통과 기록으로 쓰지 않는다.
    `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.
 8. **전투 VFX 6슬롯**: physical/heavy/fire/frost impact와 burn/freeze status.
    승인 키프레임을 `burst` 또는 `idle-loop`로 마감한다.
+
+foundation 두께, 공용 `env-floor` base material, 기본 벽의 저주파 재질 두 종 재제작은 완료됐다.
+기본 벽 변주는 기존 방향·피벗·정렬 계약 안에서만 이루어진다.
 
 각 항목을 생성 큐에 넣기 전에 최소한 다음 여섯 가지가 있어야 한다.
 
@@ -195,7 +228,8 @@ not a ready-to-slice sprite sheet.
 - 문은 닫힘/열림 두 스프라이트를 `IsoVisualCatalog`에 별도 연결한다. 상태 판정은 Core의 `TileKind`가 담당한다.
 - 닫힌 문은 바닥 데칼이 아니라 발 중앙 기준의 세워진 문짝·문틀 실루엣이어야 한다. 열린 문은 중앙 통로를 비우고 문짝을 측면에 표시한다.
 - 아이소 문은 정면 직사각형 한 장으로 만들지 않는다. 통로 축에 수직인 `↗ / ↖` 두 사선 평면의 닫힘·열림 세트를 제작하고, 시점 회전 시 대응 방향을 선택한다.
-- 플레이어 고정 표식은 청록 발판+머리 위 화살표, 선택/공격 대상 표식은 주황 링으로 색 역할을 분리한다.
+- 플레이어 고정 표식은 틸 열린 코너 틱, 선택/공격 대상 표식은 앰버 열린 코너 틱으로 색 역할을
+  분리한다. 둘 다 발·접촉 AO·바닥 재질을 덮는 완전한 링으로 닫지 않는다.
 - 수직 연결은 선만 그리지 않는다. 시작/도착 발판, 방향 화살표, 두 층을 잇는 점선 리본을 한 세트로 제작한다. Hole은 청록, 안전 계단은 주황을 사용한다.
 - 인접층 미리보기용 바닥/벽은 현재층보다 명도와 알파를 낮추되 최소 5×5 타일 조각이 읽혀야 한다. 전체 층을 축소 표시하지 않는다.
 
@@ -237,6 +271,9 @@ python3 Tools/ArtPipeline/art_asset.py publish INPUT.png \
 프레임이 사라진다. 액터는 `art_runner.py animation`으로 초안을 만든 뒤 Aseprite에서 발 기준선과
 프레임 정체성을 마감하고 정식 슬롯으로 승격한다.
 
+`actor-knight` 접지 v1은 프레임 일관성 승인을 못 받은 자동 조립 초안을 의도적으로 폐기한
+**한 번뿐인 예외**다. 이 기록을 다른 멀티프레임 액터를 정적으로 덮어쓸 권한으로 해석하지 않는다.
+
 ## 7. 현재 레퍼런스
 
 - 현재 통합 화면 방향:
@@ -266,8 +303,12 @@ python3 Tools/ArtPipeline/art_asset.py publish INPUT.png \
 AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하지 않는다. `project-c-starter-art-kit-v1.png`와 `project-c-runtime-asset-board-v2.png`를 형태 참고로 삼아 바닥/벽/코너/계단/캐릭터를 각각 최종 픽셀 해상도에 다시 그린 뒤 Catalog 슬롯으로 교체한다.
 
 현재 `Assets/_Project/Art/Runtime` 세트는 실제 Aseprite 원본이 없는 슬롯의 폴백이다.
-정적 세트는 `process_postapoc_environment_v2.py`, `process_hospital_dressing_v1.py`,
-`process_postapoc_actors_v2.py`,
+정적 세트는 `process_shared_floor_material_v1.py`, `process_postapoc_environment_v2.py`,
+`process_hospital_dressing_v1.py`,
+`process_b2_service_wall_v1.py`, `process_b2_barrel_bay_v1.py`,
+`process_b2_parking_dressing_v2.py`, `process_b2_cracked_floor_v1.py`,
+`process_b2_macro_floor_v1.py`,
+`process_actor_knight_grounded_v1.py`, `process_postapoc_actors_v2.py`,
 `process_postapoc_support_v2.py`, `process_postapoc_props_v2.py`, `process_items_v3.py`로,
 UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 `generate_ui_action_hex_v1.py`, `process_ui_backdrops_v1.py`로 재생성한다. 모든 프로세서는
@@ -279,6 +320,81 @@ UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 `ProjectCArtImporter`가 Point filter, PPU 128(`ui-*`는 64), 무압축, Mip Map Off를 강제하고,
 피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
 `Art/Environment/` PNG도 같은 임포터가 강제한다.
+
+공용 바닥 계보는
+`project-c-shared-floor-material-source-v1.{png,prompt.md}` →
+`process_shared_floor_material_v1.py` → `Art/Environment/env-floor.png` →
+`aseprite_conform.sh` → 최종 SSOT `env-floor.aseprite`다. ImageGen은 저주파 재료장만 소유하고,
+프로세서가 128×64·기존 4,098px hard-alpha 다이아, 공용 grey 램프, 외곽 3px 중간톤과 세 개의
+넓은 마모 덩어리를 소유한다. 가시 픽셀은 `grey-4` 91.996% + `grey-3` 8.004%이며 둘 다 런타임
+톤매핑의 `.28-.50` 구간에 있어 `Stone` 100%로 합쳐진다. 마모를 Shadow/Light/Outline 역할색으로
+찍어 셀별 반복을 되살리지 않는다. `floor`는 Aseprite 첫 프레임, `raisedFloor/lowerFloor`는 전용
+원본 전까지 같은 결과의 PNG 폴백을 사용한다.
+
+`env-floor.png`가 바뀌면 이를 굽는 산출물은 모두 stale이다. 공용 바닥 뒤에
+`process_hospital_dressing_v1.py`, `process_band_floors_v1.py`,
+`process_b2_parking_dressing_v2.py`, `process_b2_cracked_floor_v1.py`,
+`process_b2_barrel_bay_v1.py`, `process_b2_macro_floor_v1.py`를 다시 실행하고, 정식 Aseprite 슬롯이
+있는 산출물은 다시 conform한 뒤 Unity 슬롯 연결과 PC 4시점 캡처를 재검증한다.
+
+메인 원정자 접지본의 계보는
+`project-c-expeditioner-grounded-source-v1.{png,prompt.md}` →
+`process_actor_knight_grounded_v1.py` → 검수용 `Art/Runtime/actor-knight.png` →
+`aseprite_conform.sh` → 최종 SSOT `actor-knight.aseprite`다. 마감 계약은 `96×128`·하드 알파·
+명시적 24색 역할 팔레트·2×2 클러스터·단일 발 기준선이다. 현재 원본은 한 프레임이고
+`SurvivorAnimationApproved=false`라 플레이어 애니메이션은 붙이지 않는다. `marker-player`와
+`marker-target`은 각각 틸/앰버 열린 코너 틱의 `128×64` 정식 Aseprite다. 상시/대상 표식이
+발·접촉 AO·바닥 재질을 덮는 완전한 링으로 돌아가지 않게 한다.
+
+B2 연속 서비스 벽은 일반 드레싱 보드와 처리 순서가 다르다. 제작 원화의 hose/quiet/vent RGB는
+최종 해상도에서 팔레트 잠금하되, 각 원화의 알파 외곽은 버리고 동일한 64×112 아이소 벽면 계약을
+적용한다. 세 셀을 rising-right `192×176` master에 먼저 합치고 공용 상단 캡·하부 kick plate를
+master 좌표에서 그린 뒤에만 최종 `64×112` 세그먼트로 자른다. rising-left는 이 승인 run의 각
+semantic segment를 정확히 미러링한다. 최종 세그먼트별 알파·seam 후처리는 경계 픽셀을 다시
+갈라놓으므로 금지한다. 테스트는 두 seam의 불투명 접촉 78행 이상과 master 단일 연결요소를
+고정한다. 구 소스와 프롬프트는 `project-c-b2-service-wall-source-v1.{png,prompt.md}`, 현재 제작
+원화는 `project-c-b2-prop-production-sheet-v2.{png,prompt.md}`가 소유한다.
+
+B2 오른쪽 진출 드레싱은 범퍼와 쓰러진 안내판이 서로 떨어진 독립 셀이므로 연결 master를
+만들지 않는다. 각 `project-c-b2-{parking-wheel-stop,fallen-wayfinding}-source-v2.png`의
+2×2 사분면이 실제 view 0..3을 소유하며, 단순 mirror/반복으로 반대 면을 대행하지 않는다.
+각 사분면을 축 보정·하드 알파·공용 팔레트로 마감하고 `128×64` 공용 바닥에 합성한다.
+단 Wood 런타임 톤매핑이 구 `env-floor`의 갈색 점까지 녹으로 보존하지 않도록 **바닥만 먼저
+중성 회색 소스 램프로 정규화**하고, 그 위에 범퍼/판재의 제한된 rust·amber를 합성한다.
+프롬프트와 canonical 중간본은 같은 이름의 `*.prompt.md`와 `*-canonical-v2.png`가 소유한다.
+
+범퍼와 안내판 사이의 B2 균열 셀은 구 전역 `env-floor-cracked`를 재사용하지 않고
+`project-c-b2-cracked-floor-source-v1.png`에서 단일 무방향 `env-floor-b2-cracked`로 마감한다.
+ImageGen 소스는 작은 박리·가는 균열·제한된 녹의 **손상 모양만** 제공하고,
+`process_b2_cracked_floor_v1.py`가 공용 `env-floor`의 알파·2:1 다이아 실루엣·명도 구조를
+유지한 채 손상 픽셀만 합성한다. 측면·두께·테두리·큰 암부·앰버 신호를 허용하지 않으며,
+균열이 중앙에 가까운 비방향 패턴이라 4시점 슬롯을 만들지 않는다.
+
+B2 배럴 유출 방지 베이는 승인 보드의 네 사분면을 view 0..3의 `192×96` 두 셀 master로
+각각 정규화한다. `env-floor` 두 장을 시점별 창에 먼저 합성하고, 생성 소스를 마스킹한 master
+전체에 하드 알파 → 공용 팔레트 잠금 → despeckle → 2px 클러스터를 적용한 뒤에만
+service/ring과 drain/grate `128×64` 셀로 자른다. 셀별 선처리는 공유 호스·녹 띠를 끊으므로
+금지한다. 소스와 프롬프트는 `project-c-b2-barrel-bay-source-v1.{png,prompt.md}`가 소유한다.
+
+B2 2×2 연속 바닥은 `project-c-b2-macro-floor-source-v1.{png,prompt.md}`의 top-down master가
+소유한다. `process_b2_macro_floor_v1.py`는 이 master를 **top-down 좌표에서 먼저 0/90/180/270°
+회전**하고 시점별 `256×128` 아이소 master로 투영한다. 공용 바닥 합성·surface signal transfer·
+팔레트 잠금·despeckle·2px 클러스터를 master 전체에 적용한 뒤에만 네 물리 역할로 잘라
+`env-floor-b2-macro-role-{0..3}-view-{0..3}` 16개를 만든다. 생성기가 특수 드레싱·clear spine을
+피한 깨끗한 2×2 블록을 찾고 16슬롯이 모두 연결됐을 때만 네 셀을 원자적으로 활성화한다. 조건이
+깨지면 네 셀 전부 일반 바닥이다. 런타임은 일반 mapped floor 경로를 사용해 전면 경계의 extrusion을
+유지하며, 이 자산은 지형·높이·이동·공격 판정을 만들지 않는다.
+
+B2 foundation은 타일 원본에 두께를 다시 굽지 않는다. `FloorFoundationPresentation`이 현재
+화면에서 실제로 열린 두 전면만 고르고, 별도 `B2 Floor Foundation` 루트가 face-only
+`64×42`/PPU 64/pivot y=26 스프라이트를 기존 바닥 transform에 붙인다. 윗면은 투명하고 10 logical px
+fascia만 이어지며, 월드 해시로 드문 이음매를 고른다. `12×38` 지지대는 회전과 무관한 같은 월드
+볼록 모서리에 고정하고 현재 화면 앞쪽만 표시한다. 면/지지대는 `Dungeon Backdrop` order 1/2라
+Default 바닥 뒤에 있으며 collider·입력·격자·FOV·전투를 만들지 않는다. 승인 근거는
+`docs/captures/foundation-grounding-q{0,1,2,3}-live-v2.png`다. 이 접지 패스는 완료됐다. 공용 바닥
+base material과 기본 벽의 저주파 재질 두 종도 후속 v1에서 교체됐다. B2에서는 기능 장식과 서비스
+세그먼트를 먼저 고른 뒤 남은 벽 bay의 월드 좌표 홀짝으로 기본 셸과 비발광 유지보수 셸을 선택한다.
+이 선택은 seed·카메라 회전에 독립적이며 벽 배치·충돌·FOV를 바꾸지 않는다.
 
 드레싱(바닥 3 + 하단 벽 3) 슬롯의 구판 소스와 생성 프롬프트는
 `docs/art-direction/project-c-hospital-dressing-source-v1.{png,prompt.md}`가 소유한다

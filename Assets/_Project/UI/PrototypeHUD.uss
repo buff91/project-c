@@ -167,6 +167,15 @@
     letter-spacing: 1px;
 }
 
+/* PC에서만 여는 수직 보기 레일. 모바일은 기능 재개 전까지 레이아웃을 보존한다. */
+.vertical-view-controls {
+    display: none;
+}
+
+.vertical-view-state {
+    display: none;
+}
+
 /* ── 층 스택 (D) ─────────────────────────────────────────
    "▲ B1 · ▼ B3" 한 줄을 대체하는 공간적 수직성 지표. 눈금 하나가 층 하나고
    세로 위치가 실제 높이다 — 기둥 ①은 읽는 게 아니라 보이는 것이어야 한다.
@@ -208,6 +217,11 @@
 
 .floor-tick.is-current {
     background-color: var(--pc-gold);
+}
+
+.floor-tick.is-viewed {
+    width: 10px;
+    background-color: var(--pc-ui-accent);
 }
 
 /* 위/아래 경로 캡. 실제로 갈 수 있는 층이 있을 때만 텍스트가 채워진다. */

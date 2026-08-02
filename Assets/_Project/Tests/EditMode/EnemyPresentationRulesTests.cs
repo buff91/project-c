@@ -6,6 +6,39 @@ namespace ProjectC.Tests
     public class EnemyPresentationRulesTests
     {
         [Test]
+        public void ShouldRenderActor_OtherFloorVerticalPreview_ShowsBody()
+        {
+            Assert.IsTrue(EnemyPresentationRules.ShouldRenderActor(
+                debugAll: false,
+                enemyFloorIndex: -1,
+                activeFloorIndex: 0,
+                tileVisible: false,
+                verticalPreviewVisible: true));
+        }
+
+        [Test]
+        public void ShouldRenderActor_OtherFloorOutsidePreview_HidesBody()
+        {
+            Assert.IsFalse(EnemyPresentationRules.ShouldRenderActor(
+                debugAll: false,
+                enemyFloorIndex: -1,
+                activeFloorIndex: 0,
+                tileVisible: false,
+                verticalPreviewVisible: false));
+        }
+
+        [Test]
+        public void ShouldRenderActor_HiddenActiveFloor_DoesNotTrustPreviewFlag()
+        {
+            Assert.IsFalse(EnemyPresentationRules.ShouldRenderActor(
+                debugAll: false,
+                enemyFloorIndex: 0,
+                activeFloorIndex: 0,
+                tileVisible: false,
+                verticalPreviewVisible: true));
+        }
+
+        [Test]
         public void ShouldShowFeedback_VisibleEnemyOnActiveFloor_IsShown()
         {
             Assert.IsTrue(EnemyPresentationRules.ShouldShowFeedback(
