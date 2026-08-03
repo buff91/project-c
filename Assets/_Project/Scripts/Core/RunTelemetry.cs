@@ -659,7 +659,9 @@ namespace ProjectC.Core
                 if (top == null || damage.damageTaken > top.damageTaken)
                     top = damage;
             }
-            return top == null ? null : $"{top.source} {top.damageTaken}";
+            return top == null
+                ? null
+                : $"{RunSummary.FormatCause(top.source)} {top.damageTaken}";
         }
 
         private static string NormalizeDamageSource(string source)

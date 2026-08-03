@@ -3,29 +3,31 @@ id: actor-slinger
 slot: actor-slinger
 asset_type: character
 
-# 표시명은 적지 않는다 — MonsterRoster.Slinger 의 displayName("투석 약탈자")을
+# 표시명은 적지 않는다 — MonsterRoster.Slinger 의 displayName("기업 보안 사수")을
 # 그대로 쓴다. 여기 다시 적으면 게임과 갈린다.
 
-readability_goal: 치켜든 팔, 긴 슬링, 후드와 붉은 외눈이 96×128에서도 분리되어야 한다.
+readability_goal: 견착한 소형 아크 카빈, 기업 방탄복, 붉은 바이저가 96×128에서도 분리되어야 한다.
 
 prompt:
   # 정체성 — 어느 방법으로 뽑든 이 캐릭터를 이 캐릭터이게 하는 문장.
   positive: >-
-    single male post-apocalyptic hooded masked raider slinger, red hood, dark
-    face mask, patched charcoal concrete-gray and rust-brown coat, compact
-    backpack, crouched shoulders, one small red glowing goggle
+    single anonymous post-apocalyptic corporate security marksman, sealed charcoal
+    tactical uniform, compact corporate-surplus armor plates, narrow opaque visor,
+    lower-face respirator, compact arc carbine, small power cell magazine, worn
+    amber unit chevron, exactly one tiny dark-red IFF lamp, no exposed face
   # 대표 동작 — 정지 컷 한 장을 뽑을 때만 붙는다(방법이 고른다).
   signature_pose: >-
-    right arm raised high overhead spinning a long leather sling, visible
-    curved sling cord with stone pouch, left arm extended for balance, empty
-    hands except the sling cord
+    compact arc carbine shouldered toward the player, trigger hand close to the
+    chest, support hand on the short foregrip, muzzle held clear of the silhouette
   # 이 대상에서만 배제할 것. 일반 품질 제외는 방법이 가진다.
   negative: >-
-    female, woman, girl, skirt, dress, bare legs, slingshot, gun, rifle, bow,
-    sword, shield, fantasy armor, medieval
+    female, woman, girl, skirt, dress, bare legs, leather sling, slingshot, bow,
+    stone pouch, sword, shield, hooded raider, fantasy armor, medieval, exposed
+    friendly face, pristine police uniform, neon overload
 
 guides:
-  # 경로는 대상이 안다. 어느 변형을 쓸지는 방법이 고른다.
+  # 파일명은 코드 슬롯 호환을 위해 유지한다. 현재 이미지는 구 약탈자 제작 가이드이므로
+  # 기업 보안 사수 소스 제작 때 교체하고, 그 전에는 런타임 승격에 쓰지 않는다.
   style_source:
     default: docs/art-direction/comfyui/guides/actor-slinger-style-source.png
     runtime-512: >-

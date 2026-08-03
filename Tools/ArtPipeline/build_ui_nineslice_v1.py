@@ -146,16 +146,17 @@ BR_LEN = 4    # 모서리에서 뻗는 길이
 
 
 def bracket_frame():
-    """모서리만 그리는 크롬 프레임 — 사각 테두리 대신 계기처럼 읽힌다.
+    """Field Deck 열린 모서리 + 짧은 마젠타 데이터 틱.
 
     UI Toolkit USS 에는 ``::before``/``::after`` 가 없어서 코너 브래킷을 의사요소로
     만들 수 없다. 그래서 이 프로젝트가 이미 쓰는 방식(9-slice 승격)을 따른다 —
     가장자리 슬라이스만 늘어나고 **모서리 타일은 크기를 유지**하므로, 패널이 아무리
-    커져도 브래킷 길이가 그대로다. 늘어나는 구간은 비워 둬서 변이 그려지지 않는다.
+    커져도 브래킷 길이가 그대로다. 열린 모서리는 쿨 스틸, 마젠타는 각 옆의 2px
+    데이터 틱만 맡는다. 늘어나는 구간은 비워 둬서 변이 그려지지 않는다.
     """
     im = Image.new("RGBA", (BR, BR), (0, 0, 0, 0))
     px = im.load()
-    hairline = (ACCENT[0], ACCENT[1], ACCENT[2], 76)   # 상단 헤어라인 30%
+    hairline = (STONE[0], STONE[1], STONE[2], 120)
     for y in range(BR):
         for x in range(BR):
             on_left, on_right = x == 0, x == BR - 1
@@ -165,9 +166,15 @@ def bracket_frame():
             near_x = min(x, BR - 1 - x) < BR_LEN
             near_y = min(y, BR - 1 - y) < BR_LEN
             if near_x and near_y:
-                px[x, y] = ACCENT          # 네 모서리만 진하게
+                px[x, y] = S_LIT           # 열린 쿨 스틸 모서리
             elif on_top:
-                px[x, y] = hairline        # 위 변만 옅은 헤어라인(판금 베벨)
+                px[x, y] = hairline        # 위 변만 옅은 계기 헤어라인
+
+    # 9-slice에서 늘어나지 않는 좌우 상단 코너 안에 둔다. 1px 고립 노이즈가
+    # 되지 않게 두 픽셀을 붙이고, 면 채움 대신 크롬 신호 한 번만 준다.
+    for x in (0, BR - 1):
+        px[x, 2] = ACCENT
+        px[x, 3] = ACCENT
     return im
 
 def main():

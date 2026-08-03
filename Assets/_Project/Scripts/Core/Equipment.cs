@@ -154,7 +154,7 @@ namespace ProjectC.Core
             new EquipmentDefinition(
                 "pipe-spear", ItemKind.PipeSpear, EquipmentSlot.Weapon,
                 "빔 랜스",
-                "빔 날이 한 칸을 더 뻗는다 — 떨어져서 직선으로 찌른다. 사수와 슬러지를 붙기 전에 다룬다.",
+                "빔 날이 한 칸을 더 뻗는다 — 떨어져서 직선으로 찌른다. 사수와 추적 드론을 붙기 전에 다룬다.",
                 craftCost: 105,
                 meleeReach: 2),
             new EquipmentDefinition(

@@ -106,7 +106,8 @@ namespace ProjectC.Gameplay
             if (cap == null) return;
 
             bool standingOnEdge = edge.FloorIndex == activeFloorIndex;
-            cap.text = standingOnEdge ? "" : arrow + demo.FloorLabel(edge.FloorIndex);
+            string prefix = ActivePresentation == HudPresentationMode.Desktop ? "" : arrow;
+            cap.text = standingOnEdge ? "" : prefix + demo.FloorLabel(edge.FloorIndex);
             cap.style.display = standingOnEdge ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
@@ -181,7 +182,9 @@ namespace ProjectC.Gameplay
             if (_messageLogRoot == null) return;
 
             IReadOnlyList<string> lines = _messages.Lines();
-            _messageLogRoot.EnableInClassList("is-open", lines.Count > 0);
+            bool show = lines.Count > 0;
+            if (show && !IsOpen(_messageLogRoot)) WaitOneLayoutPassBeforeShowingWheel();
+            _messageLogRoot.EnableInClassList("is-open", show);
             if (lines.Count == 0) return;
 
             for (int i = _messageLogRoot.childCount - 1; i >= 0; i--)

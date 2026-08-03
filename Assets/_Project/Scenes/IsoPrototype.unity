@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoPrototypeDemo
   roomSize: 13
-  secondsPerStep: 0.09
+  secondsPerStep: 0.18
   buildOnStart: 1
   configureMainCamera: 1
   playCameraSize: 2.3
@@ -413,7 +413,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 37f6755435b3143e68d3a11659c583c8, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.InventoryPanelController
   demo: {fileID: 830354026}
 --- !u!114 &2050360388
@@ -426,7 +426,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a665577fe857b4a6892dde698fdf5642, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.DebugPanelController
   demo: {fileID: 830354026}
 --- !u!114 &2050360389
@@ -443,8 +443,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.PrototypeHudController
   demo: {fileID: 830354026}
   presentationMode: 0
-  mobileHudAsset: {fileID: 0}
-  desktopHudAsset: {fileID: 0}
+  mobileHudAsset: {fileID: 9197481963319205126, guid: ac1f6773881264054ab3c4221b55636e, type: 3}
+  desktopHudAsset: {fileID: 9197481963319205126, guid: 0ce8b0c16a5b14f50ab3411b592da7b4, type: 3}
 --- !u!114 &2050360390
 MonoBehaviour:
   m_ObjectHideFlags: 0

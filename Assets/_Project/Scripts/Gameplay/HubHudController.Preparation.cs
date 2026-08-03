@@ -221,7 +221,7 @@ namespace ProjectC.Gameplay
                     ? "출정 백팩"
                     : "영웅 기본 지급";
             // 충전이 있는 종류에서 `×N`은 개수가 아니라 회분이다 — 같은 기호로 두면
-            // "물약 ×6"이 여섯 칸으로 읽힌다. 칸수를 함께 내서 둘을 붙여 놓는다.
+            // "응급 키트 ×6"이 여섯 칸으로 읽힌다. 칸수를 함께 내서 둘을 붙여 놓는다.
             string amountLabel = ItemCatalog.IsCharged(kind)
                 ? $"{count}회분 · {ChargeUnits.UnitsFor(kind, count)}칸({footprint})"
                 : $"×{count} · {footprint}칸";
@@ -304,7 +304,7 @@ namespace ProjectC.Gameplay
 
         /// <summary>
         /// 창고 → 백팩은 <b>한 칸 분량</b>을 옮긴다. 덜 찬 칸도 셀은 만충과 똑같이 먹으므로
-        /// 1회분씩 옮기면 클릭만 늘고 얻는 것이 없다(물약 6회분에 여섯 번).
+        /// 1회분씩 옮기면 클릭만 늘고 얻는 것이 없다(응급 키트 6회분에 여섯 번).
         /// </summary>
         private void MoveKindToLoadout(ItemKind kind)
         {

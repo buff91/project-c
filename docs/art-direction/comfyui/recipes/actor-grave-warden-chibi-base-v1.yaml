@@ -4,7 +4,8 @@ name: 감시자 치비 기본 스프라이트 4방향 v1 · 보스 실루엣
 # actor-chibi-base-v1 파생 — 비율·포즈·리뷰 계약 동일, 정체성 블록만 교체.
 # §1-b 보스 실루엣: 일반 몹 ~1.3배 덩치(폭/부피로 표현 — 행 계약은 유지) +
 # 센서 마스트 + 붉은 네온 외눈 1개(§1-a warning 포인트). subjects/actor-grave-warden.yaml
-# 어휘(콘크리트 회색 라이엇 셸·산화 강철·비대칭 어깨·가슴 균열 틈의 유기체 코어) 승계.
+# 어휘(콘크리트 회색 라이엇 플레이트·산화 동력 브레이스·비대칭 어깨·신경 배선) 승계.
+# 자율 로봇이나 초자연 코어가 아니라 불법 외골격을 두른 사이버사이코 집행관으로 읽혀야 한다.
 purpose:
   category: actor
   asset_type: concept
@@ -98,12 +99,13 @@ generation:
   seed_strategy: sequential-random-base
 prompt:
   positive: >-
-    solo, chibi, pixel art, full body, standing, hulking arcade tower security
-    warden robot boss, wide bulky silhouette, repurposed concrete-gray riot
-    shell, oxidized steel braces, exposed cables, asymmetrical shoulder
+    solo, chibi, pixel art, full body, standing, hulking cyberpsycho corporate
+    enforcer boss in an illegal combat exoskeleton, visibly human armored
+    proportions, wide bulky silhouette, repurposed concrete-gray riot plates,
+    oxidized powered braces, exposed neural cables, asymmetrical shoulder
     plating, short broken sensor mast above the shoulder, single intense red
-    glowing warning eye, no face, heavy grounded legs, anomalous dark organic
-    core barely visible through one cracked chest seam, muted desaturated
+    cybernetic optic behind a sealed respirator, heavy grounded legs, cracked
+    chest armor showing only mechanical implant hardware, muted desaturated
     gray-brown armor, isolated character, simple gray background, flat color,
     clean pixel clusters, safe, masterpiece, high score, great score, absurdres
   negative: >-
@@ -113,8 +115,8 @@ prompt:
     views, multiple characters, gradient background, scenery, photorealistic,
     3d, neon overload, fully glowing outfit, human face, visible eyes,
     cute face, medieval knight, fantasy armor, robe, scythe, sword, shield,
-    sleek android, pristine white robot, symmetrical mecha, multiple eyes,
-    slim body
+    supernatural creature, organic anomaly, exposed flesh core, sleek android,
+    pristine autonomous robot, symmetrical mecha, multiple eyes, slim body
 quality_gates:
   require_transparency_after_prepare: true
   silhouette_tags:

@@ -3,9 +3,6 @@ using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace ProjectC.Gameplay
 {
@@ -56,7 +53,14 @@ namespace ProjectC.Gameplay
         private VisualElement _routeDiscovery;
         private Label _routeDiscoveryTitle;
         private Label _routeDiscoveryDetail;
+        private Button _routeDiscoveryCloseButton;
+        private readonly HudTransientNoticeQueue _transientNotices =
+            new HudTransientNoticeQueue();
         private Coroutine _routeDiscoveryRoutine;
+        private float _routeDiscoveryRemainingSeconds;
+        private float _routeDiscoveryVisibleSince;
+        private bool _routeDiscoveryIsTiming;
+        private bool _routeDiscoveryIsClosing;
         private Coroutine _feedbackRoutine;
         private Label _hpValueLabel;
         private VisualElement _hpHearts;
@@ -78,6 +82,8 @@ namespace ProjectC.Gameplay
         private Label _bossHealthValue;
         private Label _bossObjective;
         private VisualElement _minimapView;
+        private Label _minimapFloorBadge;
+        private Label _minimapNorthLabel;
         private Button _minimapPlayerMarker;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
@@ -91,7 +97,6 @@ namespace ProjectC.Gameplay
         private Button _menuLobby;
         private Button _menuAbandon;
         private VisualElement _actionWheel;
-        private bool _wheelPinned; // 캐릭터 탭 토글로 열린 상태 (홀드와 구분)
         private ResponsiveUiLayout _responsiveLayout;
         private bool _developmentViewportRefreshRequested;
         private bool _reopenSettingsAfterViewportRefresh;
@@ -108,7 +113,10 @@ namespace ProjectC.Gameplay
             if (demo != null)
             {
                 _tapInput = demo.GetComponent<IsoTapInput>();
-                if (_tapInput != null) _tapInput.UiBlocker = IsPointerOverHud;
+                if (_tapInput != null)
+                {
+                    _tapInput.UiBlocker = IsPointerOverHud;
+                }
                 demo.ViewRotationChanged += HandleViewRotationChanged;
                 demo.ActiveFloorChanged += HandleActiveFloorChanged;
                 demo.ViewModeChanged += HandleViewModeChanged;
@@ -124,7 +132,6 @@ namespace ProjectC.Gameplay
                 demo.BossStateChanged += HandleBossStateChanged;
                 demo.RunEnded += HandleRunEnded;
                 demo.ExitChoiceRequested += HandleExitChoiceRequested;
-                demo.PlayerTapped += HandlePlayerTapped;
             }
         }
 
@@ -177,7 +184,6 @@ namespace ProjectC.Gameplay
                 demo.BossStateChanged -= HandleBossStateChanged;
                 demo.RunEnded -= HandleRunEnded;
                 demo.ExitChoiceRequested -= HandleExitChoiceRequested;
-                demo.PlayerTapped -= HandlePlayerTapped;
             }
             RebindButton(ref _waitButton, null, HandleWaitClicked);
             RebindButton(ref _gameMenuButton, null, OpenGameMenu);
@@ -186,14 +192,18 @@ namespace ProjectC.Gameplay
             RebindButton(ref _menuAbandon, null, AbandonRun);
             RebindButton(ref _exitAdvance, null, HandleExitAdvance);
             RebindButton(ref _exitExtract, null, HandleExitExtract);
+            RebindButton(
+                ref _routeDiscoveryCloseButton,
+                null,
+                DismissDiscoveryNotice);
             if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
                 _tapInput.UiBlocker = null;
             _tapInput = null;
-            if (_routeDiscoveryRoutine != null)
-            {
-                StopCoroutine(_routeDiscoveryRoutine);
-                _routeDiscoveryRoutine = null;
-            }
+            _actionWheel?.RemoveFromClassList("is-open");
+            PauseDiscoveryNoticeVisual();
+            _transientNotices.Clear();
+            _routeDiscoveryRemainingSeconds = 0f;
+            _routeDiscoveryIsTiming = false;
             if (_feedbackRoutine != null)
             {
                 StopCoroutine(_feedbackRoutine);
@@ -262,9 +272,15 @@ namespace ProjectC.Gameplay
             _hungerLabel = root.Q<Label>("hunger-label");
             _statusLabel = root.Q<Label>("status-label");
             _verticalHintLabel = root.Q<Label>("vertical-hint-label");
+            PauseDiscoveryNoticeVisual();
             _routeDiscovery = root.Q<VisualElement>("vertical-route-discovery");
             _routeDiscoveryTitle = root.Q<Label>("route-discovery-title");
             _routeDiscoveryDetail = root.Q<Label>("route-discovery-detail");
+            RebindButton(
+                ref _routeDiscoveryCloseButton,
+                root.Q<Button>("route-discovery-close"),
+                DismissDiscoveryNotice);
+            SetDiscoveryCloseInteractive(false);
             _potionCountLabel = root.Q<Label>("potion-count");
             _bombCountLabel = root.Q<Label>("bomb-count");
             _frostCountLabel = root.Q<Label>("frost-count");
@@ -284,6 +300,8 @@ namespace ProjectC.Gameplay
             _minimapView = root.Q<VisualElement>("minimap-view");
             if (_minimapView != null)
                 _minimapView.RegisterCallback<GeometryChangedEvent>(HandleMinimapGeometryChanged);
+            _minimapFloorBadge = root.Q<Label>("minimap-floor-badge");
+            _minimapNorthLabel = root.Q<Label>("minimap-north-label");
             RebindButton(
                 ref _minimapPlayerMarker,
                 root.Q<Button>("minimap-player-marker"),
@@ -454,9 +472,8 @@ namespace ProjectC.Gameplay
 
             if (HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.Cancel))
             {
-                if (_wheelPinned || IsOpen(_actionWheel))
+                if (IsOpen(_actionWheel))
                 {
-                    _wheelPinned = false;
                     _actionWheel?.RemoveFromClassList("is-open");
                     return;
                 }
@@ -484,9 +501,15 @@ namespace ProjectC.Gameplay
                     OpenGameMenu();
             }
 
-            // Ctrl/Cmd 홀드 동안 액션 휠 표시 (캐릭터 탭 토글과 병행).
-            bool hold = ModifierHeld();
-            bool shouldShow = !AnyModalOpen() && (hold || _wheelPinned);
+            // PC 액션 휠은 Tab을 누르는 동안만 표시한다. 캐릭터 클릭 고정 경로는
+            // 포인터가 몸체를 스칠 때 휠이 상시 남는 원인이어서 제거했다.
+            // Cmd/Ctrl은 스크린샷·복사 같은 OS 단축키와 충돌해 사용하지 않는다.
+            bool hold = _tapInput != null && _tapInput.ActionWheelHeld;
+            bool shouldShow = ShouldShowActionWheel(
+                hold,
+                AnyModalOpen(),
+                Time.frameCount,
+                _wheelBlockedThroughFrame);
             if (_actionWheel != null)
             {
                 bool isOpen = _actionWheel.ClassListContains("is-open");
@@ -503,24 +526,15 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private static bool ModifierHeld()
-        {
-#if ENABLE_INPUT_SYSTEM
-            var keyboard = Keyboard.current;
-            return keyboard != null &&
-                   (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed ||
-                    keyboard.leftCommandKey.isPressed || keyboard.rightCommandKey.isPressed);
-#else
-            return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
-                   Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
-#endif
-        }
-
         private void HandleWaitClicked() => demo?.WaitTurn();
 
-        private void HandlePlayerTapped()
+        internal static bool ShouldShowActionWheel(
+            bool tabHeld,
+            bool anyModalOpen,
+            int frame,
+            int blockedThroughFrame)
         {
-            _wheelPinned = !_wheelPinned;
+            return tabHeld && !anyModalOpen && frame > blockedThroughFrame;
         }
 
         private void OpenGameMenu()
@@ -534,7 +548,6 @@ namespace ProjectC.Gameplay
 
         public void CloseTransientOverlays()
         {
-            _wheelPinned = false;
             _actionWheel?.RemoveFromClassList("is-open");
             _inventoryModal?.RemoveFromClassList("is-open");
             CloseGameMenu();

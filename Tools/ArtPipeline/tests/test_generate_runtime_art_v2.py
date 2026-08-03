@@ -11,10 +11,52 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 import generate_runtime_art_v2 as runtime_art
+import process_postapoc_actors_v2 as legacy_actors
 from process_b2_prop_quality_v4 import build_source_assets as build_b2_prop_quality_assets
 
 
 class GenerateRuntimeArtV2Tests(unittest.TestCase):
+    def test_generic_generators_do_not_own_arcade_enemy_outputs(self):
+        forbidden = {"actor-goblin", "actor-skeleton", "actor-slime"}
+        legacy_outputs = {
+            output_name
+            for spec in legacy_actors.SPECS
+            for output_name in spec.output_names
+        }
+        self.assertEqual({"actor-player", "actor-knight"}, legacy_outputs)
+        self.assertTrue(forbidden.isdisjoint(legacy_outputs))
+
+        old_legacy_output = legacy_actors.OUTPUT
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                legacy_actors.OUTPUT = Path(temporary)
+                legacy_actors.main()
+                self.assertEqual(
+                    {"actor-player.png", "actor-knight.png"},
+                    {path.name for path in legacy_actors.OUTPUT.glob("*.png")},
+                )
+        finally:
+            legacy_actors.OUTPUT = old_legacy_output
+
+        old_output = runtime_art.OUTPUT
+        old_only = runtime_art._ONLY_NAME
+        old_written = list(runtime_art._WRITTEN)
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                runtime_art.OUTPUT = Path(temporary)
+                for output_name in sorted(forbidden):
+                    runtime_art._ONLY_NAME = output_name
+                    runtime_art._WRITTEN.clear()
+
+                    runtime_art.main()
+
+                    self.assertEqual([], runtime_art._WRITTEN)
+                    self.assertEqual([], list(runtime_art.OUTPUT.glob("*.png")))
+        finally:
+            runtime_art.OUTPUT = old_output
+            runtime_art._ONLY_NAME = old_only
+            runtime_art._WRITTEN[:] = old_written
+
     def test_only_explosive_barrel_delegates_to_b2_quality_owner(self):
         old_output = runtime_art.OUTPUT
         old_only = runtime_art._ONLY_NAME

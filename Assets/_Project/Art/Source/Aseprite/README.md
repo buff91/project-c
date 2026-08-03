@@ -36,7 +36,7 @@ Runtime PNG로 복구하고, 해당 PNG도 없으면 비운다. 다른 경로를
 - B2 2×2 연속 바닥: `env-floor-b2-macro-role-{0..3}-view-{0..3}`
 - 액터: `actor-player`, `actor-knight`, `actor-ranger`, `actor-alchemist`,
   `actor-goblin`, `actor-skeleton`, `actor-slime`, `actor-slinger`,
-  `actor-grave-warden`, `actor-merchant`
+  `actor-arc-drone`, `actor-grave-warden`, `actor-merchant`
 - 허브/소품: `prop-campfire`, `prop-stash`, `prop-portal`, `prop-explosive-barrel`
 - 아이템/마커: 기존 `item-*`, `marker-player`, `marker-target`. 두 마커는 각각 틸/앰버의 열린
   코너 틱이며 바닥 전체를 두르는 링으로 만들지 않는다.
@@ -82,11 +82,27 @@ Aseprite를 함께 승격하는 정식 진입점이다.
 
 ## 원정자 애니메이션 안전장치
 
-현재 `actor-knight.aseprite`는 접지 품질을 먼저 잠근 `96×128` 단일 프레임 원정자다. 이전
-멀티프레임 자동 조립 초안은 교체됐고, 현재 `Frame_0`은 하드 알파·24색 역할 팔레트·2×2
-클러스터와 한 발 기준선을 사용한다. 소스·재현 기록은
-`docs/art-direction/project-c-expeditioner-grounded-source-v1.{png,prompt.md}`가 소유한다.
+현재 `actor-knight.aseprite`는 접지 품질을 먼저 잠근 `96×128` 승인 `Frame_0`을 태그 밖 첫
+프레임으로 보존하고, 뒤에 4방향 6상태 태그 프레임 80개를 둔다. 정식 태그는
+`idle/walk/attack/hit/fall/death × north/east/south/west` 24개이며 idle/walk만 반복한다.
+모든 프레임은 하드 알파·24색 이하 역할 팔레트·2×2 클러스터·발 `y=123`을 지킨다.
 
-정식 방향별 Aseprite 타임라인이 화면 승인을 받기 전까지 `SurvivorAnimationApproved`는 `false`이며,
-플레이어에는 `SpriteClipAnimator`를 붙이지 않는다. `idle/walk/attack/hit/fall/death`를 수작업해
-승인한 뒤에만 게이트를 연다. 적 애니메이션에는 이 게이트가 적용되지 않는다.
+접지 원본 계보는 `docs/art-direction/project-c-expeditioner-grounded-source-v1.{png,prompt.md}`가,
+방향 레퍼런스·보정·프레임 수는
+`docs/art-direction/reference/ref-expeditioner-directional-animation-v1.prompt.md`가 소유한다.
+PC 화면 승인까지 끝나 `SurvivorAnimationApproved`는 `true`이고 플레이어에
+`SpriteClipAnimator`를 붙인다. 적 애니메이션에는 이 게이트가 적용되지 않는다.
+
+## 아케이드 적군 방향 애니메이션 안전장치
+
+`actor-goblin`·`actor-skeleton`·`actor-slime`·`actor-slinger`·`actor-arc-drone`·
+`actor-grave-warden`은 모두 `96×128` 정식 방향 원본이다. 각 파일은 승인 정적 런타임 PNG를
+태그 밖 `Frame_0`과 `idle-south[0]`에 픽셀 일치로 보존하고, 뒤에 4방향 6상태 태그 프레임 80개를
+둔다. 정식 태그는 `idle/walk/attack/hit/fall/death × north/east/south/west` 24개이며
+idle/walk만 반복한다. east/west는 월드 손잡이가 아니라 **화면 방향 기준 exact mirror**다.
+
+파일당 81프레임·24태그, 여섯 원본 합계는 486프레임·144태그다. identity 마감은
+`Tools/ArtPipeline/process_arcade_occupation_actors_v1.py`, 방향 프레임과 manifest 생성은
+`Tools/ArtPipeline/build_arcade_enemy_directional_v1.py`, Aseprite 조립은
+`Tools/ArtPipeline/aseprite_build_animation.lua`가 소유한다. 전수 미리보기는
+`docs/captures/arcade-enemy-directional-conform-preview-v1.png`다.

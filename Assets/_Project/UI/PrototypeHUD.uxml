@@ -8,7 +8,7 @@
         <ui:VisualElement class="pc-vignette" picking-mode="Ignore" />
         <!-- A · 바이탈. 상태이상 칩은 hp 바로 아래 붙는다 — HP 를 깎는 것과 HP 그 자체는
              같은 질문("이번 턴을 버티나")이라 눈이 한 번만 움직여야 한다. -->
-        <ui:VisualElement class="vitals">
+        <ui:VisualElement class="vitals pc-plate">
             <ui:VisualElement class="hp-strip">
                 <ui:VisualElement name="hp-hearts" class="hp-hearts">
                     <ui:VisualElement class="pc-heart" />
@@ -27,7 +27,7 @@
         </ui:VisualElement>
 
         <!-- C · 계기 묶음. 층 정보와 미니맵은 하나의 우상단 계기다. -->
-        <ui:VisualElement class="artifact-panel minimap-panel">
+        <ui:VisualElement class="artifact-panel pc-plate minimap-panel">
             <ui:VisualElement class="minimap-header">
                 <ui:VisualElement class="minimap-header-buttons">
                     <ui:Button name="mode-button" class="settings-button hud-mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환">
@@ -48,6 +48,8 @@
                             <ui:VisualElement class="minimap-player-core" picking-mode="Ignore" />
                         </ui:VisualElement>
                     </ui:Button>
+                    <ui:Label name="minimap-floor-badge" text="B2" class="minimap-floor-badge" picking-mode="Ignore" />
+                    <ui:Label name="minimap-north-label" text="N" class="minimap-north-label" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="view-controls">
@@ -83,20 +85,21 @@
             <ui:Label name="depth-caption" text="던전 1/3" class="micro-caption depth-caption" />
         </ui:VisualElement>
 
-        <ui:VisualElement name="boss-panel" class="artifact-panel boss-panel" picking-mode="Ignore">
-            <ui:Label name="boss-kicker" text="FINAL GUARDIAN" class="boss-kicker" />
-            <ui:Label name="boss-name" text="감시자" class="boss-name" />
-            <ui:VisualElement class="boss-health-track">
-                <ui:VisualElement name="boss-health-fill" class="boss-health-fill" />
+        <ui:VisualElement name="boss-panel" class="artifact-panel pc-plate boss-panel" picking-mode="Ignore">
+            <ui:Label name="boss-kicker" text="FINAL GUARDIAN" class="boss-kicker" picking-mode="Ignore" />
+            <ui:Label name="boss-name" text="감시자" class="boss-name" picking-mode="Ignore" />
+            <ui:VisualElement class="boss-health-track" picking-mode="Ignore">
+                <ui:VisualElement name="boss-health-fill" class="boss-health-fill" picking-mode="Ignore" />
             </ui:VisualElement>
-            <ui:Label name="boss-health-value" text="20 / 20" class="boss-health-value" />
-            <ui:Label name="boss-objective" text="보스를 쓰러뜨려 출구의 봉인을 해제하라" class="boss-objective" />
+            <ui:Label name="boss-health-value" text="20 / 20" class="boss-health-value" picking-mode="Ignore" />
+            <ui:Label name="boss-objective" text="보스를 쓰러뜨려 출구의 봉인을 해제하라" class="boss-objective" picking-mode="Ignore" />
         </ui:VisualElement>
 
-        <ui:VisualElement name="vertical-route-discovery" class="artifact-panel vertical-route-discovery" picking-mode="Ignore">
-            <ui:Label text="새로운 길을 발견했다" class="route-discovery-kicker" />
-            <ui:Label name="route-discovery-title" text="하층 계단 · B2" class="route-discovery-title" />
-            <ui:Label name="route-discovery-detail" text="어두운 계단 입구 위에서 탭하면 한 층 아래로 이동한다." class="route-discovery-detail" />
+        <ui:VisualElement name="vertical-route-discovery" class="artifact-panel pc-plate vertical-route-discovery" picking-mode="Ignore">
+            <ui:Label text="새로운 길을 발견했다" class="route-discovery-kicker" picking-mode="Ignore" />
+            <ui:Label name="route-discovery-title" text="하층 계단 · B2" class="route-discovery-title" picking-mode="Ignore" />
+            <ui:Label name="route-discovery-detail" text="어두운 계단 입구 위에서 탭하면 한 층 아래로 이동한다." class="route-discovery-detail" picking-mode="Ignore" />
+            <ui:Button name="route-discovery-close" text="×" class="route-discovery-close" tooltip="안내 닫기" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <!-- E · 메시지 로그. SPD 계보 턴제인데 직전 턴에 무슨 일이 있었는지 볼 방법이
@@ -104,7 +107,7 @@
              feedback-chip 은 이름을 유지한 채 "가장 최신 줄"이 되고, 지난 줄은 컨트롤러가
              그 앞에 .message-line 으로 끼워 넣는다. 플레이트는 로그 하나만 쓴다. -->
         <ui:VisualElement class="status-zone">
-            <ui:VisualElement name="message-log" class="message-log">
+            <ui:VisualElement name="message-log" class="message-log pc-plate">
                 <ui:VisualElement name="feedback-chip" class="status-chip feedback-chip">
                     <ui:VisualElement class="chip-dot feedback-dot" />
                     <ui:Label name="status-label" text="" class="chip-label" />
@@ -117,7 +120,7 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="hud-bottom">
-            <ui:VisualElement class="resources">
+            <ui:VisualElement class="resources pc-plate">
                 <ui:Button name="potion-button" class="artifact-panel resource-pill item-button" tooltip="응급 키트 사용 — HP 회복, 행동 1회 소비">
                     <ui:VisualElement class="resource-icon potion-icon" />
                     <ui:Label name="potion-count" text="×0" class="resource-value" />
@@ -136,14 +139,14 @@
                 </ui:Button>
             </ui:VisualElement>
 
-            <ui:VisualElement class="action-cluster">
+            <ui:VisualElement class="action-cluster pc-plate">
                 <ui:Button name="combat-button" class="combat-button action-label-button" tooltip="근접 / 원거리 공격 전환">
                     <ui:VisualElement name="combat-icon" class="ui-icon ui-melee-icon" picking-mode="Ignore" />
                     <ui:Label name="combat-label" text="근접" class="action-button-label" />
                 </ui:Button>
                 <ui:Button name="wait-button" class="mode-button wait-button action-label-button" tooltip="이동 없이 한 턴을 보낸다 (X)">
                     <ui:VisualElement class="ui-icon ui-wait-icon" picking-mode="Ignore" />
-                    <ui:Label text="대기  X" class="action-button-label" />
+                    <ui:Label text="대기" class="action-button-label" />
                 </ui:Button>
                 <ui:Button name="interact-button" class="interact-button action-label-button" tooltip="현재 문맥 행동 실행">
                     <ui:VisualElement class="ui-icon ui-interact-icon" picking-mode="Ignore" />

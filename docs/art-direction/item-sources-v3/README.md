@@ -4,11 +4,28 @@
 `Tools/ArtPipeline/process_items_v3.py`가 64×64 캔버스, 하드 알파, Torchstone 공용 팔레트,
 아이템별 바닥 피벗 여백으로 마감한다.
 
-> **provenance가 갈린다.** 11종은 ComfyUI `item-static-v1` 생성물(§ 아케이드 재발주)이고,
-> `item-frost-shard` 한 종만 아래 ImageGen 세트가 남아 있다. 어느 쪽도 상대 쪽으로 소급
-> 표기하지 않는다.
+> **provenance가 갈린다.** 10종은 ComfyUI `item-static-v1` 생성물(§ 아케이드 재발주)이고,
+> `item-herb`·`item-frost-shard` 두 종은 2026-08-03 OpenAI ImageGen 신규 생성물이다.
+> 어느 쪽도 상대 쪽으로 소급 표기하지 않는다.
 
-## 생성 방식 — ImageGen 세트 (2026-07-29, 현재 `item-frost-shard`만 유효)
+## 세계관 용어 교정 (2026-08-03 — 채택)
+
+첫 던전과 아이템 공통 배경에는 초자연이 없으므로, 유기·판타지 실루엣으로 남아 있던 두 조합
+재료를 기술·생존 장비로 교체했다. **기존 세이브와 Unity 참조를 보존하기 위해** enum 이름과 숫자,
+슬롯 ID, 파일명은 그대로 둔다.
+
+| 영구 계약 | 새 표시 계약 | 채택 소스 | 런타임 판독 |
+|---|---|---|---|
+| `ItemKind.Herb = 9` / `item-herb` | 지혈 패치 / `PATCH` | `item-herb-source-v3.png` | 적십자·주황 밀봉띠가 있는 현장용 지혈 패치 |
+| `ItemKind.FrostShard = 11` / `item-frost-shard` | 냉각 코일 / `COIL` | `item-frost-shard-source-v3.png` | 구리 루프가 드러난 소형 냉각 코일 카트리지 |
+
+- 생성: 2026-08-03, OpenAI ImageGen 신규 생성. 채택 프롬프트 요지는
+  `item-herb-source-v3.prompt.md`·`item-frost-shard-source-v3.prompt.md`가 보존한다.
+- 마감: 위 소스를 `Tools/ArtPipeline/process_items_v3.py`에 통과시켜
+  `Assets/_Project/Art/Runtime/item-herb.png`·`item-frost-shard.png`로 승격했다.
+- 두 PNG는 **채택본**이다. 2026-07-31의 버섯 군락과 구 냉매 결정 보존 판단은 아래에 역사로만 남긴다.
+
+## 생성 방식 — 초기 ImageGen 세트 (2026-07-29, 이력 보존)
 
 - 도구: Codex 내장 ImageGen
 - 참조 1: `project-c-integrated-postapoc-gameplay-target-v2.png`
@@ -20,9 +37,10 @@
   background scene, vector/painterly/photorealistic rendering, gradients, soft edges
 - 구도: 한 파일에 한 오브젝트만 배치하고, 정사각 캔버스의 약 70–76%를 채운다.
 
-## 최종 프롬프트 세트
+## 초기 프롬프트 세트 (현재 채택 계약 아님)
 
-모든 항목은 위 공통 생성 방식과 아래 항목별 요청·대상·팔레트를 합쳐 사용했다.
+모든 항목은 당시 위 공통 생성 방식과 아래 항목별 요청·대상·팔레트를 합쳐 사용했다.
+현재 소스는 10종 ComfyUI와 위 2026-08-03 ImageGen 두 종으로 교체됐으며, 이 표는 재현 이력이다.
 
 | 출력 | Primary request / Subject | Palette |
 |---|---|---|
@@ -39,12 +57,12 @@
 | `item-blast-powder` | sealed crafting powder tin; dented steel tin, orange seal, yellow burst mark, red pull tab | dark navy, gunmetal, rust, orange, yellow, red, taupe |
 | `item-frost-shard` | broken coolant shard; long jagged cyan fragment, dark steel base clamp, frosted edge, copper wire | dark navy, gunmetal, teal, cyan, ice blue, copper |
 
-각 생성에서 배경은 “perfectly flat solid #ff00ff, one uniform color only”로 명시했고,
+당시 각 생성에서 배경은 “perfectly flat solid #ff00ff, one uniform color only”로 명시했고,
 오브젝트 내부에는 magenta를 쓰지 않도록 제한했다. 대각선형은 칼/허브/서리 조각만 허용했다.
 
 ## ComfyUI 전환 게이트
 
-- 위 12종의 현재 소스 provenance는 그대로 ImageGen이며 ComfyUI 생성물로 소급 표기하지 않는다.
+- 전환 시작 당시 12종 소스 provenance는 ImageGen이었으며, 이후 채택된 ComfyUI 결과만 출처를 바꿨다.
 - `item-static-v1 + item-potion` 레시피로 포션 1종을 먼저 재생성했다.
 - SDXL이 마젠타 대신 균일한 중성 플레이트를 내는 경우가 있어 프로세서는 테두리에 연결된
   유사색 배경을 추가로 제거한다. 오브젝트 내부의 같은 색까지 전역 삭제하지 않는다.
@@ -54,7 +72,7 @@
 - 비교본은 `docs/captures/item-potion-comfy-gate-v2.png`다. 한 종 승인 후 다음 아이템을
   진행하는 규칙에 따라 포션 승격 판단 전에는 나머지를 덮어쓰지 않았다.
 
-## 아케이드 재발주 (2026-07-31 — 11종 교체)
+## 아케이드 재발주 (2026-07-31 — 당시 11종 교체)
 
 색감만 사이버펑크고 **오브젝트 자체는 병원/판타지 그대로**라는 지적에서 출발했다. 정체성은
 리스킨 표 §4가 소유하고, 항목별 `docs/art-direction/comfyui/subjects/item-*.yaml`이 그것을
@@ -73,9 +91,9 @@
 | `item-coin-pouch` | v2 `00058` | 505965 | 입 벌린 자루 + 황동 토큰 |
 | `item-gemstone` | v1 `00026` | 537886 | 발광 코어 큐브 |
 | `item-relic` | v1 `00029` | 446640 | 시안 렌즈 미상 장치 |
-| `item-herb` | v3 `00053` | 73621 | 창백한 버섯 군락 |
+| `item-herb` | v3 `00053` | 73621 | 구 채택: 창백한 버섯 군락 (2026-08-03 교체) |
 | `item-blast-powder` | v1 `00045` | 121551 | 스텐실 찍힌 밀봉 화약통 |
-| `item-frost-shard` | **교체 없음** | — | 현행 유지 (아래) |
+| `item-frost-shard` | **교체 없음** | — | 구 채택 유지 판단 (2026-08-03 교체) |
 
 신구 비교본은 `docs/captures/item-arcade-reskin-v1.png` — 12종을 쌍으로 세워 교체하지 않은
 종은 같은 그림이 나란히 선다.
@@ -96,9 +114,10 @@
 - **기계 게이트는 계약 위반을 못 잡는다.** 가시 픽셀 수만 보는 게이트는 바닥 이펙트·분리 조각·
   극단 종횡비를 전부 통과시킨다. 선별에는 연결 성분 검사와 육안 콘택트 시트를 함께 썼다.
 
-### `item-frost-shard`를 남긴 이유
+### 구 `item-frost-shard`를 남긴 이유 (2026-07-31 판단, 현재 폐기)
 
 v1·v4·v5 세 리비전 15장을 뽑았지만 전부 현행보다 못 읽혔다 — 결정보다 기계 받침이 커지거나
 (`v1/00051`, `v1/00057`), 마젠타가 새거나(`v4`), 불투명을 강조하자 결정 면이 뭉갰다(`v5`).
-현행 스프라이트는 이미 강철 칼라와 케이블이 달린 산업용 냉매 결정으로 읽혀 리스킨 표 §4의
-정체성을 만족한다. **더 나쁜 그림으로 교체하지 않는다**는 원칙에 따라 남겼다.
+당시 스프라이트는 강철 칼라와 케이블이 달린 산업용 냉매 결정으로 읽힌다고 판단해
+**더 나쁜 그림으로 교체하지 않는다**는 원칙에 따라 남겼다. 그러나 결정/조각 실루엣 자체가
+초자연·판타지로 읽힌다는 2026-08-03 검토를 반영해, 현재는 구리 루프형 냉각 코일로 교체했다.

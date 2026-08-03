@@ -25,12 +25,12 @@ namespace ProjectC.Tests
         public void CollapsesConsecutiveDuplicates_IntoRepeatSuffix()
         {
             var log = new MessageLog(4);
-            log.Add("약탈자를 쳤다 · 3 피해");
-            log.Add("약탈자를 쳤다 · 3 피해");
-            log.Add("약탈자를 쳤다 · 3 피해");
+            log.Add("점거군 돌격병을 쳤다 · 3 피해");
+            log.Add("점거군 돌격병을 쳤다 · 3 피해");
+            log.Add("점거군 돌격병을 쳤다 · 3 피해");
 
             Assert.That(log.Count, Is.EqualTo(1));
-            Assert.That(log.Newest, Is.EqualTo("약탈자를 쳤다 · 3 피해 ×3"));
+            Assert.That(log.Newest, Is.EqualTo("점거군 돌격병을 쳤다 · 3 피해 ×3"));
         }
 
         [Test]

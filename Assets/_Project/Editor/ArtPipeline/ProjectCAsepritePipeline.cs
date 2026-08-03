@@ -26,6 +26,8 @@ namespace ProjectC.EditorTools
         private const string TextureImporterSettingsProperty =
             "m_TextureImporterSettings";
         private const string TextureReadableProperty = "m_IsReadable";
+        private const string PreviousTextureSizeProperty =
+            "m_PreviousTextureSize";
 
         private static readonly Vector2Int FloorCanvasSize = new Vector2Int(128, 64);
         private static readonly Vector2Int WallCanvasSize = new Vector2Int(64, 112);
@@ -65,6 +67,13 @@ namespace ProjectC.EditorTools
             SpriteClipTags.Hit,
             SpriteClipTags.Fall,
             SpriteClipTags.Death
+        };
+        private static readonly ActorFacing4[] RequiredActorFacings =
+        {
+            ActorFacing4.North,
+            ActorFacing4.East,
+            ActorFacing4.South,
+            ActorFacing4.West
         };
 
         private static readonly Dictionary<string, string> CatalogSlots =
@@ -200,6 +209,7 @@ namespace ProjectC.EditorTools
 
         private static bool _catalogSyncQueued;
         private static bool _readablePropertyWarningLogged;
+        private static bool _spritePackingPropertyWarningLogged;
         private static readonly Dictionary<string, HashSet<string>>
             PendingRemovedSourcePaths =
                 new Dictionary<string, HashSet<string>>(
@@ -336,11 +346,39 @@ namespace ProjectC.EditorTools
                 {
                     string tag = ActorAnimationBake.TagFromClipName(clipName);
                     if (tag != null)
-                        present.Add(tag);
+                        present.Add(ActorAnimationBake.BaseTag(tag));
                 }
             }
 
             return RequiredActorTags.Where(tag => !present.Contains(tag)).ToArray();
+        }
+
+        /// <summary>
+        /// 방향 태그를 하나라도 쓰기 시작한 액터는 상태마다 4방향을 모두 요구한다.
+        /// 비방향 구형 세트는 빈 배열을 반환해 기존 폴백 계약을 보존한다.
+        /// </summary>
+        public static string[] MissingDirectionalActorTags(IEnumerable<string> clipNames)
+        {
+            var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            bool hasDirectional = false;
+            if (clipNames != null)
+            {
+                foreach (string clipName in clipNames)
+                {
+                    string tag = ActorAnimationBake.TagFromClipName(clipName);
+                    if (tag == null) continue;
+                    present.Add(tag);
+                    hasDirectional |= DirectionalSpriteClipTags.TryParse(tag, out _, out _);
+                }
+            }
+
+            if (!hasDirectional) return Array.Empty<string>();
+
+            return RequiredActorTags
+                .SelectMany(baseTag => RequiredActorFacings.Select(
+                    facing => DirectionalSpriteClipTags.Compose(baseTag, facing)))
+                .Where(tag => !present.Contains(tag))
+                .ToArray();
         }
 
         public static string[] MissingRequiredB2ViewSources(
@@ -410,7 +448,12 @@ namespace ProjectC.EditorTools
         {
             string[] sources = FindAsepriteSources();
             foreach (string path in sources)
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            {
+                AssetDatabase.ImportAsset(
+                    path,
+                    ImportAssetOptions.ForceUpdate |
+                    ImportAssetOptions.ForceSynchronousImport);
+            }
 
             SyncCatalog(logResult: true);
         }
@@ -453,6 +496,21 @@ namespace ProjectC.EditorTools
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.aniso = 1;
 
+            // Aseprite Importer 5.0.x keeps the previous Sprite rect/UV when
+            // every cel still spans the same canvas and the packed atlas size
+            // is unchanged. Actor frames intentionally use full-canvas cels,
+            // so changing their alpha silhouette could otherwise pair a new
+            // atlas with stale rects and display fragmented characters.
+            if (RequiresFreshSpritePacking(path) &&
+                !TryInvalidateSpritePacking(importer) &&
+                !_spritePackingPropertyWarningLogged)
+            {
+                _spritePackingPropertyWarningLogged = true;
+                Debug.LogWarning(
+                    "[Project-C Aseprite] Unity 2D Aseprite Importer의 이전 " +
+                    $"아틀라스 크기 속성을 찾지 못했습니다: {path}");
+            }
+
             if (RequiresReadableTexture(path) &&
                 !TrySetTextureReadable(importer, readable: true) &&
                 !_readablePropertyWarningLogged)
@@ -466,6 +524,29 @@ namespace ProjectC.EditorTools
             SetUncompressed(importer, BuildTarget.StandaloneOSX);
             SetUncompressed(importer, BuildTarget.Android);
             SetUncompressed(importer, BuildTarget.iOS);
+        }
+
+        public static bool RequiresFreshSpritePacking(string sourcePath)
+        {
+            string assetName = Path.GetFileNameWithoutExtension(sourcePath);
+            return assetName.StartsWith("actor-", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool TryInvalidateSpritePacking(AssetImporter assetImporter)
+        {
+            var importer = assetImporter as AsepriteImporter;
+            if (importer == null) return false;
+
+            var serializedImporter = new SerializedObject(importer);
+            serializedImporter.UpdateIfRequiredOrScript();
+            SerializedProperty previousTextureSize =
+                serializedImporter.FindProperty(PreviousTextureSizeProperty);
+            if (previousTextureSize == null)
+                return false;
+
+            previousTextureSize.vector2Value = Vector2.zero;
+            serializedImporter.ApplyModifiedPropertiesWithoutUndo();
+            return true;
         }
 
         private static bool TrySetTextureReadable(
@@ -925,7 +1006,7 @@ namespace ProjectC.EditorTools
                 if (tag == null || (!actor && tag != SpriteClipTags.Idle))
                 {
                     string contract = actor
-                        ? "idle/walk/attack/hit/fall/death"
+                        ? "idle/walk/attack/hit/fall/death + 선택적 -north/-east/-south/-west"
                         : "idle";
                     problems.Add(
                         $"태그 규약({contract}) 밖 클립 '{clip.name}': {path}");
@@ -933,7 +1014,7 @@ namespace ProjectC.EditorTools
                 }
 
                 hasTaggedClip = true;
-                hasIdle |= tag == SpriteClipTags.Idle;
+                hasIdle |= ActorAnimationBake.BaseTag(tag) == SpriteClipTags.Idle;
                 if (ActorAnimationBake.HasNonSpriteCurves(clip))
                     problems.Add(
                         $"클립 '{clip.name}'에 sprite 외 커브가 있음 — 베이크에서 버려진다" +
@@ -952,6 +1033,14 @@ namespace ProjectC.EditorTools
                 {
                     problems.Add(
                         $"액터 필수 태그 누락({string.Join("/", missing)}): {path}");
+                }
+
+                string[] missingDirectional = MissingDirectionalActorTags(
+                    clips.Select(clip => clip.name));
+                if (missingDirectional.Length > 0)
+                {
+                    problems.Add(
+                        $"방향 액터 태그 불완전({string.Join("/", missingDirectional)}): {path}");
                 }
             }
             else if (hasTaggedClip && !hasIdle)

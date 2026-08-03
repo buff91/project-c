@@ -19,5 +19,24 @@ namespace ProjectC.Core
                 return visible || explored;
             return verticalPreview;
         }
+
+        /// <summary>
+        /// 지도 실루엣은 실제 월드 지오메트리와 겹치지 않는다.
+        /// 현재 활성 층의 아직 보지 않은 mapped 좌표에서만 대신 표시한다.
+        /// </summary>
+        public static bool ShouldRenderMappedSilhouette(
+            bool debugAll,
+            int tileFloorIndex,
+            int activeFloorIndex,
+            bool visible,
+            bool explored,
+            bool mapped)
+        {
+            return !debugAll &&
+                   tileFloorIndex == activeFloorIndex &&
+                   mapped &&
+                   !visible &&
+                   !explored;
+        }
     }
 }

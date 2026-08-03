@@ -18,9 +18,9 @@ namespace ProjectC.Core
         CoinPouch = 6,     // 전리품: 생환 시 골드로 환산. 던전 안에서는 쓸 수 없다.
         Gemstone = 7,      // 전리품(중): 생환 시 골드로 환산.
         Relic = 8,         // 전리품(대): 희귀. 생환 시 골드로 환산.
-        Herb = 9,          // 조합 재료: 정화 균사. 2개로 응급 키트를 만든다.
+        Herb = 9,          // 조합 재료: 지혈 패치. 2개로 응급 키트를 만든다.
         BlastPowder = 10,  // 조합 재료: 뇌관 화약. 2개로 급조 폭발물을 만든다.
-        FrostShard = 11,   // 조합 재료: 냉매 결정. 폭발물에 섞어 냉각재 수류탄을 만든다.
+        FrostShard = 11,   // 조합 재료: 냉각 코일. 폭발물에 장착해 냉각재 수류탄을 만든다.
         // 장비 (대장간 제작 — 스탯이 아니라 행동 규칙을 바꾼다. EquipmentCatalog 참조)
         PipeSpear = 12,    // 빔 랜스: 근접 사거리 2(직선).
         HeavyWrench = 13,  // 임팩트 렌치: 근접 명중 시 1칸 넉백.
@@ -38,7 +38,7 @@ namespace ProjectC.Core
     /// </summary>
     public enum ItemCategory
     {
-        /// <summary>쓰면 사라지는 물건(물약·폭탄·통조림·송출기…).</summary>
+        /// <summary>쓰면 사라지는 물건(응급 키트·폭탄·통조림·송출기…).</summary>
         Consumable = 0,
         /// <summary>생환해야 값이 되는 환금 전용 전리품.</summary>
         Treasure = 1,
@@ -165,12 +165,12 @@ namespace ProjectC.Core
                 "생환하면 소지금 $25을 얻는다. 죽으면 잃는다.", goldValue: 25),
             Define(ItemKind.Relic, ItemCategory.Treasure, "시제품 코어", "PROTO",
                 "출처가 지워진 군용 시제품. 생환하면 소지금 $60을 얻는다.", goldValue: 60, footprint: Large),
-            Define(ItemKind.Herb, ItemCategory.Material, "정화 균사", "SPORE",
-                "조합 재료. 2개를 가공하면 응급 키트가 된다.", shopPrice: 6),
+            Define(ItemKind.Herb, ItemCategory.Material, "지혈 패치", "PATCH",
+                "조합 재료. 2개를 묶으면 응급 키트가 된다.", shopPrice: 6),
             Define(ItemKind.BlastPowder, ItemCategory.Material, "뇌관 화약", "POWDER",
                 "조합 재료. 2개를 뭉치면 급조 폭발물이 된다.", shopPrice: 8),
-            Define(ItemKind.FrostShard, ItemCategory.Material, "냉매 결정", "SHARD",
-                "조합 재료. 폭발물에 섞으면 냉각재 수류탄이 된다.", shopPrice: 5),
+            Define(ItemKind.FrostShard, ItemCategory.Material, "냉각 코일", "COIL",
+                "조합 재료. 급조 폭발물에 장착하면 냉각재 수류탄이 된다.", shopPrice: 5),
             DefineEquipment(ItemKind.PipeSpear, "LANCE", Tall),
             DefineEquipment(ItemKind.HeavyWrench, "WRENCH", Tall),
             DefineEquipment(ItemKind.SignShield, "SHIELD", Large),
@@ -185,7 +185,7 @@ namespace ProjectC.Core
             // 칸당 3회분. 배고픔은 판 전체를 관통하는 상시 압박이라(가득 찬 배 100턴)
             // 통조림은 "한 번 챙기고 잊는 것"이 아니라 계속 다시 채우는 소모품이고,
             // 1회분 = 1칸이던 시절엔 그 리듬이 백팩 상시 점유로 나타났다.
-            // 물약(2)보다 큰 이유는 회복이 아니라 유지 비용이기 때문이다 —
+            // 응급 키트(2)보다 큰 이유는 회복이 아니라 유지 비용이기 때문이다 —
             // 회복은 판돈이지만 배고픔은 세금이고, 세금을 칸으로 받으면 파밍이 줄어든다.
             Define(ItemKind.CannedFood, ItemCategory.Consumable, "통조림", "FOOD",
                 "먹으면 배고픔을 채운다. 먹는 데 행동 1회를 소비한다.", shopPrice: 12,

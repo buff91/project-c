@@ -64,7 +64,7 @@ namespace ProjectC.Gameplay
         [Header("프로토타입")]
         [Tooltip("층 한 변 크기. 키우면 방·복도가 넓어지고 적/아이템 밀도가 면적 비례로 따라 오른다.")]
         [Range(9, 20)] public int roomSize = 13;
-        [Range(0.03f, 0.3f)] public float secondsPerStep = 0.09f;
+        [Range(0.03f, 0.3f)] public float secondsPerStep = 0.18f;
         public bool buildOnStart = true;
         public bool configureMainCamera = true;
 
@@ -87,10 +87,9 @@ namespace ProjectC.Gameplay
         [Tooltip("연료 셀 자식 접촉 AO 배율. 본체와 함께 축소되어 한 칸짜리 검은 판이 되지 않게 한다.")]
         [Range(0.4f, 1f)] public float barrelContactShadowScale = 0.78f;
 
-        // 현재 actor-knight.aseprite는 11프레임 자동 조립 초안이라 프레임 간 해부·실루엣이
-        // 일치하지 않는다. 정식 방향별 Aseprite 타임라인이 화면 승인되기 전까지 플레이어만
-        // 정적 첫 프레임으로 두는 안전장치다. 적 애니메이션 경로는 이 게이트를 거치지 않는다.
-        internal static bool SurvivorAnimationApproved => false;
+        // actor-knight.aseprite의 4방향 6상태 타임라인은 PC 화면 검수까지 끝난 승인 원본이다.
+        // 정적 Frame_0도 태그 밖 첫 프레임으로 그대로 보존되어 허브/카탈로그 폴백과 정체성이 같다.
+        internal static bool SurvivorAnimationApproved => true;
 
         internal static bool ShouldAttachSurvivorAnimator(ActorAnimationSet animations) =>
             SurvivorAnimationApproved && animations != null && animations.HasClips;
@@ -667,6 +666,7 @@ namespace ProjectC.Gameplay
             _grid.iso.viewPivotX = (roomSize - 1) * 0.5f;
             _grid.iso.viewPivotY = (roomSize - 1) * 0.5f;
             _grid.iso.SetViewRotation(0);
+            _playerWorldFacing = ActorFacing4.South;
 
             ClearVisuals();
             BuildRoomData();
@@ -834,6 +834,7 @@ namespace ProjectC.Gameplay
             root.transform.SetParent(transform, false);
             _visualRoot = root.transform;
             _tileRenderers.Clear();
+            RebuildMappedTopology();
 
             foreach (var pair in _grid.Map.All())
             {
@@ -851,6 +852,7 @@ namespace ProjectC.Gameplay
                 _tileRenderers.Add(pos, renderer);
             }
 
+            CreateMappedSilhouetteVisuals();
             CreateVerticalLandmarks();
             RefreshFloorVisibility();
         }
@@ -875,6 +877,7 @@ namespace ProjectC.Gameplay
             _playerAnimator = ShouldAttachSurvivorAnimator(survivorAnimations)
                 ? AttachActorAnimator(_player, _playerRenderer, survivorAnimations)
                 : null;
+            ApplyPlayerFacing();
             _playerShadow = CreateContactShadow(_player.transform);
             _playerSorting = _player.AddComponent<GridSortingObject>();
             _playerSorting.grid = _grid;
@@ -1168,7 +1171,7 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 화면에 실제 그려진 타일 다이아몬드만 집는다. 전체 elevation 평면을 역산하면
+        /// 화면에 표현된 실제 타일 또는 mapped 실루엣 다이아몬드만 집는다. 전체 elevation 평면을 역산하면
         /// 같은 화면 좌표에 우연히 놓인 아래층 타일이 선택될 수 있으므로, 현재 활성 층을
         /// 최우선으로 하고 실제 개구부를 통해 표시된 인접 층은 그다음 순위로 둔다.
         /// </summary>
@@ -1182,18 +1185,35 @@ namespace ProjectC.Gameplay
             foreach (var pair in _tileRenderers)
             {
                 SpriteRenderer renderer = pair.Value;
-                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                if (renderer == null || !renderer.gameObject.activeInHierarchy)
                     continue;
 
                 GridPos position = pair.Key;
                 int floorIndex = _dungeon.Height.FloorIndex(position.elevation);
                 bool activeFloor = floorIndex == _activeFloorIndex;
+                bool mappedInput = viewMode == DungeonViewMode.Play &&
+                                   activeFloor &&
+                                   _mappedTiles.Contains(position);
                 bool inputVisible = viewMode == DungeonViewMode.DebugAll ||
                                     (activeFloor &&
                                      (_visibleTiles.Contains(position) ||
-                                      _exploredTiles.Contains(position))) ||
+                                      _exploredTiles.Contains(position) ||
+                                      mappedInput)) ||
                                     IsPresentedVerticalPreview(position);
                 if (!inputVisible) continue;
+
+                SpriteRenderer presentedRenderer = renderer.enabled
+                    ? renderer
+                    : _mappedSilhouetteRenderers.TryGetValue(
+                        position,
+                        out SpriteRenderer mappedRenderer) &&
+                      mappedRenderer != null &&
+                      mappedRenderer.enabled
+                        ? mappedRenderer
+                        : null;
+                if (presentedRenderer == null ||
+                    !presentedRenderer.gameObject.activeInHierarchy)
+                    continue;
 
                 Vector3 center = VisualPosition(position);
                 int layerPriority = _verticalLookTiles.Contains(position)
@@ -1204,7 +1224,7 @@ namespace ProjectC.Gameplay
                     center.x,
                     center.y,
                     layerPriority,
-                    renderer.sortingOrder));
+                    presentedRenderer.sortingOrder));
             }
 
             return WorldInputRules.TryPickProjectedTile(
@@ -1222,7 +1242,12 @@ namespace ProjectC.Gameplay
         /// 적 피격 공통 처리. 전투 결과와 로그는 항상 반영하되,
         /// 플로팅 피해·사망 안내·플래시는 현재 FOV 안에서만 공개한다.
         /// </summary>
-        private IEnumerator ShowEnemyHit(EnemyAgent enemy, int damage, string source)
+        private IEnumerator ShowEnemyHit(
+            EnemyAgent enemy,
+            int damage,
+            string source,
+            GridPos? impactOrigin = null,
+            bool playHitAnimation = true)
         {
             _runTelemetry?.RecordDamageDealt(
                 source,
@@ -1235,6 +1260,8 @@ namespace ProjectC.Gameplay
             bool visibleToPlayer = IsEnemyVisibleToPlayer(enemy);
             bool impactVisible = visibleToPlayer || IsVerticalLookTarget(enemy.State.Position);
             CombatImpactKind impact = CombatPresentationRules.ImpactForSource(source);
+            if (impactOrigin.HasValue)
+                FaceEnemyTowards(enemy, impactOrigin.Value);
             if (visibleToPlayer)
             {
                 FloatingText?.ShowDamage(
@@ -1249,11 +1276,15 @@ namespace ProjectC.Gameplay
 
             if (impactVisible && enemy.Renderer != null)
             {
-                enemy.Animator?.PlayOnce(SpriteClipTags.Hit);
+                if (playHitAnimation)
+                    enemy.Animator?.PlayOnce(SpriteClipTags.Hit);
                 yield return PlayCombatImpact(
                     enemy.Root != null ? enemy.Root.transform : enemy.Renderer.transform,
                     enemy.Renderer,
-                    impact);
+                    impact,
+                    impactOrigin.HasValue
+                        ? VisualPosition(impactOrigin.Value)
+                        : (Vector3?)null);
             }
 
             RecordEnemyDeath(enemy, visibleToPlayer);
@@ -1264,7 +1295,10 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>플레이어 피격 공통 연출. 사망 시 붉은 처리와 재시작 안내.</summary>
-        private IEnumerator ShowPlayerHit(int damage, string source)
+        private IEnumerator ShowPlayerHit(
+            int damage,
+            string source,
+            GridPos? impactOrigin = null)
         {
             // 무적(디버그): 이미 깎인 피해를 되돌린다 — 모든 플레이어 피해가 이 경로를 지난다.
             if (_godMode && damage > 0)
@@ -1292,8 +1326,16 @@ namespace ProjectC.Gameplay
                     : FloatingKindForImpact(impact));
             Debug.Log($"[{source}] 플레이어가 {damage} 피해. " +
                       $"HP {_playerState.Hp}/{_playerState.MaxHp}");
+            if (impactOrigin.HasValue)
+                FacePlayerTowards(impactOrigin.Value);
             _playerAnimator?.PlayOnce(SpriteClipTags.Hit);
-            yield return PlayCombatImpact(_player.transform, _playerRenderer, impact);
+            yield return PlayCombatImpact(
+                _player.transform,
+                _playerRenderer,
+                impact,
+                impactOrigin.HasValue
+                    ? VisualPosition(impactOrigin.Value)
+                    : (Vector3?)null);
 
             if (!_playerState.IsAlive)
             {
@@ -1498,6 +1540,7 @@ namespace ProjectC.Gameplay
             public TextMesh MoodIcon;
             public TextMesh BossMarker;
             public SpriteClipAnimator Animator; // 클립 없는 액터(PNG 폴백)는 null
+            public ActorFacing4 WorldFacing = ActorFacing4.East;
             public int DeathTurn = -1;
         }
 

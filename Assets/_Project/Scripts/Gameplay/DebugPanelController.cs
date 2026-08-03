@@ -82,7 +82,7 @@ namespace ProjectC.Gameplay
             Register("화상 FX", () => demo.DebugApplyStatusToSelf(StatusKind.Burn));
             Register("빙결 FX", () => demo.DebugApplyStatusToSelf(StatusKind.Freeze));
             Register("전체 시야", demo.ToggleViewMode);
-            Register("물약 +1", () => demo.DebugGiveItem(ItemKind.Potion));
+            Register("응급 키트 +1", () => demo.DebugGiveItem(ItemKind.Potion));
             Register("폭탄 +1", () => demo.DebugGiveItem(ItemKind.Bomb));
             Register("냉기 +1", () => demo.DebugGiveItem(ItemKind.FrostBomb));
             Register("층 몬스터 전멸", demo.DebugKillAllOnFloor);

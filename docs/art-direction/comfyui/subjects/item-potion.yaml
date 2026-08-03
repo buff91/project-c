@@ -1,9 +1,9 @@
 schema_version: 1
 id: item-potion
-name: 회복 물약
+name: 응급 키트
 slot: item-potion
 asset_type: prop
-readability_goal: 64×64과 HUD 32px 표시에서 의료용 회복 소모품으로 즉시 읽혀야 한다.
+readability_goal: 64×64과 HUD 32px 표시에서 응급 처치용 키트 충전재로 즉시 읽혀야 한다.
 output:
   canvas: [64, 64]
   pivot: [0.5, 0.125]
@@ -12,9 +12,10 @@ output:
   padding: 3
 prompt:
   positive: >-
-    one rugged emergency healing ampoule used by a survivor, squat rust-red medical canister, dark steel neck and cap, worn
-    off-white medical cross plate, chipped enamel, wrapped rubber grip,
-    believable scavenged construction
+    one rugged emergency medkit charge used by a survivor, squat rust-red
+    medical canister, dark steel neck and cap, worn off-white medical cross
+    plate, chipped enamel, wrapped rubber grip, believable scavenged
+    construction
   negative: >-
     fantasy potion, cork bottle, alchemy flask, ornate magic, translucent
     glass, cyan body,

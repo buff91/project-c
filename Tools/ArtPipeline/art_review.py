@@ -46,7 +46,7 @@ UNITY_SLOT_SOURCE = (
     PROJECT_ROOT
     / "Assets/_Project/Editor/ArtPipeline/ProjectCAsepritePipeline.cs"
 )
-# 몬스터 표시명의 SSOT. 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+# 몬스터 표시명의 SSOT. 파이프라인이 "기업 보안 사수"를 다시 타이핑하면 게임과
 # 어긋난다 — DungeonCatalog 가 보스 이름에 대해 지키는 규칙과 같다.
 UNITY_MONSTER_SOURCE = (
     PROJECT_ROOT / "Assets/_Project/Scripts/Core/MonsterRoster.cs"

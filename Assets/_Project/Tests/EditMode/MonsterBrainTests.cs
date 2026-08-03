@@ -59,6 +59,23 @@ namespace ProjectC.Tests
             Assert.Greater(path.Count, 0);
             Assert.IsTrue(path.Contains(new GridPos(2, 0, 0)));
         }
+
+        [Test]
+        public void OpenClosedDoors_DoesNotRevealOrTraverseSecretDoor()
+        {
+            var map = new GridMap();
+            for (int x = 0; x < 5; x++) map.Set(new GridPos(x, 0, 0), TileKind.Floor);
+            var secretDoor = new GridPos(2, 0, 0);
+            map.Set(secretDoor, TileKind.SecretDoor);
+
+            List<GridPos> path = GridPathfinder.FindPath(
+                map,
+                new GridPos(0, 0, 0),
+                new GridPos(4, 0, 0),
+                openClosedDoors: true);
+
+            Assert.AreEqual(0, path.Count);
+        }
     }
 
     public class MonsterActivationTests
@@ -79,16 +96,53 @@ namespace ProjectC.Tests
 
     public class MonsterRosterTests
     {
+        [TestCase("Goblin", "점거군 돌격병")]
+        [TestCase("Skeleton", "기업 진압 로봇")]
+        [TestCase("Slime", "기업 추적 드론")]
+        [TestCase("Slinger", "기업 보안 사수")]
+        [TestCase("ArcDrone", "합선 검사 드론")]
+        [TestCase("GraveWarden", "감시자")]
+        public void ThemeIdentity_PreservesLegacyIdButUsesCyberpunkDisplayName(
+            string id,
+            string displayName)
+        {
+            MonsterArchetype found = null;
+            foreach (MonsterArchetype archetype in MonsterRoster.All)
+            {
+                if (archetype.Id != id) continue;
+                found = archetype;
+                break;
+            }
+
+            Assert.IsNotNull(found, id);
+            Assert.AreEqual(displayName, found.DisplayName, id);
+        }
+
+        [Test]
+        public void ThemeIdentity_PlayerFacingNamesContainNoFantasyOrFungalTokens()
+        {
+            string[] forbidden =
+            {
+                "고블린", "해골", "스켈레톤", "슬라임", "묘지기",
+                "버섯", "균류", "포자", "언데드", "마법",
+                "크롤러", "청소봇"
+            };
+
+            foreach (MonsterArchetype archetype in MonsterRoster.All)
+            foreach (string token in forbidden)
+                StringAssert.DoesNotContain(token, archetype.DisplayName, archetype.Id);
+        }
+
         [Test]
         public void PickForDepth_IsDeterministic_AndDepthShiftsMix()
         {
             CollectionAssert.AreEqual(Pick(30, 0, seed: 5), Pick(30, 0, seed: 5));
 
             List<string> shallow = Pick(60, 0, seed: 3);
-            CollectionAssert.DoesNotContain(shallow, "Skeleton", "초반 구간엔 경비 드론이 없다");
+            CollectionAssert.DoesNotContain(shallow, "Skeleton", "초반 구간엔 진압 로봇이 없다");
 
             List<string> deep = Pick(60, 3, seed: 3);
-            CollectionAssert.Contains(deep, "Skeleton", "후반 구간엔 경비 드론이 섞인다");
+            CollectionAssert.Contains(deep, "Skeleton", "후반 구간엔 진압 로봇이 섞인다");
         }
 
         private static List<string> Pick(int count, int depth, int seed)

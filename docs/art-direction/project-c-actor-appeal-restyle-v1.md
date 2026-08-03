@@ -21,7 +21,7 @@
 | 테마 | **아포칼립스 + 사이버펑크** (GDD v0.3.3) | v1의 "폐병원 유지" 항목은 세계관 개정으로 대체됨 |
 
 - **아군**(원정자·허브 NPC): 눈·피부·머리카락 노출. 마스크/고글은 쓰지 않고 **목/가슴에 건 소품**으로 강등.
-- **적**(인간형 약탈자·기계·괴물): 마스크/렌즈/후드로 익명. 신호는 `sig-warning` 네온 포인트 1곳(§1-a 유지).
+- **적**(점거군·기업 병사·산업/진압 로봇): 마스크/렌즈/바이저로 익명. 신호는 `sig-warning` 네온 포인트 1곳(§1-a 유지).
 - 실루엣 계약(개선 플랜 §1-b)은 이 비율 안에서 그대로 적용한다 — 웅크린 어깨+배낭,
   치켜든 팔+투척끈 등 고유 외곽 1요소는 유지해야 한다.
 
@@ -151,8 +151,10 @@ covered face, hood up, pink scarf, magenta clothing`
 위 문단은 2026-07-31의 역사 기록이다. 2026-08-02에는 프레임 사이 해부가 깨진 자동 조립 초안을
 `project-c-expeditioner-grounded-source-v1.{png,prompt.md}` 기반의 접지 정적본으로 교체했다.
 `process_actor_knight_grounded_v1.py`가 하드 알파·24색 역할 팔레트·2×2 클러스터·한 발 기준선을
-적용하며, 현재 `actor-knight.aseprite`는 `96×128` 단일 `Frame_0`이다. 방향별 6태그를 PC 화면에서
-승인하기 전까지 `SurvivorAnimationApproved=false`를 유지한다.
+적용했다. 2026-08-03에는 이 승인 `Frame_0`을 태그 밖 첫 프레임으로 보존한 채 방향별 6상태
+24태그를 정식 `actor-knight.aseprite`에 승격했다. 전수 프레임과 PC Game View 승인이 끝나
+`SurvivorAnimationApproved=true`이며, 세부 계보는
+`reference/ref-expeditioner-directional-animation-v1.prompt.md`가 소유한다.
 
 ## 5. 적용 순서
 

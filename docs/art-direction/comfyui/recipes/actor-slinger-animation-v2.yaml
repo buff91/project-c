@@ -1,6 +1,6 @@
 schema_version: 1
 id: actor-slinger-animation-v2
-name: 투석 약탈자 런타임 액션 키프레임 v2
+name: 기업 보안 사수 런타임 액션 키프레임 v2
 
 purpose:
   category: actor
@@ -68,13 +68,13 @@ pipeline:
     - id: attack-windup
       label: attack · windup
       seed_offset: 401
-      prompt_suffix: ", attack windup, sling raised behind the head"
+      prompt_suffix: ", attack windup, compact arc carbine pulled tight to the shoulder"
       uploads:
         6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
     - id: attack-release
       label: attack · release
       seed_offset: 503
-      prompt_suffix: ", attack release, sling arm extended forcefully forward"
+      prompt_suffix: ", controlled arc shot, carbine muzzle aimed forcefully forward"
       uploads:
         6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
     - id: attack-recovery
@@ -131,20 +131,22 @@ generation:
 prompt:
   positive: >-
     pixelart, isometric pixel game sprite, full body character, post-apocalyptic
-    scavenger raider in hooded cloak, same costume and same facing as the
-    actor-slinger source, sharp readable silhouette, strong shoulders and
-    backpack, one glowing red accent, flat pure magenta background touching
-    every border, isolated cutout, hard pixel edges, limited colors
+    corporate security marksman in sealed charcoal tactical armor, same costume
+    and same facing as the actor-slinger source, compact arc carbine, opaque
+    visor and respirator, sharp readable silhouette, exactly one tiny dark-red
+    IFF lamp, flat pure magenta background touching every border, isolated
+    cutout, hard pixel edges, limited colors
   negative: >-
     text, watermark, label, smooth anti-alias, blurry, low detail, photorealistic,
     3d render, fantasy armor, medieval, extra limbs, wrong body count, cropped
-    feet, changed costume, changed facing, multiple characters
+    feet, changed costume, changed facing, multiple characters, leather sling,
+    slingshot, stone pouch, bow, hooded raider, exposed friendly face
 
 quality_gates:
   require_transparency_after_prepare: true
   minimum_visible_pixels: 1800
   maximum_visible_pixels: 4200
-  silhouette_tags: [grounded-feet, raised-arm, readable-pose]
+  silhouette_tags: [grounded-feet, shouldered-carbine, readable-pose]
   reject_if: [cropped-feet, extra-limbs, malformed-anatomy, perspective-bend]
 
 animation:

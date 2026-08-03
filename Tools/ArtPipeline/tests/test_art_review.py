@@ -326,13 +326,16 @@ class RecipeTests(unittest.TestCase):
     def test_overrides_change_only_the_named_fields(self) -> None:
         recipe = self.registry.get("actor-slinger-idle-v1")
         adjusted = recipe.with_overrides(
-            positive="짧은 슬링을 든 약탈자",
+            positive="소형 아크 카빈을 든 기업 보안 사수",
             checkpoint="dreamshaper_9.safetensors",
             steps=30,
             cfg=6.25,
             denoise=0.7,
         )
-        self.assertEqual("짧은 슬링을 든 약탈자", adjusted.prompt["positive"])
+        self.assertEqual(
+            "소형 아크 카빈을 든 기업 보안 사수",
+            adjusted.prompt["positive"],
+        )
         self.assertEqual(
             "dreamshaper_9.safetensors", adjusted.pipeline["checkpoint"]
         )
@@ -427,10 +430,13 @@ class RecipeTests(unittest.TestCase):
         """표시명을 파이프라인이 다시 적으면 게임과 갈린다."""
         catalog = SlotCatalog()
         name, description = catalog.describe("actor-slinger")
-        self.assertEqual("투석 약탈자", name)
+        self.assertEqual("기업 보안 사수", name)
         self.assertIn("원거리", description)
         self.assertEqual("감시자", catalog.describe("actor-grave-warden")[0])
-        self.assertEqual("약탈자", catalog.describe("actor-goblin")[0])
+        self.assertEqual("점거군 돌격병", catalog.describe("actor-goblin")[0])
+        self.assertEqual("기업 추적 드론", catalog.describe("actor-slime")[0])
+        self.assertEqual("기업 진압 로봇", catalog.describe("actor-skeleton")[0])
+        self.assertEqual("합선 검사 드론", catalog.describe("actor-arc-drone")[0])
 
     def test_goblin_summary_is_not_the_class_comment(self) -> None:
         """선언 바로 위에 붙은 주석만 그 몬스터의 설명이다."""
@@ -448,8 +454,8 @@ class RecipeTests(unittest.TestCase):
 
     def test_cards_show_the_game_name_beside_the_slot_id(self) -> None:
         recipe = self.registry.get("actor-slinger-idle-v1")
-        self.assertEqual("투석 약탈자", recipe.slot_display_name)
-        self.assertIn("*투석 약탈자* · `actor-slinger`", slot_label(recipe))
+        self.assertEqual("기업 보안 사수", recipe.slot_display_name)
+        self.assertIn("*기업 보안 사수* · `actor-slinger`", slot_label(recipe))
         nameless = self.registry.get("actor-concept-sdxl-v1")
         self.assertIsNone(nameless.slot_display_name)
         self.assertEqual("`actor-concept`", slot_label(nameless))
@@ -545,7 +551,7 @@ class RecipeTests(unittest.TestCase):
             "control_v11p_sd15_openpose_fp16.safetensors",
             values["7.control_net_name"],
         )
-        self.assertIn("visible curved sling", values["3.text"])
+        self.assertIn("compact arc carbine", values["3.text"])
 
     def test_yaml_preserves_projection_label(self) -> None:
         recipe = self.registry.get("environment-hospital-style-v1")
@@ -567,7 +573,7 @@ class RecipeTests(unittest.TestCase):
             for assignment in recipe.assignments(900, attack)
         }
         self.assertEqual(900, values["9.seed"])
-        self.assertIn("attack release", values["3.text"])
+        self.assertIn("controlled arc shot", values["3.text"])
         uploads = recipe.uploads(attack)
         self.assertTrue(
             any(
@@ -1070,7 +1076,7 @@ class StoreTests(unittest.TestCase):
         request_id = self.store.create_apply_request(
             candidate_id,
             requested_by="test",
-            intent="투석 약탈자 런타임 교체",
+            intent="기업 보안 사수 런타임 교체",
         )
         self.assertEqual(
             request_id,
@@ -1310,7 +1316,7 @@ class StoreTests(unittest.TestCase):
     def test_candidate_card_flags_an_adjusted_run(self) -> None:
         candidate_id = self.add_candidate()
         candidate = self.store.get_candidate(candidate_id)
-        adjusted = self.recipe.with_overrides(positive="짧은 슬링")
+        adjusted = self.recipe.with_overrides(positive="소형 아크 카빈")
         blocks = candidate_blocks(adjusted, candidate)
         self.assertIn("이번 실행 조정", blocks[1]["text"]["text"])
         self.assertIn("긍정 프롬프트", blocks[1]["text"]["text"])
@@ -1430,11 +1436,11 @@ class StoreTests(unittest.TestCase):
     def test_blank_modal_fields_mean_leave_the_recipe_alone(self) -> None:
         values = {
             "checkpoint": {"value": {"value": "   "}},
-            "positive": {"value": {"value": "짧은 슬링"}},
+            "positive": {"value": {"value": "소형 아크 카빈"}},
         }
         self.assertIsNone(modal_text(values, "checkpoint"))
         self.assertIsNone(modal_text(values, "negative"))
-        self.assertEqual("짧은 슬링", modal_text(values, "positive"))
+        self.assertEqual("소형 아크 카빈", modal_text(values, "positive"))
         self.assertIsNone(modal_select(values, "workflow_type"))
 
     def test_candidate_card_omits_position_for_single_candidate(self) -> None:

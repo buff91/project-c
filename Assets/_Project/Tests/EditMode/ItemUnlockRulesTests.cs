@@ -38,8 +38,8 @@ namespace ProjectC.Tests
         [Test]
         public void SurvivalAndEconomyItems_AreNeverGated()
         {
-            // 잠그면 첫 판이 망가지는 것들. 물약=생존, 폭탄=상호작용 교육,
-            // 통조림=배고픔 시계, 전리품=골드 경제, 약초/화약=조합 화면.
+            // 잠그면 첫 판이 망가지는 것들. 응급 키트=생존, 폭탄=상호작용 교육,
+            // 통조림=배고픔 시계, 전리품=골드 경제, 지혈 패치/화약=조합 화면.
             ItemKind[] mustStayOpen =
             {
                 ItemKind.Potion, ItemKind.Bomb, ItemKind.CannedFood,
@@ -292,7 +292,7 @@ namespace ProjectC.Tests
                 CollectionAssert.DoesNotContain(
                     kinds, ItemKind.OilFlask, "해금하지 않은 기름 병이 나왔다.");
                 CollectionAssert.DoesNotContain(
-                    kinds, ItemKind.RecallScroll, "해금하지 않은 두루마리가 나왔다.");
+                    kinds, ItemKind.RecallScroll, "해금하지 않은 귀환 비컨이 나왔다.");
             }
 
             Assert.IsTrue(sawFrost, "해금한 냉기 폭탄이 12개 seed 안에서 한 번도 안 나왔다.");

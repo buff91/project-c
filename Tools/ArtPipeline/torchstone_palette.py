@@ -105,6 +105,38 @@ def lock_rgba_to_palette(image: Image.Image, *, include_identity: bool = False) 
     return locked
 
 
+@lru_cache(maxsize=16)
+def _named_palette_image(names: tuple[str, ...]) -> Image.Image:
+    if not names:
+        raise ValueError("named Torchstone palette cannot be empty")
+    entries = dict(load_gpl_entries())
+    missing = [name for name in names if name not in entries]
+    if missing:
+        raise ValueError(f"Torchstone palette entries are missing: {missing}")
+    colors = [entries[name] for name in names]
+    palette = Image.new("P", (1, 1))
+    flat = [channel for rgb in colors for channel in rgb]
+    flat += list(colors[0]) * (256 - len(colors))
+    palette.putpalette(flat)
+    return palette
+
+
+def lock_rgba_to_named_palette(
+    image: Image.Image,
+    names: tuple[str, ...],
+) -> Image.Image:
+    """Lock visible RGB to an ordered subset of named Torchstone entries."""
+    source = image.convert("RGBA")
+    alpha = source.getchannel("A")
+    palette = _named_palette_image(tuple(names))
+    first = dict(load_gpl_entries())[names[0]]
+    rgb = Image.new("RGB", source.size, first)
+    rgb.paste(source, mask=alpha)
+    locked = rgb.quantize(palette=palette, dither=Image.Dither.NONE).convert("RGBA")
+    locked.putalpha(alpha)
+    return locked
+
+
 _NEIGHBOR_OFFSETS = (
     (-1, -1), (0, -1), (1, -1),
     (-1, 0), (1, 0),

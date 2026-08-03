@@ -141,9 +141,20 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   [`SYSTEMS.md` — 시야/안개](SYSTEMS.md)가 소유한다.
 - 3상태(Unknown/Explored/Visible)의 **"Visible"만** 계산한다. Explored 누적/렌더 정책은
   호출자(Gameplay)와 `FloorVisibilityRules`가 담당 — 이 분리가 "렌더 ≠ 시뮬" 불변식의 경계다.
+- `MappedSilhouette`는 이 계산에 들어가지 않는 별도 지도 지식 축이다. 현재 활성 층의 일반 토폴로지를
+  입력으로 받고 FOV·LoS·적 지각 결과에는 영향을 주지 않는다.
 
 ### 5.2 FloorVisibilityRules — 무엇을 그릴지
-순수 boolean 정책 하나: `debugAll`이면 전부, 활성 층이면 `visible || explored`, 그 외 층이면 `verticalPreview`(Hole 국소 미리보기)만.
+활성 층은 `Visible`이면 실제 표현, `Explored`이면 기억 표현, `Unknown && MappedSilhouette`이면 공용
+실루엣을 고른다. 이 규칙은 이미 결정된 `mapped` 여부와 FOV 상태를 합성할 뿐, 공개할 토폴로지 범주를
+직접 판정하지 않는다. 비활성 층에는 mapped 표현을 만들지 않고 기존 `verticalPreview`(Hole 국소
+미리보기)만 허용한다. `debugAll`은 종전처럼 실제 지오메트리를 전부 표시한다.
+
+### 5.3 MapKnowledgeRules — 무엇을 지도 지식으로 공개할지
+FOV와 무관하게 현재 층의 실제 `TileKind`를 `Floor / Barrier / Door / Gap` 공용 범주로 접는다.
+공개 전 `SecretDoor` 좌표와 `SecretRoomTiles` footprint는 제외해 생성 경계 밖으로 돌출된 비밀문 칸이
+표식이 되지 않게 한다. 공개 이벤트가 발생하면 Gameplay `IsoPrototypeDemo.MapKnowledge`가 통로와 방
+footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 상태는 이 규칙의 입력이 아니다.
 
 > **미리보기 집합도 FOV로 만든다** (`IsoPrototypeDemo.Visibility`): 반대편 층의 elevation 대역에서
 > `GridVisibility.Compute`를 한 번 더 돌린 결과를 쓴다. 예전에는 착지점 중심 체비셰프 박스를 전부
@@ -159,14 +170,26 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   형태). 비용 = **스텝당 1**(계단·링크 점프 포함). **4방향만**. open set은 선형 스캔 `List`(작은 격자라 충분).
 - 이웃 생성 `EnumerateNeighbors`: 4방향 × elevation delta{−1,0,+1}. **높이 변화(±1)는 현재/후보 타일이
   `Stairs`일 때만** 허용 — **`Ladder`는 여기 없다.** 이후 `LinksFrom(current)`의 명시적 링크를 비용 1로 더한다.
-- `openClosedDoors`: 몬스터 추격이 닫힌 문을 통과 경로로 계획하게 한다.
+- `openClosedDoors`: 몬스터 추격과 mapped 플레이어 자동 이동이 일반 닫힌 문을 **계획 경로의 진입 가능
+  노드**로 포함하게 한다. 이는 문을 walkable로 바꾸거나 상태를 변경하지 않으며, 플레이어 실행기가
+  별도의 열기 행동 1턴을 소비한다. `SecretDoor`는
+  이 옵션으로도 통과할 수 없다.
 - `canClimb`(**기본 true**): false면 `IsLadderLink`인 링크를 건너뛴다. 기본이 true인 이유는 호출부
   대부분이 플레이어 이동/도달성 검사라서이고 덕분에 기존 도달성 불변식이 그대로 통과했다.
   **몬스터만 자기 `MonsterArchetype.CanClimb`를 넘긴다.** 층 전환 계단 링크는 어느 쪽 끝도 사다리가
   아니라 걸리지 않는다(걸리면 못 오르는 적이 자기 층에 갇힌다).
 
-### 6.2 TravelRules — SPD식 자동 이동 게이팅
+### 6.2 TravelRules + Gameplay mapped 실행기 — SPD식 자동 이동 게이팅
 - `AllowedSteps` = 적이 보이면 탭당 **1스텝**, 아니면 경로 전체. 인터럽트 우선순위는 **피해 > 새로 보인 적 > 새로 보인 아이템**이고 `TravelInterrupt`의 **enum 값이 곧 우선순위**다.
+- Gameplay `IsoPrototypeDemo.MapKnowledge`는 현재 활성 층의 `MappedSilhouette` 타일을 자동 이동 목표로
+  받고 `TravelRules`의 게이트를 행동마다 적용한다. 일반 닫힌 문은 경로 실행의 행동
+  경계로 남겨 문 앞 접근 → 열기 1턴 → FOV 갱신 → 적 턴 → 인터럽트 평가를 거친다. 피해·새 적·새
+  아이템이 없을 때만 현재 문 상태와 점유에서 경로를 다시 계획해 같은 이동 의도를 계속한다. 플레이어
+  행동 직후 새로 보인 적은 적 턴 뒤 시야를 벗어나도 transient 발견 플래그로 보존한다. 공용 `Floor`로
+  접힌 미확인 `StairsUp/Down`은 자동 층 전환 누수를 막기 위해 실제 FOV로 확인되기 전 경로에서 제외한다.
+  mapped A*는 `canClimb:false`라 사다리 발판에는 걸어갈 수 있어도 링크를 자동 통과하지 않는다. 등반은
+  기존 자기 탭/Space 상호작용이 소유한다. `SecretDoor` 좌표도 공개 전 mapped 집합에 없으며 자동 이동이
+  열거나 통과하지 않는다.
 
 ### 6.3 VerticalTraversalRules — 층 전환/사다리
 - `TryGetAutomaticFloorDestination`: 밟은 타일이 `StairsUp/Down`이고 링크가 있으면 즉시 링크 목적지로
@@ -383,7 +406,7 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   **스탯·표시명의 SSOT는 이 파일 하나**이고 규칙 서술은 [`SYSTEMS.md` — 몬스터 AI](SYSTEMS.md)가
   소유한다 — 수치를 여기 복제하면 한쪽만 갱신된다(실제로 그랬다). 배치 관점의 사실 셋:
   **등반 가능 여부는 실루엣과 일치**시켜 인간형만 `CanClimb`(규칙을 배우지 않고 눈으로 판단하게),
-  원거리 명중 효과는 `MonsterRangedEffect`(합선 드론의 `ConductiveShock`가 웅덩이를 통전시킨다),
+  원거리 명중 효과는 `MonsterRangedEffect`(합선 검사 드론의 `ConductiveShock`가 웅덩이를 통전시킨다),
   **혼합 가중치는 로스터가 아니라 `DungeonBandProfiles`가 소유**하고 `PickForDepth`는 한 번만 롤한다(§7.5).
 - **원거리 몬스터** — `IsRanged`면 브레인이 `DecideRanged`를 먼저 탄다(거리 벌리기 → 사격 →
   사선 잡는 한 걸음, 셋 다 실패하면 일반 추격). 판정은 플레이어와 **같은 `CombatRules`**를 쓴다.
@@ -542,9 +565,11 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   `CameraRecenterRequested`로 내보내므로 게임 상태가 마우스/키보드를 직접 읽지 않는다.
   HUD의 기존 미니맵 플레이어 마커 클릭은 `PrototypeHudController`가 같은 `RecenterCamera()` 액션으로
   전달하며, 카메라 상태에 포인터 장치 분기를 추가하지 않는다.
-- **입력 픽킹의 판정은 Core `WorldInputRules`가 소유한다** — 아이소 다이아몬드 히트 테스트,
+- **입력 픽킹의 기하는 Core `WorldInputRules`가 소유한다** — Gameplay가 실제 타일과 현재 활성 층
+  `MappedSilhouette` 중 표현된 후보만 구성하고, Core는 아이소 다이아몬드 히트 테스트와
   우선순위(**LayerPriority↓ → SortingOrder↓ → 중심 근접**), `IsMapTile`(검은 여백은 격자 좌표로
-  환산돼도 맵 입력이 아니다). `IsoTapInput`은 이를 호출해 액션으로 바꾸기만 하고, 적을 먼저 집는
+  환산돼도 맵 입력이 아니다)을 맡는다. Gameplay는 mapped 후보를 이동 목표로만 분류하고 공개 전
+  `SecretRoomTiles`와 비활성 층은 후보에 넣지 않는다. `IsoTapInput`은 이를 호출해 액션으로 바꾸기만 하고, 적을 먼저 집는
   규칙은 호스트가 `ActorPicker` 델리게이트로 주입한다 — 그래야 입력 레이어가 게임 상태를 모른다.
   카메라 드래그 제스처는 이 월드 피킹 경로와 분리해 같은 프레임의 타일 행동을 억제한다.
 - **정적 서비스**: `AtomicJsonStore`(임시 파일 교체 + 백업 복구)를 바닥에 두고 `RunSaveStore`·
@@ -557,9 +582,8 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - 컨트롤러: `PrototypeHudController`(던전 HUD·액션 휠) · `HubHudController` ·
   `InventoryPanelController`(6×4 백팩+조합) · `DisplaySettingsPanelController` · `DebugPanelController`.
 - **HudKeyboardInput**은 `Escape`·`I`·`F1`·Cmd/Ctrl+D의 눌림 edge를 HUD 액션으로 번역하는
-  Input System/legacy 경계다. 이 네 단발 명령의 소비자는 액션만 읽되, 어떤 모달을 먼저 닫을지는
-  계속 자체 상태 순서로 결정한다. 액션 휠 modifier hold와 월드 이동·포인터/터치는 아직 각
-  `PrototypeHudController`·`IsoTapInput` 경계에 남는다.
+  Input System/legacy 경계다. 각 컨트롤러는 장치 API 대신 액션만 읽되, 어떤 모달을 먼저 닫을지는
+  계속 자체 상태 순서로 결정한다. 이동·Tab·중클릭·포인터/터치는 `IsoTapInput` 경계에 남는다.
 - `HubHudController`의 버튼·포인터 콜백은 `HubUiBindingRegistry`가 정확한 delegate를 보관하고
   `OnDisable` 및 재바인딩 전에 대칭 해제한다. `OnEnable`마다 람다를 새로 더하면 허브 재진입 횟수만큼
   구매·이동·씬 전환이 중복 실행되므로 직접 `clicked +=`를 흩뿌리지 않는다.
@@ -568,12 +592,13 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 - 개발 PC 기본 프리셋은 16:9 QHD(2560×1440)다. 같은 비율 해상도는 같은 논리 레이아웃으로
   정규화되므로 픽셀 해상도를 올리는 것과 HUD 밀도를 줄이는 것은 별도로 다룬다.
 - **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶고, 화면 드래그를
-  해상도 독립 월드 이동량으로 변환하며 자유 보기 중심을 현재 층 투영 경계에 clamp한다.
+  해상도 독립 월드 이동량으로 변환하며 자유 보기 중심을 현재 활성 층의 `MappedSilhouette` 투영 경계에
+  clamp한다. 미니맵도 같은 mapped 경계를 기본 윤곽으로 쓰고 그 위에 `Explored`/`Visible`을 합성한다.
   **허브/던전 플레이 배율은 `playCameraSize` 하나**이며 허브도 맵 경계 auto-fit 없이 플레이어를
   기본 추종한다. 던전 PLAY의 `IsoPrototypeDemo.CameraLook`은 중심만 임시 덮어쓰는 Gameplay
   프레젠테이션 상태이며 Core의 턴·FOV·AI·활성 층 상태가 아니다. 전체 맵을 보이는
-  `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는
-  `OrthographicCameraFramingTests`가 고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
+  `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는 `OrthographicCameraFramingTests`가
+  고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
 - 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI. 단, 투척 가능 칸처럼 **타일 바닥 자체를
   칠하고 FOV·아이소 정렬을 따르는 범위 데칼**은 월드 SpriteRenderer 표현이다
   (상세 `UI_ARCHITECTURE.md`).
@@ -583,15 +608,23 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 11.4 액터 애니메이션 계층 (Animator 미사용)
 
 스프라이트 클립 재생은 네 층이고 각 층의 소유물이 하나씩이다.
-- `Core/SpriteClipRules` — 시간 → 프레임 인덱스(`FrameAt`) + 공식 태그 6종. UnityEngine 무의존이라 shim 테스트에 그대로 올라간다.
+- `Core/SpriteClipRules` + `ActorFacingRules` — 시간 → 프레임 인덱스(`FrameAt`) + 공식 태그 6종,
+  월드 4방향 판정·시점 회전·`상태-방향` 태그 조합/파싱. UnityEngine 무의존이라 shim 테스트에
+  그대로 올라간다.
 - `Gameplay/ActorAnimationSet` — 베이크 산출물 그릇(`SpriteClip` = 프레임 배열 + **프레임 시작 시각** +
   클립 길이). 지속시간이 가변인 Aseprite 타이밍을 무손실로 옮기려 "시작 시각" 형태로 저장한다.
+  방향 클립 우선, 무방향 클립 폴백 조회만 소유한다.
 - `Gameplay/SpriteClipAnimator` — 경량 재생기. **`renderer.sprite`만 만진다** — position·scale은
   `CombatFx`, 안정 상태 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가 소유하므로 겹치면 서로
-  싸운다. 시야 밖에서는 시간이 얼어붙었다 이어가 재동기화가 없고, 클립 없는 태그는 no-op라
-  PNG 폴백(정지 1프레임) 액터와 공존한다.
-- `Editor/ArtPipeline/ActorAnimationBake` — Aseprite 태그 → 카탈로그 슬롯 베이크. 배선은
-  `IsoPrototypeDemo.AttachActorAnimator`(클립이 없으면 컴포넌트를 안 붙인다).
+  싸운다. `IsoPrototypeDemo.ActorPresentation`이 월드 facing을 화면 facing으로 바꿔 넘기면 같은 상태의
+  방향 클립으로 교체하고 루프 위상/사망 마지막 프레임을 보존한다. 시야 밖에서는 시간이 얼어붙었다
+  이어가 재동기화가 없고, 클립 없는 태그는 no-op라 PNG 폴백(정지 1프레임) 액터와 공존한다.
+  `fall`처럼 클립보다 월드 모션이 긴 원샷은 `PlayOnceAndHold`로 마지막 프레임을 잡고 모션 소유자가
+  착지 시 `StopToIdle`로 해제한다.
+- `Editor/ArtPipeline/ActorAnimationBake` — Aseprite 태그 → 카탈로그 슬롯 베이크. Unity Aseprite
+  임포터가 `clip.length` 직전에 덧붙이는 동일 스프라이트 유지 키는 authored 프레임에서 제외하되
+  원래 클립 길이는 보존한다. 배선은 `IsoPrototypeDemo.AttachActorAnimator`(클립이 없으면 컴포넌트를
+  안 붙인다).
 
 ---
 

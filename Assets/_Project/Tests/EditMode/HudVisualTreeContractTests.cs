@@ -2,7 +2,9 @@ using NUnit.Framework;
 using ProjectC.Core;
 using ProjectC.Gameplay;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 namespace ProjectC.Tests
@@ -15,6 +17,8 @@ namespace ProjectC.Tests
             "hp-hearts",
             "hp-value",
             "minimap-view",
+            "minimap-floor-badge",
+            "minimap-north-label",
             "minimap-player-marker",
             "settings-button",
             "game-menu-button",
@@ -42,6 +46,7 @@ namespace ProjectC.Tests
             "vertical-route-discovery",
             "route-discovery-title",
             "route-discovery-detail",
+            "route-discovery-close",
             "potion-button",
             "potion-count",
             "bomb-button",
@@ -154,6 +159,17 @@ namespace ProjectC.Tests
                 "Minimap player glyph");
             Assert.IsFalse(tree.Q("feedback-chip").ClassListContains("is-open"));
             Assert.IsFalse(tree.Q("vertical-hint-chip").ClassListContains("is-open"));
+
+            VisualElement discovery = tree.Q("vertical-route-discovery");
+            Assert.AreEqual(PickingMode.Ignore, discovery.pickingMode);
+            AssertSubtreeIgnoresPicking(
+                discovery.Q<Label>("route-discovery-title"),
+                "Discovery content");
+            Assert.AreEqual(
+                PickingMode.Ignore,
+                discovery.Q<Button>("route-discovery-close").pickingMode,
+                "Closed discovery cards must not leave an invisible hit target");
+            AssertSubtreeIgnoresPicking(tree.Q("boss-panel"), "Boss panel");
 
             // 판이 끝난 뒤 착지점은 캠프 하나다. 던전 씬을 그대로 리로드하는 "다시 도전"을
             // 되살리면 방금 번 골드·해금을 못 쓰고 같은 조건으로 돌아가는 길이 다시 생긴다.
@@ -299,6 +315,41 @@ namespace ProjectC.Tests
             }
         }
 
+        [Test]
+        public void FieldDeckDesktopIcons_AreNativeTwelvePixelSourceSprites()
+        {
+            string[] names =
+            {
+                "settings",
+                "menu",
+                "rotate-left",
+                "rotate-right",
+                "backpack",
+                "wait",
+                "melee",
+                "ranged",
+                "interact"
+            };
+
+            foreach (string name in names)
+            {
+                string path = $"Assets/_Project/Art/Runtime/ui-field-{name}.png";
+                Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                Assert.IsNotNull(icon, $"Field Deck icon missing: {path}");
+                Assert.AreEqual(12, icon.width, $"{path} width");
+                Assert.AreEqual(12, icon.height, $"{path} height");
+
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsNotNull(importer, $"Texture importer missing: {path}");
+                Assert.AreEqual(FilterMode.Point, importer.filterMode, $"{path} filter");
+                Assert.IsFalse(importer.mipmapEnabled, $"{path} mipmaps");
+                Assert.AreEqual(
+                    TextureImporterCompression.Uncompressed,
+                    importer.textureCompression,
+                    $"{path} compression");
+            }
+        }
+
         [TestCase("ui-action-hex", 72, 64)]
         [TestCase("ui-action-hex-hover", 72, 64)]
         public void ActionWheelFrames_AreCrispSwapReadySprites(
@@ -311,6 +362,26 @@ namespace ProjectC.Tests
             Assert.IsNotNull(frame, $"Action wheel frame missing: {path}");
             Assert.AreEqual(expectedWidth, frame.width, $"{path} width");
             Assert.AreEqual(expectedHeight, frame.height, $"{path} height");
+        }
+
+        [TestCase(false, false, 10, 0, false)]
+        [TestCase(true, true, 10, 0, false)]
+        [TestCase(true, false, 5, 5, false)]
+        [TestCase(true, false, 6, 5, true)]
+        public void ActionWheel_IsVisibleOnlyWhileTabIsHeld(
+            bool tabHeld,
+            bool anyModalOpen,
+            int frame,
+            int blockedThroughFrame,
+            bool expected)
+        {
+            Assert.AreEqual(
+                expected,
+                PrototypeHudController.ShouldShowActionWheel(
+                    tabHeld,
+                    anyModalOpen,
+                    frame,
+                    blockedThroughFrame));
         }
 
         [Test]
@@ -393,6 +464,42 @@ namespace ProjectC.Tests
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(scenes[0].path));
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(scenes[1].path));
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(scenes[2].path));
+        }
+
+        [Test]
+        public void PrototypeScene_WiresBothResponsiveHudLayouts()
+        {
+            const string scenePath = "Assets/_Project/Scenes/IsoPrototype.unity";
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            bool openedByTest = !scene.IsValid() || !scene.isLoaded;
+            if (openedByTest)
+                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+
+            try
+            {
+                PrototypeHudController controller = null;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    controller = root.GetComponentInChildren<PrototypeHudController>(true);
+                    if (controller != null)
+                        break;
+                }
+
+                Assert.IsNotNull(controller, "IsoPrototype scene is missing PrototypeHudController.");
+                Assert.IsNotNull(controller.mobileHudAsset, "Mobile HUD wrapper is not wired.");
+                Assert.IsNotNull(controller.desktopHudAsset, "Desktop HUD wrapper is not wired.");
+                Assert.AreEqual(
+                    "Assets/_Project/UI/PrototypeHUD.Mobile.uxml",
+                    AssetDatabase.GetAssetPath(controller.mobileHudAsset));
+                Assert.AreEqual(
+                    "Assets/_Project/UI/PrototypeHUD.Desktop.uxml",
+                    AssetDatabase.GetAssetPath(controller.desktopHudAsset));
+            }
+            finally
+            {
+                if (openedByTest)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
         }
     }
 }

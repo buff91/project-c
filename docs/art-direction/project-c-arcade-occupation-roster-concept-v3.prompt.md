@@ -3,7 +3,10 @@
 - Generated: 2026-08-02
 - Tool: built-in ImageGen
 - Use case: `precise-object-edit`
-- Status: adopted roster target; concept only, not conform-ready sprites
+- Status: proportion-history reference only. Its cleaner crawler and brown-led material correction were
+  superseded on 2026-08-04 by the individual actor sources, including
+  `project-c-corporate-pursuit-drone-source-v2.png`, and the role palette in
+  `process_arcade_occupation_actors_v1.py`.
 - Output: `project-c-arcade-occupation-roster-concept-v3.png`
 
 ## Input
@@ -11,6 +14,9 @@
 `project-c-arcade-occupation-roster-concept-v2.png` — identities, scale lineup and silhouettes to preserve.
 
 ## Final correction prompt set
+
+The following correction prompt is retained as rejected production history. Do not reuse its removal of active
+teal/cyan lights, neutral-brown material bias, or cleaner-fluid direction for runtime actors.
 
 Preserve the player and the five-role lineup. On enemies, replace active teal/cyan lights with low-saturation
 neutral material and give each exactly one tiny `#F0492A` hostile IFF point; keep murky cleaner fluid and restrained

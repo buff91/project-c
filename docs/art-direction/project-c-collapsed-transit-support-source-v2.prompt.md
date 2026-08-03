@@ -38,7 +38,9 @@ merchant placeholders on a `#FF00FF` chroma-key background.
 >   strapped salvage, holding a small amber inspection lamp or tally device.
 >   Trustworthy practical silhouette, not a fantasy shopkeeper.
 >
-> All three should look authored by the same pixel artist as the bulwark
-> survivor, scavenger raider, sentry drone, and ooze cast. Preserve transparency
-> usability by keeping the magenta background flat and uninterrupted up to
-> crisp sprite edges.
+> All three should look authored by the same pixel artist as the expeditioner,
+> occupation assault soldier, corporate riot robot, quadruped corporate pursuit drone,
+> corporate marksman, inspection drone, and cyberpsycho warden cast. The
+> pursuit drone is visibly armed industrial security machinery, never a cleaning appliance, living ooze
+> or creature. Preserve transparency usability by keeping the magenta
+> background flat and uninterrupted up to crisp sprite edges.

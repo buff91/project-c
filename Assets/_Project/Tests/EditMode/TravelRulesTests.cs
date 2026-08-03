@@ -100,6 +100,32 @@ namespace ProjectC.Tests
 
             Assert.AreEqual(TravelInterrupt.EnemySighted, result);
         }
+
+        [Test]
+        public void Evaluate_EnemySightedDuringAction_RemainsInterruptAfterEnemyLeavesView()
+        {
+            TravelInterrupt result = TravelRules.Evaluate(
+                NoEnemies,
+                new[] { ("runner", false, true) },
+                newItemSighted: false,
+                tookDamage: false,
+                enemySightedDuringAction: true);
+
+            Assert.AreEqual(TravelInterrupt.EnemySighted, result);
+        }
+
+        [Test]
+        public void Evaluate_DamageOutranksEnemySightedDuringAction()
+        {
+            TravelInterrupt result = TravelRules.Evaluate(
+                NoEnemies,
+                new (string, bool, bool)[0],
+                newItemSighted: true,
+                tookDamage: true,
+                enemySightedDuringAction: true);
+
+            Assert.AreEqual(TravelInterrupt.PlayerDamaged, result);
+        }
     }
 
     public class RunSummaryTests
@@ -190,9 +216,12 @@ namespace ProjectC.Tests
             Assert.IsTrue(summary.Extracted);
         }
 
-        [TestCase("Goblin B2-1", "약탈자")]
-        [TestCase("Skeleton B3-2", "낡은 경비 드론")]
-        [TestCase("Slime B1-1", "누출 오염 슬러지")]
+        [TestCase("Goblin B2-1", "점거군 돌격병")]
+        [TestCase("Skeleton B3-2", "기업 진압 로봇")]
+        [TestCase("Slime B1-1", "기업 추적 드론")]
+        [TestCase("Slinger 4F-1", "기업 보안 사수")]
+        [TestCase("ArcDrone B2-3", "합선 검사 드론")]
+        [TestCase("GraveWarden 8F-1", "감시자")]
         [TestCase("Burn", "화상")]
         [TestCase("Fall", "낙하")]
         [TestCase("Crush", "낙하 충돌")]

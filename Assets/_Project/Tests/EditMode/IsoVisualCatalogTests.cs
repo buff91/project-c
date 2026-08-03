@@ -678,6 +678,26 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void MonsterAnimationsFor_AllArcadeArchetypes_UseDedicatedAnimationSlots()
+        {
+            var expected = new (string monsterId, string actorKey)[]
+            {
+                ("Goblin", "goblin"),
+                ("Skeleton", "skeleton"),
+                ("Slime", "slime"),
+                ("Slinger", "slinger"),
+                ("ArcDrone", "arcDrone"),
+                ("GraveWarden", "graveWarden")
+            };
+            foreach ((string monsterId, string actorKey) in expected)
+            {
+                ActorAnimationSet set = MakeAnimationSet(actorKey, "idle", "attack");
+                _catalog.actorAnimations.Add(set);
+                Assert.AreSame(set, _catalog.MonsterAnimationsFor(monsterId), monsterId);
+            }
+        }
+
+        [Test]
         public void SpriteClip_Find_IsCaseInsensitive()
         {
             ActorAnimationSet set = MakeAnimationSet("goblin", "idle", "attack");

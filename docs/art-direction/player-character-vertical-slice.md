@@ -6,8 +6,9 @@
 > 6개 상태 태그, Unity 카탈로그 연결과 PC Game View 확인까지.
 >
 > **상태:** 아래는 초기 vertical slice의 역사 기록이다. 현재 런타임 기준은
-> `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`에서 마감한 `96×128` 단일
-> `Frame_0`이며, 방향별 6태그를 수작업 승인하기 전까지 `SurvivorAnimationApproved=false`다.
+> `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`에서 마감한 승인 `Frame_0`과
+> `reference/ref-expeditioner-directional-animation-v1.prompt.md`의 4방향 6상태 타임라인이다.
+> 정식 `actor-knight.aseprite`는 81프레임·24태그이며 `SurvivorAnimationApproved=true`다.
 
 ## 화면에서 출발한 판단
 
@@ -62,7 +63,7 @@
 수치를 올려 포즈를 억지로 만드는 방식은 identity를 먼저 무너뜨렸다. 이 vertical slice의
 핵심 결론은 **denoise 튜닝보다 ControlNet 입력 규약을 먼저 검증해야 한다**는 것이다.
 
-## Unity 런타임 계약
+## 초기 vertical slice의 Unity 런타임 계약(역사 기록)
 
 - 정식 원본: `Assets/_Project/Art/Source/Aseprite/actor-knight.aseprite`
 - 캔버스/피벗: 96×128, PPU 128, Canvas Pivot `(0.5, 0.04)`

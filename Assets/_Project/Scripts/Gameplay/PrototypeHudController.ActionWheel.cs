@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,6 +8,8 @@ namespace ProjectC.Gameplay
 {
     public partial class PrototypeHudController : MonoBehaviour
     {
+        private readonly List<Rect> _wheelReservedBounds = new List<Rect>(7);
+        private int _wheelBlockedThroughFrame = -1;
 
         private void BuildActionWheel()
         {
@@ -110,7 +113,6 @@ namespace ProjectC.Gameplay
                     i == 1 && !hasInteraction);
                 button.clickable = new Clickable(() =>
                 {
-                    _wheelPinned = false;
                     _actionWheel?.RemoveFromClassList("is-open");
                     slot.Action();
                 });
@@ -143,6 +145,12 @@ namespace ProjectC.Gameplay
                 new Vector3(0f, 0.4f, 0f) + (Vector3)CameraFollowTarget());
             Vector2 panelPoint = RuntimePanelUtils.ScreenToPanel(
                 panel, new Vector2(world.x, Screen.height - world.y));
+            VisualElement wheelParent = _actionWheel.parent;
+            if (wheelParent == null) return;
+            // ScreenToPanel/worldBound는 패널 좌표지만 left/top은 hud-root 로컬 좌표다.
+            // safe area가 hud-root를 이동·축소하는 모바일에서도 같은 좌표계를 쓰도록
+            // 목적점과 예약 영역을 모두 휠 부모 로컬로 내린다.
+            Vector2 localPoint = wheelParent.WorldToLocal(panelPoint);
 
             // 셀 크기는 Desktop/Touch USS가 다르게 결정한다. 실제 resolved size에서
             // 반지름과 화면 clamp를 파생해 스타일 교체 뒤에도 배치가 어긋나지 않게 한다.
@@ -163,23 +171,20 @@ namespace ProjectC.Gameplay
                 : resolvedHeight;
             float radius = Mathf.Max(buttonWidth, buttonHeight) +
                            (ActivePresentation == HudPresentationMode.Mobile ? 12f : 8f);
-            float buttonHalfWidth = buttonWidth * 0.5f;
-            float buttonHalfHeight = buttonHeight * 0.5f;
-            const float screenMargin = 12f;
-            float panelWidth = panel.visualTree.layout.width;
-            float panelHeight = panel.visualTree.layout.height;
-            float horizontalInset = radius + buttonHalfWidth + screenMargin;
-            float verticalInset = radius + buttonHalfHeight + screenMargin;
-            float centerX = Mathf.Clamp(
-                panelPoint.x,
-                horizontalInset,
-                Mathf.Max(horizontalInset, panelWidth - horizontalInset));
-            float centerY = Mathf.Clamp(
-                panelPoint.y,
-                verticalInset,
-                Mathf.Max(verticalInset, panelHeight - verticalInset));
-            _actionWheel.style.left = centerX;
-            _actionWheel.style.top = centerY;
+            Rect parentBounds = wheelParent.localBound;
+            float panelWidth = parentBounds.width;
+            float panelHeight = parentBounds.height;
+            float margin = ActivePresentation == HudPresentationMode.Mobile ? 12f : 8f;
+            CollectWheelReservedBounds(wheelParent);
+            Vector2 center = HudWheelPlacement.FindSafeCenter(
+                localPoint,
+                new Vector2(panelWidth, panelHeight),
+                new Vector2(buttonWidth, buttonHeight),
+                radius,
+                margin,
+                reserved: _wheelReservedBounds);
+            _actionWheel.style.left = center.x;
+            _actionWheel.style.top = center.y;
 
             for (int i = 0; i < _actionWheel.childCount; i++)
             {
@@ -187,6 +192,69 @@ namespace ProjectC.Gameplay
                 VisualElement button = _actionWheel[i];
                 button.style.left = Mathf.Cos(angle) * radius;
                 button.style.top = -Mathf.Sin(angle) * radius;
+            }
+        }
+
+        private void CollectWheelReservedBounds(VisualElement wheelParent)
+        {
+            _wheelReservedBounds.Clear();
+            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            AddWheelReservedBound(
+                wheelParent, root.Q<VisualElement>(className: "vitals"));
+            AddWheelReservedBound(
+                wheelParent, root.Q<VisualElement>(className: "minimap-panel"));
+            AddWheelReservedBound(
+                wheelParent, root.Q<VisualElement>("message-log"));
+            AddWheelReservedBound(
+                wheelParent, root.Q<VisualElement>("vertical-hint-chip"));
+            AddWheelReservedBound(
+                wheelParent, root.Q<VisualElement>(className: "hud-bottom"));
+            // transition 첫 프레임의 resolved opacity/display가 아직 이전 값이어도
+            // 논리적으로 열린 과도 패널은 즉시 안전 영역으로 예약한다.
+            AddWheelReservedBound(wheelParent, _bossPanel, IsOpen(_bossPanel));
+            AddWheelReservedBound(
+                wheelParent,
+                _routeDiscovery,
+                IsOpen(_routeDiscovery) &&
+                !_routeDiscovery.ClassListContains("is-suppressed"));
+        }
+
+        /// <summary>
+        /// display:none 패널은 열린 첫 프레임까지 worldBound가 0일 수 있다. 그 프레임에
+        /// 휠을 그리지 않고 한 번의 UI 레이아웃 뒤 실제 footprint로 다시 배치한다.
+        /// 핀/홀드 의도는 유지하므로 다음 프레임에 자동으로 돌아온다.
+        /// </summary>
+        private void WaitOneLayoutPassBeforeShowingWheel()
+        {
+            _wheelBlockedThroughFrame = Mathf.Max(
+                _wheelBlockedThroughFrame,
+                Time.frameCount);
+            _actionWheel?.RemoveFromClassList("is-open");
+        }
+
+        private void AddWheelReservedBound(
+            VisualElement wheelParent,
+            VisualElement element,
+            bool logicallyVisible = false)
+        {
+            if (element == null ||
+                (!logicallyVisible &&
+                 (element.resolvedStyle.display == DisplayStyle.None ||
+                  element.resolvedStyle.opacity <= 0.01f)))
+                return;
+
+            Rect bounds = element.worldBound;
+            if (bounds.width > 0f && bounds.height > 0f)
+            {
+                Vector2 min = wheelParent.WorldToLocal(
+                    new Vector2(bounds.xMin, bounds.yMin));
+                Vector2 max = wheelParent.WorldToLocal(
+                    new Vector2(bounds.xMax, bounds.yMax));
+                _wheelReservedBounds.Add(Rect.MinMaxRect(
+                    Mathf.Min(min.x, max.x),
+                    Mathf.Min(min.y, max.y),
+                    Mathf.Max(min.x, max.x),
+                    Mathf.Max(min.y, max.y)));
             }
         }
 

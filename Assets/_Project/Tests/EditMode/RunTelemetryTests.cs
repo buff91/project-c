@@ -66,7 +66,8 @@ namespace ProjectC.Tests
             Assert.AreEqual(1, telemetry.restSitesUsed);
             Assert.AreEqual(3, telemetry.healingFromRest);
             Assert.AreEqual(1, telemetry.secretRoomsFound);
-            StringAssert.Contains("Goblin 5", telemetry.FormatCompactSummary());
+            StringAssert.Contains("점거군 돌격병 5", telemetry.FormatCompactSummary());
+            StringAssert.DoesNotContain("Goblin", telemetry.FormatCompactSummary());
             StringAssert.Contains("휴식 1회/+3 HP", telemetry.FormatCompactSummary());
             StringAssert.Contains("숨은 방 1", telemetry.FormatCompactSummary());
         }

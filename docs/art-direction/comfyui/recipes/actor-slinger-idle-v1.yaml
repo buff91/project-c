@@ -1,13 +1,13 @@
 schema_version: 1
 id: actor-slinger-idle-v1
-name: 투석 약탈자 기본 자세 v1
+name: 기업 보안 사수 기본 자세 v1
 
 purpose:
   category: actor
   asset_type: character
   slot: actor-slinger
   use: gameplay
-  readability_goal: 치켜든 팔, 긴 슬링, 후드와 붉은 외눈이 96×128에서도 분리되어야 한다.
+  readability_goal: 견착한 소형 아크 카빈, 불투명 바이저, 적색 IFF가 96×128에서도 분리되어야 한다.
   animation_scope: idle-base-only
 
 output:
@@ -56,7 +56,7 @@ controlnets:
     loader_node: 7
     apply_node: 8
     strength: 1.0
-    purpose: 오른팔을 머리 위로 든 투척 자세 고정
+    purpose: 상체·양팔의 견착 사격 자세와 발 기준선 고정
 
 generation:
   width: 512
@@ -71,30 +71,30 @@ generation:
 
 prompt:
   positive: >-
-    pixelart, best quality pixel art game sprite, full body single male
-    post-apocalyptic hooded masked raider slinger matching the source scavenger
-    costume and proportions, dynamic three-quarter isometric pose, right arm
-    raised high overhead spinning a long leather sling, visible curved sling
-    cord with stone pouch, left arm extended for balance, crouched shoulders,
-    compact backpack, patched charcoal concrete-gray and rust-brown clothing,
-    one small red glowing goggle, strong readable silhouette, feet on one
-    baseline, empty hands except the sling cord, isolated centered cutout,
-    flat solid magenta background, hard pixel clusters, limited colors
+    pixelart, best quality pixel art game sprite, full body single anonymous
+    post-apocalyptic corporate security marksman, sealed charcoal tactical
+    uniform, compact corporate-surplus armor plates, narrow opaque visor and
+    lower-face respirator, compact arc carbine shouldered toward the player,
+    trigger hand close to the chest, support hand on a short foregrip, small
+    power cell magazine, worn amber unit chevron, exactly one tiny dark-red IFF
+    lamp, strong readable silhouette, feet on one baseline, isolated centered
+    cutout, flat solid magenta background, hard pixel clusters, limited colors
   negative: >-
     worst quality, low quality, female, woman, girl, skirt, dress, bare legs,
-    malformed anatomy, extra arms, extra legs, missing limbs, arms down,
-    neutral pose, slingshot, gun, rifle, bow, sword, shield, boxes, crates,
+    malformed anatomy, extra arms, extra legs, missing limbs, leather sling,
+    slingshot, stone pouch, bow, sword, shield, hooded raider, boxes, crates,
     furniture, surrounding props, multiple people, cropped feet, floor,
     ground, cast shadow, scenery, white border, gray background, gradient
     background, text, watermark, photorealistic, smooth 3d, vector art,
-    fantasy armor, medieval
+    fantasy armor, medieval, exposed friendly face, pristine police uniform,
+    neon overload
 
 quality_gates:
   require_transparency_after_prepare: true
   minimum_visible_pixels: 1800
   maximum_visible_pixels: 4200
-  silhouette_tags: [raised-arm, visible-sling, grounded-feet, red-warning-eye]
-  reject_if: [cropped-feet, extra-limbs, firearm, fantasy-armor]
+  silhouette_tags: [shouldered-carbine, opaque-visor, grounded-feet, red-iff-lamp]
+  reject_if: [cropped-feet, extra-limbs, missing-carbine, fantasy-armor]
 
 review:
   slack_channel_env: SLACK_ART_CHANNEL_ID

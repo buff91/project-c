@@ -68,6 +68,7 @@ namespace ProjectC.Gameplay
                 pair.Value.transform.position = VisualPosition(pair.Key);
             }
 
+            RefreshMappedSilhouettes();
             RebuildB2FloorFoundation(b2FloorLightField);
 
             // 가시성과 함께 높이 딤 틴트도 갱신돼야 하므로 개별 갱신 경로를 그대로 태운다.
@@ -834,7 +835,14 @@ namespace ProjectC.Gameplay
                 if (pos.x < 0 || pos.x >= width || pos.y < 0 || pos.y >= height) continue;
 
                 bool visible = debug || _visibleTiles.Contains(pos);
-                if (!visible && !_exploredTiles.Contains(pos)) continue;
+                bool explored = _exploredTiles.Contains(pos);
+                if (!visible && !explored)
+                {
+                    if (!TryGetMappedSilhouette(pos, out MapSilhouetteKind silhouette))
+                        continue;
+                    pixels[pos.y * width + pos.x] = MappedMinimapColor(silhouette);
+                    continue;
+                }
 
                 pixels[pos.y * width + pos.x] = MinimapTileColor(pair.Value.kind, visible);
             }

@@ -30,17 +30,20 @@ namespace ProjectC.Core
         /// <summary>
         /// 한 스텝 뒤 인터럽트 판정. 우선순위: 피해 > 새로 보인 적 > 새로 보인 아이템.
         /// previouslyVisibleEnemyIds는 스텝 시작 전에 보이던 살아있는 적 ID 집합.
+        /// enemySightedDuringAction은 플레이어 행동 직후 보였지만 적 턴 뒤에는 사라진 발견 사건을 보존한다.
         /// </summary>
         public static TravelInterrupt Evaluate(
             IReadOnlyCollection<string> previouslyVisibleEnemyIds,
             IEnumerable<(string Id, bool Visible, bool Alive)> enemies,
             bool newItemSighted,
-            bool tookDamage)
+            bool tookDamage,
+            bool enemySightedDuringAction = false)
         {
             if (previouslyVisibleEnemyIds == null) throw new ArgumentNullException(nameof(previouslyVisibleEnemyIds));
             if (enemies == null) throw new ArgumentNullException(nameof(enemies));
 
             if (tookDamage) return TravelInterrupt.PlayerDamaged;
+            if (enemySightedDuringAction) return TravelInterrupt.EnemySighted;
 
             foreach ((string id, bool visible, bool alive) in enemies)
             {

@@ -19,7 +19,7 @@ namespace ProjectC.Gameplay
     [Serializable]
     public sealed class SpriteClip
     {
-        public string tag;              // SpriteClipTags 6종 중 하나
+        public string tag;              // 기본 6태그 또는 idle-north 같은 방향 태그
         public bool loop;               // clip.isLooping에서 베이크 (원샷 태그는 Repeat=1 규약)
         public Sprite[] frames;
         public float[] frameStartTimes; // 오름차순, [0] == 0
@@ -45,6 +45,26 @@ namespace ProjectC.Gameplay
 
         public bool HasClips => clips != null && clips.Count > 0;
 
+        public bool HasDirectionalClips
+        {
+            get
+            {
+                if (clips == null) return false;
+                for (int i = 0; i < clips.Count; i++)
+                {
+                    SpriteClip clip = clips[i];
+                    if (clip != null &&
+                        ProjectC.Core.DirectionalSpriteClipTags.TryParse(
+                            clip.tag,
+                            out _,
+                            out _))
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
         public SpriteClip Find(string tag)
         {
             if (clips == null || string.IsNullOrEmpty(tag)) return null;
@@ -57,6 +77,21 @@ namespace ProjectC.Gameplay
             }
 
             return null;
+        }
+
+        /// <summary>방향 클립을 우선 찾고, 없으면 기존 무방향 클립으로 폴백한다.</summary>
+        public SpriteClip Find(string baseTag, ProjectC.Core.ActorFacing4 facing)
+        {
+            if (ProjectC.Core.DirectionalSpriteClipTags.TryCompose(
+                    baseTag,
+                    facing,
+                    out string directionalTag))
+            {
+                SpriteClip directional = Find(directionalTag);
+                if (directional != null) return directional;
+            }
+
+            return Find(baseTag);
         }
     }
 

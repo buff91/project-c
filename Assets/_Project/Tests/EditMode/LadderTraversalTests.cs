@@ -166,6 +166,9 @@ namespace ProjectC.Tests
                 MonsterRoster.Regular.Any(a => a.CanClimb), "오를 수 있는 종이 있어야 한다");
             Assert.IsTrue(
                 MonsterRoster.Regular.Any(a => !a.CanClimb), "못 오르는 종이 있어야 한다");
+            Assert.IsTrue(
+                MonsterRoster.GraveWarden.CanClimb,
+                "인간형 사이버사이코 감시자는 기계 폴백의 등반 규칙을 물려받으면 안 된다");
         }
 
         [Test]

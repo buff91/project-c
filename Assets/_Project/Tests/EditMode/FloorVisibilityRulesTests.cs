@@ -53,5 +53,46 @@ namespace ProjectC.Tests
                 explored: false,
                 verticalPreview: false));
         }
+
+        [Test]
+        public void ShouldRenderMappedSilhouette_UnknownMappedTileOnActiveFloor_IsVisible()
+        {
+            Assert.IsTrue(FloorVisibilityRules.ShouldRenderMappedSilhouette(
+                debugAll: false,
+                tileFloorIndex: 0,
+                activeFloorIndex: 0,
+                visible: false,
+                explored: false,
+                mapped: true));
+        }
+
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        [TestCase(false, false, true)]
+        public void ShouldRenderMappedSilhouette_ActualOrInactivePresentation_IsHidden(
+            bool visible,
+            bool explored,
+            bool inactiveFloor)
+        {
+            Assert.IsFalse(FloorVisibilityRules.ShouldRenderMappedSilhouette(
+                debugAll: false,
+                tileFloorIndex: inactiveFloor ? -1 : 0,
+                activeFloorIndex: 0,
+                visible: visible,
+                explored: explored,
+                mapped: true));
+        }
+
+        [Test]
+        public void ShouldRenderMappedSilhouette_DebugAll_UsesActualGeometryOnly()
+        {
+            Assert.IsFalse(FloorVisibilityRules.ShouldRenderMappedSilhouette(
+                debugAll: true,
+                tileFloorIndex: 0,
+                activeFloorIndex: 0,
+                visible: false,
+                explored: false,
+                mapped: true));
+        }
     }
 }

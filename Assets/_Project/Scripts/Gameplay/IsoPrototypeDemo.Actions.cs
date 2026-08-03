@@ -8,7 +8,7 @@ namespace ProjectC.Gameplay
     public partial class IsoPrototypeDemo
     {
 
-        /// <summary>물약을 마셔 HP를 회복한다. 행동 1회를 소비한다.</summary>
+        /// <summary>응급 키트를 사용해 HP를 회복한다. 행동 1회를 소비한다.</summary>
         public void UsePotion()
         {
             if (!Application.isPlaying || _resolvingAction ||
@@ -17,7 +17,7 @@ namespace ProjectC.Gameplay
             if (RejectWorldActionWhileVerticalLooking()) return;
             if (PotionCount <= 0)
             {
-                InteractionFeedback?.Invoke("NO POTIONS");
+                InteractionFeedback?.Invoke("NO MEDKITS");
                 return;
             }
             if (_playerState.Hp >= _playerState.MaxHp)
@@ -164,9 +164,11 @@ namespace ProjectC.Gameplay
             if (_playerState.IsAlive && enemy.State.IsAlive &&
                 CombatRules.CanMelee(_grid.Map, _playerState, enemy.State, _playerLoadout.MeleeReach))
             {
+                FacePlayerTowards(enemy.State.Position);
                 _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
                 yield return AnimateMeleeLunge(
                     _player.transform,
+                    _playerRenderer,
                     enemy.Root != null
                         ? enemy.Root.transform.position
                         : _grid.GridToWorld(enemy.State.Position));
@@ -175,7 +177,7 @@ namespace ProjectC.Gameplay
                         _grid.Map, _playerLoadout.MeleeReach))
                 {
                     if (_runTelemetry != null) _runTelemetry.meleeAttacks++;
-                    yield return ShowEnemyHit(enemy, damage, "Melee");
+                    yield return ShowEnemyHit(enemy, damage, "Melee", _playerPos);
                     // 둔기 장비: 때린 대상을 밀어낸다 — 구멍·창문 앞이면 그대로 낙하로 이어진다.
                     if (_playerLoadout.KnockbackOnHit && enemy.State.IsAlive)
                         yield return KnockbackCombatant(_playerState.Position, enemy.State);
@@ -251,10 +253,16 @@ namespace ProjectC.Gameplay
         private IEnumerator FireRanged(EnemyAgent enemy, int damage)
         {
             if (_runTelemetry != null) _runTelemetry.rangedAttacks++;
+            FacePlayerTowards(enemy.State.Position);
             _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
+            yield return AnimateRangedRelease(
+                _player.transform,
+                _playerRenderer,
+                ProjectileEndpointWorld(enemy.State.Position, isVerticalEndpoint: false),
+                new Color32(61, 225, 232, 255));
             yield return AnimateProjectile(_playerPos, enemy.State.Position);
             InteractionFeedback?.Invoke($"RANGED HIT · {damage} DAMAGE");
-            yield return ShowEnemyHit(enemy, damage, "Ranged");
+            yield return ShowEnemyHit(enemy, damage, "Ranged", _playerPos);
             yield return ResolveEnemyPhase();
         }
 
@@ -376,8 +384,8 @@ namespace ProjectC.Gameplay
             UpdateHealthBar(_playerHpFill, _playerState);
             PlayerHpChanged?.Invoke();
             FloatingText?.ShowDamage(_player.transform.position, healed, FloatingTextKind.Heal);
-            InteractionFeedback?.Invoke($"POTION +{healed} HP");
-            Debug.Log($"[Item] 물약 사용: +{healed} HP → {_playerState.Hp}/{_playerState.MaxHp}");
+            InteractionFeedback?.Invoke($"MEDKIT +{healed} HP");
+            Debug.Log($"[Item] 응급 키트 사용: +{healed} HP → {_playerState.Hp}/{_playerState.MaxHp}");
             yield return FlashColor(_playerRenderer, new Color32(96, 224, 128, 255));
 
             yield return ResolveEnemyPhase();
@@ -392,7 +400,22 @@ namespace ProjectC.Gameplay
             _runTelemetry?.RecordItemUsed(ItemKind.OilFlask, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
-            yield return AnimateProjectile(_playerPos, target, verticalPath);
+            GridPos releaseTarget = ProjectileReleaseTarget(
+                _playerPos,
+                target,
+                verticalPath);
+            FacePlayerTowards(releaseTarget);
+            _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
+            yield return AnimateRangedRelease(
+                _player.transform,
+                _playerRenderer,
+                ProjectileReleaseWorldTarget(_playerPos, target, verticalPath),
+                new Color32(228, 160, 68, 255));
+            yield return AnimateProjectile(
+                _playerPos,
+                target,
+                verticalPath,
+                ProjectileVisualKind.OilFlask);
             List<GridPos> splashed = OilRules.Splash(_grid.Map, target);
             InteractionFeedback?.Invoke($"OIL SPLASHED ×{splashed.Count} — 불이 닿으면 발화한다");
             Debug.Log($"[Item] 기름 살포 {target}: {splashed.Count}칸");
@@ -411,13 +434,23 @@ namespace ProjectC.Gameplay
             _runTelemetry?.RecordItemUsed(ItemKind.ThrowingKnife, GlobalFloorIndex(_activeFloorIndex));
             InventoryChanged?.Invoke();
 
+            FacePlayerTowards(enemy.State.Position);
+            _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
+            yield return AnimateRangedRelease(
+                _player.transform,
+                _playerRenderer,
+                ProjectileEndpointWorld(enemy.State.Position, isVerticalEndpoint: false),
+                new Color32(255, 194, 82, 255));
             if (CombatRules.TryRanged(
                     _playerState, enemy.State, _grid.Map, rangedAttackRange,
                     out int damage, knifeDamage))
             {
-                yield return AnimateProjectile(_playerPos, enemy.State.Position);
+                yield return AnimateProjectile(
+                    _playerPos,
+                    enemy.State.Position,
+                    visualKind: ProjectileVisualKind.Knife);
                 InteractionFeedback?.Invoke($"KNIFE HIT · {damage} DAMAGE");
-                yield return ShowEnemyHit(enemy, damage, "Knife");
+                yield return ShowEnemyHit(enemy, damage, "Knife", _playerPos);
             }
             else
             {
@@ -471,7 +504,7 @@ namespace ProjectC.Gameplay
             if (RejectWorldActionWhileVerticalLooking()) return;
             if (_inventory.Count(ItemKind.RecallScroll) <= 0)
             {
-                InteractionFeedback?.Invoke("NO SCROLLS");
+                InteractionFeedback?.Invoke("NO RECALL");
                 return;
             }
 
@@ -521,7 +554,24 @@ namespace ProjectC.Gameplay
             InventoryChanged?.Invoke();
 
             bool fiery = kind != ItemKind.FrostBomb;
-            yield return AnimateProjectile(_playerPos, target, verticalPath);
+            GridPos releaseTarget = ProjectileReleaseTarget(
+                _playerPos,
+                target,
+                verticalPath);
+            FacePlayerTowards(releaseTarget);
+            _playerAnimator?.PlayOnce(SpriteClipTags.Attack);
+            yield return AnimateRangedRelease(
+                _player.transform,
+                _playerRenderer,
+                ProjectileReleaseWorldTarget(_playerPos, target, verticalPath),
+                fiery
+                    ? new Color32(255, 127, 54, 255)
+                    : new Color32(111, 222, 247, 255));
+            yield return AnimateProjectile(
+                _playerPos,
+                target,
+                verticalPath,
+                fiery ? ProjectileVisualKind.Bomb : ProjectileVisualKind.FrostBomb);
             yield return ResolveExplosion(target, fiery ? bombDamage : frostBombDamage, fiery);
 
             if (verticalPath.HasValue)

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Generate Project-C's cohesive Torchstone runtime pixel-art set.
+"""Generate Project-C's non-enemy Torchstone runtime pixel-art fallback set.
 
 The generated PNGs are deliberately hand-authored at final pixel resolution.  The
 AI board in docs/art-direction/project-c-runtime-asset-board-v2.png is a design
-reference only; no pixels are sliced from it.  Re-running this script is stable.
+reference only; no pixels are sliced from it. Enemy slots are deliberately excluded:
+``process_arcade_occupation_actors_v1.py`` owns all six cyberpunk enemy identities.
 """
 
 import argparse
@@ -36,9 +37,6 @@ P = {
     "purple_dark": (48, 28, 52, 255),
     "purple": (82, 43, 82, 255),
     "purple_lit": (126, 62, 105, 255),
-    "goblin_dark": (43, 61, 31, 255),
-    "goblin": (82, 105, 46, 255),
-    "goblin_lit": (132, 142, 62, 255),
     "bone_dark": (91, 83, 69, 255),
     "bone": (174, 157, 126, 255),
     "bone_lit": (218, 203, 170, 255),
@@ -182,80 +180,6 @@ def alchemist():
     d.polygon([(9, 35), (13, 33), (15, 43), (10, 46), (8, 41)], fill=P["brown"])
     d.rectangle((9, 38, 11, 42), fill=P["red"])
     save(im, "actor-alchemist")
-
-
-def goblin():
-    im, d = canvas()
-    # Dagger and buckler.
-    d.polygon([(5, 36), (8, 34), (17, 45), (14, 48)], fill=P["outline"])
-    d.polygon([(7, 36), (8, 36), (16, 45), (14, 46)], fill=P["steel_lit"])
-    d.ellipse((32, 31, 45, 47), fill=P["outline"])
-    d.ellipse((34, 33, 43, 45), fill=P["steel_dark"])
-    d.rectangle((38, 34, 40, 43), fill=P["steel"])
-    # Feet and wiry body.
-    d.polygon([(15, 48), (21, 49), (20, 58), (11, 58), (12, 54)], fill=P["outline"])
-    d.polygon([(25, 48), (31, 49), (36, 57), (27, 59), (24, 54)], fill=P["outline"])
-    d.rectangle((15, 50, 20, 56), fill=P["goblin_dark"])
-    d.polygon([(27, 50), (31, 51), (33, 55), (28, 57)], fill=P["goblin"])
-    d.polygon([(13, 29), (20, 25), (31, 27), (36, 37), (31, 50), (17, 49), (11, 40)], fill=P["outline"])
-    d.polygon([(15, 30), (21, 27), (29, 29), (34, 37), (29, 47), (18, 47), (13, 39)], fill=P["brown_dark"])
-    d.polygon([(16, 32), (22, 28), (21, 45), (17, 45), (14, 39)], fill=P["brown_lit"])
-    d.line([(15, 39), (32, 39)], fill=P["steel_dark"], width=2)
-    # Head with asymmetric ears and brow.
-    d.polygon([(5, 13), (16, 17), (20, 8), (31, 9), (35, 16), (45, 11), (40, 22), (34, 28), (18, 29), (10, 23)], fill=P["outline"])
-    d.polygon([(8, 15), (17, 19), (21, 10), (29, 11), (34, 19), (41, 14), (38, 21), (32, 26), (19, 27), (12, 22)], fill=P["goblin"])
-    d.polygon([(10, 16), (18, 20), (22, 11), (25, 11), (20, 25), (14, 22)], fill=P["goblin_lit"])
-    d.line([(18, 18), (23, 17)], fill=P["outline"], width=2)
-    d.line([(29, 17), (34, 19)], fill=P["outline"], width=2)
-    d.point((21, 19), fill=P["red_lit"])
-    d.point((31, 20), fill=P["red_lit"])
-    d.polygon([(23, 23), (30, 23), (27, 26)], fill=P["outline"])
-    d.point((25, 24), fill=P["bone_lit"])
-    save(im, "actor-goblin")
-
-
-def skeleton():
-    im, d = canvas()
-    d.polygon([(5, 35), (8, 33), (21, 51), (18, 54)], fill=P["outline"])
-    d.polygon([(7, 35), (8, 35), (20, 51), (18, 52)], fill=P["steel_lit"])
-    d.ellipse((33, 30, 46, 47), fill=P["outline"])
-    d.ellipse((35, 32, 44, 45), fill=P["steel_dark"])
-    d.line([(36, 37), (43, 39)], fill=P["steel"])
-    # Legs, pelvis and rib cage.
-    d.line([(20, 44), (16, 58)], fill=P["outline"], width=5)
-    d.line([(28, 44), (32, 58)], fill=P["outline"], width=5)
-    d.line([(20, 45), (17, 57)], fill=P["bone"] , width=2)
-    d.line([(27, 45), (31, 57)], fill=P["bone_dark"], width=2)
-    d.polygon([(17, 39), (23, 36), (31, 39), (28, 47), (20, 47)], fill=P["outline"])
-    d.polygon([(19, 40), (23, 38), (29, 40), (27, 45), (21, 45)], fill=P["bone"])
-    d.line([(24, 24), (24, 40)], fill=P["bone"], width=3)
-    for y, span in [(27, 8), (31, 9), (35, 7)]:
-        d.arc((24 - span, y - 4, 24 + span, y + 4), 15, 165, fill=P["bone"], width=2)
-    d.line([(17, 27), (11, 41)], fill=P["bone"], width=2)
-    d.line([(31, 27), (37, 38)], fill=P["bone_dark"], width=2)
-    # Skull.
-    d.ellipse((15, 5, 34, 24), fill=P["outline"])
-    d.polygon([(18, 7), (29, 7), (33, 12), (30, 21), (26, 24), (18, 20), (16, 12)], fill=P["bone"])
-    d.polygon([(18, 8), (23, 7), (21, 18), (18, 18), (16, 13)], fill=P["bone_lit"])
-    d.rectangle((19, 13, 22, 16), fill=P["outline"])
-    d.rectangle((27, 13, 30, 16), fill=P["outline"])
-    d.rectangle((23, 17, 26, 20), fill=P["bone_dark"])
-    d.line([(20, 21), (29, 21)], fill=P["outline"])
-    px(d, [(20, 9), (18, 11), (20, 29), (20, 33)], P["bone_lit"])
-    save(im, "actor-skeleton")
-
-
-def slime():
-    im, d = canvas()
-    d.polygon([(7, 50), (10, 38), (17, 31), (22, 24), (28, 27), (32, 32), (38, 38), (42, 50), (38, 57), (11, 57)], fill=P["outline"])
-    d.polygon([(9, 49), (12, 39), (18, 33), (22, 27), (27, 29), (31, 35), (36, 39), (40, 50), (36, 55), (12, 55)], fill=P["teal_dark"])
-    d.polygon([(12, 45), (16, 36), (20, 32), (22, 42), (18, 51), (12, 52)], fill=P["teal"])
-    d.polygon([(15, 39), (18, 34), (21, 32), (20, 38), (17, 42)], fill=P["teal_lit"])
-    d.rectangle((18, 43, 21, 46), fill=P["outline"])
-    d.rectangle((30, 43, 33, 46), fill=P["outline"])
-    d.line([(22, 50), (29, 50)], fill=P["outline"], width=2)
-    px(d, [(13, 49), (17, 53), (27, 32), (35, 49), (38, 52)], P["teal"])
-    save(im, "actor-slime")
 
 
 def merchant():
@@ -480,9 +404,8 @@ def main():
     knight("actor-knight")
     ranger()
     alchemist()
-    goblin()
-    skeleton()
-    slime()
+    # 적 6종은 process_arcade_occupation_actors_v1.py가 단독 소유한다. 이 범용 생성기가
+    # 호환 ID(actor-goblin/skeleton/slime)를 구 판타지 픽셀로 되돌리지 않게 호출 자체가 없다.
     merchant()
     prop_chest()
     prop_barrel()

@@ -25,8 +25,8 @@ namespace ProjectC.Gameplay
         /// <summary>활성 반경: 시야보다 약간 넓게 잡아 시야 밖에서도 접근을 준비한다. (GDD §5.7 컬링)</summary>
         private int MonsterActiveRadius => fieldOfViewRadius + 2;
 
-        /// <summary>누출 오염 슬러지 접촉 시 부여하는 중독 지속 턴.</summary>
-        private const int SlimePoisonTurns = 2;
+        /// <summary>기업 추적 드론의 손상된 제압제 주입턱이 부여하는 중독 지속 턴.</summary>
+        private const int PursuitDronePoisonTurns = 2;
 
         /// <summary>대상이 젖은 칸 위에 있는가 — 화상 소화 판정용. (요소 반응: 물+불, GDD §5.5)</summary>
         private bool IsOnWetTile(GridPos pos) => _grid != null && _grid.Map.Get(pos)?.wet == true;
@@ -136,7 +136,9 @@ namespace ProjectC.Gameplay
             {
                 Archetype = archetype,
                 IsBoss = isBoss,
-                DisplayName = string.IsNullOrWhiteSpace(displayName) ? archetype.Id : displayName,
+                DisplayName = string.IsNullOrWhiteSpace(displayName)
+                    ? archetype.DisplayName
+                    : displayName,
                 State = new CombatantState(
                     isBoss
                         ? displayName
@@ -164,6 +166,7 @@ namespace ProjectC.Gameplay
             }
             enemy.LastMood = enemy.Brain.Mood;
             _enemies.Add(enemy);
+            FaceEnemyTowards(enemy, _playerPos);
             ApplyEnemyVisuals(enemy);
             return enemy;
         }
@@ -243,21 +246,23 @@ namespace ProjectC.Gameplay
                 case MonsterActionKind.Attack:
                     if (CombatRules.AreAdjacent(enemy.State, _playerState))
                     {
+                        FaceEnemyTowards(enemy, _playerPos);
                         enemy.Animator?.PlayOnce(SpriteClipTags.Attack);
                         yield return AnimateMeleeLunge(
                             enemy.Root != null ? enemy.Root.transform : null,
+                            enemy.Renderer,
                             _player.transform.position);
                     }
                     if (CombatRules.TryMelee(
                             enemy.State, _playerState, out int damage,
                             targetArmor: _playerLoadout.Armor))
                     {
-                        yield return ShowPlayerHit(damage, enemy.State.Id);
-                        // 누출 오염 슬러지(코드 ID Slime)는 접촉 시 중독시킨다. (상태이상 확장, GDD §5.5)
+                        yield return ShowPlayerHit(damage, enemy.State.Id, enemy.State.Position);
+                        // 기업 추적 드론(코드 ID Slime)은 손상된 제압제 카트리지를 주입한다. (GDD §5.5)
                         if (_playerState.IsAlive &&
                             enemy.State.Id.StartsWith("Slime", System.StringComparison.Ordinal))
                         {
-                            _playerState.Statuses.Apply(StatusKind.Poison, SlimePoisonTurns);
+                            _playerState.Statuses.Apply(StatusKind.Poison, PursuitDronePoisonTurns);
                             InteractionFeedback?.Invoke("POISONED!");
                         }
                     }
@@ -277,7 +282,7 @@ namespace ProjectC.Gameplay
                     {
                         yield return SetDoorState(action.Target, TileKind.DoorOpen);
                         _enemyPhaseMapChanged = true;
-                        InteractionFeedback?.Invoke($"{enemy.State.Id} OPENED A DOOR!");
+                        InteractionFeedback?.Invoke($"{enemy.DisplayName} — 문 개방");
                         Debug.Log($"[Door] {enemy.State.Id} 가 {action.Target} 문을 열었다");
                     }
                     break;
@@ -296,8 +301,17 @@ namespace ProjectC.Gameplay
             bool seen = _visibleTiles.Contains(enemy.State.Position);
             if (seen)
             {
+                FaceEnemyTowards(enemy, _playerPos);
                 enemy.Animator?.PlayOnce(SpriteClipTags.Attack);
-                yield return AnimateProjectile(enemy.State.Position, _playerState.Position);
+                yield return AnimateRangedRelease(
+                    enemy.Root != null ? enemy.Root.transform : null,
+                    enemy.Renderer,
+                    ProjectileEndpointWorld(_playerPos, isVerticalEndpoint: false),
+                    new Color32(226, 75, 126, 255));
+                yield return AnimateProjectile(
+                    enemy.State.Position,
+                    _playerState.Position,
+                    visualKind: ProjectileVisualKind.HostileBolt);
             }
 
             if (enemy.Archetype.RangedEffect == MonsterRangedEffect.ConductiveShock)
@@ -323,7 +337,10 @@ namespace ProjectC.Gameplay
                 {
                     if (damaged == _playerState)
                     {
-                        yield return ShowPlayerHit(enemy.Archetype.RangedPower, "ArcShock");
+                        yield return ShowPlayerHit(
+                            enemy.Archetype.RangedPower,
+                            "ArcShock",
+                            enemy.State.Position);
                         continue;
                     }
 
@@ -332,7 +349,8 @@ namespace ProjectC.Gameplay
                         yield return ShowEnemyHit(
                             damagedEnemy,
                             enemy.Archetype.RangedPower,
-                            "ArcShock");
+                            "ArcShock",
+                            enemy.State.Position);
                 }
                 if (shock.Energized.Count > 0)
                     InteractionFeedback?.Invoke($"WATER CONDUCTED ×{shock.Energized.Count}!");
@@ -350,12 +368,12 @@ namespace ProjectC.Gameplay
                     enemy.Archetype.RangedPower,
                     _playerLoadout.Armor))
             {
-                yield return ShowPlayerHit(damage, enemy.State.Id);
+                yield return ShowPlayerHit(damage, enemy.State.Id, enemy.State.Position);
             }
             else if (seen)
             {
                 // 사선이 끊긴 뒤였다면 빗나간 것으로 읽히게 둔다(피해 없음).
-                InteractionFeedback?.Invoke($"{enemy.DisplayName} 의 투척이 빗나갔다");
+                InteractionFeedback?.Invoke($"{enemy.DisplayName}의 사격이 빗나갔다");
             }
         }
 
@@ -368,6 +386,7 @@ namespace ProjectC.Gameplay
             Vector3 start = enemy.Root != null ? enemy.Root.transform.position : Vector3.zero;
             GridPos previous = enemy.State.Position;
 
+            FaceEnemyTowards(enemy, next);
             enemy.State.MoveTo(next);
             ApplyEnemyVisuals(enemy);
 
@@ -375,9 +394,9 @@ namespace ProjectC.Gameplay
             // 활성 몬스터 수만큼 느려지지 않게 한다.
             if (animate && enemy.Root != null)
             {
-                enemy.Animator?.PlayLoop(SpriteClipTags.Walk);
                 Vector3 end = enemy.Root.transform.position;
                 float duration = secondsPerStep * 0.75f;
+                enemy.Animator?.PlayLoopForDuration(SpriteClipTags.Walk, duration);
                 float elapsed = 0f;
                 while (elapsed < duration)
                 {
@@ -435,6 +454,7 @@ namespace ProjectC.Gameplay
                 tint.g * elevationTint.g * bossTint.g * light.g,
                 tint.b * elevationTint.b * bossTint.b * light.b,
                 alpha);
+            ApplyEnemyFacing(enemy);
             bool renderActor = EnemyPresentationRules.ShouldRenderActor(
                 viewMode == DungeonViewMode.DebugAll,
                 _dungeon.Height.FloorIndex(pos.elevation),

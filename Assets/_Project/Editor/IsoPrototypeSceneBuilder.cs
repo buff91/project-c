@@ -14,6 +14,8 @@ namespace ProjectC.EditorTools
     {
         private const string ScenePath = "Assets/_Project/Scenes/IsoPrototype.unity";
         private const string HudPath = "Assets/_Project/UI/PrototypeHUD.uxml";
+        private const string MobileHudPath = "Assets/_Project/UI/PrototypeHUD.Mobile.uxml";
+        private const string DesktopHudPath = "Assets/_Project/UI/PrototypeHUD.Desktop.uxml";
         private const string PanelSettingsPath = "Assets/_Project/UI/PrototypePanelSettings.asset";
 
         [MenuItem("Project-C/Build Isometric Prototype")]
@@ -71,10 +73,21 @@ namespace ProjectC.EditorTools
 
             var controller = hudObject.AddComponent<PrototypeHudController>();
             controller.demo = demo;
+            controller.mobileHudAsset = LoadRequiredHudAsset(MobileHudPath);
+            controller.desktopHudAsset = LoadRequiredHudAsset(DesktopHudPath);
             var debugPanel = hudObject.AddComponent<DebugPanelController>();
             debugPanel.demo = demo;
             var inventoryPanel = hudObject.AddComponent<InventoryPanelController>();
             inventoryPanel.demo = demo;
+        }
+
+        private static VisualTreeAsset LoadRequiredHudAsset(string path)
+        {
+            VisualTreeAsset asset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(path);
+            if (asset == null)
+                throw new System.InvalidOperationException($"HUD 레이아웃을 찾을 수 없습니다: {path}");
+
+            return asset;
         }
 
         private static void Capture(Camera camera)

@@ -99,7 +99,7 @@ namespace ProjectC.Tests
         /// <summary>
         /// 통조림 한 칸은 여러 회분을 담는다. 배고픔이 판 전체를 관통하는 상시 압박이라
         /// 1회분 = 1칸이면 식량이 백팩을 <b>상시 점유</b>하고, 그 자리는 전부 파밍(기둥 ④)에서
-        /// 빠져나간다. 세금은 판돈(회복)보다 촘촘히 쌓이므로 물약보다 작을 이유가 없다.
+        /// 빠져나간다. 세금은 판돈(회복)보다 촘촘히 쌓이므로 응급 키트보다 작을 이유가 없다.
         /// </summary>
         [Test]
         public void CannedFood_StacksCharges_SoUpkeepDoesNotEatTheBackpack()

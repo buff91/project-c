@@ -303,7 +303,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ProjectC.Gameplay::ProjectC.Gameplay.IsoPrototypeDemo
   roomSize: 13
-  secondsPerStep: 0.09
+  secondsPerStep: 0.18
   buildOnStart: 1
   configureMainCamera: 1
   playCameraSize: 2.3

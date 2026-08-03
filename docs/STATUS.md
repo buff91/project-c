@@ -24,11 +24,34 @@
   화면 짧은 축에서 정수로 정한다(1280×720·1920×1080·2560×1440이 전부 640×360으로 떨어져 배치가
   하나다). PC 최소 지원 창은 1280×720. 캔버스가 960×540에서 줄어든 만큼 같은 논리 px가 화면에서
   약 50% 커진 것이 시인성 대책의 실체다 — 정수 배율이 픽셀 폰트를 선명하게 만들진 않는다(실측 기각).
-  PC 던전 HUD는 **4구역 + 1과도 밴드**다: 바이탈(좌상, 하트+상태이상 칩) · 과도 밴드(상단 중앙,
-  보스/발견 카드 공유) · 계기 묶음(우상, 미니맵 88×88 + 도구/시점) · 층 스택(우측, 층마다 눈금 하나) ·
-  메시지 로그(좌하, 4줄) · 하단 레일. 크롬 어휘는 **플레이트와 창 둘뿐**이다.
-  좌표는 디버그 패널에만 두고 상시 HUD에는 높이만 표시한다. 행동 피드백은 3초 뒤 강조만 빠지고
-  줄은 메시지 로그에 남으며, 수직 이동 안내는 1회성 발견 카드 + 실제 장치 위에 섰을 때의 문맥 한 줄만 남긴다.
+  PC 던전 HUD는 **Field Deck 4구역 + 1과도 밴드**다: 160px 바이탈(좌상, 5칸 분절 HP+상태이상 칩) ·
+  256px 과도 밴드(상단 중앙, 보스/입장·발견 카드 공유) · 176×104 계기 묶음(우상, 층 눈금+
+  `▲/◆/▼` 보기+56×56 미니맵+도구/회전) · 208×52 메시지 로그(좌하, 4줄) · 자원 184px/
+  행동 268px 하단 두 레일. 크롬 어휘는 **플레이트와 창 둘뿐**이며, 열린 쿨 스틸 모서리 옆의 짧은
+  마젠타 틱만 UI 액센트를 쓴다. Desktop 공용 행동 glyph는 축소본이 아닌 네이티브 12×12다.
+  액션 휠은 여섯 셀 전체 footprint로 화면 경계와 현재 보이는 고정 HUD를 피한다. 화면 앵커·HUD 예약 영역·
+  휠 `left/top`을 모두 휠 부모 로컬 좌표로 통일해 safe-area inset에서도 같은 계산을 쓴다. 처음 열려 geometry가
+  아직 0인 고정 HUD에는 휠 표시를 한 레이아웃 패스만 보류해 한 프레임 겹침도 막는다.
+  후속 작업 트리에서 Cmd/Ctrl 충돌 입력과 캐릭터 클릭 고정 경로를 제거하고 **Tab 홀드 전용**으로 바꿨다.
+  발견 카드에는 PC 전용 `×`를 추가해 현재 카드만 닫고 큐는 보존한다.
+  미니맵은 현재 활성 층 `MappedSilhouette`를 기본 윤곽으로 그리고 그 위에 `Explored`/`Visible`을
+  덧씌운다. 내부 `B2` 층 배지·북쪽 `N`·7px 플레이어 마커를 얻었다. PC에서는 표식 그림은 유지한 채
+  15px 클릭 영역으로 넓혀 자유 카메라를 플레이어에게 되돌린다. 평상시는 `B2 · 현재 층`, 수직
+  관찰 때만 `플레이 B2 · 보기 B1`을 쓴다. 좌표는 디버그 패널에만 둔다. 행동 피드백은 3초 뒤 강조만 빠지고
+  줄은 메시지 로그에 남는다. 입장/수직 이동 발견 카드는 FIFO로 덮어쓰지 않으며, 보스가 열리면 즉시
+  숨겨 두 패널의 겹침을 막고 남은 노출 시간부터 재개한다. 실제 장치 위에서는 문맥 한 줄만 다시 보인다.
+  `IsoPrototype.unity`와 씬 빌더는 Mobile/Desktop wrapper를 모두 명시적으로 연결한다. 2026-08-03
+  Field Deck 기준선은 PC 2560×1440에서 정상 HUD·발견 카드+휠·실제 8F 보스+휠을 캡처했고, 과도 패널과 휠 셀의
+  교차 면적은 모두 0이었다. 상시 플레이트는 96%, 보스/발견 플레이트는 완전 차폐해 월드 라벨과
+  네온이 UI 신호색처럼 비치는 문제도 닫았다. 근거는
+  `docs/captures/ui-field-deck-pc-qhd-2026-08-03.png`와
+  `docs/captures/ui-field-deck-{notice-wheel,boss-wheel}-pc-qhd-2026-08-03.png`다. 후속의 기본 닫힘 상태와
+  발견 카드 `×`·미니맵 내부 층/N/마커는
+  `docs/captures/project-c-followup-{ui,discovery}-pc-qhd-2026-08-03.png`에서 다시 확인했다. 같은 작업 트리의
+  최신 전체 Unity EditMode/PlayMode 회귀와 스크립트 컴파일 오류 검사도 통과했다. 정적 캡처에 담기지 않는 보행/층 전환
+  시간 연출은 정상 진행 플레이테스트에서 따로 확인한다. 적 6종의 방향 상태에 이어 같은 날짜의
+  **기업 추적 드론 교체와 전 적군 팔레트 재작업도 PC 런타임 카탈로그 캡처와 전체 회귀로 재승인했다**
+  (아래 「액터 애니메이션」).
   메인 메뉴는 팔레트 잠금된 `ui-main-menu-backdrop.png`를 화면 비율에 맞춰 crop하고,
   중앙 저정보 영역 위에 기존 패널을 놓는다. 배경 소스·프롬프트·프로세서는 각각
   `docs/art-direction/project-c-main-menu-backdrop-source-v1*`와
@@ -51,17 +74,20 @@
   액터는 씬을 바꿔도 같은 화면 크기로 보인다. 전체 조감 배율 `debugCameraSize`는 던전 DebugAll에서만
   허용한다. 이 분기는 `OrthographicCameraFramingTests`가 고정하며, 동일 1280×720 비교본은
   `docs/captures/lobby-game-scale-{hub,dungeon}-1280x720.png`다.
-  던전 PLAY에서는 PC **중클릭 드래그**로 현재 활성 층의 이미 탐색한 범위 안에서 카메라 중심만
+  던전 PLAY에서는 PC **중클릭 드래그**로 현재 활성 층의 `MappedSilhouette` 투영 경계 안에서 카메라 중심만
   임시 분리할 수 있다. 버튼을 놓아도 위치를 유지하고 `Home`/`Escape`/미니맵 플레이어 마커 클릭,
-  수락된 플레이어 행동, 시점 회전·DebugAll 전환·수직 보기·투척 조준에서 즉시 플레이어 추종으로
-  돌아온다. 팬 중에도 턴·플레이어 위치·FOV·AI·활성 층·미니맵과 기존 배율은 바뀌지 않으며,
-  드래그는 월드 탭을 만들지 않는다. 카메라 프레이밍·HUD 계약·실제 마커 복귀는 EditMode와
-  PlayMode 회귀가 고정한다.
+  수락된 플레이어 행동,
+  시점 회전·DebugAll 전환·수직 보기·투척 조준에서 즉시 플레이어 추종으로 돌아온다. 팬 중에도
+  턴·플레이어 위치·FOV·AI·활성 층·미니맵과 기존 구도의 배율은 바뀌지 않으며, 드래그는 월드 탭을
+  만들지 않는다. 단위/PlayMode 회귀와 PC 비교본은
+  `docs/captures/camera-look-{follow,panned}-pc-2026-08-03.png`와 실제 마커 클릭 전후
+  `docs/captures/camera-minimap-recenter-{panned,follow}-pc-2026-08-03.png`로 확인했다.
 - **던전 화면 톤 / 메인 원정자**: PC Game View는 청흑 void·불투명 panel 안개 위에
   웜 그레이 콘크리트를 놓고, 호박색 물리광과 청록 신호색은 국소 표식에만 쓴다. 안개 다이아몬드는
   `Dungeon Backdrop` Sorting Layer에서 `Default` 월드보다 항상 뒤에 그린다. 교체 가능한
   `dungeonBackdrop` 슬롯에는 팔레트 잠금 128×64 배경판을 연결하고 런타임 알파를 25%로 제한해,
-  미탐색 구조를 노출하지 않으면서 순흑색과 바닥 사이에 낮은 대비의 재질층만 만든다. 예전의 큰 음수
+  스스로 미탐색 구조를 노출하지 않으면서 순흑색과 바닥 사이에 낮은 대비의 재질층만 만든다. 공개 가능한
+  현재 층 토폴로지는 별도의 공용 저대비 `MappedSilhouette`가 담당한다. 예전의 큰 음수
   `sortingOrder`는 SpriteRenderer 범위에서 양수로 되감겨 바닥 앞에 겹쳤다.
   Facility 지역은 `hospitalFloor{Grate,Cracked,Service}`와
   `hospitalWall{Pipes,Window,Cabinet}Rising*` 9개 교체 슬롯을 seed 고정으로 희소 배치한다.
@@ -71,14 +97,21 @@
   `playerVisualScale` 0.80으로 키워 회색 벽 앞에서도 실루엣을 읽히게 하고, HP·마커·접촉 그림자는
   격자 크기에 남긴다.
   메인 원정자는 `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`를
-  `process_actor_knight_grounded_v1.py`로 마감한 정식 `actor-knight.aseprite`다. `96×128` 단일
-  `Frame_0`에 하드 알파·24색 역할 팔레트·2×2 클러스터와 한 발 기준선을 고정했다.
-  `SurvivorAnimationApproved=false`라 방향별 6태그 애니메이션은 아직 재생하지 않는다. 안정 상태
+  `process_actor_knight_grounded_v1.py`로 마감한 `96×128` 승인 `Frame_0`에서 출발한다.
+  `build_actor_knight_directional_v1.py`가 이 첫 프레임과 정체성을 보존하면서 4방향 6상태의 태그
+  프레임 80개를 만들고, 정식 `actor-knight.aseprite`는 태그 밖 첫 프레임을 포함해 81프레임·
+  24태그를 가진다. 전 프레임은 하드 알파·24색 이하 역할 팔레트·2×2 클러스터·발 `y=123` 계약을
+  지킨다. `SurvivorAnimationApproved=true`라 던전 플레이어에 `SpriteClipAnimator`가 붙으며,
+  월드 방향을 시점 회전 뒤 화면 방향으로 바꿔 해당 idle/walk/attack/hit/fall/death 클립을 고른다.
+  이동은 한 칸 0.18초 위치·카메라 동시 보간을 유지하되, 정적 컷 전용 `Art` 자식 보행 변형은
+  방향 클립이 있을 때 자동으로 꺼진다. 층 전환은 몸체·
+  HP바·위치 표식·접촉 그림자를 함께 출발점 페이드아웃 → 완전 비가시 상태에서 플레이어와 카메라 재배치 →
+  도착점 페이드인으로 읽히게 한다. 안정 상태
   몸체색은 상태색 × elevation tint × `TileLightColor`이고, 두 발 사이에는 작은 3단 접촉 AO만
   남긴다. 상시 플레이어 표식과 선택/공격 대상 표식도 각각 틸/앰버의 열린 코너 틱으로 줄였으며
   `marker-player.aseprite`·`marker-target.aseprite`가 정식 원본이다.
-- **다층 월드 입력**: `IsoTapInput.TilePicker`가 실제 렌더된 아이소 다이아몬드를
-  `VisualPosition` 기준으로 고른다. 겹치면 **현재 활성 층 → Hole 미리보기 층 →
+- **다층 월드 입력**: `IsoTapInput.TilePicker`가 실제 렌더 타일과 현재 활성 층 mapped 실루엣의
+  아이소 다이아몬드를 `VisualPosition` 기준으로 고른다. 겹치면 **현재 활성 층 → Hole 미리보기 층 →
   같은 레이어의 렌더 정렬 순서**다. 전체 elevation 역산 방식으로 되돌리지 말 것.
 - **위험 프롭 시작 배치**: 폭발통은 `DungeonPropPlacementRules`가 시작점에서 최소 2칸 떨어진
   일반 바닥 중 적·아이템·계단·시설 좌표가 아닌 곳을 고른다. 격자상 다른 칸이어도 90도 회전
@@ -98,8 +131,8 @@
     오르내린다. 비주얼 길이는 실제 단차까지만.
     캐치워크가 있는 층은 바닥(+0) → 캐치워크(+2)를 **곧장** 잇고 중간 발판(+1)은 링크에서 뺀다.
     **몬스터는 `MonsterArchetype.CanClimb`가 true인 종만 오른다**(기본값 false — 새 아키타입이
-    조용히 전부 오르면 이 축이 죽는다). 인간형(약탈자·투석 약탈자)만 오르고 기계·무정형
-    (낡은 경비 드론·누출 오염 슬러지·합선 드론)은 못 오른다 — **실루엣과 일치**시켜
+    조용히 전부 오르면 이 축이 죽는다). 인간형(점거군 돌격병·기업 보안 사수)만 오르고 기계
+    (기업 진압 로봇·기업 추적 드론·합선 검사 드론)는 못 오른다 — **실루엣과 일치**시켜
     배우지 않아도 읽힌다. 일반 추격뿐 아니라 **원거리 사격 자리를 다시 잡는 경로도**
     같은 `CanClimb` 값을 전달하므로 캐치워크가 드론에 대한 피난처가 된다.
     층 전환 계단 링크는 어느 쪽 끝도 사다리가 아니라 이 제한에 걸리지 않는다
@@ -114,7 +147,18 @@
     목적 층·후퇴/지름길/위험·장비 반영 예상 피해를 호박색 armed 상태로 고정한다. 이 첫 탭은 이동/턴을
     쓰지 않으며 같은 Hole 재클릭 또는 Space에서만 접근 후 낙하한다. 다른 입력/Escape는 취소한다.
   - PLAY에서는 현재 층만 기본 표시하며 다른 층은 Hole 국소 미리보기 외에는 숨긴다.
-- **FOV/전투 정보**: Unknown/Explored/Visible 3상태. 시야 밖 적의 피해·사망 UI는
+- **FOV/전투 정보**: Unknown/Explored/Visible 3상태. `MappedSilhouette`는 네 번째 FOV 상태가 아니라
+  현재 활성 층의 별도 지도 지식이다. Unknown인 일반 방·복도·문 윤곽도 공용 저대비 범주로 표시하고
+  클릭해 자동 이동할 수 있지만, 실제 타일 종류·재질·원소 상태·적·아이템·프롭은 숨긴다. 미공개
+  비밀문 좌표와 비밀방 footprint는 조사/폭발 공개 전까지 mapped 집합에서 빠져 평범한 외곽 경계에 묻힌다.
+  미확인 층 전환 계단은 공용 바닥처럼 보이지만 실제 FOV로 정체를 확인하기 전 자동 경로가 밟지 않는다.
+  일반 닫힌 문은 mapped 이동 경로에서 문 앞 접근 → 열기 1턴 → FOV 갱신 → 적 턴 → 인터럽트 평가 →
+  경로 재계산으로 통과하며, 피해·새 적·새 아이템이 생기면 즉시 멈춘다. 문 직후 새로 보인 적이 자기 턴에
+  시야를 벗어나도 발견 사건은 보존한다. 사다리 링크는 자동 통과하지 않고 발판에서 자기 탭/Space를
+  요구한다. 비활성 층은 기존 Hole 국소
+  미리보기 외에 mapped 표시·입력이 없다. PC 기준 화면은
+  `docs/captures/mapped-silhouette-pc-2026-08-04.png`다.
+  시야 밖 적의 피해·사망 UI는
   공개하지 않으며, 시체는 기본 3턴 뒤 월드와 탭 대상에서 제거한다.
   **개구부 너머 미리보기도 진짜 FOV다** — 반대편 층에서 `GridVisibility.Compute`를 한 번 더
   돌린 결과를 쓴다. 예전의 착지점 중심 정사각 박스는 차폐를 아예 보지 않아 벽 뒤와 닫힌 문 뒤
@@ -276,17 +320,42 @@
     조립 초안**(11프레임/6태그, 4방향 기본 C01 + 액션 키포즈 9종, seed 2130163433 계보)으로
     교체했다. 팔레트에 `hair-blonde-1/2` append(절도 검사 통과). 채택 근거·게이트 기록은
     액터 계약 §4-c와 `reference/ref-cyberpunk-05-expeditioner-medic-concept.prompt.md` 소유.
-    Unity 임포트·카탈로그 연결은 완료됐지만, 프레임 사이 해부·실루엣이 깨져 멀티프레임 재생은
-    승인하지 않았다. 정식 방향별 Aseprite 타임라인이 화면 승인을 받을 때까지
-    `SurvivorAnimationApproved=false`로 플레이어 `SpriteClipAnimator`를 붙이지 않고 카탈로그
-    첫 Sprite `Frame_0`에 정지한다. 임시 런타임 오버레이 `PlayerCyberAccent`도 제거했으며,
+    Unity 임포트·카탈로그 연결은 완료됐지만, 프레임 사이 해부·실루엣이 깨져 당시 멀티프레임 재생은
+    승인하지 않았고 플레이어를 카탈로그 첫 Sprite `Frame_0`에 정지시켰다. 임시 런타임 오버레이
+    `PlayerCyberAccent`도 제거했으며,
     흉부 트리아지 화면·비대칭 의료 리그는 승인 프레임 자체에 흡수해야 한다.
   - **원정자 접지 정적 v1(2026-08-02)** — 위 자동 조립 초안은 현재 런타임 원본이 아니다.
     승인 컨셉·실화면 카메라·픽셀 재질 레퍼런스를 함께 사용한 built-in ImageGen 소스를
     `process_actor_knight_grounded_v1.py`로 `96×128` 단일 프레임에 마감하고 정식 Aseprite로
     교체했다. 플레이어에도 적과 같은 local light를 적용하고 접촉 그림자를 작은 AO로 줄였다.
     틸 상시 발판과 앰버 대상 링은 열린 코너 틱으로 교체해 발·AO·바닥 재질을 가리지 않는다.
-    피벗·배율·격자·이동·공격·FOV는 불변이며 애니메이션 승인 게이트도 계속 닫혀 있다.
+    피벗·배율·격자·이동·공격·FOV는 불변이며 이 단계에서는 애니메이션 승인 게이트를 닫아 두었다.
+  - **원정자 4방향 타임라인 승인(2026-08-03)** — `idle 4 / walk 3 / attack 3 / hit 3 /
+    fall 2 / death 5`를 방향마다 제작해 태그 프레임 80개와 태그 밖 승인 `Frame_0`을 한 원본에
+    조립했다. east/west는 전 상태 바이트 미러, attack/hit은 방향별 키포즈, fall/death는 같은
+    canonical 체형을 접어 부피를 보존한다. `SurvivorAnimationApproved=true`로 게이트를 열고
+    Unity 카탈로그에 24클립을 베이크했다. 전체 제작 시트는
+    `docs/captures/actor-knight-directional-conform-preview-v1.png`, PC 실화면은
+    `docs/captures/actor-directional-{walk,attack,hit,fall}-runtime-pc-2026-08-03.png`다. 짧은 `fall`
+    클립은 끝 프레임을 잡아 두고 0.48초 월드 낙하가 착지한 뒤 idle로 복귀하므로 공중 idle 팝이 없다.
+  - **적군 6종 4방향 타임라인 — 정체성·팔레트 2차 승인(2026-08-04 작업 트리)** —
+    점거군 돌격병(`goblin`)·기업 진압 로봇(`skeleton`)·기업 추적 드론(`slime`)·기업 사수(`slinger`)·
+    합선 검사 드론(`arcDrone`)·사이버사이코 감시자(`graveWarden`)의 정식 Aseprite는 기존
+    `81프레임·24태그`, `idle/walk`만 루프, 동서 화면 미러·별도 후면 계약을 유지하도록 재작업했다.
+    `Slime` 얼굴은 낮은 사족 보안 드론으로 교체해 쐐기형 센서 헤드·노출 서보 척추·손상된
+    군중제압제 카트리지의 제압제 주입턱을 갖는다. 전 적군은 차콜·건메탈을 주재료로, 녹·갈색은
+    마모로만 제한하고 국소 시안/마젠타와 작은 적색 IFF를 쓴다. 새 전수 시트·동작 GIF는
+    `docs/captures/arcade-enemy-directional-{conform-preview-v1.png,motion-preview-v1.gif}`이며,
+    실제 Unity 카탈로그의 여섯 정적 프레임은
+    `docs/captures/enemy-cyberpunk-runtime-catalog-pc-2026-08-04.png`에서 다시 확인했다.
+  - **적군 테마 누출 경로 폐쇄(2026-08-04)** — 정식 카탈로그가 비거나 슬롯 연결이 끊겼을 때
+    노출되던 녹색 고블린·해골 검사·눈 달린 슬라임·투석끈 사수 절차 폴백을 각각 점거군 병사·기업
+    진압 로봇·기업 추적 드론·카빈 사수로 교체했다. 감시자 폴백도 궤도 로봇에서 등반 가능한
+    인간형 사이버사이코 외골격으로 맞췄고, 미등록 ID는 다른 적 얼굴 대신 중립 보안 드론을 쓴다.
+    범용 PNG 생성기 두 곳의 구 적 출력도 제거해 재실행 덮어쓰기를 막았다. 실제 카탈로그의 6개
+    `Frame_0`·24클립 연결과 표시명 금지어는 자동 테스트가 검사한다. 이번 재작업 뒤 Core shim
+    1203/1203, ArtPipeline 312/312, Telemetry 18/18, Unity EditMode 1496/1496, PlayMode 24/24를
+    통과했고 스크립트 컴파일 오류는 0건이었다.
   - **M5 2차 슬라이스 반영됨(2026-07-30)** — hospital* 드레싱 9슬롯(바닥 그레이트/균열/
     서비스 + 상승 벽 3종×좌우)이 `environment-neon-dressing-v1` 레시피(C03 채택)로
     아케이드 어휘(자판기·꺼진 홀로 패널·상태 패널, 바닥은 균열선+전단지)로 교체됐다 —
@@ -456,8 +525,9 @@
   - **UI 스프라이트를 재생성했다** — `ui-*.png` 아이콘 9종 + 9-slice 프레임이 쿨로 넘어갔고
     (`ui-settings` 실측 웜 27 / 쿨 384), 신호색은 보존됐다(`ui-glow-frame` 골드 196px 유지).
     코너 브래킷 `ui-bracket-frame.png` 를 신설해 던전 HUD 의 `minimap-panel`·`message-log` 에 배선했다.
-  - ⚠ **아직 Game View 캡처로 확인하지 않았다** — 검증은 EditMode 1306/1306 까지다.
-    브래킷이 실제 패널 크기에서 의도대로 고정되는지는 화면으로만 확정된다(ROADMAP 「아트」의 미완 항목).
+  - **Game View 확인 완료(2026-08-03)** — Field Deck 정상/발견/보스 3상태에서 브래킷 고정,
+    네이티브 glyph, 패널 차폐와 액션 휠 무충돌을 승인했다. 근거와 최종 회귀 수치는 위 UI/해상도 절과
+    ROADMAP 「UI v1.8 쿨 전환 + Field Deck v1」이 소유한다.
   이전 확정(유지): 테마를 **포스트 아포칼립스**로 전환(GDD §10 v0.3).
   - **밝기 완화 패스 적용됨(v0.3.3)** — 탐색 잔상·심층 앰비언트·높이차 틴트·수직 미리보기의
     어둡기 하한을 일괄 상향해 "판독 가능한 어둠"으로 옮겼다(FOV 3상태 구분은 유지). 값은
@@ -465,15 +535,17 @@
     끊기 위해 PlayerPrefs 키를 `-v2`로 올렸다. 캡처: `docs/captures/dungeon-brightness-relaxed-v1.png`.
   방향·레퍼런스 SSOT는 `docs/art-direction/project-c-postapoc-art-direction-v1.md`, 리스킨 표는
   `...postapoc-reskin-table-v1.md`. 팔레트 *원리*(청흑 바탕+국소 호박 광원+신호색 1개)는 유지하고
-  재료 어휘(석재→콘크리트/벽돌/녹, 횃불→비상등/네온, 마법 포탈→이상 균열)만 바꾼다.
+  재료 어휘(석재→콘크리트/벽돌/녹, 횃불→비상등/네온, 마법 포탈→고장 게이트/전력 누설)만 바꾼다.
   구현은 포스트아포 마감 자산(스타일 트랜스퍼 → 팔레트 잠금 PNG)으로 수렴했고, 2026-07에
   **128×64 타일 / PPU 128 레짐으로 상향**했다(`ui-*`만 64 유지, 절차 생성 폴백은 64-레짐인 채
   스프라이트별 PPU로 공존). 가독성 규칙·발주 순서는
   `docs/art-direction/project-c-art-improvement-plan-v2.md` 참조.
-  - ⚠ **공존의 대가: 남은 절차 폴백 액터가 자산 액터보다 작다.** `actor-slinger.aseprite`가
-    인간형 투석 약탈자 슬롯을 채워 이쪽 배율 결손은 해소됐다. 남은 명시적 결손은
-    **합선 드론(월드 0.59×0.66)**과 전용 원본이 없는 **감시자**다. 해소는
-    `actor-arc-drone`/`actor-grave-warden` 전용 아트 발주(플랜 v2 배치 ②)이며 코드 스케일 보정이 아니다.
+  - **적군 정체성 정적 로스터(2026-08-03 기준, 2026-08-04 재작업)** — 코드 ID·전투 스탯·혼합표는 보존하고
+    일반 적 5종과 보스의 96×128 남향 정적 자산을 모두 교체했다. 점거군 돌격병·기업 보안 사수·
+    기업 진압 로봇·기업 추적 드론·합선 검사 드론과 `감시자`(사이버사이코 집행관)가 각자 전용
+    런타임 스프라이트로 카탈로그에 연결된다. 인간형 감시자의 `CanClimb`만 실루엣 계약에 맞춰
+    true로 바꿨지만 현 보스 아레나에는 사다리가 없다. 2026-08-04 정체성·팔레트 재작업은 정적 기준과
+    방향 타임라인에 반영됐고 같은 날짜의 새 PC 런타임 카탈로그 캡처로 재승인했다.
   - 적도 생성 시 `SpriteClipAnimator`를 붙인다. Unity `Animator`가 `null`인 것은 의도된 구조이며,
     클립 없는 PNG/절차 폴백은 같은 재생기에서 정지 1프레임 no-op으로 동작한다.
     허브 웜 디오라마 패스는 유지 — 허브는
@@ -509,9 +581,13 @@
   중앙 피봇, 액터는 96×128 캔버스를 검증하며 `env-floor*`/`env-wall-*`은 런타임 톤매핑을 위해
   Read/Write를 자동 활성화한다. 초기 `e0c0967`(2026-08-01)의 28개 기준에서 확장되어,
   2026-08-02 작업 트리의 `Validate Sources`는 Aseprite 원본 **61개 / 카탈로그 슬롯 61개**를
-  통과했다.
-  나아가 임포터가 만든 AnimationClip에서 **sprite 커브만** 뽑아 태그 클립으로 굽고
-  액터는 `catalog.actorAnimations`, 환경 루프는 `catalog.environmentAnimations`에 싣는다 —
+  통과했다. 2026-08-03 작업 트리는 원정자 방향 원본과 신규 액터 소스를 포함한 63개 원본을
+  다시 통과했고 Unity 콘솔 경고·오류는 0건이었다. 2026-08-04 기업 추적 드론·전 적군 팔레트 재작업 뒤
+  `Reimport and Sync Catalog`와 `Validate Sources`를 다시 실행해 **69개 원본 / 69개 슬롯 / 7개 애니메이션
+  세트**를 확인했다. GUID 고정 EditMode 계약을 포함한 전체 Unity 회귀 뒤 콘솔 오류도 0건이었다.
+  나아가 임포터가 만든 AnimationClip에서 **sprite 커브만** 뽑아 태그 클립으로 굽는다. 임포터가
+  authored 프레임 뒤에 덧붙이는 마지막 유지 키는 베이크 프레임에서 제거하되 `clip.length`는
+  보존한다. 액터는 `catalog.actorAnimations`, 환경 루프는 `catalog.environmentAnimations`에 싣는다 —
   transform/color 커브는 의도적으로 버린다(position·scale은 전투 FX, 안정 상태 color는
   `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가 소유하므로 여기서 건드리면 둘이 싸운다). 원샷 태그
   (attack/hit/fall/death)가 루프로 임포트되거나, 태그 규약 밖 클립이 있거나, 태그 클립이 있는데
@@ -537,8 +613,8 @@
   환경 idle 루프 4슬롯이 이 합성 레지스트리에 등록돼 있다.
   2026-07-28 vertical slice와 2026-07-31의 11프레임 메딕 자동 조립은 생성·판정 이력으로만
   남는다(`docs/art-direction/player-character-vertical-slice.md`). 현재 `knight` 카탈로그 슬롯은
-  `project-c-expeditioner-grounded-source-v1.{png,prompt.md}`에서 다시 만든 단일 프레임
-  `actor-knight.aseprite`를 보며, `actorAnimations`는 승인된 플레이어 타임라인을 제공하지 않는다.
+  승인 접지 `Frame_0`과 그 정체성을 보존한 4방향 6상태 `actor-knight.aseprite`를 보며,
+  `actorAnimations`는 플레이어용 24개 방향 클립을 제공한다.
   `style-sampler` 수동 배치는 액터 콘셉트·런타임 액터·환경을 한 장씩, 이펙트와 애니 키포즈는
   실행마다 다음 shot 한 장씩 큐에 넣는다. 채택 후보는 승인 스냅샷으로 보관되며, 별도
   `apply_requests`만 Codex Spark Scheduled가 실제 Unity/Aseprite 참조를 조사해 적용한다.
@@ -553,16 +629,19 @@
   `project-c-hospital-dressing-source-v1.png`를 `process_hospital_dressing_v1.py`로 conform하고,
   `docs/captures/hospital-hero-room-art-quality-v1.png`에서 카메라·조명·드레싱을 함께 승인했다.
   아이템 fallback도 같은 단계 게이트를 따른다. `docs/art-direction/item-sources-v3/`의 단일
-  오브젝트 소스 12장 중 **11장은 ComfyUI `item-static-v1` provenance로 교체됐고**, 남은
-  `item-frost-shard` 한 장만 built-in ImageGen provenance다 — 5차까지 재발주했으나 후보 15장이
-  전부 현행보다 못 읽혀(결정보다 기계 받침이 주역이 됨) 교체하지 않았다. 신구 비교본은
+  오브젝트 소스 12장은 현재 **ComfyUI `item-static-v1` 10종 + 2026-08-03 built-in ImageGen 2종**이다.
+  자연물 버섯/마법 결정처럼 읽히던 `item-herb`와 `item-frost-shard`를 지혈 패치와 구리 루프형 냉각
+  코일로 교체했으며 enum 숫자·레거시 파일 슬롯·조합 규칙은 유지한다. 과거 1차 신구 비교본은
   `docs/captures/item-arcade-reskin-v1.png`, 포션 단독 게이트 근거는
   `docs/captures/item-potion-comfy-gate-v2.png`다. `process_items_v3.py`는 두 소스 계열을
   64×64/하드 알파/공용 팔레트/아이템별
   피벗 여백으로 마감하며,
-  `IsoVisualCatalog`와 인벤토리 USS의 기존 12슬롯 파일명을 그대로 교체한다. 액션 UI 9종은
-  32×32로 마감해 PC HUD에서 24×24로 표시한다. Unity 실화면 근거는
-  `docs/captures/item-ui-integrated-{hud,inventory}-v3.png`다.
+  `IsoVisualCatalog`와 인벤토리 USS의 기존 12슬롯 파일명을 그대로 교체한다. 구 액션 UI 9종은
+  32×32로 남아 Mobile 배치가 사용하고, PC Field Deck은 별도 `ui-field-*.png` 12×12 9종을 쓴다.
+  기존 아이템 Unity 실화면 근거는 `docs/captures/item-ui-integrated-{hud,inventory}-v3.png`다.
+  새 지혈 패치/냉각 코일 런타임 PNG는 시각·파이프라인 계약을 확인했고, Field Deck 실화면 근거는
+  `docs/captures/ui-field-deck-pc-qhd-2026-08-03.png`와
+  `docs/captures/ui-field-deck-{notice-wheel,boss-wheel}-pc-qhd-2026-08-03.png`다.
 - **액터 애니메이션**: 공식 태그 6종(idle/walk/attack/hit/fall/death)은 Core `SpriteClipTags`
   하나가 소유한다 — 베이크(에디터)와 재생 트리거(게임플레이)가 같은 상수를 봐야 문자열이 갈라져
   클립이 조용히 무시되는 일이 없다. 시간 → 프레임 선택 수학은 `SpriteClipRules.FrameAt`이며
@@ -570,13 +649,30 @@
   - 재생기 `SpriteClipAnimator`는 **Animator를 쓰지 않고 `renderer.sprite`만 만진다.**
     position·scale은 전투 FX가, 안정 상태 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals`가
     소유하므로 침범하지 않는다.
+  - 방향 태그는 `idle-north`·`attack-west`처럼 `상태-화면방향`이다. 월드 방향은
+    `ActorFacingRules`가, 카메라 회전에 따른 화면 방향은 `IsoPrototypeDemo.ActorPresentation`이
+    소유한다. 방향 클립을 우선하고 기존 무방향 태그로 폴백하며, 방향 태그가 하나라도 있는 정식
+    원본은 6상태×4방향 완전 세트여야 검증을 통과한다.
   - 시야 밖(`renderer.enabled == false`)에서는 얼어붙었다가 다시 보이면 그 프레임부터 이어간다 —
     그래서 재동기화 코드가 없고, 안 보이는 액터의 Update가 이른 반환으로 끝난다.
   - 클립 없는 태그 요청은 전부 no-op이라 PNG 폴백(정지 1프레임) 액터와 그대로 공존한다.
-    현재 재생 트리거는 walk·attack·hit·death에 붙어 있고 `fall`은 태그만 예약된 상태다.
-  - 플레이어는 승인 게이트의 예외 경로다. `SurvivorAnimationApproved=false`인 동안 애니메이션
-    세트가 있어도 재생기를 붙이지 않고 `Frame_0`에 정지한다. 정식 방향별 타임라인의 수작업·
-    PC 화면 승인이 끝난 뒤에만 게이트를 연다. 적 재생 경로에는 영향을 주지 않는다.
+    현재 재생 트리거는 walk·attack·hit·fall·death에 붙어 있다. 프레임 클립이 없는 적 정적 액터도
+    근접 방향 돌진+베기 궤적, 원거리 총구 섬광+반동, 피격 원점 반대쪽 반동+플래시·스쿼시·방향 버스트를
+    최소 표시 프레임으로 재생한다. 칼·폭탄·냉각탄·기름병은 실제 아이템 실루엣 투사체를 사용한다.
+    PC QHD 근거는 `docs/captures/directional-{melee,ranged,hit}-pc-2026-08-03.png`다.
+  - 적 6종은 모두 전용 방향 세트를 사용한다. 이동·공격·피격은 현재 화면 facing의 클립과 기존
+    방향성 근접 궤적/총구 섬광/충격 버스트를 함께 재생한다. 적 낙하 피해는 `ShowEnemyHit`의 피해·
+    버스트는 유지하되 `hit` 클립만 억제한다. walk는 클립 한 주기를 한 칸 이동 시간에 정규화해 짧은
+    적 이동(기본 0.135초)에서도 세 키포즈가 모두 보인다. 보이는 적 낙하는 0.22초 위치·배율·알파 하강을
+    먼저 재생해 목적지 층이 FOV 밖이어도 같은 프레임에 idle/death로 덮이지 않는다. 생존 착지에서 idle로
+    돌아가며 사망이면 하강 뒤 death 마지막 프레임이 우선한다. 실제 PC QHD 근거는
+    `docs/captures/enemy-directional-{walk,attack-fx,hit-fx,fall-death}-runtime-pc-v1.png`다. 2D Aseprite
+    Importer 5.0.x의 stale rect/UV 재사용으로 새 atlas와 옛 Sprite 경계가 어긋나던 문제는 actor
+    재임포트 때 이전 atlas 크기를 한 번 무효화해 고쳤다. Sprite ID/GUID는 유지되며 대표 방향
+    프레임의 rect-알파 tightness를 EditMode에서 회귀 검사한다.
+  - 플레이어는 승인 게이트의 예외 경로다. 현재 정식 방향 타임라인의 전수 프레임·PC 화면 승인이
+    끝나 `SurvivorAnimationApproved=true`이며 재생기를 붙인다. 태그 밖 `Frame_0`은 허브·카탈로그
+    정적 소비자를 위해 보존한다. 적 재생 경로에는 이 게이트가 적용되지 않는다.
 - **배고픔/중간 생환**: `HungerRules`가 포만→배고픔(경고)→굶주림(주기적 HP 감소)을 소유한다.
   주기가 짧아(가득 찬 배 100턴) 중간중간 통조림을 먹는 리듬이며, 판 전체를 관통하고 모닥불로는
   배가 차지 않는다. `ExtractionRules`의 비상 탈출구는 **4번째·8번째 층**(진행 지수 3·7 —
@@ -628,7 +724,8 @@
 - **아이템 정의**: `ItemCatalog`의 `ItemDefinition` 표가 분류·생환 가치·상점가·이름·짧은 라벨·설명·
   백팩 크기를 함께 소유한다. 새 `ItemKind`가 표에 없거나 중복되면 카탈로그 초기화에서 실패하고,
   미등록 값을 조회해도 기본 소모품/1×1로 조용히 흘려보내지 않는다. 장비 고유 행동과 제작가는
-  중복하지 않고 `EquipmentCatalog`에서 가져온다.
+  중복하지 않고 `EquipmentCatalog`에서 가져온다. 저장 호환용 내부 ID `Herb=9`/`FrostShard=11`은
+  그대로지만 화면 표시 계약은 각각 **지혈 패치/PATCH**와 **냉각 코일/COIL**이다.
 - **백팩/창고**: 던전 백팩은 `BackpackRules` 6×4 멀티슬롯(1×1/1×2/2×2)이며
   `BackpackLayout` 자동 배치를 UI가 그대로 그린다. 공간 부족 시 월드 아이템은 남고,
   허브 창고는 종류별 중첩 저장을 유지한다. `ExpeditionLoadoutRules`가 창고와 출정 백팩 사이의
@@ -794,8 +891,9 @@
     `false`는 **경로 없음**. 생성된 던전의 사다리 링크가 밴드별로 갈리는 것도 확인했다 —
     초반은 `e0→e1`(±1단), 중후반은 `e12→e14`(+2단 곧장)이고 중간 발판은 **링크가 없다**.
     이 캡처는 비평탄 생성 능력의 과거 검증이며 현재 첫 던전에서는 해당 구조를 생성하지 않는다.
-  - **`CanClimb` 기본값 false가 값을 했다.** 신규 합선 드론이 명시하지 않아 자동으로 못 오른다 —
-    인간형(약탈자·투석 약탈자)만 true, 기계·무정형(경비 드론·슬러지·합선 드론)과 보스는 false.
+  - **`CanClimb` 기본값 false가 값을 했다.** 신규 합선 검사 드론이 명시하지 않아 자동으로 못 오른다 —
+    인간형(점거군 돌격병·기업 보안 사수·감시자)은 true, 기계(기업 진압 로봇·기업 추적 드론·
+    합선 검사 드론)는 false. 첫 던전 보스 아레나는 층내 사다리를 만들지 않는다.
   - **보스 접근 전조 — 규칙 확정, 화면 노출은 미확인.** 진행지수 8 한 곳에서만 뜨고 상승 방향
     문구("한 층 **위**에서")이며 처치 후 침묵한다(`90165eb` 수정이 살아 있다). 다만 **치트 층 점프로는
     화면에 안 뜬다** — 계단으로 실제 진입해야 하므로 실플레이에서 본다.

@@ -17,16 +17,6 @@ namespace ProjectC.EditorTools
     /// </summary>
     public static class ActorAnimationBake
     {
-        private static readonly string[] KnownTags =
-        {
-            SpriteClipTags.Idle,
-            SpriteClipTags.Walk,
-            SpriteClipTags.Attack,
-            SpriteClipTags.Hit,
-            SpriteClipTags.Fall,
-            SpriteClipTags.Death
-        };
-
         private static readonly HashSet<string> OneShotTags = new HashSet<string>(StringComparer.Ordinal)
         {
             SpriteClipTags.Attack,
@@ -35,7 +25,19 @@ namespace ProjectC.EditorTools
             SpriteClipTags.Death
         };
 
-        public static bool IsOneShotTag(string tag) => tag != null && OneShotTags.Contains(tag);
+        public static bool IsOneShotTag(string tag)
+        {
+            string baseTag = BaseTag(tag);
+            return baseTag != null && OneShotTags.Contains(baseTag);
+        }
+
+        public static string BaseTag(string tag)
+        {
+            if (DirectionalSpriteClipTags.IsSupportedBaseTag(tag)) return tag;
+            return DirectionalSpriteClipTags.TryParse(tag, out string baseTag, out _)
+                ? baseTag
+                : null;
+        }
 
         /// <summary>소스 하나의 모든 태그 클립을 굽는다. 같은 태그 중복은 첫 클립이 이긴다.</summary>
         public static ActorAnimationSet ExtractSet(string sourcePath, string actorKey)
@@ -90,6 +92,17 @@ namespace ProjectC.EditorTools
             if (keys == null || keys.Length == 0) return null;
 
             Array.Sort(keys, (a, b) => a.time.CompareTo(b.time));
+            // Unity's Aseprite importer appends the final sprite again just
+            // before clip.length so the curve visibly holds through the tag
+            // boundary.  It is a timing key, not an authored frame.  Keeping
+            // it in the lightweight bake adds a duplicate beat to both loops
+            // and one-shots (a 4-frame idle would report as five frames).
+            if (keys.Length > 1 &&
+                keys[keys.Length - 2].value == keys[keys.Length - 1].value)
+            {
+                Array.Resize(ref keys, keys.Length - 1);
+            }
+
             var frames = new Sprite[keys.Length];
             var times = new float[keys.Length];
             for (int i = 0; i < keys.Length; i++)
@@ -125,17 +138,20 @@ namespace ProjectC.EditorTools
             clip != null && AnimationUtility.GetCurveBindings(clip).Length > 0;
 
         /// <summary>
-        /// 클립명 → 공식 태그. 임포터 명명 편차를 흡수한다: 정확 일치("idle") 또는
-        /// 언더스코어 접미("actor-knight_idle"). 규약 밖이면 null.
+        /// 클립명 → 공식 태그. 임포터 명명 편차를 흡수한다: 정확 일치("idle-north") 또는
+        /// 언더스코어 접미("actor-knight_attack-east"). 규약 밖이면 null.
         /// </summary>
         public static string TagFromClipName(string clipName)
         {
             if (string.IsNullOrEmpty(clipName)) return null;
             string lower = clipName.ToLowerInvariant();
-            foreach (string tag in KnownTags)
+            if (DirectionalSpriteClipTags.IsSupportedTag(lower)) return lower;
+
+            int separator = lower.LastIndexOf('_');
+            if (separator >= 0 && separator < lower.Length - 1)
             {
-                if (lower == tag || lower.EndsWith("_" + tag, StringComparison.Ordinal))
-                    return tag;
+                string suffix = lower.Substring(separator + 1);
+                if (DirectionalSpriteClipTags.IsSupportedTag(suffix)) return suffix;
             }
 
             return null;

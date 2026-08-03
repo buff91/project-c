@@ -14,6 +14,7 @@ if str(TOOLS_DIR) not in sys.path:
 from torchstone_palette import (
     IDENTITY_PREFIXES,
     load_gpl_entries,
+    lock_rgba_to_named_palette,
     lock_rgba_to_palette,
     lock_to_palette,
 )
@@ -63,6 +64,25 @@ class IdentityLockTests(unittest.TestCase):
 
         self.assertNotEqual(SKIN_1, default.getpixel((0, 0))[:3])
         self.assertEqual((*SKIN_1, 255), opted.getpixel((0, 0)))
+
+    def test_named_subset_lock_preserves_alpha_and_uses_only_requested_colors(self) -> None:
+        image = Image.new("RGBA", (2, 1))
+        image.putdata(((*SKIN_1, 255), (240, 73, 42, 0)))
+
+        locked = lock_rgba_to_named_palette(
+            image,
+            ("fabric-2", "sig-warning"),
+        )
+
+        self.assertEqual(FABRIC_2, locked.getpixel((0, 0))[:3])
+        self.assertEqual(0, locked.getpixel((1, 0))[3])
+
+    def test_named_subset_lock_rejects_unknown_entry(self) -> None:
+        with self.assertRaisesRegex(ValueError, "missing-entry"):
+            lock_rgba_to_named_palette(
+                Image.new("RGBA", (1, 1)),
+                ("missing-entry",),
+            )
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ namespace ProjectC.Gameplay
     /// IsoVisualCatalog 슬롯이 채워지면 호출부가 해당 항목에 한해 이 코드를 우회한다.
     ///
     /// **게임 상태를 알지 못한다** — 격자·던전·플레이어를 참조하지 않고, 그림을 결정하는 값은
-    /// 전부 인자로 받는다(`bool goblin`, `ItemKind kind` 처럼). 그래서 이 클래스는 캐시만 있으면
+    /// 전부 인자로 받는다(`bool hostileSoldier`, `ItemKind kind` 처럼). 그래서 이 클래스는 캐시만 있으면
     /// 어디서든 같은 그림을 낸다. 이 무지(無知)를 깨지 말 것 — 깨는 순간 신 클래스로 되돌아간다.
     /// 환경(타일·벽·문)은 팔레트가 필요해서 <see cref="PrototypeEnvironmentSprites"/>가 따로 그린다.
     /// </summary>
@@ -685,14 +685,16 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        internal Sprite GetCharacterSprite(bool goblin)
+        internal Sprite GetCharacterSprite(bool hostileSoldier)
         {
-            string key = goblin ? "goblin" : "player";
+            if (hostileSoldier) return GetOccupationAssaultSprite();
+
+            const string key = "player";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             var texture = NewTexture(32, 48);
-            Color32 skin = goblin ? new Color32(113, 151, 62, 255) : new Color32(205, 177, 139, 255);
-            Color32 body = goblin ? new Color32(94, 62, 39, 255) : new Color32(48, 90, 133, 255);
+            Color32 skin = new Color32(205, 177, 139, 255);
+            Color32 body = new Color32(48, 90, 133, 255);
             Color32 metal = new Color32(172, 183, 183, 255);
             Color32 dark = new Color32(20, 25, 28, 255);
 
@@ -714,30 +716,63 @@ namespace ProjectC.Gameplay
             FillRect(texture, 18, 29, 3, 2, dark);
             FillRect(texture, 14, 26, 5, 2, Shift(skin, 20));
 
-            if (goblin)
-            {
-                FillRect(texture, 3, 31, 8, 3, dark);
-                FillRect(texture, 21, 31, 8, 3, dark);
-                FillRect(texture, 5, 32, 6, 2, skin);
-                FillRect(texture, 21, 32, 6, 2, skin);
-                FillRect(texture, 11, 35, 10, 3, Shift(skin, -12));
-                FillRect(texture, 12, 17, 8, 3, new Color32(137, 78, 39, 255));
-            }
-            else
-            {
-                FillRect(texture, 8, 31, 16, 5, metal);
-                FillRect(texture, 11, 35, 10, 5, new Color32(116, 129, 134, 255));
-                FillRect(texture, 14, 35, 2, 4, Shift(metal, 30));
-                FillRect(texture, 22, 10, 7, 15, dark);
-                FillRect(texture, 23, 11, 5, 13, new Color32(47, 88, 126, 255));
-                FillRect(texture, 24, 13, 2, 9, new Color32(74, 132, 177, 255));
-                FillRect(texture, 4, 8, 2, 24, metal);
-                FillRect(texture, 2, 28, 6, 2, new Color32(210, 160, 60, 255));
-                FillRect(texture, 12, 16, 8, 3, new Color32(181, 142, 58, 255));
-            }
+            FillRect(texture, 8, 31, 16, 5, metal);
+            FillRect(texture, 11, 35, 10, 5, new Color32(116, 129, 134, 255));
+            FillRect(texture, 14, 35, 2, 4, Shift(metal, 30));
+            FillRect(texture, 22, 10, 7, 15, dark);
+            FillRect(texture, 23, 11, 5, 13, new Color32(47, 88, 126, 255));
+            FillRect(texture, 24, 13, 2, 9, new Color32(74, 132, 177, 255));
+            FillRect(texture, 4, 8, 2, 24, metal);
+            FillRect(texture, 2, 28, 6, 2, new Color32(210, 160, 60, 255));
+            FillRect(texture, 12, 16, 8, 3, new Color32(181, 142, 58, 255));
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 점거군 돌격병의 카탈로그 누락 폴백. 구형 녹색 고블린 대신 밀폐 호흡기, 기업 잉여 장갑,
+        /// 직선 충격봉을 가진 인간 병사로 그린다. 내부 ID만 Goblin으로 유지한다.
+        /// </summary>
+        private Sprite GetOccupationAssaultSprite()
+        {
+            const string key = "occupation-assault-fallback";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(34, 50);
+            Color32 dark = new Color32(16, 20, 24, 255);
+            Color32 fabric = new Color32(50, 54, 56, 255);
+            Color32 armor = new Color32(86, 82, 72, 255);
+            Color32 armorLight = new Color32(137, 126, 101, 255);
+            Color32 skin = new Color32(184, 139, 104, 255);
+            Color32 warning = new Color32(240, 73, 42, 255);
+
+            FillRect(texture, 9, 2, 7, 10, dark);         // 부츠와 다리
+            FillRect(texture, 19, 2, 7, 10, dark);
+            FillRect(texture, 10, 5, 5, 9, fabric);
+            FillRect(texture, 20, 5, 5, 9, fabric);
+            FillRect(texture, 7, 12, 21, 20, dark);       // 방탄 조끼 외곽
+            FillRect(texture, 9, 14, 17, 16, fabric);
+            FillRect(texture, 10, 23, 15, 6, armor);
+            FillRect(texture, 10, 27, 10, 2, armorLight);
+            FillRect(texture, 4, 17, 6, 13, dark);        // 소형 어깨 장갑
+            FillRect(texture, 5, 19, 5, 9, armor);
+            FillRect(texture, 26, 18, 5, 12, dark);
+            FillRect(texture, 27, 20, 3, 8, armor);
+            FillRect(texture, 10, 31, 15, 13, dark);      // 밀폐 헬멧
+            FillRect(texture, 12, 33, 11, 9, armor);
+            FillRect(texture, 13, 37, 9, 3, dark);        // 불투명 바이저
+            FillRect(texture, 18, 38, 3, 1, warning);     // 적 IFF
+            FillRect(texture, 14, 33, 7, 3, skin);
+            FillRect(texture, 15, 31, 6, 4, dark);        // 호흡기
+            FillRect(texture, 16, 31, 4, 2, armorLight);
+            FillRect(texture, 30, 8, 3, 25, dark);        // 직선 충격봉
+            FillRect(texture, 31, 12, 1, 18, warning);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.06f));
             _spriteCache[key] = cached;
             return cached;
         }
@@ -1121,41 +1156,101 @@ namespace ProjectC.Gameplay
         {
             switch (archetypeId)
             {
-                case "Skeleton": return GetSkeletonSprite();
-                case "Slime": return GetSlimeSprite();
-                case "Slinger": return GetSlingerSprite();
-                case "ArcDrone": return GetArcDroneSprite();
-                case "GraveWarden": return GetGraveWardenSprite();
-                default: return GetCharacterSprite(true);
+                // 내부 ID는 세이브·텔레메트리 호환 때문에 유지하되, 화면 정체성은 전부
+                // 병사·기업 기계·사이버사이코로 고정한다.
+                case "Goblin": return GetOccupationAssaultSprite();
+                case "Skeleton": return GetCorporateRiotRobotSprite();
+                case "Slime": return GetCorporatePursuitDroneSprite();
+                case "Slinger": return GetCorporateMarksmanSprite();
+                case "ArcDrone": return GetArcInspectionDroneSprite();
+                case "GraveWarden": return GetCyberpsychoWardenSprite();
+                default: return GetUnregisteredSecurityDroneSprite();
             }
         }
 
-        private Sprite GetSkeletonSprite()
+        /// <summary>기업 진압 로봇. 두개골·갈비뼈·검을 완전히 제거한 중장갑 이족 보안 셸.</summary>
+        private Sprite GetCorporateRiotRobotSprite()
         {
-            const string key = "skeleton";
+            const string key = "corporate-riot-robot-fallback";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-            var texture = NewTexture(32, 48);
-            Color32 bone = new Color32(222, 216, 196, 255);
-            Color32 boneShade = new Color32(168, 160, 138, 255);
-            Color32 dark = new Color32(20, 25, 28, 255);
+            var texture = NewTexture(38, 52);
+            Color32 dark = new Color32(15, 20, 25, 255);
+            Color32 chassis = new Color32(55, 64, 69, 255);
+            Color32 armor = new Color32(101, 108, 108, 255);
+            Color32 armorLight = new Color32(160, 164, 154, 255);
+            Color32 warning = new Color32(240, 73, 42, 255);
 
-            FillRect(texture, 10, 27, 12, 12, dark);      // 두개골 외곽
-            FillRect(texture, 11, 28, 10, 10, bone);
-            FillRect(texture, 12, 31, 3, 3, dark);        // 눈
-            FillRect(texture, 18, 31, 3, 3, dark);
-            FillRect(texture, 13, 28, 6, 2, boneShade);   // 턱
-            FillRect(texture, 14, 24, 4, 3, boneShade);   // 목
-            FillRect(texture, 9, 14, 14, 10, dark);       // 흉곽 외곽
-            FillRect(texture, 10, 15, 12, 8, bone);
-            FillRect(texture, 10, 17, 12, 1, boneShade);  // 갈비 골
-            FillRect(texture, 10, 20, 12, 1, boneShade);
-            FillRect(texture, 6, 13, 3, 10, bone);        // 팔
-            FillRect(texture, 23, 13, 3, 10, bone);
-            FillRect(texture, 11, 4, 4, 10, bone);        // 다리
-            FillRect(texture, 17, 4, 4, 10, bone);
-            FillRect(texture, 24, 6, 2, 18, boneShade);   // 낡은 검
-            FillRect(texture, 22, 22, 6, 2, dark);
+            FillRect(texture, 9, 2, 8, 13, dark);         // 중량 구동 다리
+            FillRect(texture, 22, 2, 8, 13, dark);
+            FillRect(texture, 11, 4, 5, 10, chassis);
+            FillRect(texture, 23, 4, 5, 10, chassis);
+            FillRect(texture, 6, 13, 27, 23, dark);       // 넓은 장갑 몸통
+            FillRect(texture, 8, 15, 23, 19, chassis);
+            FillRect(texture, 6, 28, 27, 7, armor);
+            FillRect(texture, 8, 32, 20, 2, armorLight);
+            FillRect(texture, 2, 17, 7, 18, dark);        // 진압 방패
+            FillRect(texture, 3, 18, 5, 16, armor);
+            FillRect(texture, 4, 28, 3, 2, warning);
+            FillRect(texture, 31, 18, 5, 16, dark);       // 충격봉 팔
+            FillRect(texture, 32, 20, 3, 12, chassis);
+            FillRect(texture, 35, 6, 2, 25, dark);
+            FillRect(texture, 36, 10, 1, 18, warning);
+            FillRect(texture, 10, 35, 19, 12, dark);      // 센서 헤드
+            FillRect(texture, 12, 37, 15, 8, armor);
+            FillRect(texture, 13, 40, 13, 3, dark);
+            FillRect(texture, 18, 41, 6, 1, warning);     // 좁은 카메라 슬릿
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.06f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 기업 추적 드론. 네 다리·쐐기형 센서 헤드·척추 서보가 읽히는 저상 로봇 경비견.
+        /// </summary>
+        private Sprite GetCorporatePursuitDroneSprite()
+        {
+            const string key = "corporate-pursuit-drone-fallback";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(38, 32);
+            Color32 dark = new Color32(14, 19, 24, 255);
+            Color32 chassis = new Color32(44, 49, 56, 255);
+            Color32 armor = new Color32(84, 91, 97, 255);
+            Color32 armorLight = new Color32(148, 155, 161, 255);
+            Color32 cyan = new Color32(61, 225, 232, 255);
+            Color32 magenta = new Color32(230, 68, 184, 255);
+            Color32 warning = new Color32(240, 73, 42, 255);
+
+            FillRect(texture, 9, 13, 24, 12, dark);       // 장갑 몸통
+            FillRect(texture, 11, 15, 20, 8, chassis);
+            FillRect(texture, 13, 21, 15, 3, armor);
+            FillRect(texture, 15, 24, 11, 2, armorLight); // 노출 서보 척추
+            FillRect(texture, 16, 24, 7, 1, magenta);     // 기업 식별 스트립
+
+            FillRect(texture, 2, 10, 11, 11, dark);       // 쐐기형 센서 헤드
+            FillRect(texture, 4, 12, 8, 7, chassis);
+            FillRect(texture, 3, 11, 7, 3, armor);
+            FillRect(texture, 3, 13, 5, 2, cyan);         // 짧은 스캔 슬릿
+            FillRect(texture, 8, 17, 2, 2, warning);      // 단일 적 IFF 광학안
+            FillRect(texture, 1, 8, 7, 4, dark);          // 제압제 주입턱
+
+            FillRect(texture, 9, 3, 5, 12, dark);         // 앞다리 2개
+            FillRect(texture, 15, 2, 5, 12, dark);
+            FillRect(texture, 10, 5, 3, 8, armor);
+            FillRect(texture, 16, 4, 3, 8, chassis);
+            FillRect(texture, 8, 1, 7, 4, chassis);
+            FillRect(texture, 14, 1, 7, 4, chassis);
+
+            FillRect(texture, 27, 3, 5, 12, dark);        // 뒷다리 2개
+            FillRect(texture, 33, 2, 4, 13, dark);
+            FillRect(texture, 28, 5, 3, 8, chassis);
+            FillRect(texture, 34, 4, 2, 8, armor);
+            FillRect(texture, 26, 1, 7, 4, chassis);
+            FillRect(texture, 32, 1, 6, 4, chassis);
+            DrawThickLine(texture, 31, 21, 36, 27, 2, cyan); // 후방 진단 케이블
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
@@ -1163,75 +1258,56 @@ namespace ProjectC.Gameplay
             return cached;
         }
 
-        private Sprite GetSlimeSprite()
+        /// <summary>
+        /// 기업 보안 사수. 점거군 돌격병과 한눈에 구분돼야 대응(엄폐·돌진)이 성립하므로
+        /// 치켜든 사격 팔과 원거리 장비로 실루엣을 다르게 잡는다.
+        /// </summary>
+        private Sprite GetCorporateMarksmanSprite()
         {
-            const string key = "slime";
+            const string key = "corporate-marksman-fallback";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-            var texture = NewTexture(26, 20);
-            Color32 body = new Color32(96, 176, 88, 255);
-            Color32 shade = new Color32(64, 128, 62, 255);
-            Color32 shine = new Color32(178, 232, 164, 255);
-            Color32 dark = new Color32(24, 44, 26, 255);
+            var texture = NewTexture(38, 50);
+            Color32 dark = new Color32(14, 19, 24, 255);
+            Color32 suit = new Color32(48, 57, 63, 255);
+            Color32 armor = new Color32(89, 101, 105, 255);
+            Color32 armorLight = new Color32(137, 153, 153, 255);
+            Color32 optic = new Color32(61, 225, 232, 255);
+            Color32 warning = new Color32(240, 73, 42, 255);
 
-            FillRect(texture, 4, 2, 18, 10, shade);       // 몸통 아래
-            FillRect(texture, 5, 6, 16, 8, body);         // 몸통 위
-            FillRect(texture, 7, 12, 12, 3, body);        // 둥근 머리
-            FillRect(texture, 8, 10, 3, 3, shine);        // 하이라이트
-            FillRect(texture, 9, 6, 2, 3, dark);          // 눈
-            FillRect(texture, 15, 6, 2, 3, dark);
-            FillRect(texture, 4, 2, 18, 1, dark);         // 바닥선
+            FillRect(texture, 9, 2, 7, 12, dark);         // 다리
+            FillRect(texture, 20, 2, 7, 12, dark);
+            FillRect(texture, 10, 4, 5, 9, suit);
+            FillRect(texture, 21, 4, 5, 9, suit);
+            FillRect(texture, 7, 13, 21, 19, dark);       // 밀폐 방탄복
+            FillRect(texture, 9, 15, 17, 15, suit);
+            FillRect(texture, 10, 24, 15, 5, armor);
+            FillRect(texture, 11, 27, 8, 2, armorLight);
+            FillRect(texture, 10, 31, 15, 13, dark);      // 헬멧
+            FillRect(texture, 12, 33, 11, 9, armor);
+            FillRect(texture, 13, 37, 9, 3, dark);
+            FillRect(texture, 14, 38, 7, 1, optic);       // 불투명 광학 바이저
+            FillRect(texture, 5, 20, 6, 8, armor);        // 견착 팔
+            FillRect(texture, 24, 18, 8, 7, armor);
+            FillRect(texture, 3, 21, 34, 5, dark);        // 아크 카빈 실루엣
+            FillRect(texture, 6, 22, 26, 3, armorLight);
+            FillRect(texture, 31, 20, 6, 3, dark);        // 총열
+            FillRect(texture, 18, 19, 5, 2, warning);     // 기업 IFF
+            FillRect(texture, 15, 17, 4, 7, dark);        // 탄창
 
             texture.Apply(false, true);
-            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.06f));
             _spriteCache[key] = cached;
             return cached;
         }
 
         /// <summary>
-        /// 투석 약탈자. 근접 약탈자와 한눈에 구분돼야 대응(엄폐·돌진)이 성립하므로
-        /// 치켜든 팔과 투척끈으로 실루엣을 다르게 잡는다.
+        /// 합선 검사 드론. 물 위에서 위험한 적임을 읽히게 절연 부표형 하부와 청백색 방전 코일을 쓴다.
+        /// 기업 진압 로봇의 직립 실루엣, 기업 추적 드론의 사족 실루엣과 겹치지 않는 가로형 기계다.
         /// </summary>
-        private Sprite GetSlingerSprite()
+        private Sprite GetArcInspectionDroneSprite()
         {
-            const string key = "slinger";
-            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
-
-            var texture = NewTexture(32, 48);
-            Color32 dark = new Color32(20, 25, 28, 255);
-            Color32 coat = new Color32(108, 92, 66, 255);
-            Color32 coatLight = new Color32(148, 128, 92, 255);
-            Color32 skin = new Color32(198, 158, 118, 255);
-            Color32 sling = new Color32(226, 188, 96, 255);
-
-            FillRect(texture, 11, 2, 10, 12, dark);       // 다리
-            FillRect(texture, 12, 3, 8, 10, coat);
-            FillRect(texture, 9, 13, 14, 16, dark);       // 몸통 외곽
-            FillRect(texture, 10, 14, 12, 14, coat);
-            FillRect(texture, 10, 22, 12, 3, coatLight);  // 어깨끈
-            FillRect(texture, 12, 29, 8, 9, dark);        // 머리
-            FillRect(texture, 13, 30, 6, 7, skin);
-            FillRect(texture, 13, 33, 6, 2, dark);        // 눈가리개
-
-            // 치켜든 팔 + 투척끈 — 원거리 몬스터임을 실루엣으로 알린다.
-            FillRect(texture, 22, 24, 4, 12, coat);
-            FillRect(texture, 22, 34, 4, 3, skin);
-            DrawThickLine(texture, 24, 37, 29, 43, 2, sling);
-            FillRect(texture, 27, 42, 4, 4, sling);
-
-            texture.Apply(false, true);
-            cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
-            _spriteCache[key] = cached;
-            return cached;
-        }
-
-        /// <summary>
-        /// 합선 드론. 물 위에서 위험한 적임을 읽히게 절연 부표형 하부와 청백색 방전 코일을 쓴다.
-        /// 경비 드론의 직립 실루엣, 슬러지의 낮은 덩어리와 겹치지 않는 가로형 기계다.
-        /// </summary>
-        private Sprite GetArcDroneSprite()
-        {
-            const string key = "arc-drone";
+            const string key = "arc-inspection-drone-fallback";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
             var texture = NewTexture(38, 42);
@@ -1267,41 +1343,76 @@ namespace ProjectC.Gameplay
         /// 일반 몹보다 큰 실루엣(넓은 어깨 + 센서 마스트)과 경고 네온 외눈으로 즉시 구분한다.
         /// 경고 네온(#F0492A)은 적 신호색 — HP 적색과 역할이 분리된 팔레트 색이다.
         /// </summary>
-        private Sprite GetGraveWardenSprite()
+        private Sprite GetCyberpsychoWardenSprite()
         {
-            const string key = "grave-warden";
+            const string key = "cyberpsycho-warden-fallback";
             if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-            var texture = NewTexture(40, 60);
+            var texture = NewTexture(42, 62);
             Color32 dark = new Color32(16, 20, 24, 255);
-            Color32 hull = new Color32(74, 78, 86, 255);
-            Color32 hullLight = new Color32(104, 110, 118, 255);
-            Color32 rust = new Color32(122, 74, 46, 255);
+            Color32 suit = new Color32(48, 51, 56, 255);
+            Color32 armor = new Color32(82, 86, 93, 255);
+            Color32 armorLight = new Color32(131, 136, 142, 255);
+            Color32 skin = new Color32(177, 126, 92, 255);
             Color32 neon = new Color32(240, 73, 42, 255);
 
-            FillRect(texture, 8, 2, 24, 8, dark);         // 하부 구동부
-            FillRect(texture, 9, 3, 22, 6, hull);
-            FillRect(texture, 9, 5, 22, 1, dark);         // 트레드 골
-            FillRect(texture, 6, 10, 28, 22, dark);       // 몸통 — 어깨가 넓다
-            FillRect(texture, 7, 11, 26, 20, hull);
-            FillRect(texture, 7, 28, 26, 3, hullLight);   // 어깨 판
-            FillRect(texture, 7, 11, 5, 8, rust);         // 하부 녹
-            FillRect(texture, 26, 13, 6, 5, rust);
-            FillRect(texture, 2, 18, 5, 12, dark);        // 좌우 비대칭 팔
-            FillRect(texture, 3, 19, 3, 10, hull);
-            FillRect(texture, 33, 16, 5, 14, dark);
-            FillRect(texture, 34, 17, 3, 12, hull);
-            FillRect(texture, 34, 27, 3, 2, rust);
-            FillRect(texture, 11, 32, 18, 12, dark);      // 머리 돔
-            FillRect(texture, 12, 33, 16, 10, hull);
-            FillRect(texture, 13, 36, 14, 4, dark);       // 바이저 홈
-            FillRect(texture, 15, 37, 10, 2, neon);       // 경고 네온 외눈
-            FillRect(texture, 19, 44, 2, 11, dark);       // 센서 마스트
-            FillRect(texture, 18, 54, 4, 3, dark);
-            FillRect(texture, 19, 55, 2, 1, neon);        // 마스트 표시등
+            FillRect(texture, 8, 2, 9, 16, dark);         // 인간형 두 다리 — 등반 계약과 일치
+            FillRect(texture, 25, 2, 9, 16, dark);
+            FillRect(texture, 10, 4, 6, 12, suit);
+            FillRect(texture, 26, 4, 6, 12, suit);
+            FillRect(texture, 5, 17, 32, 25, dark);       // 불법 전투 외골격
+            FillRect(texture, 8, 19, 26, 21, suit);
+            FillRect(texture, 6, 33, 30, 7, armor);       // 넓은 어깨판
+            FillRect(texture, 8, 38, 23, 2, armorLight);
+            FillRect(texture, 2, 20, 7, 19, dark);        // 비대칭 강화 팔
+            FillRect(texture, 3, 22, 5, 15, armor);
+            FillRect(texture, 34, 18, 6, 22, dark);
+            FillRect(texture, 35, 20, 4, 18, armor);
+            DrawThickLine(texture, 11, 18, 16, 39, 2, armorLight); // 외골격 스트럿
+            DrawThickLine(texture, 31, 18, 26, 39, 2, armorLight);
+            FillRect(texture, 11, 41, 20, 14, dark);      // 인간 머리 + 장착 바이저
+            FillRect(texture, 13, 43, 16, 10, skin);
+            FillRect(texture, 12, 47, 18, 5, dark);
+            FillRect(texture, 16, 48, 11, 2, neon);       // 붉은 사이버 광학안
+            FillRect(texture, 19, 55, 3, 5, dark);        // 센서 마스트
+            FillRect(texture, 18, 59, 5, 2, dark);
+            FillRect(texture, 20, 60, 2, 1, neon);
 
             texture.Apply(false, true);
             cached = CreateSprite(texture, new Vector2(0.5f, 0.05f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
+        /// 등록되지 않은 ID는 다른 몬스터의 얼굴을 빌려 쓰지 않는다. 중립 보안 드론으로 표시해
+        /// 판타지 폴백과 아키타입 오인 양쪽을 피하고, 누락된 카탈로그 연결은 눈에 띄게 남긴다.
+        /// </summary>
+        private Sprite GetUnregisteredSecurityDroneSprite()
+        {
+            const string key = "unregistered-security-drone-fallback";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(32, 38);
+            Color32 dark = new Color32(14, 19, 24, 255);
+            Color32 hull = new Color32(70, 78, 84, 255);
+            Color32 hullLight = new Color32(123, 136, 139, 255);
+            Color32 alert = new Color32(230, 68, 184, 255);
+
+            FillRect(texture, 5, 12, 22, 12, dark);
+            FillRect(texture, 7, 14, 18, 8, hull);
+            FillRect(texture, 9, 20, 14, 2, hullLight);
+            FillRect(texture, 2, 9, 7, 5, dark);
+            FillRect(texture, 23, 9, 7, 5, dark);
+            FillRect(texture, 3, 10, 5, 3, hull);
+            FillRect(texture, 24, 10, 5, 3, hull);
+            FillRect(texture, 13, 24, 6, 9, dark);
+            FillRect(texture, 15, 25, 2, 7, alert);
+            FillRect(texture, 13, 16, 6, 3, dark);
+            FillRect(texture, 15, 17, 2, 1, alert);
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.08f));
             _spriteCache[key] = cached;
             return cached;
         }

@@ -194,7 +194,7 @@ namespace ProjectC.Gameplay
 
             if (_selected.HasValue && CountOf(_selected.Value) > 0)
                 // CountOf 는 충전이고 _selectedInstanceIndex 는 칸이다. 충전으로 칸을
-                // 클램프하면 물약 2회분(1칸)에서 인덱스 1이 유효하다고 판정돼 선택
+                // 클램프하면 응급 키트 2회분(1칸)에서 인덱스 1이 유효하다고 판정돼 선택
                 // 하이라이트가 조용히 사라진다.
                 Select(
                     _selected.Value,
@@ -359,7 +359,7 @@ namespace ProjectC.Gameplay
                 _useButton.SetEnabled(count > 0 && ItemCatalog.IsUsable(kind));
                 _useButton.text = treasure ? "생환 시 환금"
                     : material ? "조합 재료"
-                    : kind == ItemKind.Potion ? "마시기"
+                    : kind == ItemKind.Potion ? "응급 처치"
                     : kind == ItemKind.RecallScroll ? "사용하기"
                     : kind == ItemKind.CannedFood ? "먹기"
                     : kind == ItemKind.ExtractionBeacon ? "생환하기"

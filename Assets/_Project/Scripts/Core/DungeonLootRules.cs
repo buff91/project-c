@@ -41,8 +41,8 @@ namespace ProjectC.Core
 
         private static ItemKind ResolveFlooded(int progressIndex, int roll)
         {
-            // 침수 지역(/23): 물약3 · 폭탄2 · 냉기3 · 단검1 · 두루마리1 ·
-            // 통조림5 · 스크랩2 · 코어 파편1 · 유물1 · 균사1 · 화약1 · 냉매 결정2.
+            // 침수 지역(/23): 응급 키트3 · 폭탄2 · 냉기3 · 투척 볼트1 · 귀환 비컨1 ·
+            // 통조림5 · 스크랩2 · 코어 파편1 · 시제품 코어1 · 지혈 패치1 · 화약1 · 냉각 코일2.
             // 기름은 물 위에서 지역 반응을 흐리므로 제외하고 냉기 도구로 자리를 넘긴다.
             if (roll < 3) return ItemKind.Potion;
             if (roll < 5) return ItemKind.Bomb;

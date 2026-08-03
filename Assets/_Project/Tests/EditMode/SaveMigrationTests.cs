@@ -9,7 +9,7 @@ namespace ProjectC.Tests
     /// </summary>
     public sealed class SaveMigrationTests
     {
-        /// <summary>물약 칸당 2회분이라고 가정한 테스트용 배수(카탈로그 실값과 무관).</summary>
+        /// <summary>응급 키트 칸당 2회분이라고 가정한 테스트용 배수(카탈로그 실값과 무관).</summary>
         private static int TestCharges(ItemKind kind) => kind == ItemKind.Potion ? 2 : 1;
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace ProjectC.Tests
 
             Assert.IsTrue(SaveMigration.Migrate(meta, TestCharges));
 
-            Assert.AreEqual(4, meta.GetCount(ItemKind.Potion), "물약 2개 = 4회분");
+            Assert.AreEqual(4, meta.GetCount(ItemKind.Potion), "응급 키트 2개 = 4회분");
             Assert.AreEqual(SaveMigration.CurrentVersion, meta.schemaVersion);
         }
 

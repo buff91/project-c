@@ -96,6 +96,16 @@ namespace ProjectC.Gameplay
             // 갑자기 안쪽으로 튀지 않도록 자유 보기 진입 중심을 허용 경계에 포함한다.
             _cameraLookKnownCenters.Add(_cameraLookOriginCenter);
 
+            foreach (GridPos pos in _mappedTiles)
+            {
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex)
+                    continue;
+
+                Vector3 world = VisualPosition(pos);
+                _cameraLookKnownCenters.Add(new Vector2(world.x, world.y));
+            }
+
+            // 공개된 비밀방처럼 초기 mapped 집합에는 없던 탐색 기억도 경계에 포함한다.
             foreach (GridPos pos in _exploredTiles)
             {
                 if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex)

@@ -25,7 +25,7 @@ namespace ProjectC.Tests
                 CollectionAssert.Contains(floor.SecretRoomTiles.ToList(), floor.SecretReward.Value);
 
                 ItemSpawn reward = floor.Items.Single(item => item.Position == floor.SecretReward.Value);
-                // 기본 보상은 깊이에 따른 유물/보석이고, 비상 송출기가 그 자리를 대신할 수 있다
+                // 기본 보상은 진행 구간에 따른 시제품 코어/코어 파편이고, 비상 송출기가 그 자리를 대신할 수 있다
                 // (`ExtractionRules.BeaconRewardChancePercent`) — 숨은 방은 송출기의 출처 중 하나다.
                 Assert.IsTrue(
                     reward.Kind == ItemKind.Gemstone

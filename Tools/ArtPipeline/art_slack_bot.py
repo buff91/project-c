@@ -1336,8 +1336,8 @@ def modal_view(
                     "5. 캐릭터 / 대상 정의",
                     value=_target_definition(selected_target_id),
                     placeholder=(
-                        "예: 붉은 후드와 외눈 센서, 작은 배낭, "
-                        "머리 위로 슬링을 든 원거리 약탈자"
+                        "예: 좁은 붉은 바이저와 기업 방탄복, 소형 전지, "
+                        "아크 카빈을 견착한 기업 보안 사수"
                     ),
                     multiline=True,
                 ),

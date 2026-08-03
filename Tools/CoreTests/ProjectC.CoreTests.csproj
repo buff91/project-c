@@ -59,21 +59,25 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/FloorFoundationPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudTransientNoticeQueueTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubUiBindingRegistryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubWorldRegistryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HubWorldPresenterTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudVisualTreeContractTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudWheelPlacementTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoGridTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoVisualCatalogTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ItemStorageTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/OrthographicCameraFramingTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ProjectCAsepritePipelineTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/PrototypeActorSpritesTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/PrototypeEnvironmentSpriteScaleTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ResponsiveUiLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RunTelemetryTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SaveStoreCompatibilityTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/RuntimeSpriteGroundingTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SharedFloorAssetContractTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteClipAnimatorTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/SpriteOcclusionTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/TitleEntryRoutingTests.cs" />
   </ItemGroup>

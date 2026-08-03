@@ -143,7 +143,7 @@ namespace ProjectC.Core
                 "flooded-vault",
                 "침수된 금고",
                 "무너진 방수문 너머로 안쪽 구역을 파고든다. 침수된 바닥을 얼려 길을 만들고, " +
-                "물 위의 합선 드론이 일으키는 감전 연쇄를 역이용해야 한다.",
+                "물 위의 합선 검사 드론이 일으키는 감전 연쇄를 역이용해야 한다.",
                 "구역 1 → 10 · 물·빙결·감전 반응 · 냉기 장비 권장",
                 seed: 2718,
                 floorCount: 10,
@@ -156,7 +156,7 @@ namespace ProjectC.Core
                 region: DungeonRegionProfile.Flooded,
                 entryTitle: "구역 1 · 외곽 방수문",
                 entryDetail: "배수 장치가 멎어 금고 안쪽이 잠겼다. 물을 얼려 발판을 만들고, " +
-                    "합선 드론의 전류가 번지기 전에 깊은 구역으로 진입하라."),
+                    "합선 검사 드론의 전류가 번지기 전에 깊은 구역으로 진입하라."),
             new DungeonDefinition(
                 "ember-keep",
                 "잿불 성채",

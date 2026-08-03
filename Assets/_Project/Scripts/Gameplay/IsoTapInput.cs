@@ -52,6 +52,12 @@ namespace ProjectC.Gameplay
         public event System.Action CameraRecenterRequested;
 
         /// <summary>
+        /// PC 액션 휠 홀드 상태. 범용 Ctrl/Cmd 수정키는 OS 단축키와 충돌하므로
+        /// 입력 레이어가 전용 Tab 액션으로 흡수해 HUD에 노출한다.
+        /// </summary>
+        public bool ActionWheelHeld => ActionWheelHoldKeyHeld();
+
+        /// <summary>
         /// 화면 좌표에서 액터(몬스터 등)를 우선 집는 선택자. 게임 로직이 주입한다.
         /// 아이소 스프라이트는 발밑 타일보다 화면상 위에 그려져서, 평면 역변환만으로는
         /// 몸통 탭이 뒤쪽 타일로 새기 때문에 스프라이트 기준 보정이 필요하다.
@@ -279,6 +285,16 @@ namespace ProjectC.Gameplay
             return keyboard != null && keyboard.homeKey.wasPressedThisFrame;
 #else
             return Input.GetKeyDown(KeyCode.Home);
+#endif
+        }
+
+        private static bool ActionWheelHoldKeyHeld()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.tabKey.isPressed;
+#else
+            return Input.GetKey(KeyCode.Tab);
 #endif
         }
 

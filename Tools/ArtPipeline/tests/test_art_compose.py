@@ -50,9 +50,9 @@ class ComposeTests(unittest.TestCase):
         """대상이 이름을 다시 적지 않아도 게임의 이름으로 불린다."""
         slinger = self.subjects.get("actor-slinger")
         self.assertNotIn("name", slinger.document)
-        self.assertEqual("투석 약탈자", slinger.name)
+        self.assertEqual("기업 보안 사수", slinger.name)
         self.assertEqual(
-            "투석 약탈자", SlotCatalog().describe("actor-slinger")[0]
+            "기업 보안 사수", SlotCatalog().describe("actor-slinger")[0]
         )
         warden = self.subjects.get("actor-grave-warden")
         self.assertEqual("감시자", warden.name)

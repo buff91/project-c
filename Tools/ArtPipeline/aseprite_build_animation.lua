@@ -62,6 +62,37 @@ sprite:setPalette(palette)
 
 local frameNumber = 0
 local pendingTags = {}
+
+-- Optional untagged catalog frames precede the animation timeline.  Actor
+-- sources use this to preserve an already approved static Frame_0 for Hub and
+-- catalog consumers without forcing that legacy pose into a directional loop.
+if manifest.leading_frames ~= nil then
+  for leadingIndex = 1, #manifest.leading_frames do
+    local frameSpec = manifest.leading_frames[leadingIndex]
+    local source = frameSpec.source
+    if not app.fs.isFile(source) then
+      sprite:close()
+      error("leading frame source does not exist: " .. tostring(source))
+    end
+    local image = Image{ fromFile=source }
+    if image == nil or image.width ~= width or image.height ~= height then
+      sprite:close()
+      error("leading frame source canvas mismatch: " .. tostring(source))
+    end
+    frameNumber = frameNumber + 1
+    if frameNumber > 1 then
+      sprite:newEmptyFrame(frameNumber)
+    end
+    sprite:newCel(layer, frameNumber, image, Point(0, 0))
+    local durationMs = tonumber(frameSpec.duration_ms or 100)
+    if durationMs == nil or durationMs <= 0 then
+      sprite:close()
+      error("leading frame duration must be positive")
+    end
+    sprite.frames[frameNumber].duration = durationMs / 1000.0
+  end
+end
+
 for clipIndex = 1, #manifest.clips do
   local clip = manifest.clips[clipIndex]
   if type(clip.tag) ~= "string" or clip.tag == "" then

@@ -4,26 +4,31 @@ slot: actor-grave-warden
 asset_type: character
 
 # 표시명은 MonsterRoster.GraveWarden 의 displayName("감시자")을 그대로 쓴다.
+# 화면 정체성은 초자연 개체나 자율 로봇이 아니라 불법 전투 외골격을 두른
+# 사이버사이코 집행관이다. 코드 ID·보스 규칙은 바꾸지 않는다.
 # 컨셉 승인 전에는 전용 가이드가 없으므로, txt2img 컨셉 방법만 선택할 수 있다.
 
 readability_goal: >-
-  일반 몬스터보다 약 1.3배 큰 몸통, 센서 마스트, 붉은 네온 외눈이
-  96×128에서도 보스 실루엣으로 즉시 구분되어야 한다.
+  일반 몬스터보다 약 1.3배 넓은 인간형 외골격, 센서 마스트, 붉은 사이버 광학안이
+  96×128에서도 사이버사이코 보스 실루엣으로 즉시 구분되어야 한다.
 
 prompt:
   positive: >-
-    single hulking post-apocalyptic arcade-tower security warden boss, about 1.3
-    times the mass of a normal scavenger, repurposed concrete-gray riot shell,
-    oxidized steel braces, exposed cables, asymmetrical shoulder plating,
-    tall broken sensor mast, one intense red warning eye, heavy grounded legs,
-    anomalous organic core barely visible through one cracked chest seam
+    single hulking cyberpsycho corporate enforcer boss in an illegal combat
+    exoskeleton, post-apocalyptic arcade tower, visibly human armored proportions,
+    about 1.3 times the mass of normal infantry, repurposed concrete-gray riot
+    plates, oxidized powered braces, exposed neural cables, asymmetrical shoulder
+    plating, tall broken sensor mast, one intense red cybernetic optic behind a
+    sealed respirator, heavy grounded legs, cracked chest armor exposing only
+    mechanical implant hardware
   signature_pose: >-
     planted frontal three-quarter isometric guard stance, one heavy arm lowered
     to block the corridor, sensor mast tilted toward the player
   negative: >-
     medieval gravekeeper, fantasy knight, robe, hooded necromancer, tombstone,
-    scythe, sword, shield, pristine robot, sleek android, symmetrical mecha,
-    multiple eyes, small ordinary human silhouette
+    scythe, sword, shield, supernatural monster, organic anomaly, exposed flesh
+    core, pristine autonomous robot, sleek android, symmetrical mecha, multiple
+    eyes, small ordinary human silhouette
 
 guides:
   # 승인 컨셉이 style_source가 되고, 이 가이드는 기본 접지 자세만 제공한다.

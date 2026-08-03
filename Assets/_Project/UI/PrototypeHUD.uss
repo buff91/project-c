@@ -290,21 +290,30 @@
 }
 
 .vertical-route-discovery {
-    display: none;
+    display: flex;
     position: absolute;
     top: 24px;
     left: 50%;
-    translate: -50% 0;
+    translate: -50% -6px;
     width: 360px;
     max-width: 50%;
     padding: 12px 18px;
+    opacity: 0;
     background-color: rgba(9, 13, 18, 0.96);
     border-left-width: 4px;
     border-left-color: var(--pc-teal);
+    transition-property: opacity, translate;
+    transition-duration: 0.16s, 0.16s;
+    transition-timing-function: ease-out, ease-out;
 }
 
 .vertical-route-discovery.is-open {
-    display: flex;
+    translate: -50% 0;
+    opacity: 1;
+}
+
+.vertical-route-discovery.is-suppressed {
+    display: none;
 }
 
 .route-discovery-kicker {
@@ -324,6 +333,15 @@
     font-size: var(--pc-fs-1);
     white-space: normal;
     margin-top: 5px;
+}
+
+/* 공용 트리에는 두지만 현재 검증 타깃인 PC에서만 연다. 카드 본문은 계속
+   PickingMode.Ignore라 월드 입력을 통과하고 이 버튼만 클릭을 받는다. */
+.route-discovery-close,
+.minimap-floor-badge,
+.minimap-north-label,
+.minimap-player-marker {
+    display: none;
 }
 
 .vertical-route-discovery.route-ladder {
@@ -1798,8 +1816,12 @@
     max-width: none;
     left: 12px;
     right: 12px;
-    translate: 0 0;
+    translate: 0 -6px;
     padding: 10px 12px;
+}
+
+.hud-root.is-narrow .vertical-route-discovery.is-open {
+    translate: 0 0;
 }
 
 .hud-root.is-narrow .route-discovery-title {

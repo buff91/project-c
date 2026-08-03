@@ -67,7 +67,7 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsFalse(hudRoot.Q<Button>("combat-button").enabledInHierarchy);
             Assert.IsFalse(hudRoot.Q<Button>("potion-button").enabledInHierarchy);
             Assert.AreEqual(
-                $"현재 {demo.ActiveFloorLabel}  ·  보기 {demo.ViewedFloorLabel}",
+                $"플레이 {demo.ActiveFloorLabel} · 보기 {demo.ViewedFloorLabel}",
                 hudRoot.Q<Label>("vertical-view-state").text);
             Assert.AreEqual("관찰", hudRoot.Q<Label>(className: "turn-label").text);
 

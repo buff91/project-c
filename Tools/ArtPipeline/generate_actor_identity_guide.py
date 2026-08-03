@@ -16,7 +16,7 @@ from art_runner import aseprite_binary
 
 DEFAULT_SOURCE = (
     PROJECT_ROOT
-    / "Assets/_Project/Art/Source/Aseprite/actor-slinger.aseprite"
+    / "Assets/_Project/Art/Runtime/actor-slinger.png"
 )
 DEFAULT_DESTINATION = (
     PROJECT_ROOT

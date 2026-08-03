@@ -20,6 +20,58 @@ namespace ProjectC.Gameplay
 
         /// <summary>폭발이 부여하는 화상/빙결 지속 턴.</summary>
         private const int StatusTurnsApplied = 2;
+        internal const float EnemyFallPresentationDuration = 0.22f;
+
+        internal enum EnemyFallCompletion
+        {
+            PreserveDeath = 0,
+            ReturnToIdle = 1,
+        }
+
+        internal readonly struct EnemyFallMotionPlan
+        {
+            public bool Present { get; }
+            public Vector3 Endpoint { get; }
+
+            public EnemyFallMotionPlan(bool present, Vector3 endpoint)
+            {
+                Present = present;
+                Endpoint = endpoint;
+            }
+        }
+
+        /// <summary>
+        /// 적 낙하를 화면에 보여 줄지와 지속 배치에 맞는 끝점을 한 번에 고정한다.
+        /// 시작점만 보이고 착지점이 숨겨진 경우도 낙하 자체는 보여 줘야 하며,
+        /// 끝점은 DebugAll/수직 관찰의 층 분리 오프셋을 포함한 VisualPosition을 받는다.
+        /// </summary>
+        internal static EnemyFallMotionPlan ResolveEnemyFallMotion(
+            bool debugAll,
+            bool originVisible,
+            bool destinationVisible,
+            bool originVerticalTarget,
+            bool destinationVerticalTarget,
+            Vector3 persistentEndpoint)
+        {
+            return new EnemyFallMotionPlan(
+                debugAll ||
+                originVisible ||
+                destinationVisible ||
+                originVerticalTarget ||
+                destinationVerticalTarget,
+                persistentEndpoint);
+        }
+
+        /// <summary>
+        /// 낙하 피해·사망 처리가 끝난 뒤에만 호출한다. 생존자는 idle로 돌아가고,
+        /// 사망자는 RecordEnemyDeath가 재생한 death 클립을 그대로 보존한다.
+        /// </summary>
+        internal static EnemyFallCompletion ResolveEnemyFallCompletion(bool isAlive)
+        {
+            return isAlive
+                ? EnemyFallCompletion.ReturnToIdle
+                : EnemyFallCompletion.PreserveDeath;
+        }
 
         private List<CombatantState> AllCombatants()
         {
@@ -269,11 +321,12 @@ namespace ProjectC.Gameplay
             {
                 if (damaged == _playerState)
                 {
-                    yield return ShowPlayerHit(step.Amount, step.Source);
+                    yield return ShowPlayerHit(step.Amount, step.Source, step.Origin);
                     continue;
                 }
                 EnemyAgent agent = FindAgentByState(damaged);
-                if (agent != null) yield return ShowEnemyHit(agent, step.Amount, step.Source);
+                if (agent != null)
+                    yield return ShowEnemyHit(agent, step.Amount, step.Source, step.Origin);
             }
         }
 
@@ -300,8 +353,11 @@ namespace ProjectC.Gameplay
 
         private void PlaySecretDoors(HazardStep step)
         {
-            foreach (GridPos _ in step.Cells)
+            foreach (GridPos door in step.Cells)
+            {
+                RevealMappedSecretRoom(door);
                 _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
+            }
             InteractionFeedback?.Invoke(
                 step.Cells.Count == 1
                     ? "폭발로 숨은 통로가 드러났다!"
@@ -333,7 +389,9 @@ namespace ProjectC.Gameplay
                     InteractionFeedback?.Invoke("KNOCKED INTO THE PIT!");
                 int destinationFloor = _dungeon.Height.FloorIndex(step.Destination.elevation);
                 InteractionFeedback?.Invoke($"{step.Source} → {FloorLabel(destinationFloor)}");
+                _playerAnimator?.PlayOnceAndHold(SpriteClipTags.Fall);
                 yield return AnimateHoleDrop(step.Origin, step.Destination);
+                _playerAnimator?.StopToIdle();
 
                 SyncPlayerView(step.Destination, floorChanged: true);
                 InteractionFeedback?.Invoke($"LANDED · {LocationLabel}");
@@ -364,9 +422,74 @@ namespace ProjectC.Gameplay
             Debug.Log(
                 $"[Fall] {step.Actor.Id} {step.Source} 낙하 → {step.Destination} " +
                 $"(-{step.Amount} HP)");
+            // 낙하 클립은 착지 연출이 끝날 때까지 마지막 프레임을 유지한다. 낙하 피해도
+            // 공통 피격 FX는 재사용하되 hit 클립으로 fall을 덮어쓰면 안 된다.
+            agent.Animator?.PlayOnceAndHold(SpriteClipTags.Fall);
+            yield return AnimateEnemyHoleDrop(agent, step.Origin, step.Destination);
             agent.Brain?.Rehome(step.Destination); // 새 층에서 순찰하도록 홈 이동
-            yield return ShowEnemyHit(agent, step.Amount, "Fall");
+            yield return ShowEnemyHit(
+                agent,
+                step.Amount,
+                "Fall",
+                playHitAnimation: false);
+            if (ResolveEnemyFallCompletion(agent.State.IsAlive) ==
+                EnemyFallCompletion.ReturnToIdle)
+                agent.Animator?.StopToIdle();
             ApplyEnemyVisuals(agent); // 대개 다른 층으로 사라진다
+        }
+
+        private IEnumerator AnimateEnemyHoleDrop(
+            EnemyAgent agent,
+            GridPos origin,
+            GridPos destination)
+        {
+            // 적 낙하는 활성 층을 전환하지 않는다. DebugAll/수직 관찰의 층 분리 오프셋도
+            // 착지 뒤 지속 배치와 같아야 하므로 플레이어 낙하와 달리 VisualPosition을 쓴다.
+            EnemyFallMotionPlan motion = ResolveEnemyFallMotion(
+                viewMode == DungeonViewMode.DebugAll,
+                IsPositionVisibleToPlayer(origin),
+                IsPositionVisibleToPlayer(destination),
+                IsVerticalLookTarget(origin),
+                IsVerticalLookTarget(destination),
+                VisualPosition(destination));
+            if (!motion.Present || agent?.Root == null || agent.Renderer == null)
+                yield break;
+
+            Transform root = agent.Root.transform;
+            Vector3 start = root.position;
+            Vector3 end = motion.Endpoint;
+            Vector3 originalScale = root.localScale;
+            Color originalColor = agent.Renderer.color;
+            agent.Renderer.enabled = true;
+
+            float elapsed = 0f;
+            int renderedFrames = 0;
+            float t = 0f;
+            while (t < 1f)
+            {
+                elapsed += Time.deltaTime;
+                renderedFrames++;
+                t = VisualAnimationProgress(
+                    elapsed,
+                    EnemyFallPresentationDuration,
+                    renderedFrames,
+                    MinimumCombatVisualFrames);
+                float eased = SmoothStep(t);
+                float depth = Mathf.Sin(t * Mathf.PI);
+                root.position = Vector3.Lerp(start, end, eased);
+                root.localScale = originalScale * Mathf.Lerp(1f, 0.72f, depth);
+                agent.Renderer.color = new Color(
+                    originalColor.r,
+                    originalColor.g,
+                    originalColor.b,
+                    originalColor.a * Mathf.Lerp(1f, 0.35f, depth));
+                ApplyMovingActorVisualSorting(agent.Renderer, origin, destination, eased);
+                yield return null;
+            }
+
+            root.position = end;
+            root.localScale = originalScale;
+            agent.Renderer.color = originalColor;
         }
 
         /// <summary>착지점에 있던 상대(플레이어/몬스터)의 충돌 피해 연출.</summary>

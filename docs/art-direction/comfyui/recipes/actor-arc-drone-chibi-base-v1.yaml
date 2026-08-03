@@ -1,9 +1,9 @@
 schema_version: 1
 id: actor-arc-drone-chibi-base-v1
-name: 합선 드론 치비 기본 스프라이트 v1 · 비인간형
+name: 합선 검사 드론 치비 기본 스프라이트 v1 · 비인간형
 # 치비 레인 파생이지만 드론은 비인간형이라 openpose 골격을 쓰지 않는다(txt2img).
-# 출력·팔레트·리뷰 계약은 레인과 동일. §1-b 계열 실루엣: 각진 몸통 + 안테나(경비 드론
-# 어휘 승계) + 노출된 아크 코일. §1-a warning 포인트는 붉은 램프 1개.
+# 출력·팔레트·리뷰 계약은 레인과 동일. 침수된 금고 전용 실루엣은 좌우 절연 플로트 +
+# 하부 방전 코일이다. §1-a warning 포인트는 붉은 IFF 램프 1개.
 # 절차 폴백(월드 0.59×0.66)보다 작게 렌더되는 결손 해소가 목적 — 96×96 캔버스.
 purpose:
   category: actor
@@ -11,8 +11,8 @@ purpose:
   slot: actor-concept
   use: concept
   readability_goal: >-
-    각진 부유 드론 + 안테나 + 아크 코일이 게임 스케일에서 즉시 드론으로 읽혀야
-    한다. 익명(얼굴 없음), 신호색은 붉은 램프 한 곳. 인간형 금지.
+    낮은 검사 드론 + 좌우 절연 플로트 + 하부 방전 코일이 게임 스케일에서 즉시
+    읽혀야 한다. 익명(얼굴 없음), 신호색은 붉은 램프 한 곳. 인간형 금지.
   animation_scope: base-single
 output:
   canvas:
@@ -67,27 +67,29 @@ generation:
   seed_strategy: sequential-random-base
 prompt:
   positive: >-
-    solo, chibi, pixel art, small hovering security drone, angular boxy
-    gray metal shell, dented panels, one short bent antenna mast, exposed
-    sparking arc coil underneath, single red glowing warning lamp, short
-    electric arc crackling between coil prongs, no face, no limbs, no human,
-    floating slightly above the ground with a small shadow, muted desaturated
-    gray-brown metal, three-quarter isometric view, isolated object, simple
-    gray background, flat color, clean pixel clusters, safe, masterpiece,
-    high score, great score, absurdres
+    solo, chibi, pixel art, small damaged electrical inspection drone for a
+    flooded corporate vault, low angular gray metal chassis riding between two
+    broad lateral insulated floats, dented maintenance panels, one short bent
+    sensor antenna, exposed sparking discharge coil underneath, single tiny red
+    IFF warning lamp, short electric arc crackling between lower coil prongs,
+    no face, no limbs, no human, muted desaturated gray-brown metal,
+    three-quarter isometric view, isolated object, simple gray background, flat
+    color, clean pixel clusters, safe, masterpiece, high score, great score,
+    absurdres
   negative: >-
     lowres, text, error, cropped, worst quality, low quality, low score,
     bad score, average score, signature, watermark, username, blurry,
     multiple views, multiple objects, gradient background, scenery,
     photorealistic, 3d render, neon overload, humanoid, human, face, eyes,
-    girl, boy, arms, legs, wings, propeller blades spinning blur, quadcopter,
-    sleek white drone, round smooth body, cute mascot
+    girl, boy, arms, legs, wings, hovering flight drone, propeller blades,
+    quadcopter, sleek white drone, round smooth body, cute mascot, missing
+    insulation floats, top-mounted weapon turret
 quality_gates:
   require_transparency_after_prepare: true
   silhouette_tags:
-  - angular-shell
-  - antenna
-  - arc-coil
+  - low-inspection-chassis
+  - twin-insulation-floats
+  - lower-discharge-coil
   - single-red-lamp
   reject_if:
   - humanoid-shape

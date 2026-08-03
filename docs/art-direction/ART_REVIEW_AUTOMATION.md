@@ -105,12 +105,12 @@ python3 Tools/ArtPipeline/art_runner.py slots --uncovered  # 아직 레시피가
 #### 슬롯이 게임에서 무엇인지
 
 `actor-slinger`만 보고는 그게 뭔지 알 수 없다. 몬스터 슬롯은 표시명과 한 줄 설명을
-**`MonsterRoster`에서 읽어온다** — 파이프라인이 "투석 약탈자"를 다시 타이핑하면 게임과
+**`MonsterRoster`에서 읽어온다** — 파이프라인이 "기업 보안 사수"를 다시 타이핑하면 게임과
 갈리기 때문이다(`DungeonCatalog`가 보스 이름에 대해 지키는 규칙과 같다).
 
 ```
-*대상*  캐릭터 · *투석 약탈자* · `actor-slinger`
-*정체*  투석 약탈자(코드 ID Slinger): 유일한 원거리 교전 몬스터
+*대상*  캐릭터 · *기업 보안 사수* · `actor-slinger`
+*정체*  기업 보안 사수(코드 ID Slinger): 유일한 원거리 교전 몬스터
 ```
 
 이름을 아는 슬롯만 이름이 붙는다. `actor-player`·`env-floor`·`fx-*`처럼 `MonsterRoster`에
@@ -204,7 +204,7 @@ Slack 생성 폼은 고정 레시피 이름부터 고르지 않는다. 기본 �
 2. **세계관**: `worlds/*.yaml`에서 테마와 재료 어휘를 고른다. 현재 기본값은
    `arcade-tower-v1`이다(구 `collapsed-hospital-v1`은 재현용 DEPRECATED).
 3. **제작 대상**: `subjects/*.yaml` 또는 `subject-sets/*.yaml`에서 어떤 캐릭터·환경·VFX를
-   만들지 고른다. 캐릭터는 `actor-slinger`(투석 약탈자)·`actor-grave-warden`(감시자)처럼
+   만들지 고른다. 캐릭터는 `actor-slinger`(기업 보안 사수)·`actor-grave-warden`(감시자)처럼
    실제 Unity 슬롯과 정체성을 함께 가진다. `컨셉`은 대상이 아니라 다음 단계의 제작 방법이다.
 4. **제작 단계/방법**: `methods/*.yaml`에서 컨셉 탐색, 기본 스프라이트, 액션 키프레임,
    VFX 컨셉/정제처럼 그 대상에 맞는 방법만 고른다.
@@ -256,8 +256,8 @@ python3 Tools/ArtPipeline/art_runner.py compose-submit \
   --style chunky-isometric-pixel-v1 \
   --world arcade-tower-v1 \
   --source-candidate ART-...-C01 \
-  --target-definition "붉은 센서 눈과 짧은 슬링을 지닌 아케이드 타워 약탈자" \
-  --positive-suffix "shorter sling, one compact oxygen tank" \
+  --target-definition "좁은 붉은 바이저와 아크 카빈을 지닌 기업 보안 사수" \
+  --positive-suffix "compact power cell, worn amber unit chevron" \
   --seed 1667020327 --steps 26 --cfg 6.0 --denoise 0.55 --count 2
 ```
 
@@ -292,10 +292,10 @@ python3 Tools/ArtPipeline/art_recipe_tool.py validate
 ```bash
 python3 Tools/ArtPipeline/art_recipe_tool.py clone \
   actor-slinger-idle-v1 actor-slinger-idle-v1-r2 \
-  --name "투석 약탈자 — 짧은 슬링 r2" \
+  --name "기업 보안 사수 — 아크 카빈 r2" \
   --set generation.denoise=0.70 \
   --set generation.steps=28 \
-  --set 'prompt.positive=full body hooded raider, shorter leather sling...'
+  --set 'prompt.positive=full body corporate security marksman, compact arc carbine...'
 ```
 
 ## 3. 트리거·사용 가이드
@@ -541,7 +541,7 @@ python3 Tools/ArtPipeline/art_runner.py shot-variation \
 python3 Tools/ArtPipeline/art_runner.py prepare ART-...-C01
 python3 Tools/ArtPipeline/art_runner.py animation ART-...-C01 --timing-scale 1.0
 python3 Tools/ArtPipeline/art_runner.py apply-request \
-  ART-...-C01 --intent "투석 약탈자 런타임 교체"
+  ART-...-C01 --intent "기업 보안 사수 런타임 교체"
 python3 Tools/ArtPipeline/art_runner.py apply-requests
 python3 Tools/ArtPipeline/art_runner.py work --once
 ```

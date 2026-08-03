@@ -244,8 +244,9 @@ python3 Tools/ArtPipeline/art_asset.py generate \
 ```
 
 흐름은 `ComfyUI REST → raw PNG(output/, gitignore) → trim/contain → 96×128 prepared PNG →
-Torchstone conform → Art/Source/Aseprite/actor-slinger.aseprite`다. 정식 `.aseprite`가 이미
-있으면 실패하며, 검토 후 교체할 때만 `--force`를 쓴다.
+Torchstone conform → Art/Source/Aseprite/actor-slinger.aseprite`다. 현재 구판은
+`docs/art-direction/legacy/`에 보관돼 있어 새 정식 원본을 처음 승격할 수 있다. 다른 슬롯처럼
+정식 `.aseprite`가 이미 있으면 실패하며, 검토 후 교체할 때만 `--force`를 쓴다.
 
 환경 타일처럼 정확한 2:1 외곽이 중요한 입력은 먼저 카테고리 프로세서로 셀을 추출한 뒤
 `publish --fit strict`를 사용한다. `contain`은 액터·소품·아이템 단일 컷아웃용이다.
@@ -270,7 +271,7 @@ Aseprite에서 발 기준선과 피벗을 고정해 마감한다.
 바로 실행 가능한 API 워크플로:
 
 - `actor-idle.api.json` — 1024² 단일 액터 idle 베이스
-- `actor-slinger-openpose.api.json` — SD1.5 OpenPose로 치켜든 팔을 고정한 투석 약탈자
+- `actor-slinger-openpose.api.json` — SD1.5 OpenPose로 아크 카빈 견착 자세를 고정한 기업 보안 사수
 - `environment-styletransfer.api.json` — 기존 6셀 시트 저 denoise img2img
 - `item-static.api.json` — SDXL IsoPixel+Junkworld+PixelArtRedmond 정적 아이템 단일 소스.
   생성 모델이 지정 크로마키 대신 균일한 중성 플레이트를 낼 때는
@@ -339,9 +340,10 @@ python3 Tools/ArtPipeline/art_runner.py work --once
 가이드의 색과 연결 순서는 장식이 아니라 SD1.5 OpenPose ControlNet의 BODY_18 입력 계약이다.
 임의 색 스틱 그림으로 바꾸면 denoise를 올려도 포즈보다 캐릭터 정체성이 먼저 흔들린다.
 정식 액터 identity 가이드는
-`python3 Tools/ArtPipeline/generate_actor_identity_guide.py`가 기본적으로
-`actor-slinger.aseprite` 첫 프레임에서 버전 고정 512 입력을 생성한다. 이미 런타임에서
-검증된 PNG를 production anchor로 쓸 때는 입력과 출력을 명시한다.
+`python3 Tools/ArtPipeline/generate_actor_identity_guide.py`가 기본적으로 현재 채택된
+`Art/Runtime/actor-slinger.png`에서 버전 고정 512 입력을 생성한다. 구 약탈자 Aseprite는
+활성 SourceRoot 밖 `docs/art-direction/legacy/`로 보관했으며, 새 방향 애니메이션이 승인돼
+Aseprite로 승격되면 기본 입력도 그 정식 원본으로 다시 바꾼다.
 
 ```bash
 python3 Tools/ArtPipeline/generate_actor_identity_guide.py \

@@ -1,6 +1,6 @@
 schema_version: 1
 id: actor-slinger-animation-walk-v1
-name: 투석 약탈자 액션 키프레임 v1
+name: 기업 보안 사수 액션 키프레임 v1
 
 purpose:
   category: actor
@@ -68,12 +68,12 @@ pipeline:
         6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-walk-west-contact.png
     - id: attack-windup
       label: attack · windup
-      prompt_suffix: ", attack windup, sling raised behind the head"
+      prompt_suffix: ", attack windup, compact arc carbine pulled tight to the shoulder"
       uploads:
         6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
     - id: attack-impact
       label: attack · release
-      prompt_suffix: ", attack release, sling arm extended forcefully forward"
+      prompt_suffix: ", controlled arc shot, carbine muzzle aimed forcefully forward"
       uploads:
         6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
     - id: hit
@@ -116,18 +116,20 @@ generation:
 prompt:
   positive: >-
     pixelart, isometric pixel game sprite, full body character, post-apocalyptic
-    scavenger raider in hooded cloak, same costume as actor-slinger source, sharp
-    readable silhouette, strong shoulders and backpack, one glowing red accent, flat
-    magenta background, isolated cutout, hard pixel edges, limited colors
+    corporate security marksman in sealed charcoal tactical armor, same costume
+    as actor-slinger source, compact arc carbine, opaque visor and respirator,
+    sharp readable silhouette, exactly one tiny dark-red IFF lamp, flat magenta
+    background, isolated cutout, hard pixel edges, limited colors
   negative: >-
     text, watermark, label, smooth anti-alias, blurry, low detail, photorealistic,
-    3d render, fantasy armor, medieval, extra limbs, wrong body count
+    3d render, fantasy armor, medieval, extra limbs, wrong body count, leather
+    sling, slingshot, stone pouch, bow, hooded raider, exposed friendly face
 
 quality_gates:
   require_transparency_after_prepare: true
   minimum_visible_pixels: 1800
   maximum_visible_pixels: 4200
-  silhouette_tags: [grounded-feet, raised-arm, readable-pose]
+  silhouette_tags: [grounded-feet, shouldered-carbine, readable-pose]
   reject_if: [cropped-feet, extra-limbs, malformed-anatomy, perspective-bend]
 
 animation:

@@ -1,9 +1,9 @@
 schema_version: 1
 id: item-herb
-name: 정화 균사
+name: 지혈 패치
 slot: item-herb
 asset_type: prop
-readability_goal: 64×64과 HUD 32px 표시에서 조합용 정화 균사 배양물로 즉시 읽혀야 한다.
+readability_goal: 64×64과 HUD 32px 표시에서 응급 키트 조합용 지혈 패치로 즉시 읽혀야 한다.
 output:
   canvas: [64, 64]
   pivot: [0.5, 0.125]
@@ -12,15 +12,16 @@ output:
   padding: 3
 prompt:
   positive: >-
-    a dense clump of pale sage purification fungus, three rounded shelf-fungus
-    caps of different sizes crowded together, wispy mycelium threads trailing
-    from the underside, gripping a small broken chunk of concrete rubble at the
-    base, soft organic mass filling most of the frame, damp scavenged growth
+    one sealed hemostatic field patch packet used by a scavenger medic, compact
+    flat folded off-white medical dressing pack filling most of the frame, a
+    small red medical cross, worn orange compression strap across the lower
+    third, dark steel pull tab hanging below, chipped edges and believable
+    salvaged construction
   negative: >-
-    herb bouquet, flowers, leafy green plant, potted plant, salad,
-    fantasy glowing plant,
-    tin can, canister, barrel, drum, container, jar, box, bottle,
-    metal cylinder, printed label, machinery,
+    mushroom, fungus, shelf fungus, mycelium, spores, herb, flowers, leafy green
+    plant, potted plant, roots, moss, organic growth, fantasy healing item,
+    potion, cork bottle, alchemy flask,
+    tin can, canister, barrel, drum, machinery,
     shadow on the ground, glow under the object,
     building, tower, architecture, diorama, miniature building,
     terrain base, ground tile, grass

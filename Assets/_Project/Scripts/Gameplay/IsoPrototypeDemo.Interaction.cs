@@ -305,7 +305,7 @@ namespace ProjectC.Gameplay
                 !_exploredTiles.Contains(target) &&
                 !_verticalPreviewTiles.Contains(target))
             {
-                TryTravelTowardUnexplored(target);
+                TryTravelTowardMapped(target);
                 return;
             }
 
@@ -457,6 +457,16 @@ namespace ProjectC.Gameplay
             List<GridPos> path = GridPathfinder.FindPath(_grid.Map, _playerPos, target);
             if (path.Count == 0)
             {
+                // 이미 본 목적지라도 사이의 일반 문이 다시 닫혔다면 mapped 실행기가
+                // 문 열기 행동을 포함해 같은 의도를 이어 간다.
+                if (viewMode == DungeonViewMode.Play &&
+                    _dungeon.Height.FloorIndex(target.elevation) == _activeFloorIndex &&
+                    _mappedTiles.Contains(target))
+                {
+                    TryTravelTowardMapped(target);
+                    return;
+                }
+
                 if (_dungeon.Height.FloorIndex(target.elevation) != _activeFloorIndex)
                     InteractionFeedback?.Invoke("그 층으로 가는 길을 아직 모른다");
                 return;

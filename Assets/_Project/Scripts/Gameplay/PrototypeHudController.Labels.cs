@@ -71,9 +71,11 @@ namespace ProjectC.Gameplay
             bool observing = hasDemo && demo.IsVerticalLookActive;
             if (_verticalViewState != null)
             {
-                _verticalViewState.text = observing
-                    ? $"현재 {demo.ActiveFloorLabel}  ·  보기 {demo.ViewedFloorLabel}"
-                    : hasDemo ? $"현재 {demo.ActiveFloorLabel}" : "현재 --";
+                _verticalViewState.text = !hasDemo
+                    ? "-- · 현재 층"
+                    : observing
+                        ? $"플레이 {demo.ActiveFloorLabel} · 보기 {demo.ViewedFloorLabel}"
+                        : $"{demo.ActiveFloorLabel} · 현재 층";
                 _verticalViewState.EnableInClassList("is-observing", observing);
             }
 
@@ -112,7 +114,12 @@ namespace ProjectC.Gameplay
         private void UpdateFloorLabel()
         {
             if (_depthLabel != null)
-                _depthLabel.text = demo != null ? $"현재 {demo.ActiveFloorLabel}" : "현재 B1";
+            {
+                string floor = demo != null ? demo.ActiveFloorLabel : "B1";
+                _depthLabel.text = ActivePresentation == HudPresentationMode.Desktop
+                    ? floor
+                    : $"현재 {floor}";
+            }
             if (_depthCaption != null)
                 _depthCaption.text = demo != null ? demo.StageLabel : "던전 1/3";
 
@@ -169,8 +176,10 @@ namespace ProjectC.Gameplay
 
             string hint = demo != null ? demo.VerticalHintLabel : null;
             _verticalHintLabel.text = hint ?? "";
-            _verticalHintLabel.parent?.EnableInClassList(
-                "is-open", !string.IsNullOrEmpty(hint));
+            VisualElement hintRoot = _verticalHintLabel.parent;
+            bool show = !string.IsNullOrEmpty(hint);
+            if (show && !IsOpen(hintRoot)) WaitOneLayoutPassBeforeShowingWheel();
+            hintRoot?.EnableInClassList("is-open", show);
         }
     }
 }

@@ -33,7 +33,7 @@
 .hud-root.hud-desktop .vitals {
     left: 8px;
     top: 8px;
-    width: 208px;
+    width: 160px;
 }
 
 .hud-root.hud-desktop .pc-heart {
@@ -63,17 +63,17 @@
 }
 
 /* ── B · 과도 밴드 (상단 중앙) ───────────────────────────
-   보스 패널과 발견 카드는 동시에 뜨지 않는다. 같은 288px 슬롯을 나눠 쓴다. */
+   보스 패널과 발견 카드는 동시에 뜨지 않는다. 같은 256px 슬롯을 나눠 쓴다. */
 
 .hud-root.hud-desktop .boss-panel {
     top: 8px;
-    width: 288px;
+    width: 256px;
     padding: 4px 8px;
 }
 
 .hud-root.hud-desktop .vertical-route-discovery {
     top: 8px;
-    width: 288px;
+    width: 256px;
     max-width: none;
     padding: 4px 8px;
     border-left-width: 2px;
@@ -550,4 +550,548 @@
 .hud-root.hud-desktop .elevation-label {
     letter-spacing: 1px;
     color: var(--pc-ui-accent);
+}
+
+/* ── Field Deck v1 ─────────────────────────────────────────
+   채택 시안 project-c-field-deck-hud-concept-v3의 PC 전용 이식이다.
+   공용 UXML의 name 계약은 유지하고, 플레이트·계기·레일만 640×360 좌표로 재배치한다. */
+
+/* 좌상단도 다른 상시 HUD와 같은 얇은 계기 플레이트다. HP는 하트 그림 대신
+   다섯 개의 분절 셀로 읽혀 수치와 한 덩어리가 된다. */
+.hud-root.hud-desktop .vitals.pc-plate {
+    width: 160px;
+    min-height: 24px;
+    padding: 6px 8px;
+    background-color: rgba(5, 7, 12, 0.96);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .pc-heart {
+    width: 14px;
+    height: 6px;
+    min-width: 14px;
+    min-height: 6px;
+    margin-right: 2px;
+    background-image: none;
+    background-color: var(--pc-hp);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(141, 37, 27);
+    border-right-color: rgb(141, 37, 27);
+    border-top-color: rgb(240, 73, 42);
+    border-bottom-color: rgb(69, 16, 11);
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .pc-heart.is-empty {
+    background-image: none;
+    background-color: var(--pc-hp-empty);
+    border-left-color: rgb(91, 28, 23);
+    border-right-color: rgb(91, 28, 23);
+    border-top-color: rgb(91, 28, 23);
+    border-bottom-color: rgb(44, 15, 15);
+}
+
+/* 우상단 단일 계기: 왼쪽부터 층 눈금, ▲◆▼ 레일, 현재/보기·회전, 정사각 미니맵.
+   floor-stack은 DOM상 형제지만 같은 플레이트 위에 겹쳐 한 장비로 보인다. */
+.hud-root.hud-desktop .minimap-panel.pc-plate {
+    right: 8px;
+    top: 8px;
+    width: 176px;
+    height: 104px;
+    padding: 0;
+    background-color: rgba(5, 7, 12, 0.96);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .minimap-header {
+    position: absolute;
+    left: 52px;
+    right: 6px;
+    top: 4px;
+    height: 12px;
+    justify-content: flex-end;
+}
+
+.hud-root.hud-desktop .minimap-header-buttons > .hud-mode-button {
+    display: none;
+}
+
+.hud-root.hud-desktop .minimap-header-buttons > .settings-button,
+.hud-root.hud-desktop .rotate-button.icon-button {
+    width: 14px;
+    min-width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    padding: 0;
+    color: var(--pc-dim);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .minimap-header-buttons > .settings-button:hover,
+.hud-root.hud-desktop .rotate-button.icon-button:hover {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.48);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .icon-button .ui-icon,
+.hud-root.hud-desktop .rotate-button .ui-icon {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+}
+
+/* PC에서는 생성 시트 축소본 대신 표시 크기와 같은 12×12 네이티브 glyph를 쓴다.
+   Mobile은 기존 32px 세트를 유지한다. */
+.hud-root.hud-desktop .ui-settings-icon {
+    background-image: url("../Art/Runtime/ui-field-settings.png");
+}
+
+.hud-root.hud-desktop .ui-menu-icon {
+    background-image: url("../Art/Runtime/ui-field-menu.png");
+}
+
+.hud-root.hud-desktop .ui-rotate-left-icon {
+    background-image: url("../Art/Runtime/ui-field-rotate-left.png");
+}
+
+.hud-root.hud-desktop .ui-rotate-right-icon {
+    background-image: url("../Art/Runtime/ui-field-rotate-right.png");
+}
+
+.hud-root.hud-desktop .ui-backpack-icon {
+    background-image: url("../Art/Runtime/ui-field-backpack.png");
+}
+
+.hud-root.hud-desktop .ui-wait-icon {
+    background-image: url("../Art/Runtime/ui-field-wait.png");
+}
+
+.hud-root.hud-desktop .ui-melee-icon {
+    background-image: url("../Art/Runtime/ui-field-melee.png");
+}
+
+.hud-root.hud-desktop .ui-ranged-icon {
+    background-image: url("../Art/Runtime/ui-field-ranged.png");
+}
+
+.hud-root.hud-desktop .ui-interact-icon {
+    background-image: url("../Art/Runtime/ui-field-interact.png");
+}
+
+.hud-root.hud-desktop .minimap-grid {
+    position: absolute;
+    right: 6px;
+    top: 34px;
+    width: 56px;
+    height: 56px;
+    margin-top: 0;
+    background-color: var(--pc-inset);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+    border-right-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+    overflow: hidden;
+}
+
+/* 지도는 북쪽 고정이다. 층 배지와 N을 지도 안에 직접 두고, 금색 중심+밝은
+   외곽 마커를 텍스처 위에 올려 계단의 호박색 픽셀과 현재 위치를 가른다. */
+.hud-root.hud-desktop .minimap-floor-badge,
+.hud-root.hud-desktop .minimap-north-label {
+    display: flex;
+    position: absolute;
+    top: 2px;
+    height: 10px;
+    padding-left: 2px;
+    padding-right: 2px;
+    color: var(--pc-gold);
+    background-color: rgba(5, 7, 12, 0.88);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-center;
+}
+
+.hud-root.hud-desktop .minimap-floor-badge {
+    left: 2px;
+}
+
+.hud-root.hud-desktop .minimap-north-label {
+    right: 2px;
+    color: var(--pc-ice);
+}
+
+.hud-root.hud-desktop .minimap-player-marker {
+    display: flex;
+    position: absolute;
+    width: 15px;
+    min-width: 15px;
+    height: 15px;
+    min-height: 15px;
+    translate: -50% 50%;
+    margin: 0;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .minimap-player-glyph {
+    width: 7px;
+    min-width: 7px;
+    height: 7px;
+    min-height: 7px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(5, 7, 12, 0.76);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-ice);
+    border-right-color: var(--pc-ice);
+    border-top-color: var(--pc-ice);
+    border-bottom-color: var(--pc-ice);
+}
+
+.hud-root.hud-desktop .minimap-player-marker:hover .minimap-player-glyph {
+    background-color: rgba(20, 52, 58, 0.92);
+    border-left-color: var(--pc-gold);
+    border-right-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-bottom-color: var(--pc-gold);
+}
+
+.hud-root.hud-desktop .minimap-view {
+    position: relative;
+    overflow: visible;
+}
+
+.hud-root.hud-desktop .minimap-player-core {
+    width: 3px;
+    height: 3px;
+    background-color: var(--pc-gold);
+}
+
+.hud-root.hud-desktop .vertical-view-controls {
+    display: flex;
+    position: absolute;
+    left: 30px;
+    top: 24px;
+    width: 16px;
+    height: 60px;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-top: 0;
+}
+
+.hud-root.hud-desktop .vertical-view-button {
+    width: 16px;
+    min-width: 16px;
+    height: 18px;
+    min-height: 18px;
+    flex-grow: 0;
+    padding: 0;
+    margin: 0;
+    color: var(--pc-dim);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-radius: 0;
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .vertical-view-button:hover {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.48);
+    border-bottom-color: var(--pc-ui-accent-dim);
+}
+
+.hud-root.hud-desktop .vertical-view-button.is-selected {
+    color: var(--pc-text);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-color: rgba(0, 0, 0, 0);
+    border-right-color: rgba(0, 0, 0, 0);
+    border-top-color: rgba(0, 0, 0, 0);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .vertical-view-button:disabled {
+    opacity: 0.28;
+}
+
+.hud-root.hud-desktop .vertical-view-state {
+    display: flex;
+    position: absolute;
+    left: 52px;
+    right: 6px;
+    top: 18px;
+    height: 12px;
+    margin-top: 0;
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hud-root.hud-desktop .vertical-view-state.is-observing {
+    color: var(--pc-ice);
+}
+
+.hud-root.hud-desktop .view-controls {
+    position: absolute;
+    left: 46px;
+    top: 58px;
+    width: 68px;
+    height: 14px;
+    margin-top: 0;
+}
+
+.hud-root.hud-desktop .view-label {
+    width: 40px;
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hud-root.hud-desktop .view-controls > .rotate-button.icon-button {
+    margin-left: 0;
+}
+
+.hud-root.hud-desktop .floor-stack {
+    right: 154px;
+    top: 20px;
+    width: 24px;
+}
+
+.hud-root.hud-desktop .floor-ticks {
+    margin-top: 1px;
+    margin-bottom: 1px;
+}
+
+.hud-root.hud-desktop .floor-cap {
+    height: 10px;
+    color: var(--pc-dim);
+}
+
+.hud-root.hud-desktop .floor-cap.is-down {
+    margin-top: 1px;
+}
+
+.hud-root.hud-desktop .depth-value {
+    left: 8px;
+    top: -3px;
+}
+
+.hud-root.hud-desktop .elevation-label {
+    position: absolute;
+    left: 48px;
+    top: 30px;
+    width: 60px;
+    margin-top: 0;
+    color: var(--pc-ice);
+}
+
+/* 알림 슬롯은 보스/발견이 같은 Field Deck 플레이트를 공유한다. 실제 상호배타와
+   큐는 컨트롤러가 보장하며, 붉은색은 보스 HP fill에만 남긴다.
+   순간 알림은 배경의 월드 라벨까지 완전히 차폐해 정보 계층을 지킨다. */
+.hud-root.hud-desktop .boss-panel.pc-plate,
+.hud-root.hud-desktop .vertical-route-discovery.pc-plate {
+    width: 256px;
+    background-color: rgb(5, 7, 12);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .route-discovery-kicker,
+.hud-root.hud-desktop .route-discovery-title,
+.hud-root.hud-desktop .route-discovery-detail {
+    margin-right: 16px;
+}
+
+.hud-root.hud-desktop .route-discovery-close {
+    display: none;
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    width: 14px;
+    min-width: 14px;
+    height: 14px;
+    min-height: 14px;
+    padding: 0;
+    color: var(--pc-dim);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--pc-ui-accent-dim);
+    border-radius: 0;
+    font-size: var(--pc-fs-2);
+    -unity-text-align: middle-center;
+}
+
+.hud-root.hud-desktop .vertical-route-discovery.is-open .route-discovery-close {
+    display: flex;
+}
+
+.hud-root.hud-desktop .route-discovery-close:hover {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.48);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+/* 1~3줄이어도 208×52 footprint가 흔들리지 않는다. */
+.hud-root.hud-desktop .message-log.pc-plate {
+    width: 208px;
+    height: 52px;
+    min-height: 52px;
+    padding: 2px 6px;
+    background-color: rgba(5, 7, 12, 0.96);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+/* 두 레일은 폭을 스스로 소유한다. 긴 문맥 동사가 생겨도 다른 레일이나 화면 밖을
+   밀 수 없고, 버튼 내부 라벨만 말줄임된다. */
+.hud-root.hud-desktop .resources.pc-plate,
+.hud-root.hud-desktop .action-cluster.pc-plate {
+    height: 24px;
+    padding: 1px;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    background-color: rgba(5, 7, 12, 0.96);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    overflow: hidden;
+}
+
+.hud-root.hud-desktop .resources.pc-plate {
+    width: 184px;
+    min-width: 184px;
+}
+
+.hud-root.hud-desktop .action-cluster.pc-plate {
+    width: 268px;
+    min-width: 268px;
+    max-width: 268px;
+}
+
+.hud-root.hud-desktop .action-cluster > .combat-button,
+.hud-root.hud-desktop .action-cluster > .wait-button,
+.hud-root.hud-desktop .action-cluster > .interact-button {
+    color: var(--pc-text);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 1px;
+    border-top-width: 0;
+    border-bottom-width: 1px;
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: rgba(0, 0, 0, 0);
+}
+
+.hud-root.hud-desktop .action-cluster > .combat-button:hover,
+.hud-root.hud-desktop .action-cluster > .wait-button:hover,
+.hud-root.hud-desktop .action-cluster > .interact-button:hover {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.48);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .action-cluster > .combat-button.ranged {
+    color: var(--pc-ice);
+    background-color: rgba(20, 52, 58, 0.42);
+    border-left-color: rgba(0, 0, 0, 0);
+    border-top-color: rgba(0, 0, 0, 0);
+    border-right-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-teal);
+}
+
+.hud-root.hud-desktop .action-button-label {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hud-root.hud-desktop .turn-pill {
+    min-width: 44px;
+    margin-left: auto;
+}
+
+.hud-root.hud-desktop .turn-dot {
+    display: flex;
+    width: 5px;
+    height: 5px;
+    min-width: 5px;
+    min-height: 5px;
+    margin-right: 3px;
+    background-color: var(--pc-teal);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 3px;
+}
+
+.hud-root.hud-desktop .wheel-button-icon {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+}
+
+.hud-root.hud-desktop .wheel-button-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hud-root.hud-desktop.is-ultrawide .minimap-panel {
+    right: 24px;
+}
+
+.hud-root.hud-desktop.is-ultrawide .floor-stack {
+    right: 170px;
 }

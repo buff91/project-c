@@ -100,6 +100,7 @@ namespace ProjectC.Gameplay
             {
                 _playerSorting.Apply();
                 ApplyPlayerVisualSorting(_playerSorting.Pos);
+                ApplyPlayerFacing();
             }
             foreach (EnemyAgent enemy in _enemies)
                 ApplyEnemyVisuals(enemy);
@@ -176,31 +177,97 @@ namespace ProjectC.Gameplay
             camera.clearFlags = CameraClearFlags.SolidColor;
         }
 
+        /// <summary>
+        /// 보행 코루틴이 도착 위치에 맞춘 카메라 프레임을 미리 구한다. 플레이어 state를
+        /// 선반영하지 않아도 카메라와 몸체가 같은 보간 곡선을 타고, 층 전환은 완전히
+        /// 가려진 프레임에서 목적 층 카메라로 옮길 수 있다.
+        /// </summary>
+        private bool TryGetPlayerCameraFrame(
+            Camera camera,
+            GridPos playerPosition,
+            out OrthographicCameraFrame frame)
+        {
+            frame = default;
+            if (camera == null || _grid == null || (!hubMode && _dungeon == null) ||
+                (!hubMode && viewMode != DungeonViewMode.Play) || _cameraLookActive)
+                return false;
+
+            int floorIndex = hubMode
+                ? _activeFloorIndex
+                : _dungeon.Height.FloorIndex(playerPosition.elevation);
+            if (!hubMode && TryGetB2HeroRoomCameraFrame(
+                    camera.aspect,
+                    playerPosition,
+                    floorIndex,
+                    out frame))
+                return true;
+
+            Vector3 playerWorld = _grid.GridToWorld(playerPosition);
+            frame = OrthographicCameraFraming.Follow(
+                new Vector2(playerWorld.x, playerWorld.y),
+                hubMode,
+                viewMode,
+                playCameraSize,
+                debugCameraSize);
+            return true;
+        }
+
+        private void ApplyCameraFrame(
+            Camera camera,
+            OrthographicCameraFrame frame)
+        {
+            if (camera == null) return;
+            camera.orthographicSize = frame.Size;
+            camera.transform.position = new Vector3(
+                frame.Center.x,
+                frame.Center.y,
+                -10f);
+            SyncDungeonAtmosphereBackdropCenter(camera);
+        }
+
         private bool TryGetB2HeroRoomCameraFrame(
             float aspect,
+            out OrthographicCameraFrame frame)
+        {
+            if (_playerState == null)
+            {
+                frame = default;
+                return false;
+            }
+
+            return TryGetB2HeroRoomCameraFrame(
+                aspect,
+                _playerState.Position,
+                _activeFloorIndex,
+                out frame);
+        }
+
+        private bool TryGetB2HeroRoomCameraFrame(
+            float aspect,
+            GridPos playerPosition,
+            int activeFloorIndex,
             out OrthographicCameraFrame frame)
         {
             frame = default;
             if (hubMode ||
                 viewMode != DungeonViewMode.Play ||
                 _b2HeroRoomLayout == null ||
-                _playerState == null ||
                 _grid == null ||
                 _dungeon == null ||
-                !_b2HeroRoomLayout.ContainsRoomCell(_playerState.Position))
+                !_b2HeroRoomLayout.ContainsRoomCell(playerPosition))
                 return false;
 
             var projectedCenters = new List<Vector2>(_b2HeroRoomLayout.RoomCells.Count + 1);
             foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
             {
-                if (_dungeon.Height.FloorIndex(roomCell.elevation) != _activeFloorIndex)
+                if (_dungeon.Height.FloorIndex(roomCell.elevation) != activeFloorIndex)
                     continue;
 
                 Vector3 world = _grid.GridToWorld(roomCell);
                 projectedCenters.Add(new Vector2(world.x, world.y));
             }
 
-            if (TryFindClosestB2RoomDoor(out GridPos door))
+            if (TryFindClosestB2RoomDoor(activeFloorIndex, out GridPos door))
             {
                 Vector3 world = _grid.GridToWorld(door);
                 projectedCenters.Add(new Vector2(world.x, world.y));
@@ -216,7 +283,9 @@ namespace ProjectC.Gameplay
             return true;
         }
 
-        private bool TryFindClosestB2RoomDoor(out GridPos closestDoor)
+        private bool TryFindClosestB2RoomDoor(
+            int activeFloorIndex,
+            out GridPos closestDoor)
         {
             closestDoor = default;
             bool found = false;
@@ -225,7 +294,7 @@ namespace ProjectC.Gameplay
             {
                 TileKind kind = pair.Value.kind;
                 if ((kind != TileKind.DoorClosed && kind != TileKind.DoorOpen) ||
-                    _dungeon.Height.FloorIndex(pair.Key.elevation) != _activeFloorIndex)
+                    _dungeon.Height.FloorIndex(pair.Key.elevation) != activeFloorIndex)
                     continue;
 
                 int distance = int.MaxValue;

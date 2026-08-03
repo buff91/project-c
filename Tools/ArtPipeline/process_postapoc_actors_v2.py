@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Build the first polished Collapsed Transit actor slice."""
+"""Build the legacy Collapsed Transit player slice.
+
+Enemy output was retired when the arcade occupation roster became canonical. All
+six enemy identities now belong exclusively to ``process_arcade_occupation_actors_v1.py``.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,9 +33,6 @@ class ActorSpec:
 
 SPECS = (
     ActorSpec("bulwark", 0, ("actor-player", "actor-knight")),
-    ActorSpec("scavenger", 1, ("actor-goblin",)),
-    ActorSpec("sentry", 2, ("actor-skeleton",)),
-    ActorSpec("ooze", 3, ("actor-slime",)),
 )
 
 
@@ -93,7 +94,7 @@ def main() -> None:
             actor.save(OUTPUT / f"{output_name}.png", optimize=True)
             written += 1
 
-    print(f"wrote {written} Collapsed Transit actors to {OUTPUT}")
+    print(f"wrote {written} legacy player actors to {OUTPUT}")
 
 
 if __name__ == "__main__":

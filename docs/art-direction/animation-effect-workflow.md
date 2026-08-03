@@ -5,18 +5,22 @@ ComfyUI는 **키프레임 생성**에만 쓰고, 최종 애니메이션/이펙�
 1. ComfyUI는 포즈/구도 후보를 여러 장 뽑는다.
 2. Aseprite에서 프레임 정렬, 좌우/상하 반전 규칙, 피벗과 캔버스를 맞춘다.
 3. FrameTag를 붙여 루프를 결정한다.
-4. Unity 반영은 태그 이름 기반 규칙(`idle`, `walk`, `attack`, `hit`, `fall`, `death`, `burst`, `idle-loop`)으로 수행한다.
+4. Unity 반영은 태그 이름 기반 규칙(액터 `상태-방향`, 이펙트 `burst`/`idle-loop`)으로 수행한다.
 
 ## 1) 캐릭터 애니메이션 (권장)
 
-- 현재 런타임은 방향별 클립이 아니라 `idle/walk/attack/hit/fall/death` 상태 태그를 사용한다.
+- 현재 런타임의 정식 방향 태그는 `idle-north`·`walk-east`·`attack-south`·`hit-west`처럼
+  `상태-화면방향`이다. 상태는 `idle/walk/attack/hit/fall/death`, 방향은
+  `north/east/south/west` 네 값이다. 월드 방향을 태그에 직접 굽지 않는다 — Unity가 현재 시점
+  회전을 적용한 뒤 화면 방향 클립을 고른다.
 - 기존 게임에 이미 정적 스프라이트가 있는 액터는 그 96×128 컷을 512 정수배로 확대한
   identity guide에서 시작한다. `character-runtime-base-v2`가 저 denoise(0.38)로 기본 자세를
   만들고, 승인본만 `character-action-keyframes-v6`의 img2img 입력이 된다. 이 경로는 현재
   Game View에서 검증된 머리·어깨·발 비율을 보존하기 위한 production bootstrap이다.
-- 액터는 한 방향 기준으로 `idle`, walk contact/pass/contact, attack windup/release/recovery,
-  `hit`, `fall`, `death` 키포즈만 ComfyUI에서 생성한다.
-- 방향별 애니메이션은 런타임 계약이 확장될 때 별도 레시피 버전으로 추가한다.
+- 액터는 방향마다 `idle`, walk contact/pass/contact, attack windup/release/recovery,
+  `hit`, `fall`, `death` 키포즈만 ComfyUI에서 생성한다. 방향 태그가 하나라도 들어간 원본은
+  6상태×4방향 완전 세트여야 `Validate Sources`를 통과한다. 기존 무방향 6태그는 레거시 폴백으로
+  계속 읽지만 새 정식 방향 원본을 부분 승격하는 용도로 쓰지 않는다.
 - 원정자 vertical slice에서 처음 쓴 임의 색 스틱 가이드는 denoise 0.50에서 포즈를 거의
   바꾸지 못했고, 0.62부터는 포즈보다 의상·소품이 먼저 흔들렸다. 원인은 수치보다 ControlNet이
   입력을 BODY_18로 읽지 못한 데 있었다. 생성기는 표준 OpenPose 관절 순서·색을 사용하고,
@@ -127,14 +131,45 @@ Spark 반영 요청이 실제 참조를 조사해 대상을 하나로 확정한 
 4. GIF와 실제 게임 속도를 비교해 duration을 최종 조절한다.
 5. `project-c-torchstone.gpl` 팔레트와 고정 캔버스를 유지한 채 정식 원본으로 승격한다.
 
+### 원정자 방향 v1 승인본
+
+`actor-knight`는 위 절차의 첫 정식 4방향 완료 사례다. ImageGen 네 시트는 포즈 참고로만 보존하고,
+`build_actor_knight_directional_v1.py`가 48×64 작업 격자에서 배경 제거·24색 이하 팔레트 잠금·
+2×2 클러스터·발 `y=123`·east/west 미러를 강제한다. `aseprite_build_animation.lua`는 승인된
+정적 `Frame_0`을 태그 밖 선행 프레임으로 넣고, 뒤에 방향당
+`idle 4 / walk 3 / attack 3 / hit 3 / fall 2 / death 5`를 조립한다. 정식 원본은
+81프레임·24태그이며 idle/walk만 loop다.
+
+승격 전에는 전 80개 태그 프레임 contact sheet와 자동 계약 검사를 함께 보고, 승격 뒤에는
+Unity `Validate Sources`, EditMode/PlayMode 전체 회귀, 이동·공격·피격 PC Game View를 확인한다.
+제작 근거와 기각한 생성 포즈는
+`reference/ref-expeditioner-directional-animation-v1.prompt.md`가 소유한다.
+
+### 아케이드 적군 방향 v1 승인본
+
+`actor-goblin`·`actor-skeleton`·`actor-slime`·`actor-slinger`·`actor-arc-drone`·
+`actor-grave-warden`도 같은 완전 세트 계약으로 마감됐다. `process_arcade_occupation_actors_v1.py`가
+승인 정적 identity PNG를 만들고, `build_arcade_enemy_directional_v1.py`가 이를 각 원본의 태그 밖
+`Frame_0`과 `idle-south[0]`에 픽셀 일치로 보존한다. east/west는 화면 기준 exact mirror이며,
+각 파일은 방향당 `idle 4 / walk 3 / attack 3 / hit 3 / fall 2 / death 5`, 총 81프레임·24태그를
+가진다. idle/walk만 loop이고, 여섯 파일 합계는 486프레임·144태그다.
+
+전수 contact sheet는 `docs/captures/arcade-enemy-directional-conform-preview-v1.png`, 여섯 상태의
+실제 프레임 박자를 4방향 동시에 보여 주는 반복 검수본은
+`docs/captures/arcade-enemy-directional-motion-preview-v1.gif`다. 적군은
+인간형·진압 로봇·사족 추적 드론·검사 드론·사이버사이코의 역할별 동작을 같은 태그 계약 안에서 분리하되,
+프레임에 큰 궤적·투사체를 굽지 않는다. 방향성 공격/피격 FX는 런타임 전투 프레젠테이션이 소유한다.
+런타임 walk는 한 주기를 실제 격자 한 칸 이동 시간에 맞춰 재생해 세 키포즈가 모두 노출되고, 적 fall은
+보이는 출발/도착에서 0.22초 월드 하강을 먼저 보장한 뒤 생존 idle 또는 death로 넘어간다.
+
 ## 6) 레시피 연동
 
 다음 템플릿을 사용한다.
 
 - 메인 원정자:
   `character-runtime-base-v2 → character-action-keyframes-v6`
-- 기존 투석 약탈자 샘플:
-  `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
+- 아케이드 적군 완료 배치:
+  `process_arcade_occupation_actors_v1.py → build_arcade_enemy_directional_v1.py`
 - 이펙트: `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`
 - 환경 루프: `docs/art-direction/comfyui/methods/environment-idle-keyframes-v1.yaml`
 

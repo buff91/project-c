@@ -1,6 +1,6 @@
 schema_version: 1
 id: actor-slinger-animation-v3
-name: 투석 약탈자 런타임 액션 키프레임 v3 · identity lock
+name: 기업 보안 사수 런타임 액션 키프레임 v3 · identity lock
 purpose:
   category: actor
   asset_type: animation
@@ -69,13 +69,13 @@ pipeline:
   - id: attack-windup
     label: attack · windup
     seed_offset: 0
-    prompt_suffix: ', attack windup, sling raised behind the head'
+    prompt_suffix: ', attack windup, compact arc carbine pulled tight to the shoulder'
     uploads:
       6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-windup.png
   - id: attack-release
     label: attack · release
     seed_offset: 0
-    prompt_suffix: ', attack release, sling arm extended forcefully forward'
+    prompt_suffix: ', controlled arc shot, carbine muzzle aimed forcefully forward'
     uploads:
       6.image: docs/art-direction/comfyui/guides/openpose/actor-slinger-attack-impact.png
   - id: attack-recovery
@@ -126,21 +126,21 @@ generation:
   candidates: 1
   seed_strategy: sequential-random-base
 prompt:
-  positive: pixelart, exact same single male actor as the source image, preserve identical red hood, dark
-    face mask, gray patched coat, shoulder silhouette, body proportions, palette and facing, full body
-    post-apocalyptic slinger, change pose only according to OpenPose, feet visible on one baseline, flat
-    pure magenta background touching every border, isolated cutout, hard pixel clusters
+  positive: pixelart, exact same single anonymous corporate security marksman as the source image, preserve
+    identical sealed charcoal tactical armor, opaque visor, respirator, compact arc carbine, shoulder
+    silhouette, body proportions, palette and facing, change pose only according to OpenPose, feet visible
+    on one baseline, flat pure magenta background touching every border, isolated cutout, hard pixel clusters
   negative: different character, changed costume, woman, girl, female, skirt, dress, bare legs, city skyline,
     scenery, buildings, props, floor, ground shadow, text, watermark, label, smooth anti-alias, blurry,
-    photorealistic, 3d render, fantasy armor, medieval, extra limbs, wrong body count, cropped feet, changed
-    facing, multiple characters
+    photorealistic, 3d render, fantasy armor, medieval, leather sling, slingshot, stone pouch, bow, hooded
+    raider, exposed friendly face, extra limbs, wrong body count, cropped feet, changed facing, multiple characters
 quality_gates:
   require_transparency_after_prepare: true
   minimum_visible_pixels: 1800
   maximum_visible_pixels: 4200
   silhouette_tags:
   - grounded-feet
-  - raised-arm
+  - shouldered-carbine
   - readable-pose
   reject_if:
   - cropped-feet

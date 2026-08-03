@@ -7,6 +7,71 @@ namespace ProjectC.Gameplay
 {
     public partial class IsoPrototypeDemo
     {
+        private const float StaticWalkBobHeight = 0.065f;
+        private const int MinimumWalkVisualFrames = 5;
+        private const int MinimumTransitionVisualFrames = 4;
+
+        internal readonly struct StaticWalkPose
+        {
+            public Vector2 Offset { get; }
+            public float RotationDegrees { get; }
+            public Vector2 Scale { get; }
+
+            public StaticWalkPose(
+                Vector2 offset,
+                float rotationDegrees,
+                Vector2 scale)
+            {
+                Offset = offset;
+                RotationDegrees = rotationDegrees;
+                Scale = scale;
+            }
+        }
+
+        /// <summary>
+        /// 정식 walk 클립이 없는 단일 프레임 원정자의 한 스텝 높이. 시작/끝은 반드시 0이고
+        /// 중간에만 올라가므로 경로 좌표·접촉 그림자·발판 표식은 그대로 둔 채 미끄러짐을 줄인다.
+        /// </summary>
+        internal static float StaticWalkArtOffset(float normalizedStep)
+        {
+            return StaticWalkPoseAt(normalizedStep, 0f).Offset.y;
+        }
+
+        /// <summary>
+        /// 단일 Frame_0 원정자도 미끄러지지 않게 읽히는 절차형 한 걸음 자세다.
+        /// 이동 방향으로 몸을 기울이고, 두 발 교대 리듬의 좌우 흔들림과 squash/stretch를
+        /// 함께 써 시작·끝 자세는 정확히 원상 복구한다.
+        /// </summary>
+        internal static StaticWalkPose StaticWalkPoseAt(
+            float normalizedStep,
+            float horizontalDirection)
+        {
+            float t = Mathf.Clamp01(normalizedStep);
+            float lift = Mathf.Sin(t * Mathf.PI);
+            float gait = Mathf.Sin(t * Mathf.PI * 2f);
+            float direction = Mathf.Clamp(horizontalDirection, -1f, 1f);
+            return new StaticWalkPose(
+                new Vector2(gait * 0.018f, lift * StaticWalkBobHeight),
+                -direction * lift * 5f + gait * 1.75f,
+                new Vector2(1f - lift * 0.035f, 1f + lift * 0.055f));
+        }
+
+        /// <summary>
+        /// 느린 Editor 프레임에서도 한 걸음이 한 프레임 스냅으로 소실되지 않게 최소
+        /// 표시 프레임을 보장한다. 정상 프레임률에서는 실제 경과 시간이 그대로 상한을 갖는다.
+        /// </summary>
+        internal static float VisualAnimationProgress(
+            float elapsed,
+            float duration,
+            int renderedFrames,
+            int minimumFrames)
+        {
+            if (duration <= 0f) return 1f;
+            float timeProgress = Mathf.Clamp01(elapsed / duration);
+            float frameProgress = Mathf.Clamp01(
+                renderedFrames / (float)Mathf.Max(1, minimumFrames));
+            return Mathf.Min(timeProgress, frameProgress);
+        }
 
         private IEnumerator ApproachAndToggleDoor(IReadOnlyList<GridPos> path, GridPos door)
         {
@@ -60,6 +125,7 @@ namespace ProjectC.Gameplay
                 yield break;
 
             yield return SetDoorState(secretDoor, TileKind.SecretPassage);
+            RevealMappedSecretRoom(secretDoor);
             _runTelemetry?.RecordSecretRoomFound(GlobalFloorIndex(_activeFloorIndex));
             RefreshFloorVisibility();
             FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
@@ -191,7 +257,7 @@ namespace ProjectC.Gameplay
         {
             // walk 루프는 이동 코루틴의 수명과 정확히 같아야 한다 — try/finally 이므로
             // yield break·인터럽트·StopCoroutine(Dispose) 어느 경로로 끝나도 idle로 복귀한다.
-            _playerAnimator?.PlayLoop(SpriteClipTags.Walk);
+            _playerAnimator?.PlayLoopForDuration(SpriteClipTags.Walk, secondsPerStep);
             try
             {
                 yield return MovePlayerPathSteps(path);
@@ -199,6 +265,7 @@ namespace ProjectC.Gameplay
             finally
             {
                 _playerAnimator?.StopToIdle();
+                ResetStaticWalkArtOffset();
             }
         }
 
@@ -228,6 +295,7 @@ namespace ProjectC.Gameplay
                 GridPos current = _playerState.Position;
                 Vector3 start = _player.transform.position;
                 Vector3 end = _grid.GridToWorld(next);
+                FacePlayerTowards(next);
 
                 bool changesDungeonFloor = !_dungeon.Height.SameFloor(current, next);
                 if (changesDungeonFloor)
@@ -237,15 +305,55 @@ namespace ProjectC.Gameplay
                 else
                 {
                     float elapsed = 0f;
-                    while (elapsed < secondsPerStep)
+                    int renderedFrames = 0;
+                    float t = 0f;
+                    float visualDirection = Mathf.Sign(end.x - start.x);
+                    Camera movingCamera = Camera.main;
+                    Vector3 cameraStart = movingCamera != null
+                        ? movingCamera.transform.position
+                        : Vector3.zero;
+                    float cameraStartSize = movingCamera != null
+                        ? movingCamera.orthographicSize
+                        : 0f;
+                    bool animateCamera = TryGetPlayerCameraFrame(
+                        movingCamera,
+                        next,
+                        out OrthographicCameraFrame cameraDestination);
+                    Vector3 cameraEnd = animateCamera
+                        ? new Vector3(
+                            cameraDestination.Center.x,
+                            cameraDestination.Center.y,
+                            -10f)
+                        : cameraStart;
+
+                    while (t < 1f)
                     {
-                        elapsed += Time.deltaTime;
-                        float t = Mathf.Clamp01(elapsed / secondsPerStep);
+                        elapsed += Time.unscaledDeltaTime;
+                        renderedFrames++;
+                        t = VisualAnimationProgress(
+                            elapsed,
+                            secondsPerStep,
+                            renderedFrames,
+                            MinimumWalkVisualFrames);
                         float eased = SmoothStep(t);
                         _player.transform.position = Vector3.LerpUnclamped(start, end, eased);
+                        SetStaticWalkArtPose(t, visualDirection);
                         ApplyMovingActorVisualSorting(_playerRenderer, current, next, eased);
+                        if (animateCamera && movingCamera != null)
+                        {
+                            movingCamera.transform.position = Vector3.LerpUnclamped(
+                                cameraStart,
+                                cameraEnd,
+                                eased);
+                            movingCamera.orthographicSize = Mathf.LerpUnclamped(
+                                cameraStartSize,
+                                cameraDestination.Size,
+                                eased);
+                            SyncDungeonAtmosphereBackdropCenter(movingCamera);
+                        }
                         yield return null;
                     }
+                    ResetStaticWalkArtOffset();
                     ApplyPlayerVisualSorting(next);
                 }
 
@@ -327,6 +435,7 @@ namespace ProjectC.Gameplay
                     RefreshFloorVisibility();
                 }
 
+                PreserveNewTravelEnemySighted();
                 yield return ResolveEnemyPhase();
                 if (!_playerState.IsAlive)
                     yield break;
@@ -339,10 +448,7 @@ namespace ProjectC.Gameplay
                     yield break;
                 }
 
-                TravelInterrupt interrupt = TravelRules.Evaluate(
-                    _travelVisibleEnemyIds,
-                    EnemySightStates(),
-                    AnyNewVisibleItem(),
+                TravelInterrupt interrupt = EvaluateTravelInterruptAfterAction(
                     _playerState.Hp < hpBeforeStep);
                 if (interrupt != TravelInterrupt.None)
                 {
@@ -359,8 +465,11 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>스텝 시작 전 시야 스냅샷: 보이는 살아있는 적 ID + 보이는 미수집 아이템 칸.</summary>
+        private bool _travelEnemySightedDuringAction;
+
         private void SnapshotTravelSight()
         {
+            _travelEnemySightedDuringAction = false;
             _travelVisibleEnemyIds.Clear();
             foreach (EnemyAgent enemy in _enemies)
             {
@@ -374,6 +483,30 @@ namespace ProjectC.Gameplay
                 if (!item.Collected && _visibleTiles.Contains(item.Spawn.Position))
                     _travelVisibleItemTiles.Add(item.Spawn.Position);
             }
+        }
+
+        /// <summary>
+        /// 플레이어 행동 직후 보였던 적이 자기 턴에 이동하거나 죽어도 발견 사건을 잃지 않는다.
+        /// 최종 FOV만 비교하면 문을 여는 찰나의 위협이 자동 이동 인터럽트에서 사라진다.
+        /// </summary>
+        private void PreserveNewTravelEnemySighted()
+        {
+            if (_travelEnemySightedDuringAction) return;
+            _travelEnemySightedDuringAction = TravelRules.Evaluate(
+                _travelVisibleEnemyIds,
+                EnemySightStates(),
+                newItemSighted: false,
+                tookDamage: false) == TravelInterrupt.EnemySighted;
+        }
+
+        private TravelInterrupt EvaluateTravelInterruptAfterAction(bool tookDamage)
+        {
+            return TravelRules.Evaluate(
+                _travelVisibleEnemyIds,
+                EnemySightStates(),
+                AnyNewVisibleItem(),
+                tookDamage,
+                enemySightedDuringAction: _travelEnemySightedDuringAction);
         }
 
         private IEnumerable<(string, bool, bool)> EnemySightStates()
@@ -395,59 +528,6 @@ namespace ProjectC.Gameplay
             return false;
         }
 
-        /// <summary>
-        /// 미탐색 칸 탭: 아는(탐색된) 타일 중 목표에 평면 거리로 가장 가까운 칸까지
-        /// 아는 타일만 밟아 이동한다. (SPD의 미탐색 탭 관례)
-        /// </summary>
-        private void TryTravelTowardUnexplored(GridPos target)
-        {
-            static int PlanarDistance(GridPos a, GridPos b) =>
-                Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
-
-            var candidates = new List<GridPos>();
-            foreach (GridPos pos in _exploredTiles)
-            {
-                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
-                if (!_grid.Map.IsWalkable(pos) || pos == _playerPos) continue;
-                if (IsLivingEnemyAt(pos)) continue;
-                if (PlanarDistance(pos, target) >= PlanarDistance(_playerPos, target)) continue;
-                candidates.Add(pos);
-            }
-
-            if (candidates.Count == 0)
-            {
-                InteractionFeedback?.Invoke("UNEXPLORED — 아는 길이 없다");
-                return;
-            }
-
-            candidates.Sort((a, b) =>
-            {
-                int byTarget = PlanarDistance(a, target).CompareTo(PlanarDistance(b, target));
-                return byTarget != 0
-                    ? byTarget
-                    : PlanarDistance(a, _playerPos).CompareTo(PlanarDistance(b, _playerPos));
-            });
-
-            // 최상위 후보 몇 개만 경로 검증 — 후보 전수 탐색은 탭마다 너무 비싸다.
-            bool Unknown(GridPos pos) => !_exploredTiles.Contains(pos) && !_visibleTiles.Contains(pos);
-            int attempts = Mathf.Min(8, candidates.Count);
-            for (int i = 0; i < attempts; i++)
-            {
-                List<GridPos> path = GridPathfinder.FindPath(
-                    _grid.Map, _playerPos, candidates[i], pos => Unknown(pos));
-                if (path.Count < 2) continue;
-
-                int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
-                if (allowedSteps < path.Count - 1)
-                    path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
-                InteractionFeedback?.Invoke("미탐색 방향으로 이동...");
-                StartPlayerAction(candidates[i], MovePlayerPath(path));
-                return;
-            }
-
-            InteractionFeedback?.Invoke("UNEXPLORED — 아는 길이 없다");
-        }
-
         private bool AnyNewVisibleItem()
         {
             foreach (ItemAgent item in _items)
@@ -462,13 +542,129 @@ namespace ProjectC.Gameplay
 
         private IEnumerator AnimateFloorTransition(Vector3 destination, GridPos destinationPos)
         {
-            Color original = _playerRenderer.color;
-            _playerRenderer.color = new Color(original.r, original.g, original.b, 0.2f);
-            yield return new WaitForSeconds(0.12f);
-            _player.transform.position = destination;
-            ApplyPlayerVisualSorting(destinationPos);
-            _playerRenderer.color = original;
-            yield return new WaitForSeconds(0.12f);
+            SpriteRenderer[] transitionRenderers = _player != null
+                ? _player.GetComponentsInChildren<SpriteRenderer>(includeInactive: true)
+                : System.Array.Empty<SpriteRenderer>();
+            var originalColors = new Color[transitionRenderers.Length];
+            for (int i = 0; i < transitionRenderers.Length; i++)
+                originalColors[i] = transitionRenderers[i].color;
+            const float halfDuration = 0.12f;
+            float visualDirection = _player != null
+                ? Mathf.Sign(destination.x - _player.transform.position.x)
+                : 0f;
+            try
+            {
+                float elapsed = 0f;
+                int renderedFrames = 0;
+                float t = 0f;
+                while (t < 1f)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    renderedFrames++;
+                    t = VisualAnimationProgress(
+                        elapsed,
+                        halfDuration,
+                        renderedFrames,
+                        MinimumTransitionVisualFrames);
+                    SetTransitionAlpha(
+                        transitionRenderers,
+                        originalColors,
+                        1f - SmoothStep(t));
+                    SetStaticWalkArtPose(t * 0.5f, visualDirection);
+                    yield return null;
+                }
+
+                // 완전히 가려진 한 프레임에서 링크 반대편으로 옮긴다. 서로 먼 두 층 좌표를
+                // 화면 위로 날아가는 보간은 계단이 아니라 순간이동처럼 보인다.
+                SetTransitionAlpha(transitionRenderers, originalColors, 0f);
+                _player.transform.position = destination;
+                ApplyPlayerVisualSorting(destinationPos);
+                Camera transitionCamera = Camera.main;
+                if (TryGetPlayerCameraFrame(
+                        transitionCamera,
+                        destinationPos,
+                        out OrthographicCameraFrame destinationFrame))
+                    ApplyCameraFrame(transitionCamera, destinationFrame);
+
+                elapsed = 0f;
+                renderedFrames = 0;
+                t = 0f;
+                while (t < 1f)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    renderedFrames++;
+                    t = VisualAnimationProgress(
+                        elapsed,
+                        halfDuration,
+                        renderedFrames,
+                        MinimumTransitionVisualFrames);
+                    SetTransitionAlpha(
+                        transitionRenderers,
+                        originalColors,
+                        SmoothStep(t));
+                    SetStaticWalkArtPose(0.5f + t * 0.5f, visualDirection);
+                    yield return null;
+                }
+            }
+            finally
+            {
+                RestoreTransitionColors(transitionRenderers, originalColors);
+                ResetStaticWalkArtOffset();
+            }
+        }
+
+        private static void SetTransitionAlpha(
+            SpriteRenderer[] renderers,
+            Color[] originalColors,
+            float alphaFactor)
+        {
+            float factor = Mathf.Clamp01(alphaFactor);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                SpriteRenderer renderer = renderers[i];
+                if (renderer == null) continue;
+                Color original = originalColors[i];
+                renderer.color = new Color(
+                    original.r,
+                    original.g,
+                    original.b,
+                    original.a * factor);
+            }
+        }
+
+        private static void RestoreTransitionColors(
+            SpriteRenderer[] renderers,
+            Color[] originalColors)
+        {
+            for (int i = 0; i < renderers.Length; i++)
+                if (renderers[i] != null)
+                    renderers[i].color = originalColors[i];
+        }
+
+        private void SetStaticWalkArtPose(
+            float normalizedStep,
+            float horizontalDirection)
+        {
+            if (_playerAnimator != null || _playerRenderer == null) return;
+            StaticWalkPose pose = StaticWalkPoseAt(
+                normalizedStep,
+                horizontalDirection);
+            StaticFacingPose facing = StaticFacingPoseFor(ViewFacing(_playerWorldFacing));
+            Transform art = _playerRenderer.transform;
+            art.localPosition = new Vector3(
+                facing.Offset.x + pose.Offset.x,
+                facing.Offset.y + pose.Offset.y,
+                0f);
+            art.localRotation = Quaternion.Euler(0f, 0f, pose.RotationDegrees);
+            art.localScale = new Vector3(
+                playerVisualScale * facing.Scale.x * pose.Scale.x,
+                playerVisualScale * facing.Scale.y * pose.Scale.y,
+                playerVisualScale);
+        }
+
+        private void ResetStaticWalkArtOffset()
+        {
+            ApplyPlayerFacing();
         }
         /// <summary>
         /// 지하에서 지상으로 처음 올라선 순간(B1 → 1F)을 한 판에 한 번 알린다.

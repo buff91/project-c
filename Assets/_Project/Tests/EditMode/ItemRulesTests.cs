@@ -326,6 +326,40 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void LegacyMaterialIds_RemainSaveCompatible_AfterWorldFacingRename()
+        {
+            Assert.AreEqual(9, (int)ItemKind.Herb,
+                "Herb는 기존 세이브와 스프라이트 슬롯이 쓰는 영구 ID다");
+            Assert.AreEqual(11, (int)ItemKind.FrostShard,
+                "FrostShard는 기존 세이브와 스프라이트 슬롯이 쓰는 영구 ID다");
+        }
+
+        [Test]
+        public void MaterialCopy_UsesGroundedMedicalAndIndustrialTerms()
+        {
+            Assert.AreEqual("지혈 패치", ItemCatalog.DisplayName(ItemKind.Herb));
+            Assert.AreEqual("PATCH", ItemCatalog.ShortLabel(ItemKind.Herb));
+            StringAssert.Contains("응급 키트", ItemCatalog.Description(ItemKind.Herb));
+            StringAssert.DoesNotContain("균사", ItemCatalog.Description(ItemKind.Herb));
+            StringAssert.DoesNotContain("버섯", ItemCatalog.Description(ItemKind.Herb));
+
+            Assert.AreEqual("냉각 코일", ItemCatalog.DisplayName(ItemKind.FrostShard));
+            Assert.AreEqual("COIL", ItemCatalog.ShortLabel(ItemKind.FrostShard));
+            StringAssert.Contains("냉각재 수류탄", ItemCatalog.Description(ItemKind.FrostShard));
+            StringAssert.DoesNotContain("결정", ItemCatalog.Description(ItemKind.FrostShard));
+            StringAssert.DoesNotContain("서리", ItemCatalog.Description(ItemKind.FrostShard));
+        }
+
+        [Test]
+        public void RecoveryAndRecallCopy_UsesExistingGroundedItemIdentity()
+        {
+            Assert.AreEqual("응급 키트", ItemCatalog.DisplayName(ItemKind.Potion));
+            Assert.AreEqual("MEDKIT", ItemCatalog.ShortLabel(ItemKind.Potion));
+            Assert.AreEqual("귀환 비컨", ItemCatalog.DisplayName(ItemKind.RecallScroll));
+            Assert.AreEqual("RECALL", ItemCatalog.ShortLabel(ItemKind.RecallScroll));
+        }
+
+        [Test]
         public void For_UnregisteredEnumValueThrowsInsteadOfUsingSilentDefaults()
         {
             var unknown = (ItemKind)999;
@@ -374,7 +408,7 @@ namespace ProjectC.Tests
         public void ItemDefinition_RejectsChargesOnNonConsumable()
         {
             Assert.Throws<System.ArgumentException>(() => new ItemDefinition(
-                ItemKind.Relic, ItemCategory.Treasure, "유물", "RELIC", "설명",
+                ItemKind.Relic, ItemCategory.Treasure, "시제품 코어", "PROTO", "설명",
                 goldValue: 10, shopPrice: 0, footprint: new ItemFootprint(1, 1),
                 chargesPerItem: 2));
         }
@@ -383,7 +417,7 @@ namespace ProjectC.Tests
         public void ItemDefinition_RejectsNonPositiveCharges()
         {
             Assert.Throws<System.ArgumentOutOfRangeException>(() => new ItemDefinition(
-                ItemKind.Potion, ItemCategory.Consumable, "물약", "POTION", "설명",
+                ItemKind.Potion, ItemCategory.Consumable, "응급 키트", "MEDKIT", "설명",
                 goldValue: 0, shopPrice: 10, footprint: new ItemFootprint(1, 1),
                 chargesPerItem: 0));
         }

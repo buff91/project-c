@@ -1,9 +1,9 @@
 schema_version: 1
 id: actor-slinger-chibi-base-v1
-name: 투석 약탈자 치비 기본 스프라이트 4방향 v1 · 익명 정체성
+name: 기업 보안 사수 치비 기본 스프라이트 4방향 v1 · 익명 정체성
 # actor-chibi-base-v1 파생 — 비율·포즈·리뷰 계약은 동일, 정체성 블록만 교체.
-# 적 계약(v0.3.3): 익명(마스크·후드, 얼굴 비노출) + warning 네온 포인트 1곳(§1-a) +
-# §1-b 실루엣 — 투석끈(슬링)과 파우치가 실루엣에서 읽혀야 원거리 대응이 성립한다.
+# 적 계약(v0.3.4): 익명(바이저·호흡기, 얼굴 비노출) + warning IFF 포인트 1곳(§1-a) +
+# §1-b 실루엣 — 견착한 소형 아크 카빈이 읽혀야 원거리 대응이 성립한다.
 # 몸통 베이스색은 아군(핑크 라이더)과 명도 2단 이상 분리(어두운 저채도).
 purpose:
   category: actor
@@ -11,8 +11,8 @@ purpose:
   slot: actor-concept
   use: concept
   readability_goal: >-
-    익명 마스크·후드에 warning 포인트 1곳, 슬링 끈+파우치가 96×128 실루엣에서
-    읽혀야 한다(§1-b). 아군과 몸통 명도 2단 분리.
+    익명 바이저·호흡기에 warning IFF 포인트 1곳, 견착한 소형 아크 카빈이
+    96×128 실루엣에서 읽혀야 한다(§1-b). 아군과 몸통 명도 2단 분리.
   animation_scope: base-4dir
 output:
   canvas:
@@ -69,7 +69,7 @@ pipeline:
   - id: idle-north
     label: idle · north (등면)
     seed_offset: 0
-    prompt_suffix: ', from behind, back view, back of hood visible'
+    prompt_suffix: ', from behind, back view, rear armor and compact carbine visible'
     uploads:
       5.image: docs/art-direction/comfyui/guides/openpose/actor-chibi-chibi-idle-north.png
 loras:
@@ -98,14 +98,14 @@ generation:
   seed_strategy: sequential-random-base
 prompt:
   positive: >-
-    1boy, solo, chibi, pixel art, full body, standing, post-apocalyptic street
-    raider, anonymous enemy, face fully hidden by scuffed respirator mask and
-    deep hood, no visible eyes, one small glowing orange-red warning lens on
-    the mask, dark desaturated worn streetwear, patched charcoal hoodie,
-    frayed sling strap across chest, loose rock sling with pouch hanging from
-    one hand, small shabby backpack, gray-brown muted colors, isolated
-    character, simple gray background, flat color, clean pixel clusters,
-    safe, masterpiece, high score, great score, absurdres
+    1boy, solo, chibi, pixel art, full body, standing, post-apocalyptic
+    corporate security marksman, anonymous enemy, face fully hidden by a narrow
+    opaque visor and sealed respirator, compact corporate-surplus armor over a
+    charcoal tactical uniform, compact arc carbine held across the chest, short
+    foregrip and small power cell magazine visible, worn amber unit chevron,
+    exactly one tiny dark-red IFF lamp, gray-brown muted colors, isolated
+    character, simple gray background, flat color, clean pixel clusters, safe,
+    masterpiece, high score, great score, absurdres
   negative: >-
     lowres, bad anatomy, bad hands, text, error, missing finger, extra digits,
     fewer digits, cropped, worst quality, low quality, low score, bad score,
@@ -113,20 +113,21 @@ prompt:
     proportions, tall body, small head, multiple views, multiple characters,
     gradient background, scenery, photorealistic, 3d, neon overload, fully
     glowing outfit, visible face, visible eyes, cute face, colorful dyed hair,
-    pink clothes, teal clothes, bright outfit, gun, rifle, bow, sword, staff
+    pink clothes, teal clothes, bright outfit, leather sling, slingshot, stone
+    pouch, bow, sword, staff, hooded raider, pristine police uniform
 quality_gates:
   require_transparency_after_prepare: true
   silhouette_tags:
   - grounded-feet
   - anonymous-mask
-  - sling-readable
+  - shouldered-carbine-readable
   - consistent-rows
   reject_if:
   - cropped-feet
   - extra-limbs
   - malformed-anatomy
   - visible-face
-  - missing-sling
+  - missing-carbine
 review:
   slack_channel_env: SLACK_ART_CHANNEL_ID
   publish_requires: explicit-button

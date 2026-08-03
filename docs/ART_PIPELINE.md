@@ -101,10 +101,11 @@ built-in ImageGen 제작 원화 `docs/art-direction/project-c-b2-prop-production
 현재 구현 기준의 우선순위는 `docs/ROADMAP.md`와
 `docs/art-direction/project-c-art-improvement-plan-v2.md`가 소유한다.
 
-1. **메인 원정자**: `actor-knight`의 96×128 컨셉과 정적 접지 `Frame_0`은 확정됐다.
-   방향별 6태그는 이 정적 기준을 보존해 Aseprite에서 손작업한다.
-2. **적 액터**: `actor-slinger`, `actor-grave-warden`의 96×128 기본 스프라이트를 확정한다.
-   지금은 절차 폴백 크기가 기존 자산 액터보다 작아 플레이 화면에서 바로 결손으로 보인다.
+1. **메인 원정자 — 완료**: `actor-knight`의 96×128 승인 `Frame_0`을 태그 밖에 보존하고,
+   방향별 6상태 24태그를 정식 Aseprite로 승격해 PC 화면 승인까지 끝냈다.
+2. **적 액터 — 완료**: 일반 적 5종과 감시자는 각각 `96×128` 정식 Aseprite에서 승인 정적 PNG를
+   태그 밖 `Frame_0`과 `idle-south[0]`으로 보존하고, 4방향 6상태 80프레임·24태그를 갖는다.
+   여섯 원본의 합계는 486프레임·144태그이며 east/west는 화면 기준 exact mirror다.
 3. **환경 판독 자산**: mid/deep/boss 바닥 기본·raised 6종, `env-hole`,
    `env-weak-floor`, `env-ladder`.
 4. **환경 루프**: `prop-campfire`, `prop-portal`, 좌·우 상승 벽 횃불의 `idle`
@@ -112,13 +113,14 @@ built-in ImageGen 제작 원화 `docs/art-direction/project-c-b2-prop-production
 5. **아케이드 소품/낙하 연출** (v0.3.3 개정 — 구 병원 소품 발주는 집행 전 폐기,
    `docs/ROADMAP.md` 「아트」와 동기): 자판기, 죽은 네온 간판, 홀로 패널, 셔터 내린 점포,
    엘리베이터 통로, 구멍 깊이 표현.
-6. **아이템 12종**: 64×64 포스트아포 리스킨. 12종 중 11종은 ComfyUI `item-static-v1` 재발주로
-   교체됐고(`item-frost-shard`만 ImageGen 잔존), `item-sources-v3/`의 항목별 단일 소스를
-   `process_items_v3.py`로 마감한다. 채택 표·프롬프트 실측 교훈은
+6. **아이템 12종**: 64×64 포스트아포 리스킨. 10종은 ComfyUI `item-static-v1` 재발주이고,
+   `item-herb`·`item-frost-shard`는 2026-08-03 OpenAI ImageGen 교정본이다.
+   `item-sources-v3/`의 항목별 단일 소스를 `process_items_v3.py`로 마감한다. 채택 표·프롬프트 실측 교훈은
    `item-sources-v3/README.md`가 소유한다.
    이후 Aseprite 원본으로 승격할 때도 파일명·피벗 계약은 유지한다.
-7. **액터 애니메이션**: 기본 스프라이트가 승인된 액터부터
-   `idle/walk/attack/hit/fall/death`를 Aseprite 원본으로 마감.
+7. **액터 애니메이션 — 완료**: 메인 원정자와 적 6종 모두
+   `idle/walk/attack/hit/fall/death × north/east/south/west` 완전 세트를 정식 Aseprite에 마감했다.
+   적군 전수 미리보기는 `docs/captures/arcade-enemy-directional-conform-preview-v1.png`다.
 8. **전투 VFX 6슬롯**: physical/heavy/fire/frost impact와 burn/freeze status.
    승인 키프레임을 `burst` 또는 `idle-loop`로 마감한다.
 
@@ -294,7 +296,9 @@ python3 Tools/ArtPipeline/art_asset.py publish INPUT.png \
 - 회전 가능한 던전의 최종 밀도 타깃: `docs/art-direction/project-c-rotatable-dungeon-target-v1.png`
 - 현재 Unity 절차식 구현 캡처: `docs/art-direction/iso-prototype-room.png`
 
-현재 런타임 임시 아트에도 석재 타일 변형, 16 px 단차 측면, 연속 후면 벽, 횃불, 상·하행 계단 색, Hole 강조, 기사·고블린 실루엣이 적용되어 있다. 목적은 최종 그림을 절차 생성하는 것이 아니라 다음을 먼저 검증하는 것이다.
+현재 런타임에는 포스트아포 환경 타일과 원정자, 아케이드 점유 세력 적 6종의 4방향 6상태
+Aseprite 타임라인이 적용되어 있다. 절차 폴백은 전용 슬롯이 빠질 때의 안전망이며, 목적은 최종
+그림을 절차 생성하는 것이 아니라 다음을 먼저 검증하는 것이다.
 
 - 어떤 시점에서도 벽·단차·캐릭터 정렬이 깨지지 않는가
 - Hole과 계단이 작은 모바일 화면에서도 즉시 구분되는가
@@ -308,7 +312,7 @@ AI 타깃 이미지는 한 장의 완성 장면이므로 직접 슬라이스하�
 `process_b2_service_wall_v1.py`, `process_b2_barrel_bay_v1.py`,
 `process_b2_parking_dressing_v2.py`, `process_b2_cracked_floor_v1.py`,
 `process_b2_macro_floor_v1.py`,
-`process_actor_knight_grounded_v1.py`, `process_postapoc_actors_v2.py`,
+`process_actor_knight_grounded_v1.py`, `process_arcade_occupation_actors_v1.py`,
 `process_postapoc_support_v2.py`, `process_postapoc_props_v2.py`, `process_items_v3.py`로,
 UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 `generate_ui_action_hex_v1.py`, `process_ui_backdrops_v1.py`로 재생성한다. 모든 프로세서는
@@ -317,6 +321,25 @@ UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 갈색 피부톤은 fabric/rust/stone 회랑 한가운데라 팔레트에 두는 것만으로 재료 시트 암부를
 뺏는다(실측 2026-07-30: 629px 절도, 값 조정으로 해소 불가.
 `docs/captures/palette-skin1-theft-audit-v1.png`).
+`process_arcade_occupation_actors_v1.py`는 built-in ImageGen의 단일 대상 소스를 코드 ID를 유지한
+적 6종의 `96×128` 승인 identity PNG로 마감한다. 경계에서 샘플한 마젠타 키의 변이를 소프트 매트로
+제거하고 하드 알파·역할 팔레트·2×2 클러스터·발 기준선을 잠근다.
+호환 슬롯 `actor-slime`의 현행 소스는 `project-c-corporate-pursuit-drone-source-v2.png`이며,
+폐기된 청소 크롤러 소스는 생성 이력으로만 남고 재생성 입력에 쓰지 않는다. 역할 팔레트 회귀는 각 적의
+웜 재료색을 15% 이하, 차콜·건메탈·냉청 계열을 80% 이상으로 제한하고, 시안/마젠타 네온은 0% 초과
+3% 이하의 국소 센서·케이블 신호로 고정한다.
+그 결과를 `build_arcade_enemy_directional_v1.py`와 `aseprite_build_animation.lua`가 각 identity의 태그 밖
+`Frame_0`과 `idle-south[0]`에 픽셀 일치로 보존한 채, east/west 화면 기준 exact mirror와 방향당
+`idle 4 / walk 3 / attack 3 / hit 3 / fall 2 / death 5`를 조립한다. 여섯 정식 원본은 각각
+81프레임·24태그(idle/walk만 loop), 합계 486프레임·144태그다. 전수 미리보기와 실제 프레임 박자
+검수본은 `docs/captures/arcade-enemy-directional-{conform-preview-v1.png,motion-preview-v1.gif}`다.
+적 PNG 소유자는 이 경로 하나뿐이다. 구 `process_postapoc_actors_v2.py`는 플레이어 셀만 남긴 호환
+프로세서이고, `generate_runtime_art_v2.py`도 `actor-goblin/skeleton/slime`을 쓰지 않는다. 두 범용
+생성기를 다시 실행해도 승인된 적 6종이 구 판타지 픽셀로 되돌아가면 안 된다.
+전체 캔버스 cel 안에서 실루엣만 바뀌면 Unity 2D Aseprite Importer 5.0.x가 이전 Sprite rect/UV를
+재사용할 수 있다. `ProjectCAsepritePipeline`은 `actor-*`의 이전 atlas 크기를 preprocess에서 한 번
+무효화하고 동기 재임포트해 Sprite ID를 유지한 채 새 tight rect를 계산한다. 대표 방향 프레임은
+non-readable atlas를 RenderTexture로 읽어 네 알파 경계가 rect에 닿는지 EditMode에서 검사한다.
 `ProjectCArtImporter`가 Point filter, PPU 128(`ui-*`는 64), 무압축, Mip Map Off를 강제하고,
 피벗은 `ProjectCArtPivots`(Aseprite 파이프라인과 공유하는 단일 SSOT)에서 가져온다.
 `Art/Environment/` PNG도 같은 임포터가 강제한다.
@@ -340,9 +363,16 @@ UI는 `process_ui_icons_v1.py`, `build_ui_nineslice_v1.py`,
 메인 원정자 접지본의 계보는
 `project-c-expeditioner-grounded-source-v1.{png,prompt.md}` →
 `process_actor_knight_grounded_v1.py` → 검수용 `Art/Runtime/actor-knight.png` →
-`aseprite_conform.sh` → 최종 SSOT `actor-knight.aseprite`다. 마감 계약은 `96×128`·하드 알파·
-명시적 24색 역할 팔레트·2×2 클러스터·단일 발 기준선이다. 현재 원본은 한 프레임이고
-`SurvivorAnimationApproved=false`라 플레이어 애니메이션은 붙이지 않는다. `marker-player`와
+`aseprite_conform.sh`로 승인 `Frame_0`을 잠근 뒤,
+`reference/ref-expeditioner-directional-animation-v1.prompt.md` →
+`build_actor_knight_directional_v1.py` → `aseprite_build_animation.lua`가 4방향 6상태를 조립한다.
+최종 SSOT `actor-knight.aseprite`는 `96×128`·하드 알파·24색 이하 역할 팔레트·2×2 클러스터·
+발 `y=123` 계약의 81프레임/24태그 원본이다. 태그 밖 첫 프레임은 승인 접지본과 픽셀 일치하며
+`SurvivorAnimationApproved=true`로 플레이어 애니메이션을 붙인다. Unity Aseprite 임포터가
+클립 끝에 추가하는 마지막 유지 키는 `ActorAnimationBake`가 authored 프레임에서 제외한다.
+`fall`의 authored 0.21초가 끝난 뒤에는 런타임이 마지막 프레임을 실제 0.48초 낙하 착지까지 유지하고
+그때 idle로 복귀한다. 제작 미리보기뿐 아니라 PC 낙하 중간 프레임 캡처로 이 계약을 검증한다.
+`marker-player`와
 `marker-target`은 각각 틸/앰버 열린 코너 틱의 `128×64` 정식 Aseprite다. 상시/대상 표식이
 발·접촉 AO·바닥 재질을 덮는 완전한 링으로 돌아가지 않게 한다.
 
@@ -460,5 +490,6 @@ ComfyUI 워크플로는 Desktop에서 **API 형식으로 export**한 JSON만 자
 - 기본 슬롯(`allow_replace: false`)은 승인 전 교체 금지.
 - 참조:
   - `docs/art-direction/animation-effect-workflow.md`
-  - `docs/art-direction/comfyui/recipes/actor-slinger-animation-v5.yaml`
+  - `Tools/ArtPipeline/build_arcade_enemy_directional_v1.py`
+  - `docs/captures/arcade-enemy-directional-conform-preview-v1.png`
   - `docs/art-direction/comfyui/recipes/fx-impact-suite-v2.yaml`

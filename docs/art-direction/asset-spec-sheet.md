@@ -189,19 +189,29 @@ B2 서비스 벽은 여섯 슬롯 완전 세트일 때만 켠다. 세 장은 셀
 | 파일명 | 슬롯 | 필요 태그 | 비고 |
 |--------|------|-----------|------|
 | `actor-player` | player | idle/walk/attack/hit/fall/death | 기본 폴백 영웅 |
-| `actor-knight` | knight | idle/walk/attack/hit/fall/death | |
+| `actor-knight` | knight | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 승인 v1 |
 | `actor-ranger` | ranger | idle/walk/attack/hit/fall/death | 원거리 모션 |
 | `actor-alchemist` | alchemist | idle/walk/attack/hit/fall/death | |
-| `actor-goblin` | goblin | idle/walk/attack/hit/death | 약탈자(근접 기준몹) |
-| `actor-skeleton` | skeleton | idle/walk/attack/hit/death | 낡은 경비 드론(탱커) |
-| `actor-slime` | slime | idle/walk/hit/death | 오염 슬러지 — 공격 모션 단순 가능 |
-| `actor-slinger` | slinger | idle/walk/attack/hit/death | ★ 신규. 투석 약탈자 — 치켜든 팔/투척 실루엣 필수 |
-| `actor-grave-warden` | graveWarden | idle/walk/attack/hit/death | ★ 신규. 보스 감시자 — 일반 몹보다 큰 실루엣, 경고 네온 외눈 |
+| `actor-goblin` | goblin | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 점거군 돌격병 — 호흡기/직선 충격봉 |
+| `actor-skeleton` | skeleton | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 기업 진압 로봇 — 넓은 어깨 장갑/카메라 슬릿 |
+| `actor-slime` | slime | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 기업 추적 드론 — 사족 보안 하운드/쐐기형 센서 헤드/제압제 주입턱 |
+| `actor-slinger` | slinger | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 기업 보안 사수 — 견착 아크 카빈/불투명 바이저 |
+| `actor-arc-drone` | arcDrone | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 합선 검사 드론 — 절연 플로트/방전 코일 |
+| `actor-grave-warden` | graveWarden | idle/walk/attack/hit/fall/death | ✅ 4방향 24태그 v1. 보스 감시자 — 사이버사이코 외골격/붉은 바이저 |
 | `actor-merchant` | merchant | idle *(+옵션 gesture)* | 허브 NPC, 전투 없음 |
 
-`actor-knight`는 접지 품질을 먼저 잠근 의도적 예외다. 현재 정식 원본은 하드 알파·24색 역할
-팔레트·2×2 클러스터·한 발 기준선의 단일 `Frame_0`이며, 위 6태그는 Aseprite 수작업과 PC 화면
-승인이 끝난 뒤에만 활성화한다(`SurvivorAnimationApproved=false`).
+`actor-knight`는 접지 품질을 먼저 잠근 뒤 방향 타임라인을 올린 의도적 예외다. 현재 정식 원본은
+하드 알파·24색 이하 역할 팔레트·2×2 클러스터·발 `y=123`을 지키며, 태그 밖 승인 `Frame_0` 1개와
+`idle 4 / walk 3 / attack 3 / hit 3 / fall 2 / death 5`를 화면 방향마다 가진다. 합계는
+81프레임·24태그이고 loop는 idle/walk뿐이다. PC 화면 승인이 끝나
+`SurvivorAnimationApproved=true`다.
+
+적 6종도 같은 프레임 수 계약을 쓴다. 각 `96×128` 정식 원본은 승인 정적 PNG와 픽셀 일치하는
+태그 밖 `Frame_0` 및 `idle-south[0]`, 방향별 `idle 4 / walk 3 / attack 3 / hit 3 / fall 2 /
+death 5`를 가진다. 파일당 81프레임·24태그, 여섯 파일 합계 486프레임·144태그이며 idle/walk만
+loop다. east/west는 화면 방향 기준 exact mirror다. 정적 identity 마감은
+`process_arcade_occupation_actors_v1.py`, 방향 타임라인은 `build_arcade_enemy_directional_v1.py`가
+소유하고, 전수 미리보기는 `docs/captures/arcade-enemy-directional-conform-preview-v1.png`다.
 
 ## 5. 소품 (일부 애니)
 

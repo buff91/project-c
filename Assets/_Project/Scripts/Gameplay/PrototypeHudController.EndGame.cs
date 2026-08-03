@@ -53,10 +53,18 @@ namespace ProjectC.Gameplay
 
         private void UpdateBossPanel()
         {
-            if (_bossPanel == null) return;
-
             bool show = demo != null && demo.IsBossFloor;
-            _bossPanel.EnableInClassList("is-open", show);
+            bool wasOpen = IsOpen(_bossPanel);
+            _bossPanel?.EnableInClassList("is-open", show);
+            if (show)
+            {
+                if (!wasOpen) WaitOneLayoutPassBeforeShowingWheel();
+                PauseDiscoveryNoticeVisual(suppress: true);
+            }
+            else
+                TryShowNextDiscoveryNotice();
+
+            if (_bossPanel == null) return;
             if (!show) return;
 
             // 보스 패널은 아레나 층에서만 열리므로 현재 층 라벨이 곧 보스 층 라벨이다.
