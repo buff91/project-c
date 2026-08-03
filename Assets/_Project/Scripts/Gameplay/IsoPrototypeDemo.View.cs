@@ -17,6 +17,7 @@ namespace ProjectC.Gameplay
             if (_grid == null || _dungeon == null || _resolvingAction || direction == 0)
                 return;
 
+            ExitCameraLook(announce: false, applyCamera: false);
             ClearDropFocus(restoreSelection: true);
             _grid.iso.RotateView(direction);
             ApplyViewToVisuals();
@@ -28,6 +29,7 @@ namespace ProjectC.Gameplay
 
         public void ToggleViewMode()
         {
+            ExitCameraLook(announce: false, applyCamera: false);
             ExitVerticalLook(announce: false, refreshPresentation: false);
             ClearDropFocus(restoreSelection: true);
             viewMode = viewMode == DungeonViewMode.Play
@@ -162,8 +164,11 @@ namespace ProjectC.Gameplay
                     debugCameraSize);
             }
 
+            frame = ApplyCameraLook(frame);
+
             camera.orthographicSize = frame.Size;
             camera.transform.position = new Vector3(frame.Center.x, frame.Center.y, -10f);
+            SyncDungeonAtmosphereBackdropCenter(camera);
             _lastCameraAspect = camera.aspect;
             camera.backgroundColor = hubMode
                 ? new Color32(9, 7, 14, 255)

@@ -42,7 +42,13 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="minimap-grid">
-                <ui:VisualElement name="minimap-view" class="minimap-view" />
+                <ui:VisualElement name="minimap-view" class="minimap-view" picking-mode="Ignore">
+                    <ui:Button name="minimap-player-marker" class="minimap-player-marker" tooltip="플레이어 위치로 카메라 복귀 (Home)">
+                        <ui:VisualElement class="minimap-player-glyph" picking-mode="Ignore">
+                            <ui:VisualElement class="minimap-player-core" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                    </ui:Button>
+                </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="view-controls">
                 <ui:Button name="rotate-left" class="rotate-button icon-button" tooltip="왼쪽 회전 (Q)">

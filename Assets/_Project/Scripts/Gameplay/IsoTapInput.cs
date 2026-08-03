@@ -45,6 +45,12 @@ namespace ProjectC.Gameplay
         /// <summary>X 키 — 대기(턴 스킵) 요청.</summary>
         public event System.Action WaitRequested;
 
+        /// <summary>PC 중클릭 드래그 — 화면 픽셀 기준 카메라 팬 요청.</summary>
+        public event System.Action<Vector2> CameraPanRequested;
+
+        /// <summary>Home 키 — 플레이어 추적 카메라로 복귀 요청.</summary>
+        public event System.Action CameraRecenterRequested;
+
         /// <summary>
         /// 화면 좌표에서 액터(몬스터 등)를 우선 집는 선택자. 게임 로직이 주입한다.
         /// 아이소 스프라이트는 발밑 타일보다 화면상 위에 그려져서, 평면 역변환만으로는
@@ -68,6 +74,8 @@ namespace ProjectC.Gameplay
         private Camera _cam;
         private GridPos? _hovered;
         private Vector2 _lastHoverPoint = new Vector2(float.NaN, float.NaN);
+        private bool _cameraPanGestureActive;
+        private Vector2 _lastCameraPanPoint = new Vector2(float.NaN, float.NaN);
 
         private void Awake()
         {
@@ -77,6 +85,9 @@ namespace ProjectC.Gameplay
 
         private void Update()
         {
+            UpdateCameraPan();
+            if (CameraRecenterPressed()) CameraRecenterRequested?.Invoke();
+
             if (TryGetViewRotation(out int direction))
                 ViewRotationRequested?.Invoke(direction);
 
@@ -92,7 +103,9 @@ namespace ProjectC.Gameplay
 
             UpdateHover();
 
-            if (TryGetTap(out Vector2 screenPoint))
+            // 중클릭 드래그 중에는 월드가 읽기 전용이다. 왼쪽 버튼을 함께 눌러도
+            // 카메라 이동과 타일 행동이 같은 프레임에 섞이지 않는다.
+            if (!_cameraPanGestureActive && TryGetTap(out Vector2 screenPoint))
             {
                 if (UiBlocker != null && UiBlocker(screenPoint))
                     return;
@@ -192,6 +205,80 @@ namespace ProjectC.Gameplay
             return keyboard != null && keyboard.xKey.wasPressedThisFrame;
 #else
             return Input.GetKeyDown(KeyCode.X);
+#endif
+        }
+
+        private void UpdateCameraPan()
+        {
+            if (!TryGetCameraPanPointer(
+                    out Vector2 screenPoint,
+                    out bool pressedThisFrame,
+                    out bool held))
+            {
+                CancelCameraPanGesture();
+                return;
+            }
+
+            if (pressedThisFrame)
+            {
+                _cameraPanGestureActive = UiBlocker == null || !UiBlocker(screenPoint);
+                _lastCameraPanPoint = screenPoint;
+            }
+
+            if (!_cameraPanGestureActive) return;
+            if (!held)
+            {
+                CancelCameraPanGesture();
+                return;
+            }
+
+            Vector2 delta = screenPoint - _lastCameraPanPoint;
+            _lastCameraPanPoint = screenPoint;
+            if (delta.sqrMagnitude > 0f)
+                CameraPanRequested?.Invoke(delta);
+        }
+
+        /// <summary>
+        /// 행동·회전·층 전환이 카메라 추적을 되찾을 때 현재 중클릭 제스처도 끝낸다.
+        /// 버튼을 계속 누르고 있어도 다시 눌렀다 떼기 전에는 팬을 재개하지 않는다.
+        /// </summary>
+        public void CancelCameraPanGesture()
+        {
+            _cameraPanGestureActive = false;
+            _lastCameraPanPoint = new Vector2(float.NaN, float.NaN);
+        }
+
+        private static bool TryGetCameraPanPointer(
+            out Vector2 screenPoint,
+            out bool pressedThisFrame,
+            out bool held)
+        {
+            screenPoint = default;
+            pressedThisFrame = false;
+            held = false;
+#if ENABLE_INPUT_SYSTEM
+            var mouse = Mouse.current;
+            if (mouse == null) return false;
+            screenPoint = mouse.position.ReadValue();
+            pressedThisFrame = mouse.middleButton.wasPressedThisFrame;
+            held = mouse.middleButton.isPressed;
+            return true;
+#else
+            if (!Input.mousePresent) return false;
+            screenPoint = Input.mousePosition;
+            pressedThisFrame = Input.GetMouseButtonDown(2);
+            held = Input.GetMouseButton(2);
+            return true;
+#endif
+        }
+
+        private static bool CameraRecenterPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.homeKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Home);
 #endif
         }
 
@@ -309,5 +396,7 @@ namespace ProjectC.Gameplay
             return false;
 #endif
         }
+
+        private void OnDisable() => CancelCameraPanGesture();
     }
 }

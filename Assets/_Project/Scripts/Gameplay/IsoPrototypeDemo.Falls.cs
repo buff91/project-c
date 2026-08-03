@@ -411,6 +411,9 @@ namespace ProjectC.Gameplay
         /// <summary>이동류 처리 뒤 플레이어 관련 뷰 상태(정렬·시야·선택·카메라·이벤트)를 한 번에 동기화.</summary>
         private void SyncPlayerView(GridPos position, bool floorChanged)
         {
+            // 일반 행동 래퍼를 거치지 않는 낙하·넉백·개발 순간이동도 플레이어 위치를
+            // 바꾸는 순간 자유 카메라를 끝낸다. 이전 층 중심을 새 층에 재적용하면 안 된다.
+            ExitCameraLook(announce: false, applyCamera: false);
             _playerPos = position;
             _playerSorting.Pos = position;
             ApplyPlayerVisualSorting(position);

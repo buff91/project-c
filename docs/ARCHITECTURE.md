@@ -537,11 +537,16 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   결과는 `Dungeon Backdrop` order 1/2에 놓이고 collider·입력·격자·FOV·전투 상태에는 등록되지 않는다.
 
 ### 11.2 씬 얇은 진입점 & 서비스
-- **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력→`GridPos`/액션(장치 추상화).
+- **GridManager** — `GridMap`+`IsoGrid` 소유, 좌표 변환 헬퍼. **IsoTapInput** — 입력을 `GridPos`와
+  장치 독립 액션으로 변환한다. 중클릭 포인터 차이는 `CameraPanRequested`, `Home`은
+  `CameraRecenterRequested`로 내보내므로 게임 상태가 마우스/키보드를 직접 읽지 않는다.
+  HUD의 기존 미니맵 플레이어 마커 클릭은 `PrototypeHudController`가 같은 `RecenterCamera()` 액션으로
+  전달하며, 카메라 상태에 포인터 장치 분기를 추가하지 않는다.
 - **입력 픽킹의 판정은 Core `WorldInputRules`가 소유한다** — 아이소 다이아몬드 히트 테스트,
   우선순위(**LayerPriority↓ → SortingOrder↓ → 중심 근접**), `IsMapTile`(검은 여백은 격자 좌표로
   환산돼도 맵 입력이 아니다). `IsoTapInput`은 이를 호출해 액션으로 바꾸기만 하고, 적을 먼저 집는
   규칙은 호스트가 `ActorPicker` 델리게이트로 주입한다 — 그래야 입력 레이어가 게임 상태를 모른다.
+  카메라 드래그 제스처는 이 월드 피킹 경로와 분리해 같은 프레임의 타일 행동을 억제한다.
 - **정적 서비스**: `AtomicJsonStore`(임시 파일 교체 + 백업 복구)를 바닥에 두고 `RunSaveStore`·
   `MetaStore`·`DisplaySettingsStore`·`RunTelemetryStore`가 그 위에 앉는다. `DevelopmentSaveProfile`·
   `DevelopmentViewportService`는 개발 전용(격리 저장 루트·에디터 해상도 강제)이다.
@@ -558,9 +563,12 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
   `Screen.safeArea`를 패널 좌표로 환산해 노치에 대응한다. 임계값은 `UI_ARCHITECTURE.md`가 소유.
 - 개발 PC 기본 프리셋은 16:9 QHD(2560×1440)다. 같은 비율 해상도는 같은 논리 레이아웃으로
   정규화되므로 픽셀 해상도를 올리는 것과 HUD 밀도를 줄이는 것은 별도로 다룬다.
-- **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶는다.
+- **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶고, 화면 드래그를
+  해상도 독립 월드 이동량으로 변환하며 자유 보기 중심을 현재 층 투영 경계에 clamp한다.
   **허브/던전 플레이 배율은 `playCameraSize` 하나**이며 허브도 맵 경계 auto-fit 없이 플레이어를
-  추종한다. 전체 맵을 보이는 `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는
+  기본 추종한다. 던전 PLAY의 `IsoPrototypeDemo.CameraLook`은 중심만 임시 덮어쓰는 Gameplay
+  프레젠테이션 상태이며 Core의 턴·FOV·AI·활성 층 상태가 아니다. 전체 맵을 보이는
+  `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는
   `OrthographicCameraFramingTests`가 고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
 - 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI. 단, 투척 가능 칸처럼 **타일 바닥 자체를
   칠하고 FOV·아이소 정렬을 따르는 범위 데칼**은 월드 SpriteRenderer 표현이다

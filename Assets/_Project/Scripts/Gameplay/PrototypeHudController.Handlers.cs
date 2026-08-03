@@ -149,6 +149,47 @@ namespace ProjectC.Gameplay
             if (!demo.FillMinimap(_minimapPixels, size, size)) return;
             _minimapTexture.SetPixels32(_minimapPixels);
             _minimapTexture.Apply(false);
+
+            if (_minimapPlayerMarker != null)
+            {
+                GridPos player = demo.PlayerPos;
+                float width = _minimapView.resolvedStyle.width;
+                float height = _minimapView.resolvedStyle.height;
+                float left = MinimapMarkerAxisPixels(player.x, size, width, height);
+                float bottom = MinimapMarkerAxisPixels(player.y, size, height, width);
+
+                _minimapPlayerMarker.style.left = float.IsNaN(left)
+                    ? Length.Percent(MinimapMarkerPercent(player.x, size))
+                    : new Length(left, LengthUnit.Pixel);
+                _minimapPlayerMarker.style.bottom = float.IsNaN(bottom)
+                    ? Length.Percent(MinimapMarkerPercent(player.y, size))
+                    : new Length(bottom, LengthUnit.Pixel);
+            }
+        }
+
+        private void HandleMinimapGeometryChanged(GeometryChangedEvent _) => UpdateMinimap();
+
+        internal static float MinimapMarkerPercent(int coordinate, int size)
+        {
+            if (size <= 0) return 50f;
+            float center = (Mathf.Clamp(coordinate, 0, size - 1) + 0.5f) / size;
+            return Mathf.Clamp(center * 100f, 7f, 93f);
+        }
+
+        internal static float MinimapMarkerAxisPixels(
+            int coordinate,
+            int size,
+            float axisLength,
+            float crossLength)
+        {
+            if (axisLength <= 0f || crossLength <= 0f ||
+                float.IsNaN(axisLength) || float.IsNaN(crossLength) ||
+                float.IsInfinity(axisLength) || float.IsInfinity(crossLength))
+                return float.NaN;
+
+            float mapSide = Mathf.Min(axisLength, crossLength);
+            float letterbox = (axisLength - mapSide) * 0.5f;
+            return letterbox + mapSide * MinimapMarkerPercent(coordinate, size) / 100f;
         }
 
         private void HandleInventoryChanged()

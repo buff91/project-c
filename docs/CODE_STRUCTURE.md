@@ -25,7 +25,7 @@
 
 ---
 
-## `IsoPrototypeDemo` — 관심사별 23개 파셜
+## `IsoPrototypeDemo` — 관심사별 24개 파셜
 
 한 `partial class IsoPrototypeDemo`(MonoBehaviour)를 다음 파일들이 나눠 소유한다.
 상태(필드·프로퍼티·이벤트)와 방 빌드·수명주기는 본체에, 나머지는 관심사별 파셜에 있다.
@@ -40,6 +40,7 @@
 | `IsoPrototypeDemo.cs` | 상태·필드·이벤트·수명주기(Awake/Start/Update/LateUpdate)·방 빌드(BuildPrototype/CreateActorsAndProps)·카메라·공용 헬퍼·`OverlaySorting` 상수 |
 | `IsoPrototypeDemo.Debug.cs` | 디버그 창 전용 치트 API (`DebugGodMode`·`DebugJumpFloor` 등) |
 | `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브/던전 고정 `playCameraSize` + 플레이어 추종) |
+| `IsoPrototypeDemo.CameraLook.cs` | PC 던전 PLAY의 현재 층 자유 카메라 중심·탐색 경계 clamp·추종 복귀·분위기 배경 동기화. 턴/FOV/AI 상태는 소유하지 않는다 |
 | `IsoPrototypeDemo.Interaction.cs` | 탭/스텝/인접 상호작용·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
 | `IsoPrototypeDemo.Projectiles.cs` | 같은 층 포물선·Hole 경유 3구간 투사체·폭발 순간 연출(판정/소비 없음) |
@@ -110,7 +111,7 @@
 | `GridSortingObject.cs` | 격자 위 스프라이트의 월드 위치·`sortingOrder`를 `IsoGrid` 규칙으로 갱신. 정렬 계산을 개별 오브젝트가 하지 않게 하는 장치 |
 | `FloorFoundationPresentation.cs` | B2 후보 칸에서 현재 화면의 실제 열린 전면과 회전 불변 볼록 코너 지지대를 수집하는 순수 프레젠테이션 계산. collider·입력·게임 상태 없음 |
 | `IsoGridGizmo.cs` | Scene 뷰에서 아이소 격자를 다이아몬드로 그려 좌표 변환을 눈으로 검증(에셋 없이) |
-| `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환. **입력 추상화 레이어** — Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고(`#if` 6곳) 게임 로직에는 `GridPos`만 넘긴다 |
+| `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환과 중클릭 팬/Home 재중앙 등 **입력 추상화 액션**. Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고 게임 로직에는 장치 API를 노출하지 않는다 |
 | `IsoVisualCatalog.cs` | `ScriptableObject` — 논리 타일/오브젝트 → 교체 가능한 픽셀아트 스프라이트 매핑 + 던전 역할색 슬롯. 빈 슬롯은 절차 생성 스프라이트로 대체된다(`PrototypePalette`가 여기를 먼저 묻는다) |
 | `ActorAnimationSet.cs` | `ScriptableObject` — Aseprite 태그 하나를 구운 프레임 시퀀스(`SpriteClip`). 타이밍을 "프레임 시작 시각 + 클립 총 길이"로 저장해 가변 지속시간을 무손실로 옮긴다 |
 | `SpriteClipAnimator.cs` | 베이크된 태그 클립의 경량 재생기 — **Animator를 쓰지 않고 `renderer.sprite`만 만진다**(position·scale은 CombatFx, 안정 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals` 소유). 시야 밖에서는 얼어붙는다 |
@@ -131,7 +132,7 @@
 | `RunSaveStore.cs` | 층 체크포인트(`RunSaveData`) 입출력 + `ContinueRequested` 플래그. 판 종료 시 삭제. 미래 런/중첩 텔레메트리는 이어하기·덮어쓰기를 막는다 |
 | `RunTelemetryStore.cs` | 플레이테스트 리포트를 `development-profile/telemetry` 아래 사람이 읽을 JSON으로. 에디터/개발 빌드에서만 동작 |
 | `DevelopmentSaveProfile.cs` | 개발 저장 루트를 실제 플레이 저장과 분리한다. 선택값만 `PlayerPrefs`, 데이터는 별도 디렉터리 |
-| `OrthographicCameraFraming.cs` | 허브/던전 플레이의 동일 직교 배율과 던전 DebugAll 예외를 고정하는 순수 계산 |
+| `OrthographicCameraFraming.cs` | 허브/던전 동일 직교 배율, 화면 드래그→월드 이동량, 자유 보기 투영 경계 clamp와 던전 DebugAll 예외를 고정하는 순수 계산 |
 | `DungeonFogBackdropLayout.cs` | 층 전체 안개 배경의 월드 영역. **실제 타일 위치를 쓰지 않고** x/y 전체 가능 영역의 다이아몬드를 계산해 미탐색 구조가 드러나지 않게 한다. `Dungeon Backdrop` Sorting Layer 이름도 소유해 넓은 elevation 정렬값과 분리한다 |
 | `SpriteOcclusion.cs` | 정렬 순서 + 화면 겹침으로 플레이어 가림 후보를 판정하는 순수 함수 |
 | `AssemblyInfo.cs` | `InternalsVisibleTo("ProjectC.Tests.EditMode")` — 절차 생성 스프라이트의 내부 규격 계약을 EditMode 테스트가 직접 고정할 수 있게 연다 |
@@ -296,7 +297,7 @@
 | 개구부 칸 집합 | `DungeonFloorInfo.HoleTiles` (대표 칸은 `Hole`; 성장·약한 바닥은 `DungeonGenerator.Carving`의 같은 판정 함수) |
 | 기록 적립 공식 | `RunRecordRules.Award` |
 | 해금 조건 판정·기록 투입 | `ItemUnlockRules.InvestRecords`/`RemainingFor` (UI는 자체 판정을 들지 않는다). 기록실이 보여주는 "가장 가까운 조건"도 `ClosestPending(meta)`가 같은 `RemainingFor`로 잰다 — 예전에는 이번 판 계측을 따로 읽어 기록실과 축이 갈렸다 |
-| 허브/던전 카메라 배율 | `playCameraSize` 하나 (`OrthographicCameraFraming.Follow`, 양쪽 모두 플레이어 추종) |
+| 허브/던전 카메라 배율·자유 보기 경계 | `playCameraSize` 하나 + `OrthographicCameraFraming` (`Follow`/`ScreenDragToWorldDelta`/`ClampCenterToProjectedBounds`) |
 
 ## 아직 흩어져 있어 통합 후보인 것 (Unity 에디터 검증 필요)
 

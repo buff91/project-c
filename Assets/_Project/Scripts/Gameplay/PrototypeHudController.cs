@@ -78,6 +78,7 @@ namespace ProjectC.Gameplay
         private Label _bossHealthValue;
         private Label _bossObjective;
         private VisualElement _minimapView;
+        private Button _minimapPlayerMarker;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
         private Button _waitButton;
@@ -156,6 +157,9 @@ namespace ProjectC.Gameplay
             RebindButton(ref _bombButton, null, ToggleBombAim);
             RebindButton(ref _frostButton, null, ToggleFrostBombAim);
             RebindButton(ref _menuButton, null, ReturnToCamp);
+            RebindButton(ref _minimapPlayerMarker, null, RecenterCameraFromMinimap);
+            if (_minimapView != null)
+                _minimapView.UnregisterCallback<GeometryChangedEvent>(HandleMinimapGeometryChanged);
             if (demo != null)
             {
                 demo.ViewRotationChanged -= HandleViewRotationChanged;
@@ -275,7 +279,15 @@ namespace ProjectC.Gameplay
             _gameoverCause = root.Q<Label>("gameover-cause");
             _gameoverFloor = root.Q<Label>("gameover-floor");
             _gameoverKills = root.Q<Label>("gameover-kills");
+            if (_minimapView != null)
+                _minimapView.UnregisterCallback<GeometryChangedEvent>(HandleMinimapGeometryChanged);
             _minimapView = root.Q<VisualElement>("minimap-view");
+            if (_minimapView != null)
+                _minimapView.RegisterCallback<GeometryChangedEvent>(HandleMinimapGeometryChanged);
+            RebindButton(
+                ref _minimapPlayerMarker,
+                root.Q<Button>("minimap-player-marker"),
+                RecenterCameraFromMinimap);
             RebindButton(ref _waitButton, root.Q<Button>("wait-button"), HandleWaitClicked);
             _turnPill = root.Q<VisualElement>(className: "turn-pill");
             _turnLabel = _turnPill?.Q<Label>(className: "turn-label");
@@ -388,6 +400,11 @@ namespace ProjectC.Gameplay
             if (demo != null) demo.LookDown();
         }
 
+        private void RecenterCameraFromMinimap()
+        {
+            if (demo != null) demo.RecenterCamera();
+        }
+
         private void ToggleViewMode()
         {
             if (demo != null) demo.ToggleViewMode();
@@ -458,6 +475,8 @@ namespace ProjectC.Gameplay
                 if (demo != null && demo.CancelDropConfirmation())
                     return;
                 if (demo != null && demo.CancelVerticalLook())
+                    return;
+                if (demo != null && demo.CancelCameraLook())
                     return;
                 if (_gameMenuModal != null && _gameMenuModal.ClassListContains("is-open"))
                     CloseGameMenu();

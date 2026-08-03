@@ -15,6 +15,7 @@ namespace ProjectC.Tests
             "hp-hearts",
             "hp-value",
             "minimap-view",
+            "minimap-player-marker",
             "settings-button",
             "game-menu-button",
             "rotate-left",
@@ -144,6 +145,13 @@ namespace ProjectC.Tests
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-rotate-right-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-backpack-icon"));
             Assert.IsNotNull(tree.Q<VisualElement>(className: "ui-wait-icon"));
+            Button minimapPlayerMarker = tree.Q<Button>("minimap-player-marker");
+            Assert.IsNotNull(minimapPlayerMarker);
+            Assert.AreEqual(PickingMode.Position, minimapPlayerMarker.pickingMode);
+            StringAssert.Contains("카메라 복귀", minimapPlayerMarker.tooltip);
+            AssertSubtreeIgnoresPicking(
+                minimapPlayerMarker.Q<VisualElement>(className: "minimap-player-glyph"),
+                "Minimap player glyph");
             Assert.IsFalse(tree.Q("feedback-chip").ClassListContains("is-open"));
             Assert.IsFalse(tree.Q("vertical-hint-chip").ClassListContains("is-open"));
 
@@ -151,6 +159,77 @@ namespace ProjectC.Tests
             // 되살리면 방금 번 골드·해금을 못 쓰고 같은 조건으로 돌아가는 길이 다시 생긴다.
             Assert.AreEqual("캠프로 돌아가기", tree.Q<Button>("menu-button").text);
             Assert.IsNull(tree.Q<Button>("restart-button"));
+        }
+
+        [TestCase(0, 13, 7f)]
+        [TestCase(6, 13, 50f)]
+        [TestCase(12, 13, 93f)]
+        [TestCase(-3, 13, 7f)]
+        [TestCase(20, 13, 93f)]
+        public void MinimapMarkerPercent_UsesTileCenterAndKeepsMarkerInsideViewport(
+            int coordinate,
+            int size,
+            float expected)
+        {
+            Assert.AreEqual(
+                expected,
+                PrototypeHudController.MinimapMarkerPercent(coordinate, size),
+                0.0001f);
+        }
+
+        [Test]
+        public void SharedHudStyle_ExposesDesktopMinimapCameraRecenterMarker()
+        {
+            string stylePath = System.IO.Path.Combine(
+                Application.dataPath,
+                "_Project/UI/PrototypeHUD.uss");
+            string style = System.IO.File.ReadAllText(stylePath);
+
+            Assert.That(
+                style,
+                Does.Match(
+                    @"\.hud-root\.hud-desktop\s+\.minimap-player-marker\s*\{[^}]*display:\s*flex;"),
+                "The scene can load the shared HUD directly, so its PC class must reveal the marker.");
+        }
+
+        [TestCase(6, 13, 148f, 44f, 74f)]
+        [TestCase(0, 13, 148f, 44f, 55.08f)]
+        [TestCase(12, 13, 44f, 148f, 40.92f)]
+        public void MinimapMarkerAxisPixels_AccountsForScaleToFitLetterbox(
+            int coordinate,
+            int size,
+            float axisLength,
+            float crossLength,
+            float expected)
+        {
+            Assert.AreEqual(
+                expected,
+                PrototypeHudController.MinimapMarkerAxisPixels(
+                    coordinate,
+                    size,
+                    axisLength,
+                    crossLength),
+                0.0001f);
+        }
+
+        [Test]
+        public void MinimapMarkerAxisPixels_RejectsUnresolvedLayout()
+        {
+            Assert.IsTrue(float.IsNaN(
+                PrototypeHudController.MinimapMarkerAxisPixels(6, 13, 0f, 44f)));
+        }
+
+        private static void AssertSubtreeIgnoresPicking(
+            VisualElement element,
+            string context)
+        {
+            Assert.IsNotNull(element, $"{context} missing");
+            Assert.AreEqual(
+                PickingMode.Ignore,
+                element.pickingMode,
+                $"{context} can block world input: {element.name}");
+            foreach (VisualElement child in element.Children())
+                AssertSubtreeIgnoresPicking(child, context);
         }
 
         [Test]

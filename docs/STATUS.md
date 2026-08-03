@@ -51,6 +51,12 @@
   액터는 씬을 바꿔도 같은 화면 크기로 보인다. 전체 조감 배율 `debugCameraSize`는 던전 DebugAll에서만
   허용한다. 이 분기는 `OrthographicCameraFramingTests`가 고정하며, 동일 1280×720 비교본은
   `docs/captures/lobby-game-scale-{hub,dungeon}-1280x720.png`다.
+  던전 PLAY에서는 PC **중클릭 드래그**로 현재 활성 층의 이미 탐색한 범위 안에서 카메라 중심만
+  임시 분리할 수 있다. 버튼을 놓아도 위치를 유지하고 `Home`/`Escape`/미니맵 플레이어 마커 클릭,
+  수락된 플레이어 행동, 시점 회전·DebugAll 전환·수직 보기·투척 조준에서 즉시 플레이어 추종으로
+  돌아온다. 팬 중에도 턴·플레이어 위치·FOV·AI·활성 층·미니맵과 기존 배율은 바뀌지 않으며,
+  드래그는 월드 탭을 만들지 않는다. 카메라 프레이밍·HUD 계약·실제 마커 복귀는 EditMode와
+  PlayMode 회귀가 고정한다.
 - **던전 화면 톤 / 메인 원정자**: PC Game View는 청흑 void·불투명 panel 안개 위에
   웜 그레이 콘크리트를 놓고, 호박색 물리광과 청록 신호색은 국소 표식에만 쓴다. 안개 다이아몬드는
   `Dungeon Backdrop` Sorting Layer에서 `Default` 월드보다 항상 뒤에 그린다. 교체 가능한

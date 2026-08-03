@@ -77,6 +77,72 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void ScreenDragToWorldDelta_SameViewportFraction_IsResolutionIndependent()
+        {
+            Vector2 lowResolution = OrthographicCameraFraming.ScreenDragToWorldDelta(
+                new Vector2(100f, -50f),
+                orthographicSize: 2.3f,
+                pixelHeight: 1000f);
+            Vector2 highResolution = OrthographicCameraFraming.ScreenDragToWorldDelta(
+                new Vector2(200f, -100f),
+                orthographicSize: 2.3f,
+                pixelHeight: 2000f);
+
+            Assert.That(highResolution.x, Is.EqualTo(lowResolution.x).Within(0.0001f));
+            Assert.That(highResolution.y, Is.EqualTo(lowResolution.y).Within(0.0001f));
+            Assert.Less(lowResolution.x, 0f, "화면을 오른쪽으로 끌면 카메라는 왼쪽으로 가야 한다");
+            Assert.Greater(lowResolution.y, 0f, "화면을 아래로 끌면 카메라는 위로 가야 한다");
+        }
+
+        [Test]
+        public void ScreenDragToWorldDelta_RejectsInvalidCameraValues()
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                OrthographicCameraFraming.ScreenDragToWorldDelta(
+                    Vector2.one,
+                    orthographicSize: 0f,
+                    pixelHeight: 720f));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                OrthographicCameraFraming.ScreenDragToWorldDelta(
+                    Vector2.one,
+                    orthographicSize: 2.3f,
+                    pixelHeight: float.NaN));
+        }
+
+        [Test]
+        public void ClampCenterToProjectedBounds_UsesKnownBoundsAndPadding()
+        {
+            IReadOnlyList<Vector2> known = new[]
+            {
+                new Vector2(-2f, -1f),
+                new Vector2(3f, 4f)
+            };
+
+            Vector2 clamped = OrthographicCameraFraming.ClampCenterToProjectedBounds(
+                new Vector2(12f, -8f),
+                known,
+                new Vector2(0.5f, 0.25f));
+
+            Assert.That(clamped.x, Is.EqualTo(3.5f).Within(0.0001f));
+            Assert.That(clamped.y, Is.EqualTo(-1.25f).Within(0.0001f));
+        }
+
+        [Test]
+        public void ClampCenterToProjectedBounds_RejectsMissingOrInvalidBounds()
+        {
+            Assert.Throws<System.ArgumentException>(() =>
+                OrthographicCameraFraming.ClampCenterToProjectedBounds(
+                    Vector2.zero,
+                    new Vector2[0],
+                    Vector2.zero));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                OrthographicCameraFraming.ClampCenterToProjectedBounds(
+                    Vector2.zero,
+                    new[] { Vector2.zero },
+                    new Vector2(-1f, 0f)));
+        }
+
+        [Test]
         public void FitProjectedBounds_FourViewDirections_KeepEquivalentRoomBoundsInsideViewport()
         {
             var iso = new IsoGrid(1f, 0.5f, 0.25f)

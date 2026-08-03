@@ -88,6 +88,8 @@ namespace ProjectC.Gameplay
 
         private void SetBombAiming(bool aiming)
         {
+            if (aiming)
+                ExitCameraLook(announce: false, applyCamera: true);
             _bombAiming = aiming;
             if (aiming) ClearDropFocus(restoreSelection: true);
             if (!aiming) _aimHoverCell = null;
@@ -132,6 +134,9 @@ namespace ProjectC.Gameplay
             IEnumerator action,
             bool preserveVerticalLook = false)
         {
+            // 카메라 관찰은 무턴이지만 실제 행동이 수락되면 플레이어 추적을 먼저 되찾는다.
+            // 거절된 클릭은 이 공통 래퍼에 도달하지 않으므로 카메라를 뜻밖에 되돌리지 않는다.
+            ExitCameraLook(announce: false, applyCamera: true);
             _resolvingAction = true;
             _travelCancelRequested = false;
             ClearDropFocus(restoreSelection: false);

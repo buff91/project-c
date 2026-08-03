@@ -1028,6 +1028,69 @@
     -unity-background-scale-mode: scale-to-fit;
 }
 
+.minimap-player-marker {
+    display: none;
+}
+
+/* 현재 씬은 공용 HUD 트리를 직접 로드해도 컨트롤러가 hud-desktop 클래스를 붙인다.
+   PC 전용 복귀 표식은 공용 시트에서 그 클래스를 기준으로 열어야 항상 표시된다. */
+.hud-root.hud-desktop .minimap-view {
+    position: relative;
+    overflow: visible;
+}
+
+.hud-root.hud-desktop .minimap-player-marker {
+    display: flex;
+    position: absolute;
+    width: 15px;
+    min-width: 15px;
+    height: 15px;
+    min-height: 15px;
+    translate: -50% 50%;
+    margin: 0;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .minimap-player-glyph {
+    width: 7px;
+    min-width: 7px;
+    height: 7px;
+    min-height: 7px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(5, 7, 12, 0.76);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-ice);
+    border-right-color: var(--pc-ice);
+    border-top-color: var(--pc-ice);
+    border-bottom-color: var(--pc-ice);
+}
+
+.hud-root.hud-desktop .minimap-player-marker:hover .minimap-player-glyph {
+    background-color: rgba(20, 52, 58, 0.92);
+    border-left-color: var(--pc-gold);
+    border-right-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-bottom-color: var(--pc-gold);
+}
+
+.hud-root.hud-desktop .minimap-player-core {
+    width: 3px;
+    height: 3px;
+    background-color: var(--pc-gold);
+}
+
 /* ── 디버그 창 (에디터/개발빌드 전용) ────────────────── */
 
 .debug-panel {

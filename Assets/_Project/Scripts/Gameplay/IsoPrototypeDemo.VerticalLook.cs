@@ -63,6 +63,7 @@ namespace ProjectC.Gameplay
             if (_bombAiming && !VerticalThrowRules.Supports(_bombAimKind))
                 SetBombAiming(false);
 
+            ExitCameraLook(announce: false, applyCamera: false);
             ClearDropFocus(restoreSelection: true);
             _verticalLookMode = mode;
             _aimHoverCell = null;

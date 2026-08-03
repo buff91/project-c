@@ -489,6 +489,8 @@ namespace ProjectC.Gameplay
             _input.StepRequested += HandleStepRequested;
             _input.InteractRequested += InteractAdjacent;
             _input.WaitRequested += WaitTurn;
+            _input.CameraPanRequested += HandleCameraPanRequested;
+            _input.CameraRecenterRequested += HandleCameraRecenterRequested;
             _input.ActorPicker = PickEnemyTileAt;
             _input.TilePicker = PickVisibleTileAt;
             if (Application.isPlaying)
@@ -526,6 +528,8 @@ namespace ProjectC.Gameplay
                 _input.StepRequested -= HandleStepRequested;
                 _input.InteractRequested -= InteractAdjacent;
                 _input.WaitRequested -= WaitTurn;
+                _input.CameraPanRequested -= HandleCameraPanRequested;
+                _input.CameraRecenterRequested -= HandleCameraRecenterRequested;
                 if (_input.ActorPicker == PickEnemyTileAt)
                     _input.ActorPicker = null;
                 if (_input.TilePicker == PickVisibleTileAt)
@@ -534,6 +538,7 @@ namespace ProjectC.Gameplay
             ClearThrowRangePreview();
             SuspendDropFocus();
             SuspendVerticalLook();
+            SuspendCameraLook();
         }
 
         public void BuildPrototype()
@@ -638,6 +643,7 @@ namespace ProjectC.Gameplay
             _aimHoverCell = null;
             ResetDropFocusForBuild();
             ResetVerticalLookForBuild();
+            ResetCameraLookForBuild();
             _hubWorld.Reset();
             ResetRestSitesForBuild();
             ResetBossArenaForBuild();
