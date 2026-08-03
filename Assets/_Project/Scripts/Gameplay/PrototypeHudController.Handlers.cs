@@ -3,10 +3,6 @@ using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 namespace ProjectC.Gameplay
 {
     public partial class PrototypeHudController : MonoBehaviour

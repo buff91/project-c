@@ -112,6 +112,7 @@
 | `FloorFoundationPresentation.cs` | B2 후보 칸에서 현재 화면의 실제 열린 전면과 회전 불변 볼록 코너 지지대를 수집하는 순수 프레젠테이션 계산. collider·입력·게임 상태 없음 |
 | `IsoGridGizmo.cs` | Scene 뷰에서 아이소 격자를 다이아몬드로 그려 좌표 변환을 눈으로 검증(에셋 없이) |
 | `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환과 중클릭 팬/Home 재중앙 등 **입력 추상화 액션**. Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고 게임 로직에는 장치 API를 노출하지 않는다 |
+| `HudKeyboardInput.cs` | HUD 공용 키보드 액션(`Cancel`·인벤토리·디버그 패널)의 Input System/legacy 경계. 키의 눌림 edge만 번역하고 모달 우선순위는 각 컨트롤러가 소유한다 |
 | `IsoVisualCatalog.cs` | `ScriptableObject` — 논리 타일/오브젝트 → 교체 가능한 픽셀아트 스프라이트 매핑 + 던전 역할색 슬롯. 빈 슬롯은 절차 생성 스프라이트로 대체된다(`PrototypePalette`가 여기를 먼저 묻는다) |
 | `ActorAnimationSet.cs` | `ScriptableObject` — Aseprite 태그 하나를 구운 프레임 시퀀스(`SpriteClip`). 타이밍을 "프레임 시작 시각 + 클립 총 길이"로 저장해 가변 지속시간을 무손실로 옮긴다 |
 | `SpriteClipAnimator.cs` | 베이크된 태그 클립의 경량 재생기 — **Animator를 쓰지 않고 `renderer.sprite`만 만진다**(position·scale은 CombatFx, 안정 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals` 소유). 시야 밖에서는 얼어붙는다 |
@@ -311,9 +312,10 @@
   들고 있어 step 콜백이 취소를 신호할 수 있어야 하고, `Falls`의 `ShiftPlayerTo`는 `float t` 없이
   `Clamp01`을 Lerp 인자에 인라인해 형태가 다르다. 참고로 `DOTweenBootstrap`이 DOTween을 초기화해
   두었지만 **실사용처는 아직 0곳**이다 — 통합할 때 수기 코루틴 vs DOTween을 먼저 정한다.
-- **입력 소스 추상화** — `IsoTapInput`의 `#if ENABLE_INPUT_SYSTEM` 분기 6곳 + HUD 쪽 포인터/키보드
-  헬퍼. 입력 경로는 실제 Play로만 확인되고, 지금은 **PC 우선 기간**이라 터치 경로를 건드리면
-  검증 없이 깨진 채 남는다(`CLAUDE.md` "현재 개발 우선순위" 참조).
+- **남은 입력 소스 추상화** — HUD 단발 키 명령은 `HudKeyboardInput`으로 통합했다. 남은 후보는
+  `PrototypeHudController.ModifierHeld`의 액션 휠 hold와 `IsoTapInput`의 이동·포인터/터치
+  `#if ENABLE_INPUT_SYSTEM` 분기다. 입력 경로는 실제 Play로만 확인되고, 지금은 **PC 우선 기간**이라
+  터치 경로를 건드리면 검증 없이 깨진 채 남는다(`CLAUDE.md` "현재 개발 우선순위" 참조).
 - **에디터 도구 asmdef** — `Assets/_Project/Editor` 루트의 5개 파일(`ArtStyleCapture`·
   `IsoPrototypeSceneBuilder`·`MainMenuSceneBuilder`·`PlayFromMainMenu`·`ProjectCArtImporter`)이
   asmdef 없이 `Assembly-CSharp-Editor`에 실린다(자체 asmdef를 가진 것은 `Editor/ArtPipeline`뿐).

@@ -4,9 +4,6 @@ using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace ProjectC.Gameplay
 {
@@ -270,7 +267,8 @@ namespace ProjectC.Gameplay
 
         private void Update()
         {
-            if (!Application.isPlaying || !EscapePressed()) return;
+            if (!Application.isPlaying ||
+                !HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.Cancel)) return;
             if (_displaySettings != null && _displaySettings.IsOpen)
             {
                 _displaySettings.Close();
@@ -285,16 +283,6 @@ namespace ProjectC.Gameplay
                 CloseModals();
             else
                 OpenMenu();
-        }
-
-        private static bool EscapePressed()
-        {
-#if ENABLE_INPUT_SYSTEM
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(KeyCode.Escape);
-#endif
         }
 
         // ── 상호작용 라우팅 ──────────────────────────────────

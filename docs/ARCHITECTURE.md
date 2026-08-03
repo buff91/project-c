@@ -556,6 +556,10 @@ Tests.EditMode ──▶ Core + 일부 Gameplay   ·   Tests.PlayMode ──▶ 
 ### 11.3 UI (UI Toolkit 화면 HUD)
 - 컨트롤러: `PrototypeHudController`(던전 HUD·액션 휠) · `HubHudController` ·
   `InventoryPanelController`(6×4 백팩+조합) · `DisplaySettingsPanelController` · `DebugPanelController`.
+- **HudKeyboardInput**은 `Escape`·`I`·`F1`·Cmd/Ctrl+D의 눌림 edge를 HUD 액션으로 번역하는
+  Input System/legacy 경계다. 이 네 단발 명령의 소비자는 액션만 읽되, 어떤 모달을 먼저 닫을지는
+  계속 자체 상태 순서로 결정한다. 액션 휠 modifier hold와 월드 이동·포인터/터치는 아직 각
+  `PrototypeHudController`·`IsoTapInput` 경계에 남는다.
 - `HubHudController`의 버튼·포인터 콜백은 `HubUiBindingRegistry`가 정확한 delegate를 보관하고
   `OnDisable` 및 재바인딩 전에 대칭 해제한다. `OnEnable`마다 람다를 새로 더하면 허브 재진입 횟수만큼
   구매·이동·씬 전환이 중복 실행되므로 직접 `clicked +=`를 흩뿌리지 않는다.

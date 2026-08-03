@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.UIElements;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace ProjectC.Gameplay
 {
@@ -97,7 +94,8 @@ namespace ProjectC.Gameplay
 
         private void Update()
         {
-            if (!Application.isPlaying || !InventoryPressed()) return;
+            if (!Application.isPlaying ||
+                !HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.ToggleInventory)) return;
             if (_modal != null && _modal.ClassListContains("is-open"))
                 Close();
             else if (!AnyOtherModalOpen())
@@ -124,16 +122,6 @@ namespace ProjectC.Gameplay
             _bagButton = null;
             _closeButton = null;
             _slots.Clear();
-        }
-
-        private static bool InventoryPressed()
-        {
-#if ENABLE_INPUT_SYSTEM
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.iKey.wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(KeyCode.I);
-#endif
         }
 
         private bool AnyOtherModalOpen()

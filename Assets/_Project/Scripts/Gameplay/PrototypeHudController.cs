@@ -452,7 +452,7 @@ namespace ProjectC.Gameplay
             // 조합이 그대로면 UpdateStatusChips 가 즉시 빠진다.
             UpdateStatusChips();
 
-            if (EscapePressed())
+            if (HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.Cancel))
             {
                 if (_wheelPinned || IsOpen(_actionWheel))
                 {
@@ -501,16 +501,6 @@ namespace ProjectC.Gameplay
                 }
                 if (shouldShow) PositionActionWheel();
             }
-        }
-
-        private static bool EscapePressed()
-        {
-#if ENABLE_INPUT_SYSTEM
-            var keyboard = Keyboard.current;
-            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(KeyCode.Escape);
-#endif
         }
 
         private static bool ModifierHeld()

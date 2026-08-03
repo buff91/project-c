@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 using UnityEngine.UIElements;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace ProjectC.Gameplay
 {
@@ -112,7 +109,7 @@ namespace ProjectC.Gameplay
         {
             if (!DebugAllowed || _panel == null) return;
 
-            if (ToggleRequested())
+            if (HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.ToggleDebugPanel))
                 _panel.ToggleInClassList("is-open");
 
             if (!_panel.ClassListContains("is-open")) return;
@@ -129,23 +126,6 @@ namespace ProjectC.Gameplay
                 _logDirty = false;
                 RefreshLog();
             }
-        }
-
-        private static bool ToggleRequested()
-        {
-#if ENABLE_INPUT_SYSTEM
-            var keyboard = Keyboard.current;
-            if (keyboard == null) return false;
-            if (keyboard.f1Key.wasPressedThisFrame) return true;
-            bool modifier = keyboard.leftCommandKey.isPressed || keyboard.rightCommandKey.isPressed ||
-                            keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
-            return modifier && keyboard.dKey.wasPressedThisFrame;
-#else
-            if (Input.GetKeyDown(KeyCode.F1)) return true;
-            bool modifier = Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand) ||
-                            Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-            return modifier && Input.GetKeyDown(KeyCode.D);
-#endif
         }
 
         private void RefreshStatus()

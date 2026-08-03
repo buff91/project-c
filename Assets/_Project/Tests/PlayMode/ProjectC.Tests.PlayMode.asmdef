@@ -3,7 +3,9 @@
     "rootNamespace": "ProjectC.Tests.PlayMode",
     "references": [
         "ProjectC.Core",
-        "ProjectC.Gameplay"
+        "ProjectC.Gameplay",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
