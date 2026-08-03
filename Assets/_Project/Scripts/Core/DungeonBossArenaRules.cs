@@ -39,7 +39,9 @@ namespace ProjectC.Core
             if (bossDefeated || string.IsNullOrWhiteSpace(bossName)) return false;
             if (!IsApproachFloor(depthIndex, floorCount)) return false;
 
-            message = $"{ApproachOmen(direction)} {bossName}이(가) 기다린다";
+            // 임의의 보스 이름 뒤에 `이(가)`를 붙이면 실제 HUD에서 `감시자이(가)`처럼
+            // 읽힌다. 조사 선택이 필요 없는 신호 문장으로 세계관과 한국어를 함께 지킨다.
+            message = $"{ApproachOmen(direction)} {bossName}의 신호가 잡힌다";
             return true;
         }
 

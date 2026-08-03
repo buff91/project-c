@@ -56,6 +56,9 @@ namespace ProjectC.Tests
                 "감시자", DungeonProgressDirection.Ascend, 8, 10, bossDefeated: false, out string up));
             StringAssert.Contains("위", up, "상승 던전에서 보스는 한 층 위에 있다");
             Assert.IsFalse(up.Contains("아래"), "상승 던전에서 '아래'는 거짓말이다");
+            StringAssert.Contains("감시자의 신호가 잡힌다", up,
+                "임의 조사를 괄호로 노출하지 않고 아케이드 타워의 감지 문장으로 읽혀야 한다");
+            Assert.IsFalse(up.Contains("이(가)"), "플레이어 화면에 조사 선택 표기를 노출하지 않는다");
 
             Assert.IsTrue(DungeonBossArenaRules.TryApproachCue(
                 "감시자", DungeonProgressDirection.Descend, 8, 10, bossDefeated: false, out string down));
