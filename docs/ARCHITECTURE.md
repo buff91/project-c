@@ -179,8 +179,16 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
   **몬스터만 자기 `MonsterArchetype.CanClimb`를 넘긴다.** 층 전환 계단 링크는 어느 쪽 끝도 사다리가
   아니라 걸리지 않는다(걸리면 못 오르는 적이 자기 층에 갇힌다).
 
-### 6.2 TravelRules + Gameplay mapped 실행기 — SPD식 자동 이동 게이팅
-- `AllowedSteps` = 적이 보이면 탭당 **1스텝**, 아니면 경로 전체. 인터럽트 우선순위는 **피해 > 새로 보인 적 > 새로 보인 아이템**이고 `TravelInterrupt`의 **enum 값이 곧 우선순위**다.
+### 6.2 TravelRules + Gameplay 이동 실행기 — SPD식 자동 이동 게이팅
+- `AllowedSteps` = 적이 보이면 탭당 **1스텝**, 아니면 경로 전체. `GetActionBudget`은 이동 스텝과
+  후속 행동을 한 예산으로 묶어, 위협 중에는 `이동 1칸`과 `인접 행동 1회` 중 하나만 허용한다.
+  `CanPerformFollowUpAction`은 접근 종료 시 현재 위협과 마지막 행동 인터럽트를 다시 확인한다.
+  인터럽트 우선순위는 **피해 > 새로 보인 적 > 새로 보인 아이템**이고 `TravelInterrupt`의
+  **enum 값이 곧 우선순위**다.
+- Gameplay `IsoPrototypeDemo.Actions`의 `ApproachPlan`은 문·공격·구출·휴식·탈출·프롭 등 모든
+  자동 접근에 같은 예산을 전달한다. `IsTravelSingleActionMode`는 같은 FOV 판정을 PC HUD에 읽기 전용으로
+  공개하고, HUD는 기존 `VerticalContextChanged` 갱신 경로에서 턴 칩 상태만 바꾼다. 적 페이즈 종료도
+  위치·생존 변화 뒤 이 이벤트를 한 번 발행해 다음 플레이어 입력의 예산과 표시가 어긋나지 않게 한다.
 - Gameplay `IsoPrototypeDemo.MapKnowledge`는 현재 활성 층의 `MappedSilhouette` 타일을 자동 이동 목표로
   받고 `TravelRules`의 게이트를 행동마다 적용한다. 지도 구성/비밀방 공개 때 공용 실루엣 범주를 별도로
   캐시하므로 Unknown 칸의 live `TileKind` 변화가 지도에 새지 않는다. 일반 닫힌 문은 경로 실행의 행동
@@ -600,8 +608,8 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
 - **OrthographicCameraFraming** — 플레이어 추종 중심과 직교 카메라 크기를 묶고, 화면 드래그를
   해상도 독립 월드 이동량으로 변환하며 자유 보기 중심을 현재 활성 층의 `MappedSilhouette` 투영 경계에
   clamp한다. 미니맵도 같은 mapped 경계를 기본 윤곽으로 쓰고 그 위에 `Explored`/`Visible`을 합성한다.
-  **허브/던전 플레이 배율은 `playCameraSize` 하나**이며 허브도 맵 경계 auto-fit 없이 플레이어를
-  기본 추종한다. 던전 PLAY의 `IsoPrototypeDemo.CameraLook`은 중심만 임시 덮어쓰는 Gameplay
+  **허브/던전 플레이 배율은 B2 hero-room까지 `playCameraSize` 하나**이며 맵/방 경계 auto-fit 없이
+  플레이어를 기본 추종한다. 던전 PLAY의 `IsoPrototypeDemo.CameraLook`은 중심만 임시 덮어쓰는 Gameplay
   프레젠테이션 상태이며 Core의 턴·FOV·AI·활성 층 상태가 아니다. 전체 맵을 보이는
   `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는 `OrthographicCameraFramingTests`가
   고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.

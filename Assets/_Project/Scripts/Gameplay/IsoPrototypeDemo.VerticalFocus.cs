@@ -84,14 +84,14 @@ namespace ProjectC.Gameplay
                 return true;
             }
 
-            if (!TryFindApproach(hole, out List<GridPos> path))
+            if (!TryFindApproach(hole, out ApproachPlan approach))
             {
                 InteractionFeedback?.Invoke("구멍 가장자리까지 갈 수 없다");
                 return true;
             }
 
             ClearDropFocus(restoreSelection: false);
-            StartPlayerAction(hole, ApproachAndDrop(path, hole));
+            StartPlayerAction(hole, ApproachAndDrop(approach, hole));
             return true;
         }
 

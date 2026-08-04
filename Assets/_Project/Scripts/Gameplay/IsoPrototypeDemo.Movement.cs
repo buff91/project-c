@@ -73,9 +73,11 @@ namespace ProjectC.Gameplay
             return Mathf.Min(timeProgress, frameProgress);
         }
 
-        private IEnumerator ApproachAndToggleDoor(IReadOnlyList<GridPos> path, GridPos door)
+        private IEnumerator ApproachAndToggleDoor(ApproachPlan approach, GridPos door)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             TileData tile = _grid.Map.Get(door);
             if (IsPlayerAdjacentTo(door) && tile != null && (tile.CanOpen || tile.CanClose))
@@ -99,24 +101,30 @@ namespace ProjectC.Gameplay
         /// <summary>
         /// 갇힌 동료 옆까지 걸어간 뒤 구출한다. 이동 중 죽거나 동료가 이미 사라졌으면 조용히 끝낸다.
         /// </summary>
-        private IEnumerator ApproachAndRescue(IReadOnlyList<GridPos> path, GridPos npcPos)
+        private IEnumerator ApproachAndRescue(ApproachPlan approach, GridPos npcPos)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             if (!_playerState.IsAlive ||
                 !IsPlayerAdjacentTo(npcPos) ||
                 !IsRescueNpcAt(npcPos))
                 yield break;
 
-            TryRescueNpcAt(npcPos);
+            if (!TryRescueNpcAt(npcPos))
+                yield break;
             RefreshFloorVisibility();
+            yield return ResolveEnemyPhase();
         }
 
         private IEnumerator ApproachAndRevealSecretDoor(
-            IReadOnlyList<GridPos> path,
+            ApproachPlan approach,
             GridPos secretDoor)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             TileData tile = _grid.Map.Get(secretDoor);
             if (!_playerState.IsAlive ||
@@ -134,9 +142,11 @@ namespace ProjectC.Gameplay
             yield return ResolveEnemyPhase();
         }
 
-        private IEnumerator ApproachAndDrop(IReadOnlyList<GridPos> path, GridPos hole)
+        private IEnumerator ApproachAndDrop(ApproachPlan approach, GridPos hole)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             // 의도적 낙하도 TryFall 하나로 수렴 — 낙뎀을 감수하는 하강 수단이다. (GDD §5.3)
             GridPos? landing = _grid.Map.FindLandingBelow(hole, BottomElevation);
@@ -517,6 +527,9 @@ namespace ProjectC.Gameplay
                     _visibleTiles.Contains(enemy.State.Position),
                     enemy.State.IsAlive);
         }
+
+        /// <summary>보이는 적 때문에 자동 이동이 입력당 한 행동으로 제한되는 상태.</summary>
+        public bool IsTravelSingleActionMode => AnyEnemyVisible();
 
         private bool AnyEnemyVisible()
         {

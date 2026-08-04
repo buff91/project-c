@@ -463,6 +463,20 @@
     color: var(--pc-ice);
 }
 
+/* 기존 턴 칩이 자동 이동 예산까지 함께 말한다. 새 패널을 늘리지 않고
+   teal=연속 이동, hazard=시야 내 위협으로 같은 위치에서만 상태가 바뀐다. */
+.hud-root.hud-desktop .turn-pill.is-threat .turn-label {
+    color: var(--pc-hazard);
+}
+
+.hud-root.hud-desktop .turn-pill.is-threat .turn-dot {
+    background-color: var(--pc-hazard);
+}
+
+.hud-root.hud-desktop .turn-pill.is-observing .turn-dot {
+    background-color: var(--pc-ice);
+}
+
 /* ── 월드 액션 휠 ────────────────────────────────────────
    월드 앵커라 캔버스 축소만큼 같이 줄인다. */
 
@@ -1071,7 +1085,7 @@
 }
 
 .hud-root.hud-desktop .turn-pill {
-    min-width: 44px;
+    min-width: 72px;
     margin-left: auto;
 }
 

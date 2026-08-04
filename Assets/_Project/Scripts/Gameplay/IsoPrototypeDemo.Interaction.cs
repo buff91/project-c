@@ -348,10 +348,10 @@ namespace ProjectC.Gameplay
                     target,
                     out HubInteractionTarget hubTarget))
             {
-                if (TryFindApproach(target, out List<GridPos> hubPath))
+                if (TryFindApproach(target, out ApproachPlan hubApproach))
                     StartPlayerAction(
                         target,
-                        ApproachAndInteract(hubPath, target, hubTarget.Id));
+                        ApproachAndInteract(hubApproach, target, hubTarget.Id));
                 return;
             }
 
@@ -367,9 +367,14 @@ namespace ProjectC.Gameplay
                 else if (CombatRules.CanMelee(
                              _grid.Map, _playerState, tappedEnemy.State, _playerLoadout.MeleeReach))
                     StartPlayerAction(
-                        target, ApproachAndAttack(new List<GridPos> { _playerPos }, tappedEnemy));
-                else if (TryFindApproach(tappedEnemy.State.Position, out List<GridPos> attackPath))
-                    StartPlayerAction(target, ApproachAndAttack(attackPath, tappedEnemy));
+                        target,
+                        ApproachAndAttack(
+                            CreateApproachPlan(new List<GridPos> { _playerPos }),
+                            tappedEnemy));
+                else if (TryFindApproach(
+                             tappedEnemy.State.Position,
+                             out ApproachPlan attackApproach))
+                    StartPlayerAction(target, ApproachAndAttack(attackApproach, tappedEnemy));
                 return;
             }
 
@@ -377,15 +382,17 @@ namespace ProjectC.Gameplay
             // 있으면 전투가 먼저 걸리게 한다.
             if (IsRescueNpcAt(target))
             {
-                if (TryFindApproach(target, out List<GridPos> rescuePath))
-                    StartPlayerAction(target, ApproachAndRescue(rescuePath, target));
+                if (TryFindApproach(target, out ApproachPlan rescueApproach))
+                    StartPlayerAction(target, ApproachAndRescue(rescueApproach, target));
                 return;
             }
 
             if (SecretRoomRules.IsSecretDoor(targetTile))
             {
-                if (TryFindApproach(target, out List<GridPos> secretPath))
-                    StartPlayerAction(target, ApproachAndRevealSecretDoor(secretPath, target));
+                if (TryFindApproach(target, out ApproachPlan secretApproach))
+                    StartPlayerAction(
+                        target,
+                        ApproachAndRevealSecretDoor(secretApproach, target));
                 return;
             }
 
@@ -393,8 +400,8 @@ namespace ProjectC.Gameplay
             {
                 if (viewMode == DungeonViewMode.DebugAll)
                 {
-                    if (TryFindApproach(target, out List<GridPos> debugDropPath))
-                        StartPlayerAction(target, ApproachAndDrop(debugDropPath, target));
+                    if (TryFindApproach(target, out ApproachPlan debugDropApproach))
+                        StartPlayerAction(target, ApproachAndDrop(debugDropApproach, target));
                 }
                 else
                 {
@@ -405,16 +412,16 @@ namespace ProjectC.Gameplay
 
             if (targetTile != null && (targetTile.CanOpen || targetTile.CanClose))
             {
-                if (TryFindApproach(target, out List<GridPos> doorPath))
-                    StartPlayerAction(target, ApproachAndToggleDoor(doorPath, target));
+                if (TryFindApproach(target, out ApproachPlan doorApproach))
+                    StartPlayerAction(target, ApproachAndToggleDoor(doorApproach, target));
                 return;
             }
 
             if (!hubMode && TryGetExtractionPointAt(target, out ExtractionAgent extraction))
             {
-                if (TryFindApproach(target, out List<GridPos> extractionPath))
+                if (TryFindApproach(target, out ApproachPlan extractionApproach))
                     StartPlayerAction(
-                        target, ApproachAndOfferExtraction(extractionPath, extraction));
+                        target, ApproachAndOfferExtraction(extractionApproach, extraction));
                 return;
             }
 
@@ -430,8 +437,8 @@ namespace ProjectC.Gameplay
                     InteractionFeedback?.Invoke("지금은 쉴 필요가 없다");
                     return;
                 }
-                if (TryFindApproach(target, out List<GridPos> restPath))
-                    StartPlayerAction(target, ApproachAndRest(restPath, restSite));
+                if (TryFindApproach(target, out ApproachPlan restApproach))
+                    StartPlayerAction(target, ApproachAndRest(restApproach, restSite));
                 return;
             }
 
@@ -439,8 +446,8 @@ namespace ProjectC.Gameplay
             if (!_barrelExploded && target == _barrelPos &&
                 _dungeon.Height.FloorIndex(target.elevation) == _activeFloorIndex)
             {
-                if (TryFindApproach(_barrelPos, out List<GridPos> pushPath))
-                    StartPlayerAction(target, ApproachAndPushBarrel(pushPath));
+                if (TryFindApproach(_barrelPos, out ApproachPlan pushApproach))
+                    StartPlayerAction(target, ApproachAndPushBarrel(pushApproach));
                 return;
             }
 
@@ -474,9 +481,7 @@ namespace ProjectC.Gameplay
             }
 
             // 적이 시야에 있는 동안엔 탭당 1스텝만 — 카이팅/오토무브 남용 방지. (SPD 관례)
-            int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), path.Count - 1);
-            if (allowedSteps < path.Count - 1)
-                path.RemoveRange(allowedSteps + 1, path.Count - allowedSteps - 1);
+            ApplyTravelActionBudget(path);
 
             // 층 전환 계단만 입구 도착과 링크 이동을 한 행동으로 묶는다.
             // 사다리는 첫 입력에 발판까지 이동해 부착하고, 그 위에서 다시 탭/Space 해야 오른다.

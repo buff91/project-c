@@ -111,9 +111,11 @@ namespace ProjectC.Gameplay
             }
         }
 
-        private IEnumerator ApproachAndRest(IReadOnlyList<GridPos> path, RestSiteAgent site)
+        private IEnumerator ApproachAndRest(ApproachPlan approach, RestSiteAgent site)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
             if (!_playerState.IsAlive || !IsPlayerAdjacentTo(site.Position))
                 yield break;
 

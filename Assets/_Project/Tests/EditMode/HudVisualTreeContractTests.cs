@@ -63,6 +63,8 @@ namespace ProjectC.Tests
             "wait-button",
             "interact-button",
             "interact-label",
+            "travel-mode-chip",
+            "travel-mode-label",
             "settings-modal",
             "settings-scroll",
             "development-viewport",
@@ -160,6 +162,12 @@ namespace ProjectC.Tests
                 "Minimap player glyph");
             Assert.IsFalse(tree.Q("feedback-chip").ClassListContains("is-open"));
             Assert.IsFalse(tree.Q("vertical-hint-chip").ClassListContains("is-open"));
+            VisualElement travelModeChip = tree.Q("travel-mode-chip");
+            Assert.IsFalse(travelModeChip.ClassListContains("is-threat"));
+            Assert.AreEqual(
+                "내 턴",
+                tree.Q<Label>("travel-mode-label").text);
+            AssertSubtreeIgnoresPicking(travelModeChip, "Travel mode chip");
 
             VisualElement discovery = tree.Q("vertical-route-discovery");
             Assert.AreEqual(PickingMode.Ignore, discovery.pickingMode);
@@ -176,6 +184,33 @@ namespace ProjectC.Tests
             // 되살리면 방금 번 골드·해금을 못 쓰고 같은 조건으로 돌아가는 길이 다시 생긴다.
             Assert.AreEqual("캠프로 돌아가기", tree.Q<Button>("menu-button").text);
             Assert.IsNull(tree.Q<Button>("restart-button"));
+        }
+
+        [TestCase(false, false, "자동 이동")]
+        [TestCase(false, true, "위협 · 1행동")]
+        [TestCase(true, false, "관찰")]
+        [TestCase(true, true, "관찰")]
+        public void TravelModeLabel_ExplainsCurrentTapBudget(
+            bool observing,
+            bool singleAction,
+            string expected)
+        {
+            Assert.AreEqual(
+                expected,
+                PrototypeHudController.TravelModeLabel(observing, singleAction));
+        }
+
+        [Test]
+        public void TravelModeChip_ReusesTurnPillAndUsesThreatStateClass()
+        {
+            string desktopStyle = System.IO.File.ReadAllText(System.IO.Path.Combine(
+                Application.dataPath,
+                "_Project/UI/PrototypeHUD.Desktop.uss"));
+
+            Assert.That(
+                desktopStyle,
+                Does.Match(@"\.turn-pill\.is-threat\s+\.turn-label\s*\{"),
+                "위협 상태는 별도 시각 클래스를 가져야 한다");
         }
 
         [TestCase(0, 13, 7f)]

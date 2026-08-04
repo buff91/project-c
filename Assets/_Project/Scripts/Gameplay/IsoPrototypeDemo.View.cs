@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using ProjectC.Core;
 using UnityEngine;
 
@@ -6,12 +5,6 @@ namespace ProjectC.Gameplay
 {
     public partial class IsoPrototypeDemo
     {
-        // PC field-deck에서 우측 instrument/floor stack과 하단 dock을 제외한 실제 플레이 영역.
-        private static readonly Rect B2RoomHudSafeViewport =
-            new Rect(0.03f, 0.10f, 0.69f, 0.85f);
-        // 셀 중심 경계 밖으로 솟는 서비스 벽과 낮은 프롭의 실루엣 여백.
-        private static readonly Vector2 B2RoomCameraPadding = new Vector2(0.70f, 1.15f);
-
         public void RotateView(int direction)
         {
             if (_grid == null || _dungeon == null || _resolvingAction || direction == 0)
@@ -149,7 +142,7 @@ namespace ProjectC.Gameplay
                     verticalSize,
                     debugCameraSize);
             }
-            else if (!TryGetB2HeroRoomCameraFrame(camera.aspect, out frame))
+            else
             {
                 Vector2 center = new Vector2(0f, -1.65f);
                 if (_playerState != null && (hubMode || viewMode == DungeonViewMode.Play))
@@ -193,16 +186,6 @@ namespace ProjectC.Gameplay
                 (!hubMode && viewMode != DungeonViewMode.Play) || _cameraLookActive)
                 return false;
 
-            int floorIndex = hubMode
-                ? _activeFloorIndex
-                : _dungeon.Height.FloorIndex(playerPosition.elevation);
-            if (!hubMode && TryGetB2HeroRoomCameraFrame(
-                    camera.aspect,
-                    playerPosition,
-                    floorIndex,
-                    out frame))
-                return true;
-
             Vector3 playerWorld = _grid.GridToWorld(playerPosition);
             frame = OrthographicCameraFraming.Follow(
                 new Vector2(playerWorld.x, playerWorld.y),
@@ -226,128 +209,5 @@ namespace ProjectC.Gameplay
             SyncDungeonAtmosphereBackdropCenter(camera);
         }
 
-        private bool TryGetB2HeroRoomCameraFrame(
-            float aspect,
-            out OrthographicCameraFrame frame)
-        {
-            if (_playerState == null)
-            {
-                frame = default;
-                return false;
-            }
-
-            return TryGetB2HeroRoomCameraFrame(
-                aspect,
-                _playerState.Position,
-                _activeFloorIndex,
-                out frame);
-        }
-
-        private bool TryGetB2HeroRoomCameraFrame(
-            float aspect,
-            GridPos playerPosition,
-            int activeFloorIndex,
-            out OrthographicCameraFrame frame)
-        {
-            frame = default;
-            if (hubMode ||
-                viewMode != DungeonViewMode.Play ||
-                _b2HeroRoomLayout == null ||
-                _grid == null ||
-                _dungeon == null ||
-                !_b2HeroRoomLayout.ContainsRoomCell(playerPosition))
-                return false;
-
-            var framingCells = new List<GridPos>(_b2HeroRoomLayout.RoomCells.Count + 1);
-            foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
-            {
-                if (_dungeon.Height.FloorIndex(roomCell.elevation) != activeFloorIndex)
-                    continue;
-                framingCells.Add(roomCell);
-            }
-
-            if (TryFindClosestB2RoomDoor(activeFloorIndex, out GridPos door))
-                framingCells.Add(door);
-
-            if (framingCells.Count == 0) return false;
-
-            // 직사각형 방은 투영 축이 바뀌면 가로/세로 필요량이 달라진다. 현재 시점만
-            // auto-fit하면 Q/E마다 orthographicSize가 바뀌어 월드 전체가 약 5% 맥동한다.
-            // 네 시점 중 가장 큰 필요 배율을 한 번 고정하고, 현재 시점은 중심만 다시 맞춘다.
-            float stableSize = playCameraSize;
-            var projectedCenters = new List<Vector2>(framingCells.Count);
-            for (int view = 0; view < 4; view++)
-            {
-                ProjectB2FramingCells(framingCells, view, projectedCenters);
-                OrthographicCameraFrame candidate =
-                    OrthographicCameraFraming.FitProjectedBounds(
-                        projectedCenters,
-                        aspect,
-                        B2RoomHudSafeViewport,
-                        B2RoomCameraPadding,
-                        playCameraSize);
-                stableSize = Mathf.Max(stableSize, candidate.Size);
-            }
-
-            ProjectB2FramingCells(
-                framingCells,
-                _grid.iso.viewQuarterTurns,
-                projectedCenters);
-            frame = OrthographicCameraFraming.FitProjectedBounds(
-                projectedCenters,
-                aspect,
-                B2RoomHudSafeViewport,
-                B2RoomCameraPadding,
-                stableSize);
-            return true;
-        }
-
-        private void ProjectB2FramingCells(
-            IReadOnlyList<GridPos> cells,
-            int viewQuarterTurns,
-            List<Vector2> projectedCenters)
-        {
-            projectedCenters.Clear();
-            for (int i = 0; i < cells.Count; i++)
-                projectedCenters.Add(_grid.iso.GridToWorld(cells[i], viewQuarterTurns));
-        }
-
-        private bool TryFindClosestB2RoomDoor(
-            int activeFloorIndex,
-            out GridPos closestDoor)
-        {
-            closestDoor = default;
-            bool found = false;
-            int closestDistance = int.MaxValue;
-            foreach (KeyValuePair<GridPos, TileData> pair in _grid.Map.All())
-            {
-                TileKind kind = pair.Value.kind;
-                if ((kind != TileKind.DoorClosed && kind != TileKind.DoorOpen) ||
-                    _dungeon.Height.FloorIndex(pair.Key.elevation) != activeFloorIndex)
-                    continue;
-
-                int distance = int.MaxValue;
-                foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
-                    distance = Mathf.Min(distance, pair.Key.ManhattanTo(roomCell));
-
-                if (found &&
-                    (distance > closestDistance ||
-                     (distance == closestDistance && !ComesBefore(pair.Key, closestDoor))))
-                    continue;
-
-                found = true;
-                closestDistance = distance;
-                closestDoor = pair.Key;
-            }
-
-            return found;
-        }
-
-        private static bool ComesBefore(GridPos candidate, GridPos current)
-        {
-            if (candidate.x != current.x) return candidate.x < current.x;
-            if (candidate.y != current.y) return candidate.y < current.y;
-            return candidate.elevation < current.elevation;
-        }
     }
 }

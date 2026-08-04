@@ -499,6 +499,11 @@ namespace ProjectC.Gameplay
 
                 ApplyEnemyVisuals(enemy);
             }
+
+            // 적 이동·사망은 플레이어 FOV 타일 집합을 바꾸지 않아 전체 시야 재계산은 필요 없지만,
+            // "그 타일에 살아 있는 적이 있는가"는 달라진다. 다음 입력 예산과 하단 HUD가 같은
+            // 적 페이즈 종료 스냅샷을 읽도록 기존 비주얼 컨텍스트 이벤트를 한 번 갱신한다.
+            VerticalContextChanged?.Invoke();
         }
 
         /// <summary>머리 위 인지 상태 아이콘 (SPD 관례): 추격 "!", 도주 "…", 순찰은 없음.</summary>

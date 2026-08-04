@@ -97,6 +97,8 @@ namespace ProjectC.Tests.PlayMode
             Assert.AreEqual(activeFloor - 1, demo.ViewedFloorIndex);
             Assert.AreEqual(activeFloor, demo.ActiveFloorIndex);
             Assert.AreEqual(turn, demo.DebugTurnNumber, "층 보기는 무턴이어야 한다");
+            AssertOneActiveHoleLabelPerPresentedOpening(demo);
+            AssertHoleLabelFallsBackWhenCanonicalCellIsHidden(demo);
 
             Camera camera = Camera.main;
             Assert.NotNull(camera);
@@ -196,12 +198,20 @@ namespace ProjectC.Tests.PlayMode
             Assert.AreEqual(activeFloor, demo.ViewedFloorIndex);
             Assert.IsFalse(demo.BombAiming);
             Assert.IsTrue(hudRoot.Q<Button>("wait-button").enabledInHierarchy);
-            Assert.AreEqual("내 턴", hudRoot.Q<Label>(className: "turn-label").text);
+            Assert.AreEqual(
+                "자동 이동",
+                hudRoot.Q<Label>(className: "turn-label").text,
+                "PC에서 수직 관찰을 끝내면 현재 이동 예산 표시로 돌아와야 한다");
             Assert.IsFalse(hudRoot.Q<VisualElement>("floor-instrument")
                 .ClassListContains("is-observing"));
             Assert.IsFalse(verticalHint.parent.ClassListContains("is-observing"));
             Assert.IsTrue(hudRoot.Q<Button>("vertical-view-current")
                 .ClassListContains("is-selected"));
+            Assert.AreEqual(
+                demo.playCameraSize,
+                camera.orthographicSize,
+                0.0001f,
+                "수직 관찰을 끝내면 일반 PLAY 2.3 배율로 즉시 복귀해야 한다");
         }
 
         [UnityTest]
@@ -340,6 +350,87 @@ namespace ProjectC.Tests.PlayMode
             FieldInfo field = typeof(IsoPrototypeDemo).GetField(name, PrivateInstance);
             Assert.NotNull(field, name);
             return (T)field.GetValue(demo);
+        }
+
+        private static void AssertOneActiveHoleLabelPerPresentedOpening(
+            IsoPrototypeDemo demo)
+        {
+            DungeonLayout dungeon = GetField<DungeonLayout>(demo, "_dungeon");
+            var rootsByFloor = new Dictionary<int, int>();
+            var labelsByFloor = new Dictionary<int, int>();
+            foreach (object agent in (IEnumerable)GetField<object>(demo, "_verticalLandmarks"))
+            {
+                System.Type type = agent.GetType();
+                TileKind kind = (TileKind)type.GetField("Kind").GetValue(agent);
+                if (kind != TileKind.Hole) continue;
+
+                GameObject root = (GameObject)type.GetField("Root").GetValue(agent);
+                if (root == null || !root.activeInHierarchy) continue;
+                GridPos anchor = (GridPos)type.GetField("Anchor").GetValue(agent);
+                int floor = dungeon.Height.FloorIndex(anchor.elevation);
+                rootsByFloor.TryGetValue(floor, out int rootCount);
+                rootsByFloor[floor] = rootCount + 1;
+
+                TextMesh label = (TextMesh)type.GetField("Label").GetValue(agent);
+                if (label == null || !label.gameObject.activeInHierarchy) continue;
+                labelsByFloor.TryGetValue(floor, out int labelCount);
+                labelsByFloor[floor] = labelCount + 1;
+            }
+
+            Assert.Greater(rootsByFloor.Count, 0);
+            foreach (KeyValuePair<int, int> pair in rootsByFloor)
+            {
+                labelsByFloor.TryGetValue(pair.Key, out int labelCount);
+                Assert.AreEqual(1, labelCount,
+                    $"표시 중인 {pair.Key}층 개구부 {pair.Value}셀은 목적 층 라벨 하나를 공유해야 한다");
+            }
+        }
+
+        private static void AssertHoleLabelFallsBackWhenCanonicalCellIsHidden(
+            IsoPrototypeDemo demo)
+        {
+            DungeonLayout dungeon = GetField<DungeonLayout>(demo, "_dungeon");
+            object[] agents = ((IEnumerable)GetField<object>(demo, "_verticalLandmarks"))
+                .Cast<object>()
+                .ToArray();
+            MethodInfo shouldShow = typeof(IsoPrototypeDemo).GetMethod(
+                "ShouldShowVerticalLandmarkLabel",
+                PrivateInstance);
+            Assert.NotNull(shouldShow);
+
+            foreach (DungeonFloorInfo floor in dungeon.Floors)
+            {
+                if (floor.HoleTiles.Count < 2) continue;
+                object canonical = agents.FirstOrDefault(agent =>
+                    (TileKind)agent.GetType().GetField("Kind").GetValue(agent) == TileKind.Hole &&
+                    (GridPos)agent.GetType().GetField("Anchor").GetValue(agent) == floor.HoleTiles[0]);
+                object sibling = agents.FirstOrDefault(agent =>
+                    (TileKind)agent.GetType().GetField("Kind").GetValue(agent) == TileKind.Hole &&
+                    (GridPos)agent.GetType().GetField("Anchor").GetValue(agent) == floor.HoleTiles[1]);
+                if (canonical == null || sibling == null) continue;
+
+                GameObject canonicalRoot =
+                    (GameObject)canonical.GetType().GetField("Root").GetValue(canonical);
+                GameObject siblingRoot =
+                    (GameObject)sibling.GetType().GetField("Root").GetValue(sibling);
+                bool canonicalWasActive = canonicalRoot.activeSelf;
+                bool siblingWasActive = siblingRoot.activeSelf;
+                try
+                {
+                    canonicalRoot.SetActive(false);
+                    siblingRoot.SetActive(true);
+                    Assert.IsTrue((bool)shouldShow.Invoke(demo, new[] { sibling }),
+                        "정적 첫 Hole 셀이 가려지면 보이는 형제가 라벨 대표를 넘겨받아야 한다");
+                }
+                finally
+                {
+                    canonicalRoot.SetActive(canonicalWasActive);
+                    siblingRoot.SetActive(siblingWasActive);
+                }
+                return;
+            }
+
+            Assert.Fail("2셀 이상 Hole 개구부 fixture를 찾지 못했다");
         }
 
         private static void InvokeTileTap(IsoPrototypeDemo demo, GridPos target)

@@ -565,9 +565,11 @@ namespace ProjectC.Gameplay
 
         // ── 폭발통 밀기 (오브젝트 상호작용) ─────────────────────────
 
-        private IEnumerator ApproachAndPushBarrel(IReadOnlyList<GridPos> path)
+        private IEnumerator ApproachAndPushBarrel(ApproachPlan approach)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             if (_playerState.IsAlive && !_barrelExploded && IsPlayerAdjacentTo(_barrelPos))
             {

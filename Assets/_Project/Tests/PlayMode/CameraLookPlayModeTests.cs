@@ -163,6 +163,163 @@ namespace ProjectC.Tests.PlayMode
             Assert.AreEqual(turnBefore + 1, demo.DebugTurnNumber);
         }
 
+        [UnityTest]
+        public IEnumerator B2DoorBoundary_KeepsFixedPlayScaleAcrossAllViews()
+        {
+            IsoPrototypeDemo demo = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            Camera camera = Camera.main;
+            Assert.NotNull(demo);
+            Assert.NotNull(camera);
+            Assert.IsFalse(demo.hubMode);
+            yield return null;
+
+            GridManager grid = GetField<GridManager>(demo, "_grid");
+            B2HeroRoomLayout room = GetField<B2HeroRoomLayout>(demo, "_b2HeroRoomLayout");
+            Assert.NotNull(room, "기본 B2에는 시작 히어로룸 배치가 있어야 한다");
+            Assert.IsTrue(
+                TryFindDoorBoundary(grid, room, out GridPos inside, out GridPos door, out GridPos outside),
+                "B2 시작방과 외부를 잇는 문 경계를 찾지 못했다");
+
+            int turnBefore = demo.DebugTurnNumber;
+            int floorBefore = demo.ActiveFloorIndex;
+            int viewBefore = demo.ViewQuarterTurns;
+            float expectedSize = demo.playCameraSize;
+            Assert.AreEqual(2.3f, expectedSize, 0.0001f,
+                "PC 허브/던전 공용 플레이 배율의 씬 계약이 바뀌면 안 된다");
+            for (int view = 0; view < 4; view++)
+            {
+                PositionPlayer(demo, grid, inside);
+                Assert.AreEqual(
+                    expectedSize,
+                    camera.orthographicSize,
+                    0.0001f,
+                    $"q{demo.ViewQuarterTurns} 시작방 안에서 기본 플레이 배율이어야 한다");
+
+                AssertDestinationCameraSize(demo, camera, door, expectedSize);
+                AssertDestinationCameraSize(demo, camera, outside, expectedSize);
+
+                PositionPlayer(demo, grid, outside);
+                Assert.AreEqual(
+                    expectedSize,
+                    camera.orthographicSize,
+                    0.0001f,
+                    $"q{demo.ViewQuarterTurns} 문 밖에서 기본 플레이 배율이어야 한다");
+
+                AssertDestinationCameraSize(demo, camera, door, expectedSize);
+                AssertDestinationCameraSize(demo, camera, inside, expectedSize);
+                demo.RotateView(1);
+            }
+
+            Assert.AreEqual(viewBefore, demo.ViewQuarterTurns);
+            Assert.AreEqual(turnBefore, demo.DebugTurnNumber, "카메라 경계 검증은 턴을 쓰면 안 된다");
+            Assert.AreEqual(floorBefore, demo.ActiveFloorIndex);
+        }
+
+        private static bool TryFindDoorBoundary(
+            GridManager grid,
+            B2HeroRoomLayout room,
+            out GridPos inside,
+            out GridPos door,
+            out GridPos outside)
+        {
+            inside = default;
+            door = default;
+            outside = default;
+            foreach (KeyValuePair<GridPos, TileData> pair in grid.Map.All())
+            {
+                TileKind kind = pair.Value.kind;
+                if (kind != TileKind.DoorClosed && kind != TileKind.DoorOpen) continue;
+
+                if (TryUseOppositeSides(
+                        grid,
+                        room,
+                        pair.Key.North,
+                        pair.Key.South,
+                        out inside,
+                        out outside) ||
+                    TryUseOppositeSides(
+                        grid,
+                        room,
+                        pair.Key.East,
+                        pair.Key.West,
+                        out inside,
+                        out outside))
+                {
+                    door = pair.Key;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryUseOppositeSides(
+            GridManager grid,
+            B2HeroRoomLayout room,
+            GridPos first,
+            GridPos second,
+            out GridPos inside,
+            out GridPos outside)
+        {
+            inside = default;
+            outside = default;
+            if (room.ContainsRoomCell(first) &&
+                !room.ContainsRoomCell(second) &&
+                grid.Map.IsWalkable(second))
+            {
+                inside = first;
+                outside = second;
+                return true;
+            }
+
+            if (room.ContainsRoomCell(second) &&
+                !room.ContainsRoomCell(first) &&
+                grid.Map.IsWalkable(first))
+            {
+                inside = second;
+                outside = first;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void AssertDestinationCameraSize(
+            IsoPrototypeDemo demo,
+            Camera camera,
+            GridPos destination,
+            float expectedSize)
+        {
+            MethodInfo method = typeof(IsoPrototypeDemo).GetMethod(
+                "TryGetPlayerCameraFrame",
+                PrivateInstance);
+            Assert.NotNull(method);
+            object[] arguments = { camera, destination, default(OrthographicCameraFrame) };
+            Assert.IsTrue((bool)method.Invoke(demo, arguments));
+            OrthographicCameraFrame frame = (OrthographicCameraFrame)arguments[2];
+            Assert.AreEqual(
+                expectedSize,
+                frame.Size,
+                0.0001f,
+                $"문 경계 목적지 {destination}의 보행 카메라 배율이 달라지면 안 된다");
+        }
+
+        private static void PositionPlayer(
+            IsoPrototypeDemo demo,
+            GridManager grid,
+            GridPos position)
+        {
+            demo.PlayerState.MoveTo(position);
+            GameObject player = GetField<GameObject>(demo, "_player");
+            player.transform.position = grid.GridToWorld(position);
+
+            MethodInfo sync = typeof(IsoPrototypeDemo).GetMethod(
+                "SyncPlayerView",
+                PrivateInstance);
+            Assert.NotNull(sync);
+            sync.Invoke(demo, new object[] { position, false });
+        }
+
         private static T GetField<T>(IsoPrototypeDemo demo, string name)
         {
             FieldInfo field = typeof(IsoPrototypeDemo).GetField(name, PrivateInstance);
