@@ -107,10 +107,11 @@ UGUI View로 옮긴다.
 | `is-open` | 모달·오버레이·패널 열림 | 모든 모달(허브 7종 / 인벤토리 / 게임메뉴 / 종료 / 결과 / 공용 설정)과 `action-wheel`·`boss-panel`·`debug-panel` | 기본형이 `display: none`, `.X.is-open`이 `display: flex`. **닫힘이 기본값** |
 | `is-open` | 입장/발견 카드 전환 | `vertical-route-discovery` | 레이아웃은 항상 `display: flex`; 닫힘=`opacity:0` + 위로 6px, 열림=`opacity:1` + 원위치. USS가 0.16초 전환을 소유해 닫힘 모션도 보존한다 |
 | `is-suppressed` | 보스 패널 우선 표시 | `vertical-route-discovery` | 즉시 `display: none`. 같은 슬롯에서 발견 카드 fade와 보스 패널이 겹치지 않게 하며, 큐 항목·남은 노출 시간은 버리지 않는다 |
-| `is-open` | 짧은 문맥 정보 노출 | 던전 `feedback-chip`·`vertical-hint-chip` | 피드백은 3초간 **강조**(줄 자체는 로그에 남는다), 수직 힌트는 실제 장치 위에 서 있는 동안만 열림 |
+| `is-open` | 짧은 문맥 정보 노출 | 던전 `feedback-chip`·`vertical-hint-chip` | 피드백은 3초간 **강조**(줄 자체는 로그에 남는다), 수직 힌트는 실제 장치 위 또는 명시적 수직 관찰 중에 열림 |
 | `is-open` | 내용이 있어 그릴 값이 있음 | `message-log`(줄 ≥1), `floor-stack`(층 ≥2) | 비면 `display: none` — 빈 플레이트를 띄우지 않는다 |
 | `is-current` / `is-viewed` / `is-explored` | 층 눈금의 플레이·보기·진행 상태 | `floor-tick` | 현재=`--pc-gold` / 수직 보기 대상=`--pc-ui-accent`+긴 눈금 / 탐색함=`--pc-stone-dim` / 미도달=`--pc-inset` |
 | `is-selected` | 현재 선택된 수직 보기 방향 | `vertical-view-button` | PC 계기 안 `▲/◆/▼` 중 하나를 마젠타 UI accent 채움으로 표시 |
+| `is-observing` | 읽기 전용 인접층 관찰 중 | `floor-instrument`·`vertical-view-state`·`turn-pill`·`vertical-hint-chip` | 계기/힌트는 차가운 관찰 상태, 턴 문구는 `관찰`; 선택 방향의 `is-selected` 마젠타 채움과 함께 사용 |
 | `is-available` | 지금 실행 가능 | `hub-continue`(세이브 있음), `interact-button`(문맥 행동 있음) | 없으면 숨김/비활성 표현 |
 | `is-empty` | 채워지지 않은 칸 | `pc-heart`(HP 빈칸), `inventory-detail-icon` | 빈 칸 표현 |
 | `is-warning` | 경고 임계 | `hunger-label` | 경고색 |

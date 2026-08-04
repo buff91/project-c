@@ -16,6 +16,7 @@ namespace ProjectC.Tests
             "hud-root",
             "hp-hearts",
             "hp-value",
+            "floor-instrument",
             "minimap-view",
             "minimap-floor-badge",
             "minimap-north-label",

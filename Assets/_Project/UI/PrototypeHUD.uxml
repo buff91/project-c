@@ -27,7 +27,7 @@
         </ui:VisualElement>
 
         <!-- C · 계기 묶음. 층 정보와 미니맵은 하나의 우상단 계기다. -->
-        <ui:VisualElement class="artifact-panel pc-plate minimap-panel">
+        <ui:VisualElement name="floor-instrument" class="artifact-panel pc-plate minimap-panel">
             <ui:VisualElement class="minimap-header">
                 <ui:VisualElement class="minimap-header-buttons">
                     <ui:Button name="mode-button" class="settings-button hud-mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환">

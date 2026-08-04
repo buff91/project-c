@@ -89,18 +89,24 @@ namespace ProjectC.Tests
                 "종류 축약은 Barrier지만 돌출 좌표 자체는 mapped 집합에서 빠져야 한다.");
         }
 
-        [TestCase(TileKind.StairsUp, false)]
-        [TestCase(TileKind.StairsDown, false)]
-        [TestCase(TileKind.SecretDoor, false)]
-        [TestCase(TileKind.Floor, true)]
-        [TestCase(TileKind.WeakFloor, true)]
-        [TestCase(TileKind.Ladder, true)]
-        [TestCase(TileKind.DoorClosed, true)]
-        public void CanAutoTravelThroughUnknown_HiddenAutomaticTransitionsAreBlocked(
+        [TestCase(TileKind.StairsUp, false, false)]
+        [TestCase(TileKind.StairsUp, true, true)]
+        [TestCase(TileKind.StairsDown, false, false)]
+        [TestCase(TileKind.StairsDown, true, true)]
+        [TestCase(TileKind.SecretDoor, false, false)]
+        [TestCase(TileKind.SecretDoor, true, false)]
+        [TestCase(TileKind.Floor, false, true)]
+        [TestCase(TileKind.WeakFloor, false, true)]
+        [TestCase(TileKind.Ladder, false, true)]
+        [TestCase(TileKind.DoorClosed, false, true)]
+        public void CanUseForMappedTravelPath_OnlyExplicitKnownTransitionTargetIsAllowed(
             TileKind kind,
+            bool isExplicitKnownTarget,
             bool expected)
         {
-            Assert.AreEqual(expected, MapKnowledgeRules.CanAutoTravelThroughUnknown(kind));
+            Assert.AreEqual(
+                expected,
+                MapKnowledgeRules.CanUseForMappedTravelPath(kind, isExplicitKnownTarget));
         }
 
         [Test]

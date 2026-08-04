@@ -113,6 +113,23 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void ExplicitViewProjection_DoesNotMutateActiveView()
+        {
+            var iso = MakeGrid();
+            iso.viewPivotX = 3.5f;
+            iso.viewPivotY = 3.5f;
+            iso.SetViewRotation(2);
+            var pos = new GridPos(1, 6, 1);
+
+            Vector2 explicitView = iso.GridToWorld(pos, quarterTurns: 1);
+
+            Assert.AreEqual(2, iso.viewQuarterTurns);
+            Assert.AreEqual(iso.RotateToView(pos.x, pos.y, 1),
+                iso.RotateToView(pos.x, pos.y, 5));
+            Assert.AreNotEqual(iso.GridToWorld(pos), explicitView);
+        }
+
+        [Test]
         public void SortingDepth_ChangesWithViewRotation()
         {
             var iso = MakeGrid();

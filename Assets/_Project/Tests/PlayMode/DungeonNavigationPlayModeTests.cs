@@ -116,6 +116,40 @@ namespace ProjectC.Tests.PlayMode
                 "문 열기 1턴 + 문 칸 이동 1턴 + 목적지 이동 1턴이어야 한다");
         }
 
+        [UnityTest]
+        public IEnumerator MappedUnknownSilhouette_RemembersCategoryAcrossUnseenMutation()
+        {
+            IsoPrototypeDemo demo = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            Assert.NotNull(demo);
+            Assert.IsFalse(demo.hubMode);
+            yield return null;
+
+            DoorRouteFixture route = PrepareDoorRoute(demo);
+            GridManager grid = GetField<GridManager>(demo, "_grid");
+            TileData targetTile = grid.Map.Get(route.Target);
+            Assert.NotNull(targetTile);
+            Assert.AreEqual(
+                MapSilhouetteKind.Floor,
+                InvokeMappedSilhouette(demo, route.Target),
+                "fixture의 미탐색 목적지는 공용 Floor 범주여야 한다");
+
+            TileKind originalKind = targetTile.kind;
+            try
+            {
+                // WeakFloor 붕괴처럼 플레이어가 보지 못한 곳의 live 상태가 바뀌어도
+                // 지도 지식은 마지막으로 공개한 공용 범주를 유지해야 한다.
+                targetTile.kind = TileKind.Hole;
+                Assert.AreEqual(
+                    MapSilhouetteKind.Floor,
+                    InvokeMappedSilhouette(demo, route.Target),
+                    "시야 밖 live TileKind를 다시 읽으면 Floor→Gap으로 상태가 누설된다");
+            }
+            finally
+            {
+                targetTile.kind = originalKind;
+            }
+        }
+
         private static DoorRouteFixture PrepareDoorRoute(IsoPrototypeDemo demo)
         {
             GridManager grid = GetField<GridManager>(demo, "_grid");
@@ -296,6 +330,19 @@ namespace ProjectC.Tests.PlayMode
                 PrivateInstance);
             Assert.NotNull(method);
             return (Vector3)method.Invoke(demo, new object[] { position });
+        }
+
+        private static MapSilhouetteKind InvokeMappedSilhouette(
+            IsoPrototypeDemo demo,
+            GridPos position)
+        {
+            MethodInfo method = typeof(IsoPrototypeDemo).GetMethod(
+                "TryGetMappedSilhouette",
+                PrivateInstance);
+            Assert.NotNull(method);
+            object[] arguments = { position, default(MapSilhouetteKind) };
+            Assert.IsTrue((bool)method.Invoke(demo, arguments));
+            return (MapSilhouetteKind)arguments[1];
         }
 
         private static void InvokeTileTap(IsoPrototypeDemo demo, GridPos target)

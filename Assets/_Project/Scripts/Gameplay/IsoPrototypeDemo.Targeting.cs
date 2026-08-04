@@ -24,10 +24,12 @@ namespace ProjectC.Gameplay
             _aimHoverCell = cell;
             if (_bombAiming)
             {
+                ClearVerticalReadOnlyMarker();
                 if (aimChanged) RefreshThrowRangePreview();
                 return;
             }
 
+            HandleVerticalReadOnlyHover(cell);
             HandleVerticalFocusHover(cell);
         }
 

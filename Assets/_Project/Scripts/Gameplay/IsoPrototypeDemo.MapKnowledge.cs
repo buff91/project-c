@@ -7,11 +7,14 @@ namespace ProjectC.Gameplay
 {
     /// <summary>
     /// FOV와 독립적인 현재 층 지도 지식. 실제 타일 렌더러를 켜지 않고 공용 실루엣만
-    /// 합성하며, mapped Unknown 목적지의 문 행동 포함 자동 이동을 소유한다.
+    /// 합성하며, mapped Unknown 목적지의 문 행동 포함 자동 이동을 소유한다. 실루엣 범주는
+    /// 지도 구성 시 기억해 시야 밖의 실제 타일 상태 변화가 새 정보로 새지 않게 한다.
     /// </summary>
     public partial class IsoPrototypeDemo
     {
         private readonly HashSet<GridPos> _mappedTiles = new HashSet<GridPos>();
+        private readonly Dictionary<GridPos, MapSilhouetteKind> _mappedSilhouettes =
+            new Dictionary<GridPos, MapSilhouetteKind>();
         private readonly Dictionary<GridPos, SpriteRenderer> _mappedSilhouetteRenderers =
             new Dictionary<GridPos, SpriteRenderer>();
         private readonly List<GridPos> _staleMappedRendererTiles = new List<GridPos>();
@@ -19,6 +22,7 @@ namespace ProjectC.Gameplay
         private void RebuildMappedTopology()
         {
             _mappedTiles.Clear();
+            _mappedSilhouettes.Clear();
             _mappedSilhouetteRenderers.Clear();
             if (hubMode || _dungeon == null || _grid == null) return;
 
@@ -31,8 +35,11 @@ namespace ProjectC.Gameplay
                         floorIndex,
                         pair.Key,
                         pair.Value,
-                        out _))
+                        out MapSilhouetteKind silhouette))
+                {
                     _mappedTiles.Add(pair.Key);
+                    _mappedSilhouettes[pair.Key] = silhouette;
+                }
             }
         }
 
@@ -128,10 +135,8 @@ namespace ProjectC.Gameplay
         {
             silhouette = default;
             if (!_mappedTiles.Contains(pos)) return false;
-            TileData tile = _grid.Map.Get(pos);
-            if (tile == null) return false;
-            silhouette = MapKnowledgeRules.SilhouetteFor(tile.kind);
-            return true;
+            if (!_grid.Map.Has(pos)) return false;
+            return _mappedSilhouettes.TryGetValue(pos, out silhouette);
         }
 
         private Sprite GetMappedSilhouetteSprite(MapSilhouetteKind silhouette, GridPos pos)
@@ -202,8 +207,10 @@ namespace ProjectC.Gameplay
 
         private void AddRevealedMappedTile(GridPos pos)
         {
-            if (!_grid.Map.Has(pos)) return;
+            TileData tile = _grid.Map.Get(pos);
+            if (tile == null) return;
             _mappedTiles.Add(pos);
+            _mappedSilhouettes[pos] = MapKnowledgeRules.SilhouetteFor(tile.kind);
             EnsureMappedSilhouetteRenderer(pos);
         }
 
@@ -248,8 +255,10 @@ namespace ProjectC.Gameplay
                 bool actualKnowledge = _visibleTiles.Contains(pos) ||
                                        _exploredTiles.Contains(pos);
                 TileData tile = _grid.Map.Get(pos);
-                if (!actualKnowledge && tile != null &&
-                    !MapKnowledgeRules.CanAutoTravelThroughUnknown(tile.kind))
+                if (tile != null &&
+                    !MapKnowledgeRules.CanUseForMappedTravelPath(
+                        tile.kind,
+                        isExplicitKnownTarget: pos == target && actualKnowledge))
                     return true;
                 return !_mappedTiles.Contains(pos) &&
                        !actualKnowledge;
@@ -308,10 +317,12 @@ namespace ProjectC.Gameplay
                         yield return ResolveEnemyPhase();
                         actions++;
 
-                        if (!_playerState.IsAlive ||
-                            ShouldStopMappedTravelAfterAction(hpBeforeDoor))
+                        if (!_playerState.IsAlive)
                             yield break;
-                        if (next == target || singleAction && actions >= 1)
+                        if (next == target)
+                            yield break;
+                        if (ShouldStopMappedTravelAfterAction(hpBeforeDoor) ||
+                            singleAction && actions >= 1)
                             yield break;
                         continue;
                     }
@@ -337,9 +348,14 @@ namespace ProjectC.Gameplay
                     if (!_playerState.IsAlive || _runSummary.Ended ||
                         _activeFloorIndex != floorBefore || _playerPos != next)
                         yield break;
+                    if (_playerPos == target)
+                    {
+                        if (IsBottomExit(target)) TryRequestExitChoice();
+                        yield break;
+                    }
                     if (ShouldStopMappedTravelAfterAction(hpBeforeStep))
                         yield break;
-                    if (_playerPos == target || singleAction && actions >= 1)
+                    if (singleAction && actions >= 1)
                         yield break;
                 }
             }

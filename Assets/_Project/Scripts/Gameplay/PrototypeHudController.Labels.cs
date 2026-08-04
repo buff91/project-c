@@ -69,13 +69,15 @@ namespace ProjectC.Gameplay
                 "is-selected", mode == VerticalLookMode.Down);
 
             bool observing = hasDemo && demo.IsVerticalLookActive;
+            _floorInstrument?.EnableInClassList("is-observing", observing);
             if (_verticalViewState != null)
             {
+                string direction = mode == VerticalLookMode.Up ? "▲" : "▼";
                 _verticalViewState.text = !hasDemo
                     ? "-- · 현재 층"
                     : observing
-                        ? $"플레이 {demo.ActiveFloorLabel} · 보기 {demo.ViewedFloorLabel}"
-                        : $"{demo.ActiveFloorLabel} · 현재 층";
+                        ? $"관찰 {demo.ViewedFloorLabel} {direction} · 이동 불가"
+                        : $"{demo.ActiveFloorLabel} · 현재 플레이 층";
                 _verticalViewState.EnableInClassList("is-observing", observing);
             }
 
@@ -180,6 +182,8 @@ namespace ProjectC.Gameplay
             bool show = !string.IsNullOrEmpty(hint);
             if (show && !IsOpen(hintRoot)) WaitOneLayoutPassBeforeShowingWheel();
             hintRoot?.EnableInClassList("is-open", show);
+            hintRoot?.EnableInClassList(
+                "is-observing", demo != null && demo.IsVerticalLookActive);
         }
     }
 }

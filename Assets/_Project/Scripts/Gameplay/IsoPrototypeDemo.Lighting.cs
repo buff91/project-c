@@ -124,32 +124,29 @@ namespace ProjectC.Gameplay
             _staticCoolField != null && _staticCoolField.TryGetValue(pos, out float v) ? v : 0f;
 
         /// <summary>
-        /// B2 시작방 바닥만 방 단위의 한 조명 덩어리로 묶는다. 기존 타일별 조명은 벽·액터·소품에
-        /// 그대로 남겨 광원 위치를 보여 주고, 바닥 RGB만 방 평균 쪽으로 모아 128px 다이아마다
-        /// 밝기가 뚝 끊기는 체크무늬를 억제한다. FOV 알파·원소 상태·조준 오버레이와는 별도 축이다.
+        /// 활성 층에서 보이는 바닥을 4방향 연결 영역별 한 조명 덩어리로 묶는다. Door·Stairs 등
+        /// Floor가 아닌 경계는 연결에서 제외되므로 방 사이의 광량은 섞이지 않는다. 기존 타일별 조명은
+        /// 벽·액터·소품에 그대로 남겨 광원 위치를 보여 주고, 바닥 RGB만 영역 평균 쪽으로 모아
+        /// 128px 다이아마다 밝기가 뚝 끊기는 체크무늬를 억제한다. FOV 알파·원소 상태와는 별도 축이다.
         /// </summary>
-        private Dictionary<GridPos, Color> BuildB2CoherentFloorLightField()
+        private Dictionary<GridPos, Color> BuildCoherentFloorLightField()
         {
-            if (_b2HeroRoomLayout == null ||
-                _grid == null ||
+            if (_grid == null ||
                 viewMode == DungeonViewMode.DebugAll ||
                 !dungeonDarkness)
                 return null;
 
             var localLights = new Dictionary<GridPos, Color>();
-            foreach (GridPos pos in _b2HeroRoomLayout.RoomCells)
+            foreach (GridPos pos in _visibleTiles)
             {
-                if (!_visibleTiles.Contains(pos) || _grid.Map.Get(pos)?.kind != TileKind.Floor)
+                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex ||
+                    _grid.Map.Get(pos)?.kind != TileKind.Floor)
                     continue;
                 localLights[pos] = TileLightColor(pos);
             }
             if (localLights.Count == 0) return null;
 
-            Color reference = B2RoomFloorLighting.Average(localLights.Values);
-            var coherent = new Dictionary<GridPos, Color>(localLights.Count);
-            foreach (KeyValuePair<GridPos, Color> pair in localLights)
-                coherent[pair.Key] = B2RoomFloorLighting.Coherent(reference, pair.Value);
-            return coherent;
+            return RoomFloorLighting.BuildCoherentField(localLights);
         }
 
         /// <summary>
@@ -224,10 +221,65 @@ namespace ProjectC.Gameplay
         }
     }
 
-    /// <summary>B2 시작방의 바닥 전용 조명 분산 규칙. 런타임 상태와 무관한 수치부만 분리한다.</summary>
-    internal static class B2RoomFloorLighting
+    /// <summary>연결된 방 바닥의 조명 분산 규칙. 런타임 상태와 무관한 수치부만 분리한다.</summary>
+    internal static class RoomFloorLighting
     {
         internal const float LocalLightRetention = 0.2f;
+
+        /// <summary>
+        /// 같은 elevation의 4방향 이웃만 한 영역으로 묶고 영역별 평균광을 적용한다.
+        /// 호출자가 Floor만 넘기므로 Door·Stairs 같은 비-Floor 타일은 자연스럽게 경계가 된다.
+        /// </summary>
+        internal static Dictionary<GridPos, Color> BuildCoherentField(
+            IReadOnlyDictionary<GridPos, Color> localLights)
+        {
+            var coherent = new Dictionary<GridPos, Color>(localLights.Count);
+            var remaining = new HashSet<GridPos>(localLights.Keys);
+            var frontier = new Queue<GridPos>();
+            var component = new List<GridPos>();
+            var samples = new List<Color>();
+
+            while (remaining.Count > 0)
+            {
+                GridPos start = default;
+                foreach (GridPos pos in remaining)
+                {
+                    start = pos;
+                    break;
+                }
+
+                remaining.Remove(start);
+                frontier.Enqueue(start);
+                component.Clear();
+                samples.Clear();
+
+                while (frontier.Count > 0)
+                {
+                    GridPos current = frontier.Dequeue();
+                    component.Add(current);
+                    samples.Add(localLights[current]);
+                    EnqueueIfRemaining(current.North, remaining, frontier);
+                    EnqueueIfRemaining(current.South, remaining, frontier);
+                    EnqueueIfRemaining(current.East, remaining, frontier);
+                    EnqueueIfRemaining(current.West, remaining, frontier);
+                }
+
+                Color reference = Average(samples);
+                foreach (GridPos pos in component)
+                    coherent[pos] = Coherent(reference, localLights[pos]);
+            }
+
+            return coherent;
+        }
+
+        private static void EnqueueIfRemaining(
+            GridPos pos,
+            HashSet<GridPos> remaining,
+            Queue<GridPos> frontier)
+        {
+            if (remaining.Remove(pos))
+                frontier.Enqueue(pos);
+        }
 
         internal static Color Average(IEnumerable<Color> samples)
         {

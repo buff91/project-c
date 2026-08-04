@@ -58,6 +58,27 @@ namespace ProjectC.Tests.PlayMode
             var exploredBefore = new HashSet<GridPos>(
                 GetField<HashSet<GridPos>>(demo, "_exploredTiles"));
 
+            int viewBefore = demo.ViewQuarterTurns;
+            for (int i = 0; i < 4; i++)
+            {
+                demo.RotateView(1);
+                Assert.AreEqual(
+                    followSize,
+                    camera.orthographicSize,
+                    0.0001f,
+                    $"B2 히어로룸 Q 회전 {i + 1}회에서 배율이 바뀌면 안 된다");
+                Assert.AreEqual(turnBefore, demo.DebugTurnNumber);
+                Assert.AreEqual(floorBefore, demo.ActiveFloorIndex);
+                Assert.AreEqual(playerBefore, demo.PlayerState.Position);
+            }
+            Assert.AreEqual(viewBefore, demo.ViewQuarterTurns);
+            CollectionAssert.AreEquivalent(
+                visibleBefore,
+                GetField<HashSet<GridPos>>(demo, "_visibleTiles"));
+            CollectionAssert.AreEquivalent(
+                exploredBefore,
+                GetField<HashSet<GridPos>>(demo, "_exploredTiles"));
+
             bool moved = false;
             foreach (Vector2 drag in new[]
                      {

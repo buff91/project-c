@@ -69,7 +69,17 @@ namespace ProjectC.Core
         /// </summary>
         public Vector2 GridToWorld(GridPos pos)
         {
-            Vector2 view = RotateToView(pos.x, pos.y);
+            return GridToWorld(pos, viewQuarterTurns);
+        }
+
+        /// <summary>
+        /// 현재 상태를 바꾸지 않고 지정한 90도 시점에서 격자 중심을 투영한다.
+        /// 네 시점의 카메라 경계를 비교하는 프레젠테이션 계산처럼, 실제 입력/정렬 시점을
+        /// 임시로 돌리면 안 되는 읽기 전용 경로에서 사용한다.
+        /// </summary>
+        public Vector2 GridToWorld(GridPos pos, int quarterTurns)
+        {
+            Vector2 view = RotateToView(pos.x, pos.y, quarterTurns);
             float wx = (view.x - view.y) * HalfW;
             float wy = -(view.x + view.y) * HalfH + pos.elevation * elevationStep;
             return new Vector2(wx, wy);
@@ -153,9 +163,15 @@ namespace ProjectC.Core
 
         public Vector2 RotateToView(float x, float y)
         {
+            return RotateToView(x, y, viewQuarterTurns);
+        }
+
+        /// <summary>현재 <see cref="viewQuarterTurns"/>를 바꾸지 않는 명시적 시점 회전.</summary>
+        public Vector2 RotateToView(float x, float y, int quarterTurns)
+        {
             float dx = x - viewPivotX;
             float dy = y - viewPivotY;
-            switch (NormalizeQuarterTurns(viewQuarterTurns))
+            switch (NormalizeQuarterTurns(quarterTurns))
             {
                 case 1: return new Vector2(viewPivotX + dy, viewPivotY - dx);
                 case 2: return new Vector2(viewPivotX - dx, viewPivotY - dy);

@@ -314,6 +314,15 @@
     color: var(--pc-ice);
 }
 
+.hud-root.hud-desktop .route-chip.is-observing {
+    border-left-color: var(--pc-ui-accent);
+    background-color: rgba(7, 16, 23, 0.94);
+}
+
+.hud-root.hud-desktop .route-chip.is-observing .chip-label {
+    color: var(--pc-text);
+}
+
 .hud-root.hud-desktop .chip-dot {
     display: none;
 }
@@ -614,6 +623,12 @@
     border-radius: 0;
 }
 
+/* 층 관찰은 계기 전체의 상태다. 패널은 차가운 판으로 바뀌고 선택 방향은 아래에서
+   마젠타 채움으로 잠가, 작은 문구를 읽기 전에도 현재 층 조작 모드가 아님을 보인다. */
+.hud-root.hud-desktop .minimap-panel.pc-plate.is-observing {
+    background-color: rgba(7, 16, 23, 0.98);
+}
+
 .hud-root.hud-desktop .minimap-header {
     position: absolute;
     left: 52px;
@@ -837,11 +852,11 @@
 }
 
 .hud-root.hud-desktop .vertical-view-button.is-selected {
-    color: var(--pc-text);
-    background-color: rgba(0, 0, 0, 0);
-    border-left-color: rgba(0, 0, 0, 0);
-    border-right-color: rgba(0, 0, 0, 0);
-    border-top-color: rgba(0, 0, 0, 0);
+    color: var(--pc-inset);
+    background-color: var(--pc-ui-accent);
+    border-left-color: var(--pc-ui-accent);
+    border-right-color: var(--pc-ui-accent);
+    border-top-color: var(--pc-ui-accent);
     border-bottom-color: var(--pc-ui-accent);
 }
 

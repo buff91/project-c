@@ -354,6 +354,15 @@ non-readable atlas를 RenderTexture로 읽어 네 알파 경계가 rect에 닿�
 찍어 셀별 반복을 되살리지 않는다. `floor`는 Aseprite 첫 프레임, `raisedFloor/lowerFloor`는 전용
 원본 전까지 같은 결과의 PNG 폴백을 사용한다.
 
+깊이 밴드 바닥 계보는
+`project-c-band-floors-source-v1.png` → `process_band_floors_v1.py` →
+`env-floor-{mid,deep,boss}(-raised).png`다. 생성 시트의 색·알파·긴 균열은 최종 픽셀로 복사하지 않고
+2×2 디테일 위치 힌트로만 쓴다. 여섯 산출물은 공용 바닥의 128×64·4,098px canonical alpha와 외곽
+3px를 그대로 보존하고 `grey-2/3/4`만 사용한다. 공용 바닥과 정확히 같은 픽셀 비율은
+mid 90% / deep 84% / boss 78%, 런타임 Shadow 대비는 3% / 5% / 7% 상한이다. `-raised`는 같은
+밴드의 flat top과 byte 동일하며 실제 전면 립은 런타임 `DrawExtrudedSides`만 소유한다. 강한 디테일
+스프라이트 자체도 런타임에서 약 10~13%의 비인접 좌표에만 선택된다.
+
 `env-floor.png`가 바뀌면 이를 굽는 산출물은 모두 stale이다. 공용 바닥 뒤에
 `process_hospital_dressing_v1.py`, `process_band_floors_v1.py`,
 `process_b2_parking_dressing_v2.py`, `process_b2_cracked_floor_v1.py`,

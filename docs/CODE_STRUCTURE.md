@@ -42,7 +42,7 @@
 | `IsoPrototypeDemo.View.cs` | 시점 회전/모드 토글·`ApplyVisualSettings`·`ApplyViewToVisuals`·카메라 구도(허브/던전 고정 `playCameraSize` + 플레이어 추종) |
 | `IsoPrototypeDemo.ActorPresentation.cs` | 플레이어/적의 월드 4방향 상태 → 현재 시점의 화면 4방향 변환, 방향 클립 선택과 단일 Sprite 좌우/전후 폴백 포즈 |
 | `IsoPrototypeDemo.CameraLook.cs` | PC 던전 PLAY의 현재 활성 층 `MappedSilhouette` 경계 자유 카메라 중심·추종 복귀·분위기 배경 동기화. 턴/FOV/AI 상태는 소유하지 않는다 |
-| `IsoPrototypeDemo.MapKnowledge.cs` | FOV와 분리된 mapped 타일 집합·공용 실루엣 렌더러·비밀방 공개 경계·미니맵 역할색·일반 문 행동을 포함한 mapped 목적지 재계획/실행. 사다리 링크는 자동 경로에서 제외하고 기존 명시적 상호작용에 맡긴다 |
+| `IsoPrototypeDemo.MapKnowledge.cs` | FOV와 분리된 mapped 타일/공용 범주 스냅샷·실루엣 렌더러·비밀방 공개 경계·미니맵 역할색·일반 문 행동을 포함한 mapped 목적지 재계획/실행. 층 전환 계단과 사다리 링크는 자동 경로에서 제외하고 기존 명시적 상호작용에 맡긴다 |
 | `IsoPrototypeDemo.Interaction.cs` | 탭/스텝/인접 상호작용·실제 타일/mapped 이동 목표 분기·커넥터 판정·`HandleTileTapped` |
 | `IsoPrototypeDemo.Actions.cs` | 아이템/전투/조합/투척 행동 코루틴(`RangedAttack`·`FireRanged`·`ThrowBomb` 등) |
 | `IsoPrototypeDemo.Projectiles.cs` | 같은 층 포물선·Hole 경유 3구간 투사체·폭발 순간 연출(판정/소비 없음) |
@@ -62,7 +62,7 @@
 | `IsoPrototypeDemo.BossArena.cs` | 보스 아레나 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 전투/상태이상 연출 |
 | `IsoPrototypeDemo.Visibility.cs` | FOV 계산·mapped 공용 표현/미니맵 합성 호출·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림. mapped 집합 자체는 `IsoPrototypeDemo.MapKnowledge.cs`가 소유 |
-| `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 + 플레이어 안정 상태 world tint·접지 AO + B2 시작방 Floor 전용 room-coherent light presentation |
+| `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 + 플레이어 안정 상태 world tint·접지 AO + 활성 층 Floor 4방향 연결 영역별 room-coherent light presentation |
 | `IsoPrototypeDemo.Sprites.cs` | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
 ## 절차 생성 임시 아트 — `IsoPrototypeDemo` **밖의** 독립 클래스
@@ -77,6 +77,7 @@
 | `PrototypeSpriteCache.cs` | 키 → 스프라이트 캐시. 두 팩토리가 공유한다 |
 | `PrototypePalette.cs` | 던전 역할색 해석 — `IsoVisualCatalog` 슬롯이 있으면 그 값, 없으면 인스펙터 폴백. 그리기 코드는 여기만 묻는다 |
 | `PrototypeActorSprites.cs` | 액터·몬스터·아이템·프롭·랜드마크·FX + 작은 3단 접촉 AO. 팔레트도 안 쓰고 **캐시만** 의존한다 |
+| `DungeonFloorPresentation.cs` | 카메라/열거 순서와 무관한 좌표 해시로 Facility 드레싱 3/32와 밴드 손상 타일 약 10~13%를 희소 배치하고 4방향 인접 반복을 억제한다 |
 | `PrototypeEnvironmentSprites.cs` | 타일·벽·문·비밀문·안개·광원 타일. 캐시 + 팔레트 의존 |
 | `PrototypeEnvironmentSprites.Foundation.cs` | B2 전용 face-only 10px fascia와 12×38 코너 지지대 픽셀. 윗면·충돌·격자를 모르는 절차 프레젠테이션 |
 | `TileVisualFacts.cs` | 호스트가 풀어 넘기는 격자 사실 묶음(진행 맥락·전면 여부·평면 방향·비밀문 힌트·허브 여부) |
@@ -175,7 +176,7 @@
 | `DungeonHeightModel.cs` | 연속 elevation을 (던전 층, 층 내부 높이)로 해석. stride 기본 4 |
 | `StairTopology.cs` | 같은 층 안의 계단 타일과 한 단 위 착지 타일의 연결 해석 |
 | `GridPathfinder.cs` | 결정론적 A*. 사다리는 명시적 링크+`canClimb`로만 통과한다. `openClosedDoors`는 일반 닫힌 문을 계획 경로에만 포함하며 상태를 바꾸지 않는다. 별도 열기 1턴은 Gameplay 실행기가 소비하고 `SecretDoor`는 이 옵션에서도 제외한다 |
-| `MapKnowledgeRules.cs` | FOV와 무관한 현재 층 mapped 공개 범위·비밀문/비밀방 footprint 제외·실제 `TileKind`를 `Floor/Barrier/Door/Gap` 공용 범주로 축약·미확인 자동 층 전환 진입 차단 |
+| `MapKnowledgeRules.cs` | FOV와 무관한 현재 층 mapped 공개 범위·비밀문/비밀방 footprint 제외·실제 `TileKind`를 `Floor/Barrier/Door/Gap` 공용 범주로 축약·mapped 경로의 자동 층 전환 진입 차단 |
 | `VerticalTraversalRules.cs` | 수직 이동 수단의 자동 발동 범위와 사다리 월드 표현 크기. 층 전환 계단은 밟는 즉시, 사다리는 명시적 상호작용 |
 | `VerticalRouteCue.cs` | 수직 이동 수단을 처음 봤을 때의 짧은 설명(`VerticalRouteRole` 6종). 색이 아니라 "어떻게 생겼고 무엇을 하면 어디로 가는지"를 말한다 |
 | `TravelRules.cs` | 실제/mapped 자동 이동 스텝 수와 인터럽트 우선순위(피해 > 새 적 > 새 아이템), 행동 직후 transient 적 발견 보존 판정. 스냅샷·문 행동·재계획은 Gameplay 호출부가 소유 |

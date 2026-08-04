@@ -302,7 +302,10 @@ namespace ProjectC.Gameplay
             if (_input == null) return;
             bool shouldTrack = Application.isPlaying &&
                                (_bombAiming ||
-                                !_resolvingAction && HasVisibleDropHole());
+                                !_resolvingAction &&
+                                (IsVerticalLookActive ||
+                                 _verticalPreviewTiles.Count > 0 ||
+                                 HasVisibleDropHole()));
             if (_input.trackHover == shouldTrack) return;
             _input.trackHover = shouldTrack;
             _input.InvalidateHover();

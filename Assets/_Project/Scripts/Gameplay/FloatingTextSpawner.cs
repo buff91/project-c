@@ -11,7 +11,8 @@ namespace ProjectC.Gameplay
         Burn,
         Freeze,
         Heal,
-        Alert
+        Alert,
+        ReadOnly
     }
 
     /// <summary>
@@ -71,6 +72,7 @@ namespace ProjectC.Gameplay
                 case FloatingTextKind.Freeze: return new Color32(132, 226, 255, 255);
                 case FloatingTextKind.Heal: return new Color32(112, 228, 140, 255);
                 case FloatingTextKind.Alert: return new Color32(255, 224, 96, 255);
+                case FloatingTextKind.ReadOnly: return new Color32(230, 68, 184, 255);
                 default: return new Color32(255, 208, 112, 255);
             }
         }

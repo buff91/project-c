@@ -85,6 +85,7 @@ namespace ProjectC.Gameplay
         private Label _minimapFloorBadge;
         private Label _minimapNorthLabel;
         private Button _minimapPlayerMarker;
+        private VisualElement _floorInstrument;
         private Texture2D _minimapTexture;
         private Color32[] _minimapPixels;
         private Button _waitButton;
@@ -264,6 +265,7 @@ namespace ProjectC.Gameplay
             RebindButton(ref _menuButton, root.Q<Button>("menu-button"), ReturnToCamp);
 
             _viewLabel = root.Q<Label>("view-label");
+            _floorInstrument = root.Q<VisualElement>("floor-instrument");
             _verticalViewState = root.Q<Label>("vertical-view-state");
             _depthLabel = root.Q<Label>("depth-label");
             _depthCaption = root.Q<Label>("depth-caption");

@@ -182,14 +182,16 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
 ### 6.2 TravelRules + Gameplay mapped 실행기 — SPD식 자동 이동 게이팅
 - `AllowedSteps` = 적이 보이면 탭당 **1스텝**, 아니면 경로 전체. 인터럽트 우선순위는 **피해 > 새로 보인 적 > 새로 보인 아이템**이고 `TravelInterrupt`의 **enum 값이 곧 우선순위**다.
 - Gameplay `IsoPrototypeDemo.MapKnowledge`는 현재 활성 층의 `MappedSilhouette` 타일을 자동 이동 목표로
-  받고 `TravelRules`의 게이트를 행동마다 적용한다. 일반 닫힌 문은 경로 실행의 행동
+  받고 `TravelRules`의 게이트를 행동마다 적용한다. 지도 구성/비밀방 공개 때 공용 실루엣 범주를 별도로
+  캐시하므로 Unknown 칸의 live `TileKind` 변화가 지도에 새지 않는다. 일반 닫힌 문은 경로 실행의 행동
   경계로 남겨 문 앞 접근 → 열기 1턴 → FOV 갱신 → 적 턴 → 인터럽트 평가를 거친다. 피해·새 적·새
   아이템이 없을 때만 현재 문 상태와 점유에서 경로를 다시 계획해 같은 이동 의도를 계속한다. 플레이어
   행동 직후 새로 보인 적은 적 턴 뒤 시야를 벗어나도 transient 발견 플래그로 보존한다. 공용 `Floor`로
-  접힌 미확인 `StairsUp/Down`은 자동 층 전환 누수를 막기 위해 실제 FOV로 확인되기 전 경로에서 제외한다.
-  mapped A*는 `canClimb:false`라 사다리 발판에는 걸어갈 수 있어도 링크를 자동 통과하지 않는다. 등반은
-  기존 자기 탭/Space 상호작용이 소유한다. `SecretDoor` 좌표도 공개 전 mapped 집합에 없으며 자동 이동이
-  열거나 통과하지 않는다.
+  접힌 `StairsUp/Down`은 확인 여부와 무관하게 중간 노드에서 제외해 우발 층 전환/체크포인트 저장을 막고,
+  계단 자체를 탭한 일반 이동만 전환을 소유한다. mapped A*는 `canClimb:false`라 사다리 발판에는 걸어갈 수
+  있어도 링크를 자동 통과하지 않는다. 등반은 기존 자기 탭/Space 상호작용이 소유한다. `SecretDoor` 좌표도
+  공개 전 mapped 집합에 없으며 자동 이동이 열거나 통과하지 않는다. mapped 이동이 재닫힌 문 때문에 일반
+  경로를 대신했더라도 최종 출구 도착 시 같은 `TryRequestExitChoice` 완료 훅을 호출한다.
 
 ### 6.3 VerticalTraversalRules — 층 전환/사다리
 - `TryGetAutomaticFloorDestination`: 밟은 타일이 `StairsUp/Down`이고 링크가 있으면 즉시 링크 목적지로
@@ -553,6 +555,10 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
   이벤트(`PlayerHpChanged`·`ActiveFloorChanged`·`ExitChoiceRequested`…)로 HUD와 느슨 결합한다.
 - `IsoPrototypeDemo.Targeting`은 투척 조준 상태를 실제 유효 칸의 낮은 알파 월드 데칼로 번역한다.
   Core의 투척/사선 판정을 재사용하고 FOV로 한 번 더 잘라 Unknown 정보를 노출하지 않는다.
+- `DungeonFloorPresentation`은 좌표·진행 지수만 섞은 안정 해시로 강한 밴드/Facility 바닥 변주를
+  희소 좌표에만 허용한다. 실제 타입→스프라이트 폴백은 계속 `IsoVisualCatalog`가 소유하고,
+  `RoomFloorLighting`은 활성 층의 보이는 `Floor`를 비바닥 경계로 나눈 4방향 컴포넌트별 RGB 평균으로
+  모아 셀 단위 조명 체크무늬만 줄인다. 둘 다 격자·FOV·충돌·턴 상태를 바꾸지 않는 프레젠테이션이다.
 - B2 시작방 foundation은 **게임플레이 타일과 분리된 프레젠테이션 경로**다.
   `FloorFoundationPresentation`이 현재 시점에 노출된 실제 화면 전면과 회전 불변 월드 볼록 모서리를
   고르고, `IsoPrototypeDemo.Foundation`이 별도 `B2 Floor Foundation` 루트를 조립하며,

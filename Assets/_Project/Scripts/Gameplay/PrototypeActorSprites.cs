@@ -74,6 +74,38 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
+        /// 다른 층 미리보기의 읽기 전용 표식. 열린 다이아 외곽과 작은 X를 함께 써서
+        /// 투척 가능 범위·이동 선택 링과 구분하고, 색은 호출부가 관찰/거절 상태에 맞춰 입힌다.
+        /// </summary>
+        internal Sprite GetReadOnlyPreviewSprite()
+        {
+            const string key = "vertical-read-only";
+            if (_spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+            var texture = NewTexture(TilePixelWidth, TilePixelHeight);
+            for (int py = 0; py < TilePixelHeight; py++)
+            for (int px = 0; px < TilePixelWidth; px++)
+            {
+                float diamond =
+                    Mathf.Abs((px - 31.5f) / 32f) +
+                    Mathf.Abs((py - 15.5f) / 16f);
+                bool edge = diamond > 0.83f && diamond <= 0.94f;
+                int dx = px - 32;
+                int dy = py - 16;
+                bool cross = Mathf.Abs(dx) <= 10 && Mathf.Abs(dy) <= 5 &&
+                             (Mathf.Abs(dx - dy * 2) <= 1 ||
+                              Mathf.Abs(dx + dy * 2) <= 1);
+                byte alpha = edge ? (byte)190 : cross ? (byte)225 : (byte)0;
+                texture.SetPixel(px, py, new Color32(255, 255, 255, alpha));
+            }
+
+            texture.Apply(false, true);
+            cached = CreateSprite(texture, new Vector2(0.5f, 0.5f));
+            _spriteCache[key] = cached;
+            return cached;
+        }
+
+        /// <summary>
         /// 투척 조준 가능 칸. 흰 픽셀/알파만 굽고 아이템별 색은 SpriteRenderer tint로 입힌다.
         /// 얇은 외곽선과 성긴 내부 점만 써서 바닥 재질과 액터를 가리지 않는다.
         /// </summary>

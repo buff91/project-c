@@ -202,8 +202,7 @@ namespace ProjectC.Gameplay
 
             DungeonVisualContext context = facts.Context;
             bool extruded = facts.Extruded;
-            int variation =
-                Mathf.Abs(pos.x * 17 + pos.y * 31 + context.ProgressIndex * 13) % 8;
+            int variation = DungeonFloorPresentation.SurfaceVariation(pos, context);
             int variant = variation % 4;
             Color32 baseColor = _palette.SurfaceFor(context);
 
@@ -214,11 +213,16 @@ namespace ProjectC.Gameplay
                         ? _palette.Catalog.HospitalFloorFor(variation)
                         : null;
                 if (mapped == null)
-                    mapped = _palette.Catalog.TileFor(kind, context);
+                {
+                    bool useBandDetail =
+                        kind == TileKind.Floor &&
+                        DungeonFloorPresentation.ShouldUseBandDetail(pos, context);
+                    mapped = _palette.Catalog.TileFor(kind, context, useBandDetail);
+                }
                 if (mapped != null)
                 {
-                    // 밴드 전용 바닥 아트가 없는 동안만 절차 오버레이가 슬롯을 임시 대행한다
-                    // (docs/STATUS.md "깊이 변주의 통로" 참조 — 전용 아트가 오면 자동 비활성).
+                    // 전용 밴드 손상 타일은 희소 좌표에서만 쓰고 나머지는 공용 바닥을 유지한다.
+                    // 전용 슬롯 자체가 없는 경우에만 절차 오버레이가 기존 폴백을 대행한다.
                     // Hole/WeakFloor는 바닥이 아니라 전용 표식이라 마모를 얹지 않는다.
                     DungeonDepthBand overlayBand =
                         !facts.HubMode &&

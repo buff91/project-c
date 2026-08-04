@@ -339,6 +339,18 @@ namespace ProjectC.Gameplay
 
         public Sprite TileFor(TileKind kind, DungeonVisualContext context)
         {
+            return TileFor(kind, context, useBandFloorDetail: true);
+        }
+
+        /// <summary>
+        /// 일반 바닥에서 밴드 전용 손상 변주를 쓸지 명시한다. 전용 자산은 강한 균열·오염을
+        /// 담으므로 런타임은 희소 좌표에만 true를 넘기고, 나머지는 공용 바닥을 쓴다.
+        /// </summary>
+        public Sprite TileFor(
+            TileKind kind,
+            DungeonVisualContext context,
+            bool useBandFloorDetail)
+        {
             switch (kind)
             {
                 case TileKind.Stairs: return stairs;
@@ -353,7 +365,9 @@ namespace ProjectC.Gameplay
                 case TileKind.DoorClosed: return doorClosed;
                 case TileKind.DoorOpen: return doorOpen != null ? doorOpen : floor;
                 default:
-                    return FloorFor(context);
+                    return useBandFloorDetail
+                        ? FloorFor(context)
+                        : SharedFloorFor(context);
             }
         }
 
@@ -419,6 +433,9 @@ namespace ProjectC.Gameplay
             return context.IsRaised && raised != null ? raised : flat;
         }
 
+        private Sprite SharedFloorFor(DungeonVisualContext context) =>
+            context.IsRaised && raisedFloor != null ? raisedFloor : floor;
+
         public Sprite StairsFor(TileKind kind, bool risesRight)
         {
             Sprite directed;
@@ -463,16 +480,17 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// Facility 바닥의 seed 고정 드레싱. 0..7 중 세 값만 슬롯을 사용해 방의 기본 재질이
+        /// Facility 바닥의 seed 고정 드레싱. 0..31 중 세 값만 슬롯을 사용해 방의 기본 재질이
         /// 장식에 묻히지 않게 한다. 비어 있는 슬롯은 호출부가 공용 바닥으로 폴백한다.
         /// </summary>
         public Sprite HospitalFloorFor(int variation)
         {
-            switch ((variation % 8 + 8) % 8)
+            int count = DungeonFloorPresentation.SurfaceVariationCount;
+            switch ((variation % count + count) % count)
             {
                 case 0: return hospitalFloorGrate;
-                case 3: return hospitalFloorCracked;
-                case 6: return hospitalFloorService;
+                case 11: return hospitalFloorCracked;
+                case 23: return hospitalFloorService;
                 default: return null;
             }
         }

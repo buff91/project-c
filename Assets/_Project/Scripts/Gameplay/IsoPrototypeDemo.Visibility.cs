@@ -30,7 +30,7 @@ namespace ProjectC.Gameplay
             RefreshDropFocusAfterVisibility();
             RefreshDungeonFogBackdrop();
             EnsureStaticLightField();
-            Dictionary<GridPos, Color> b2FloorLightField = BuildB2CoherentFloorLightField();
+            Dictionary<GridPos, Color> floorLightField = BuildCoherentFloorLightField();
 
             foreach (var pair in _tileRenderers)
             {
@@ -56,8 +56,8 @@ namespace ProjectC.Gameplay
                     : tileData.wet
                         ? new Color(0.55f, 0.72f, 0.95f)
                         : Color.white;
-                Color light = b2FloorLightField != null &&
-                              b2FloorLightField.TryGetValue(pair.Key, out Color coherentFloorLight)
+                Color light = floorLightField != null &&
+                              floorLightField.TryGetValue(pair.Key, out Color coherentFloorLight)
                     ? coherentFloorLight
                     : TileLightColor(pair.Key);
                 pair.Value.color = new Color(
@@ -69,7 +69,7 @@ namespace ProjectC.Gameplay
             }
 
             RefreshMappedSilhouettes();
-            RebuildB2FloorFoundation(b2FloorLightField);
+            RebuildB2FloorFoundation(floorLightField);
 
             // 가시성과 함께 높이 딤 틴트도 갱신돼야 하므로 개별 갱신 경로를 그대로 태운다.
             foreach (EnemyAgent enemy in _enemies)
@@ -1405,19 +1405,33 @@ namespace ProjectC.Gameplay
         /// </summary>
         private Vector3 VisualPosition(GridPos pos)
         {
-            Vector3 world = _grid.GridToWorld(pos);
+            return VisualPositionForView(pos, _grid.iso.viewQuarterTurns);
+        }
+
+        /// <summary>
+        /// 현재 시점을 바꾸지 않고 지정한 시점의 지속 비주얼 자리를 계산한다.
+        /// 회전 전후 카메라 경계를 비교하는 읽기 전용 프레이밍에서만 사용한다.
+        /// </summary>
+        private Vector3 VisualPositionForView(GridPos pos, int viewQuarterTurns)
+        {
+            Vector3 world = _grid.iso.GridToWorld(pos, viewQuarterTurns);
             if (_dungeon == null) return world;
 
             int floor = _dungeon.Height.FloorIndex(pos.elevation);
             if (viewMode == DungeonViewMode.DebugAll)
                 world.y += (floor - _activeFloorIndex) * debugFloorSeparation;
             else if (floor != _activeFloorIndex && _verticalPreviewTiles.Contains(pos))
-                world.y += (floor - _activeFloorIndex) * playAdjacentFloorSeparation;
+            {
+                float separation = _verticalLookTiles.Contains(pos)
+                    ? Mathf.Min(1.2f, playAdjacentFloorSeparation + 0.18f)
+                    : playAdjacentFloorSeparation;
+                world.y += (floor - _activeFloorIndex) * separation;
+            }
             return world;
         }
 
         private static readonly Color ActiveTint = Color.white;
-        private static readonly Color ObservedFloorTint = new Color(0.78f, 0.88f, 0.96f);
+        private static readonly Color ObservedFloorTint = new Color(0.68f, 0.92f, 1f);
         private static readonly Color InactiveTint = new Color(0.64f, 0.68f, 0.80f); // 차가운 비활성 톤 — 색상은 유지, 명도만 완화(v0.3.3 밝기 패스)
 
         /// <summary>
@@ -1444,7 +1458,7 @@ namespace ProjectC.Gameplay
             {
                 if (IsVerticalLookActive && !_verticalLookTiles.Contains(pos)) return 0f;
                 if (_verticalLookTiles.Contains(pos))
-                    return Mathf.Max(verticalPreviewAlpha, 0.86f);
+                    return Mathf.Max(verticalPreviewAlpha, 0.94f);
                 return _focusedVerticalPreviewTiles.Contains(pos)
                     ? Mathf.Max(verticalPreviewAlpha, 0.74f)
                     : verticalPreviewAlpha;

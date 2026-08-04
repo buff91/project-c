@@ -101,14 +101,18 @@ namespace ProjectC.Core
         }
 
         /// <summary>
-        /// 실제 FOV로 정체를 확인하기 전에 자동 이동이 밟아도 숨은 상호작용을 발동하지 않는가.
-        /// 층 전환 계단은 진입 즉시 다른 층으로 보내므로 공용 Floor 실루엣 상태에서는 막는다.
+        /// mapped 장거리 이동 경로의 노드로 안전하게 사용할 수 있는가.
+        /// 층 전환 계단은 진입 즉시 다른 층으로 보내므로 중간 노드에서는 막고, 실제 FOV로
+        /// 확인한 계단 자체를 명시적으로 탭했을 때만 목적지로 허용한다. 비밀문은 항상 막는다.
         /// </summary>
-        public static bool CanAutoTravelThroughUnknown(TileKind kind)
+        public static bool CanUseForMappedTravelPath(
+            TileKind kind,
+            bool isExplicitKnownTarget)
         {
-            return kind != TileKind.StairsUp &&
-                   kind != TileKind.StairsDown &&
-                   kind != TileKind.SecretDoor;
+            if (kind == TileKind.SecretDoor) return false;
+            if (kind == TileKind.StairsUp || kind == TileKind.StairsDown)
+                return isExplicitKnownTarget;
+            return true;
         }
     }
 }

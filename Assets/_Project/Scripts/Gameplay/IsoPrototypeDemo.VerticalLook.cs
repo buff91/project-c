@@ -20,6 +20,9 @@ namespace ProjectC.Gameplay
     {
         private VerticalLookMode _verticalLookMode = VerticalLookMode.Current;
         private readonly HashSet<GridPos> _verticalLookTiles = new HashSet<GridPos>();
+        private GridPos? _verticalReadOnlyTile;
+        private GameObject _verticalReadOnlyMarker;
+        private SpriteRenderer _verticalReadOnlyRenderer;
 
         public VerticalLookMode VerticalLook => _verticalLookMode;
         public bool IsVerticalLookActive => _verticalLookMode != VerticalLookMode.Current;
@@ -67,12 +70,16 @@ namespace ProjectC.Gameplay
             ClearDropFocus(restoreSelection: true);
             _verticalLookMode = mode;
             _aimHoverCell = null;
+            ClearVerticalReadOnlyMarker();
             RefreshVerticalLookAfterVisibility();
             ApplyViewToVisuals();
             ConfigureCamera(Camera.main);
             _input?.InvalidateHover();
             RefreshThrowRangePreview();
             VerticalContextChanged?.Invoke();
+            string direction = mode == VerticalLookMode.Up ? "▲" : "▼";
+            InteractionFeedback?.Invoke(
+                $"{ViewedFloorLabel} {direction} 관찰 전용 · 직접 이동 불가 · 광역 투척만 가능");
         }
 
         /// <summary>Escape 처리용. 조준 취소 뒤에 호출되어 한 단계씩 현재 층으로 돌아온다.</summary>
@@ -88,10 +95,13 @@ namespace ProjectC.Gameplay
         /// <summary>
         /// 월드 행동은 현재 층에서만 시작한다. 층 보기 중 직접 조작을 눌렀을 때 턴을 쓰지 않고 막는다.
         /// </summary>
-        private bool RejectWorldActionWhileVerticalLooking()
+        private bool RejectWorldActionWhileVerticalLooking(GridPos? target = null)
         {
             if (!IsVerticalLookActive) return false;
-            InteractionFeedback?.Invoke("층 보기 중에는 이동할 수 없다 · ◆ 현재 층으로 돌아오기");
+            if (target.HasValue && IsVerticalLookTarget(target.Value))
+                ShowVerticalReadOnlyRejection(target.Value);
+            InteractionFeedback?.Invoke(
+                "관찰 층에는 이동할 수 없다 · 광역 투척 또는 ◆ 현재 층 복귀");
             return true;
         }
 
@@ -102,6 +112,7 @@ namespace ProjectC.Gameplay
             _verticalLookMode = VerticalLookMode.Current;
             _verticalLookTiles.Clear();
             _aimHoverCell = null;
+            ClearVerticalReadOnlyMarker();
             if (_selection != null && _playerState != null)
                 PositionSelection(_playerPos);
 
@@ -125,12 +136,16 @@ namespace ProjectC.Gameplay
         {
             _verticalLookMode = VerticalLookMode.Current;
             _verticalLookTiles.Clear();
+            _verticalReadOnlyTile = null;
+            _verticalReadOnlyMarker = null;
+            _verticalReadOnlyRenderer = null;
         }
 
         private void SuspendVerticalLook()
         {
             _verticalLookMode = VerticalLookMode.Current;
             _verticalLookTiles.Clear();
+            ClearVerticalReadOnlyMarker();
         }
 
         /// <summary>
@@ -140,7 +155,13 @@ namespace ProjectC.Gameplay
         private void RefreshVerticalLookAfterVisibility()
         {
             _verticalLookTiles.Clear();
-            if (!IsVerticalLookActive || _dungeon == null) return;
+            if (!IsVerticalLookActive || _dungeon == null)
+            {
+                if (_verticalReadOnlyTile.HasValue &&
+                    !IsReadOnlyVerticalTile(_verticalReadOnlyTile.Value))
+                    ClearVerticalReadOnlyMarker();
+                return;
+            }
 
             int viewedFloor = ViewedFloorIndex;
             foreach (GridPos tile in _verticalPreviewTiles)
@@ -149,11 +170,16 @@ namespace ProjectC.Gameplay
                     _verticalLookTiles.Add(tile);
             }
 
+            if (_verticalReadOnlyTile.HasValue &&
+                !IsReadOnlyVerticalTile(_verticalReadOnlyTile.Value))
+                ClearVerticalReadOnlyMarker();
+
             // 폭발로 Hole이 막히거나 층이 바뀌어 창이 사라졌다면 조용히 현재 층으로 복귀한다.
             if (_verticalLookTiles.Count == 0)
             {
                 _verticalLookMode = VerticalLookMode.Current;
                 _aimHoverCell = null;
+                ClearVerticalReadOnlyMarker();
                 if (_selection != null && _playerState != null)
                     PositionSelection(_playerPos);
                 ConfigureCamera(Camera.main);
@@ -203,8 +229,109 @@ namespace ProjectC.Gameplay
         private string BuildVerticalLookHintLabel()
         {
             if (!IsVerticalLookActive) return null;
-            string direction = _verticalLookMode == VerticalLookMode.Up ? "윗층" : "아랫층";
-            return $"{direction} {ViewedFloorLabel} 보기 · 이동 잠금 · ◆ 현재 층";
+            string direction = _verticalLookMode == VerticalLookMode.Up ? "▲" : "▼";
+            return $"{ViewedFloorLabel} {direction} 관찰 전용 · 직접 이동 불가 · " +
+                   "폭발물/냉각재/기름 투척 · ◆/ESC 복귀";
+        }
+
+        /// <summary>
+        /// 비활성 층은 밝게 보이더라도 읽기 전용이다. 포인터가 가리킨 타일에 열린 X 마커를
+        /// 붙여 클릭 전에 규칙을 알리고, 클릭하면 같은 자리에서 마젠타로 응답한다.
+        /// </summary>
+        private void HandleVerticalReadOnlyHover(GridPos? cell)
+        {
+            if (_bombAiming)
+            {
+                ClearVerticalReadOnlyMarker();
+                return;
+            }
+
+            GridPos? target = cell.HasValue && IsReadOnlyVerticalTile(cell.Value)
+                ? cell
+                : null;
+            if (System.Nullable.Equals(target, _verticalReadOnlyTile)) return;
+            if (!target.HasValue)
+            {
+                ClearVerticalReadOnlyMarker();
+                return;
+            }
+
+            ShowVerticalReadOnlyMarker(target.Value, rejected: false);
+        }
+
+        private bool IsReadOnlyVerticalTile(GridPos pos) =>
+            _dungeon != null &&
+            _verticalPreviewTiles.Contains(pos) &&
+            _dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex &&
+            (!IsVerticalLookActive || _verticalLookTiles.Contains(pos));
+
+        private void ShowVerticalReadOnlyRejection(GridPos target)
+        {
+            ShowVerticalReadOnlyMarker(target, rejected: true);
+            FloatingText?.Show(
+                VisualPosition(target) + Vector3.up * 0.08f,
+                "VIEW ONLY",
+                FloatingTextKind.ReadOnly);
+        }
+
+        private void ShowVerticalReadOnlyMarker(GridPos target, bool rejected)
+        {
+            EnsureVerticalReadOnlyMarker();
+            if (_verticalReadOnlyRenderer == null) return;
+
+            _verticalReadOnlyTile = target;
+            _verticalReadOnlyMarker.transform.position =
+                VisualPosition(target) + Vector3.up * 0.02f;
+            _verticalReadOnlyMarker.transform.localScale =
+                Vector3.one * (rejected ? 1.12f : 1f);
+            _verticalReadOnlyRenderer.sortingOrder =
+                VerticalReadOnlyMarkerSortingOrder(target);
+            Color32 color = rejected
+                ? Palette.NeonMagenta
+                : new Color32(126, 151, 164, 196);
+            _verticalReadOnlyRenderer.color = color;
+            _verticalReadOnlyRenderer.enabled = true;
+        }
+
+        private void EnsureVerticalReadOnlyMarker()
+        {
+            if (_verticalReadOnlyRenderer != null || _visualRoot == null) return;
+
+            _verticalReadOnlyMarker = new GameObject("Vertical Preview Read Only");
+            _verticalReadOnlyMarker.hideFlags = HideFlags.DontSaveInEditor;
+            _verticalReadOnlyMarker.transform.SetParent(_visualRoot, false);
+            _verticalReadOnlyRenderer =
+                _verticalReadOnlyMarker.AddComponent<SpriteRenderer>();
+            _verticalReadOnlyRenderer.sprite = ActorSprites.GetReadOnlyPreviewSprite();
+        }
+
+        private void ClearVerticalReadOnlyMarker()
+        {
+            _verticalReadOnlyTile = null;
+            if (_verticalReadOnlyRenderer != null)
+                _verticalReadOnlyRenderer.enabled = false;
+            if (_verticalReadOnlyMarker != null)
+                _verticalReadOnlyMarker.transform.localScale = Vector3.one;
+        }
+
+        private void ApplyVerticalReadOnlyMarkerView()
+        {
+            if (!_verticalReadOnlyTile.HasValue || _verticalReadOnlyRenderer == null ||
+                !_verticalReadOnlyRenderer.enabled)
+                return;
+            GridPos target = _verticalReadOnlyTile.Value;
+            _verticalReadOnlyMarker.transform.position =
+                VisualPosition(target) + Vector3.up * 0.02f;
+            _verticalReadOnlyRenderer.sortingOrder =
+                VerticalReadOnlyMarkerSortingOrder(target);
+        }
+
+        private int VerticalReadOnlyMarkerSortingOrder(GridPos target)
+        {
+            TileKind kind = _grid.Map.Get(target).kind;
+            // 거절 표식은 그 칸의 바닥/계단/문과 원격 실루엣보다 앞에서 읽혀야 한다.
+            // 열린 다이아라 몸체를 완전히 가리지 않으며, +2는 IsoGrid의 공식 최상위 micro 슬롯이다.
+            return _grid.iso.SortingOrder(TileVisualSortingPos(target, kind), 2);
         }
 
         /// <summary>
@@ -220,6 +347,34 @@ namespace ProjectC.Gameplay
             size = playCameraSize;
             if (!IsVerticalLookActive || _verticalLookTiles.Count == 0) return false;
 
+            int currentView = _grid.iso.viewQuarterTurns;
+            float stableSize = playCameraSize;
+            for (int view = 0; view < 4; view++)
+            {
+                if (!TryGetVerticalLookCameraFrameForView(
+                        aspect,
+                        view,
+                        out Vector2 candidateCenter,
+                        out float candidateSize))
+                    return false;
+                if (view == currentView)
+                    center = candidateCenter;
+                stableSize = Mathf.Max(stableSize, candidateSize);
+            }
+
+            size = stableSize;
+            return true;
+        }
+
+        private bool TryGetVerticalLookCameraFrameForView(
+            float aspect,
+            int viewQuarterTurns,
+            out Vector2 center,
+            out float size)
+        {
+            center = default;
+            size = playCameraSize;
+
             bool found = false;
             float minX = 0f;
             float maxX = 0f;
@@ -227,7 +382,7 @@ namespace ProjectC.Gameplay
             float maxY = 0f;
             foreach (GridPos tile in _verticalLookTiles)
             {
-                Vector3 world = VisualPosition(tile);
+                Vector3 world = VisualPositionForView(tile, viewQuarterTurns);
                 if (!found)
                 {
                     minX = maxX = world.x;
@@ -248,7 +403,9 @@ namespace ProjectC.Gameplay
             bool hasPlayer = _playerState != null;
             if (hasPlayer)
             {
-                Vector3 player = VisualPosition(_playerState.Position);
+                Vector3 player = VisualPositionForView(
+                    _playerState.Position,
+                    viewQuarterTurns);
                 playerCenter = new Vector2(player.x, player.y);
                 minX = Mathf.Min(minX, player.x);
                 maxX = Mathf.Max(maxX, player.x);

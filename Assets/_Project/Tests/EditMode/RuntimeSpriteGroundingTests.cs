@@ -121,7 +121,7 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void StaticFacingPose_DistinguishesAllFourViewDirections()
+        public void StaticFacingPose_KeepsScaleStableAcrossViewDirections()
         {
             IsoPrototypeDemo.StaticFacingPose north =
                 IsoPrototypeDemo.StaticFacingPoseFor(ActorFacing4.North);
@@ -138,8 +138,8 @@ namespace ProjectC.Tests
             Assert.IsTrue(west.FlipX);
             Assert.AreEqual(Vector2.one, north.Scale);
             Assert.AreEqual(Vector2.one, east.Scale);
-            Assert.Less(south.Scale.y, 1f);
-            Assert.Less(west.Scale.y, 1f);
+            Assert.AreEqual(Vector2.one, south.Scale);
+            Assert.AreEqual(Vector2.one, west.Scale);
             Assert.Greater(south.Offset.y, 0f);
             Assert.Greater(west.Offset.y, 0f);
         }

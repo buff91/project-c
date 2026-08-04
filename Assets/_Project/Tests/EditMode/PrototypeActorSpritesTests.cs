@@ -51,6 +51,20 @@ namespace ProjectC.Tests
                 "적 인간형 폴백은 구 녹색 캐릭터가 아니라 점거군 실루엣이어야 한다");
         }
 
+        [Test]
+        public void ReadOnlyPreviewMarker_HasDiamondBoundaryAndVisibleCross()
+        {
+            var sprites = new PrototypeActorSprites(new PrototypeSpriteCache());
+            Sprite sprite = Track(sprites.GetReadOnlyPreviewSprite());
+            Color32[] pixels = ReadBack(sprite.texture);
+
+            Assert.AreEqual(64, sprite.texture.width);
+            Assert.AreEqual(32, sprite.texture.height);
+            Assert.Greater(pixels[32 + 16 * 64].a, 0, "중앙 X가 보여야 한다");
+            Assert.Greater(pixels[32 + 1 * 64].a, 0, "다이아 위 경계가 보여야 한다");
+            Assert.AreEqual(0, pixels[0].a, "타일 바깥 모서리는 투명해야 한다");
+        }
+
         private Sprite Track(Sprite sprite)
         {
             _sprites.Add(sprite);

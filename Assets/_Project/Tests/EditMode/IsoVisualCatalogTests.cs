@@ -202,7 +202,7 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void HospitalFloorFor_UsesSparseDeterministicSlots()
+        public void HospitalFloorFor_UsesThreeOfThirtyTwoSparseDeterministicSlots()
         {
             Sprite grate = MakeSprite();
             Sprite cracked = MakeSprite();
@@ -212,10 +212,10 @@ namespace ProjectC.Tests
             _catalog.hospitalFloorService = service;
 
             Assert.AreSame(grate, _catalog.HospitalFloorFor(0));
-            Assert.AreSame(cracked, _catalog.HospitalFloorFor(3));
-            Assert.AreSame(service, _catalog.HospitalFloorFor(6));
+            Assert.AreSame(cracked, _catalog.HospitalFloorFor(11));
+            Assert.AreSame(service, _catalog.HospitalFloorFor(23));
             Assert.IsNull(_catalog.HospitalFloorFor(1));
-            Assert.AreSame(grate, _catalog.HospitalFloorFor(8));
+            Assert.AreSame(grate, _catalog.HospitalFloorFor(32));
         }
 
         [Test]
@@ -377,7 +377,7 @@ namespace ProjectC.Tests
         }
 
         [Test]
-        public void B2RoomFloorLighting_PreservesMeanAndRetainsTwentyPercentLocalContrast()
+        public void RoomFloorLighting_PreservesMeanAndRetainsTwentyPercentLocalContrast()
         {
             var local = new[]
             {
@@ -385,14 +385,14 @@ namespace ProjectC.Tests
                 new Color(0.6f, 0.6f, 0.6f, 0.7f),
                 new Color(0.8f, 0.7f, 0.6f, 1f),
             };
-            Color reference = B2RoomFloorLighting.Average(local);
+            Color reference = RoomFloorLighting.Average(local);
             Assert.That(reference.r, Is.EqualTo(0.6f).Within(0.0001f));
             Assert.That(reference.g, Is.EqualTo(0.6f).Within(0.0001f));
             Assert.That(reference.b, Is.EqualTo(0.6f).Within(0.0001f));
 
-            Color low = B2RoomFloorLighting.Coherent(reference, local[0]);
-            Color middle = B2RoomFloorLighting.Coherent(reference, local[1]);
-            Color high = B2RoomFloorLighting.Coherent(reference, local[2]);
+            Color low = RoomFloorLighting.Coherent(reference, local[0]);
+            Color middle = RoomFloorLighting.Coherent(reference, local[1]);
+            Color high = RoomFloorLighting.Coherent(reference, local[2]);
             Assert.That(low.r, Is.EqualTo(0.56f).Within(0.0001f));
             Assert.That(middle.r, Is.EqualTo(0.6f).Within(0.0001f));
             Assert.That(high.r, Is.EqualTo(0.64f).Within(0.0001f));
@@ -400,16 +400,42 @@ namespace ProjectC.Tests
                 Is.EqualTo(reference.r).Within(0.0001f));
             Assert.That(high.r - low.r,
                 Is.EqualTo((local[2].r - local[0].r) *
-                    B2RoomFloorLighting.LocalLightRetention).Within(0.0001f));
+                    RoomFloorLighting.LocalLightRetention).Within(0.0001f));
             Assert.That(low.a, Is.EqualTo(local[0].a).Within(0.0001f));
             Assert.That(middle.a, Is.EqualTo(local[1].a).Within(0.0001f));
             Assert.That(high.a, Is.EqualTo(local[2].a).Within(0.0001f));
         }
 
         [Test]
-        public void B2RoomFloorLighting_EmptyAverageIsNeutralWhite()
+        public void RoomFloorLighting_EmptyAverageIsNeutralWhite()
         {
-            Assert.AreEqual(Color.white, B2RoomFloorLighting.Average(System.Array.Empty<Color>()));
+            Assert.AreEqual(Color.white, RoomFloorLighting.Average(System.Array.Empty<Color>()));
+        }
+
+        [Test]
+        public void RoomFloorLighting_BuildCoherentField_SeparatesFourWayFloorComponents()
+        {
+            var local = new Dictionary<GridPos, Color>
+            {
+                // x=2의 Door 같은 비-Floor 경계는 입력에서 빠져 두 방을 분리한다.
+                [new GridPos(0, 0)] = new Color(0.2f, 0.3f, 0.4f, 0.25f),
+                [new GridPos(1, 0)] = new Color(0.4f, 0.5f, 0.6f, 0.5f),
+                [new GridPos(3, 0)] = new Color(0.8f, 0.7f, 0.6f, 0.75f),
+                [new GridPos(4, 0)] = new Color(1f, 0.9f, 0.8f, 1f),
+                // 대각선 접촉도 4방향 연결이 아니므로 Stairs 같은 경계 너머와 섞이지 않는다.
+                [new GridPos(5, 1)] = new Color(0.1f, 0.2f, 0.3f, 0.6f),
+            };
+
+            Dictionary<GridPos, Color> coherent =
+                RoomFloorLighting.BuildCoherentField(local);
+
+            Assert.That(coherent[new GridPos(0, 0)].r, Is.EqualTo(0.28f).Within(0.0001f));
+            Assert.That(coherent[new GridPos(1, 0)].r, Is.EqualTo(0.32f).Within(0.0001f));
+            Assert.That(coherent[new GridPos(3, 0)].r, Is.EqualTo(0.88f).Within(0.0001f));
+            Assert.That(coherent[new GridPos(4, 0)].r, Is.EqualTo(0.92f).Within(0.0001f));
+            Assert.That(coherent[new GridPos(5, 1)].r, Is.EqualTo(0.1f).Within(0.0001f));
+            foreach (KeyValuePair<GridPos, Color> pair in local)
+                Assert.That(coherent[pair.Key].a, Is.EqualTo(pair.Value.a).Within(0.0001f));
         }
 
         [Test]

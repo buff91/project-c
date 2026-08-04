@@ -296,7 +296,7 @@ namespace ProjectC.Gameplay
                     return;
                 }
 
-                RejectWorldActionWhileVerticalLooking();
+                RejectWorldActionWhileVerticalLooking(target);
                 return;
             }
 
@@ -316,8 +316,9 @@ namespace ProjectC.Gameplay
                     _verticalPreviewTiles.Contains(target)))
             {
                 ClearDropFocus(restoreSelection: true);
+                ShowVerticalReadOnlyRejection(target);
                 InteractionFeedback?.Invoke(
-                    "개구부 너머 미리보기 — 현재 층에서는 직접 조작할 수 없다");
+                    "개구부 너머는 관찰 전용 · 현재 층에서는 이동할 수 없다");
                 return;
             }
 

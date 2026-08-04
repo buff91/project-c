@@ -158,33 +158,49 @@ namespace ProjectC.Tests
 
             var viewport = new Rect(0.03f, 0.10f, 0.69f, 0.85f);
             var padding = new Vector2(0.70f, 1.15f);
-            var sizes = new float[4];
+            var projections = new List<Vector2>[4];
+            float stableSize = 2.3f;
             for (int view = 0; view < 4; view++)
             {
-                iso.SetViewRotation(view);
                 var projected = new List<Vector2>(cells.Count);
                 foreach (GridPos cell in cells)
-                    projected.Add(iso.GridToWorld(cell));
+                    projected.Add(iso.GridToWorld(cell, view));
+                projections[view] = projected;
 
-                OrthographicCameraFrame frame = OrthographicCameraFraming.FitProjectedBounds(
+                OrthographicCameraFrame required = OrthographicCameraFraming.FitProjectedBounds(
                     projected,
                     aspect: 16f / 9f,
                     viewport,
                     padding,
                     minimumSize: 2.3f);
+                stableSize = Mathf.Max(stableSize, required.Size);
+            }
+
+            var sizes = new float[4];
+            for (int view = 0; view < 4; view++)
+            {
+                OrthographicCameraFrame frame = OrthographicCameraFraming.FitProjectedBounds(
+                    projections[view],
+                    aspect: 16f / 9f,
+                    viewport,
+                    padding,
+                    minimumSize: stableSize);
                 sizes[view] = frame.Size;
 
                 Assert.That(frame.Size, Is.InRange(2.6f, 2.9f));
                 AssertPaddedBoundsInsideViewport(
-                    projected,
+                    projections[view],
                     padding,
                     frame,
                     aspect: 16f / 9f,
                     viewport);
             }
 
+            Assert.That(sizes[1], Is.EqualTo(sizes[0]).Within(0.0001f));
             Assert.That(sizes[2], Is.EqualTo(sizes[0]).Within(0.0001f));
-            Assert.That(sizes[3], Is.EqualTo(sizes[1]).Within(0.0001f));
+            Assert.That(sizes[3], Is.EqualTo(sizes[0]).Within(0.0001f));
+            Assert.AreEqual(0, iso.viewQuarterTurns,
+                "네 시점의 프레임 비교가 실제 플레이 시점을 돌리면 안 된다");
         }
 
         [Test]

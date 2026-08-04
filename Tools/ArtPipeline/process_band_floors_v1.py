@@ -1,20 +1,34 @@
 #!/usr/bin/env python3
-"""Conform the adopted depth-band floor board into the six band floor sprites.
+"""Conform the adopted depth-band board into calm, repeat-safe floor tops.
 
-플랜 v2 배치 1-1 — 소스는 `environment-band-floors-v1` 레시피 채택본
-(`project-c-band-floors-source-v1.png`, 1536×1024 · 3×2 셀 512px).
-열 = mid/deep/boss, 행 = 기본/raised(얕은 전면 립). 정식 파일명으로 저장하면
-`ProjectCArtImporter`/카탈로그가 자동 연결하고 절차 BandOverlay 는 꺼진다
-(`BandFloorFallsBackToShared`). §1-c: 석재 기본색은 깊이와 무관해야 하므로
-바탕색을 env-floor 에 맞추는 명도 정합 게이트를 함께 둔다.
+The generated board remains useful as a placement hint, but it no longer owns
+runtime geometry or material color.  Every output starts from the canonical
+``env-floor`` pixels, keeps its quiet three-pixel perimeter, and replaces a
+fixed budget of complete 2x2 blocks with named cool-grey roles.  Consequently
+an ImageGen rerun cannot restore the oversized warm diamonds or one long dark
+crack that used to stamp across every dungeon cell.
+
+The ``-raised`` PNGs intentionally share the corresponding flat top verbatim.
+Unity owns the actual height lip in ``GetMappedTileSprite`` through
+``DrawExtrudedSides`` and the raised surface role; baking another front face in
+the source tile would render the lip twice.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 
-from torchstone_palette import despeckle, lock_rgba_to_palette
+from process_shared_floor_material_v1 import (
+    OUTER_BAND_PIXELS,
+    canonical_diamond_mask,
+    encode_png,
+    floor_source_colors,
+    outer_band_mask,
+)
+from torchstone_palette import load_gpl_entries
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,24 +39,51 @@ SHEET_SIZE = (1536, 1024)
 CELL_SIZE = (512, 512)
 SPRITE_SIZE = (128, 64)
 ALPHA_CUTOFF = 80
-# §1-c 게이트 — 밴드 바닥의 가시 평균 밝기가 기본 바닥에서 이 이상 벗어나면 실패한다.
-BASE_VALUE_TOLERANCE = 0.08
+PIXEL_CLUSTER = 2
+
+# Exact shared-pixel budgets.  The remainder is authored detail, but most of it
+# still resolves to Unity's Stone role; CONTRAST_RATIOS is the smaller visible
+# Shadow budget.  Rounding happens in complete 2x2 blocks.
+SHARED_RATIOS = {
+    "mid": 0.90,
+    "deep": 0.84,
+    "boss": 0.78,
+}
+CONTRAST_RATIOS = {
+    "mid": 0.03,
+    "deep": 0.05,
+    "boss": 0.07,
+}
+
+COOL_FLOOR_COLOR_NAMES = ("grey-2", "grey-3", "grey-4")
 
 
 @dataclass(frozen=True)
 class BandSpec:
+    band: str
     cell_index: int
     output_name: str
 
 
+# Both rows use the approved flat-cell placement hint.  The generated raised
+# row contained a painted side face, while the runtime already extrudes that
+# face.  Keeping six output names preserves the catalog/file contract.
 SPECS = (
-    BandSpec(0, "env-floor-mid"),
-    BandSpec(1, "env-floor-deep"),
-    BandSpec(2, "env-floor-boss"),
-    BandSpec(3, "env-floor-mid-raised"),
-    BandSpec(4, "env-floor-deep-raised"),
-    BandSpec(5, "env-floor-boss-raised"),
+    BandSpec("mid", 0, "env-floor-mid"),
+    BandSpec("deep", 1, "env-floor-deep"),
+    BandSpec("boss", 2, "env-floor-boss"),
+    BandSpec("mid", 0, "env-floor-mid-raised"),
+    BandSpec("deep", 1, "env-floor-deep-raised"),
+    BandSpec("boss", 2, "env-floor-boss-raised"),
 )
+
+
+def _pixels(image: Image.Image):
+    return (
+        image.get_flattened_data()
+        if hasattr(image, "get_flattened_data")
+        else image.getdata()
+    )
 
 
 def _is_chroma(pixel: tuple[int, int, int, int]) -> bool:
@@ -70,85 +111,197 @@ def extract_cell(sheet: Image.Image, index: int) -> Image.Image:
     return cell.crop(bounds)
 
 
-# 웜 가드 — 생성이 석재색을 한색(세이지/블루 그레이)으로 끌고 가는 드리프트를 conform에서
-# 결정론적으로 되돌린다(드레싱 정합 패스와 같은 방식). 저채도 몸통만 밀고 신호 악센트
-# (hazard 앰버·틸 심)와 청보라 암부는 남긴다.
-WARM_BAND = (40, 235)
-WARM_SAT_MAX = 0.28
-WARM_GAIN = (1.12, 1.00, 0.86)
+def _named_colors() -> dict[str, tuple[int, int, int, int]]:
+    entries = dict(load_gpl_entries())
+    missing = [name for name in COOL_FLOOR_COLOR_NAMES if name not in entries]
+    if missing:
+        raise ValueError(f"band-floor palette entries are missing: {missing}")
+    return {name: (*entries[name], 255) for name in COOL_FLOOR_COLOR_NAMES}
 
 
-def warm_guard(cell: Image.Image) -> Image.Image:
-    shifted = cell.copy()
-    pixels = shifted.load()
-    for py in range(shifted.height):
-        for px in range(shifted.width):
-            red, green, blue, alpha_value = pixels[px, py]
-            if alpha_value == 0:
-                continue
-            peak = max(red, green, blue)
-            if not WARM_BAND[0] <= peak <= WARM_BAND[1]:
-                continue
-            if peak and (peak - min(red, green, blue)) / peak > WARM_SAT_MAX:
-                continue
-            pixels[px, py] = (
-                min(255, round(red * WARM_GAIN[0])),
-                green,
-                min(255, round(blue * WARM_GAIN[2])),
-                alpha_value,
+def _validate_base_floor(base_floor: Image.Image) -> Image.Image:
+    base = base_floor.convert("RGBA")
+    if base.size != SPRITE_SIZE:
+        raise ValueError(f"unexpected base floor size: {base.size}")
+
+    alpha = base.getchannel("A")
+    if not set(_pixels(alpha)).issubset({0, 255}):
+        raise ValueError("shared floor alpha must be hard 0/255")
+    canonical = canonical_diamond_mask()
+    if alpha.tobytes() != canonical.tobytes():
+        raise ValueError("shared floor must use the canonical diamond mask")
+
+    legal_base = set(floor_source_colors().values())
+    visible = {pixel for pixel in _pixels(base) if pixel[3] > 0}
+    if not visible.issubset(legal_base):
+        raise ValueError(
+            "shared floor must use only the named grey-3/grey-4 base colors"
+        )
+    return base
+
+
+def _source_luminance_hint(source: Image.Image) -> Image.Image:
+    """Normalize one generated cell into a neutral 128x64 luminance field."""
+    resized = source.resize(SPRITE_SIZE, Image.Resampling.BOX).convert("RGBA")
+    visible_values = [
+        round(red * 0.2126 + green * 0.7152 + blue * 0.0722)
+        for red, green, blue, alpha in _pixels(resized)
+        if alpha >= ALPHA_CUTOFF
+    ]
+    if not visible_values:
+        raise ValueError("band floor placement hint contains no visible pixels")
+    background = sorted(visible_values)[len(visible_values) // 2]
+    field = Image.new("L", SPRITE_SIZE, background)
+    source_luma = resized.convert("L")
+    field.paste(source_luma, mask=resized.getchannel("A"))
+    return field
+
+
+def _stable_order(block_x: int, block_y: int, salt: int) -> int:
+    # Python's built-in hash is process-salted.  These fixed integer primes
+    # provide a stable tie-break for flat sources without introducing RNG state.
+    value = block_x * 73856093
+    value ^= block_y * 19349663
+    value ^= (salt + 1) * 83492791
+    value ^= value >> 13
+    return value & 0x7FFFFFFF
+
+
+def _ranked_blocks(
+    source: Image.Image,
+    mask: Image.Image,
+    protected_band: Image.Image,
+    salt: int,
+) -> list[tuple[int, int]]:
+    """Rank safe 2x2 blocks by local source contrast, then stable position."""
+    field = _source_luminance_hint(source)
+    blurred = field.filter(ImageFilter.BoxBlur(4))
+    field_pixels = field.load()
+    blur_pixels = blurred.load()
+    mask_pixels = mask.load()
+    band_pixels = protected_band.load()
+    ranked: list[tuple[int, int, int, int]] = []
+
+    for top in range(0, SPRITE_SIZE[1], PIXEL_CLUSTER):
+        for left in range(0, SPRITE_SIZE[0], PIXEL_CLUSTER):
+            points = tuple(
+                (left + dx, top + dy)
+                for dy in range(PIXEL_CLUSTER)
+                for dx in range(PIXEL_CLUSTER)
             )
-    return shifted
-
-
-# 틸 억제 — 틸은 Hole/출구 신호색 예약이라 밴드 바닥에서는 boss 의 "이상 심" 한 곳에만
-# 허용한다(§1-c). 생성이 mid/deep 에 흘린 틸 계열(물웅덩이 등)은 중성 콘크리트로 되돌린다.
-def suppress_teal(cell: Image.Image) -> Image.Image:
-    cleaned = cell.copy()
-    pixels = cleaned.load()
-    for py in range(cleaned.height):
-        for px in range(cleaned.width):
-            red, green, blue, alpha_value = pixels[px, py]
-            if alpha_value == 0:
+            if not all(
+                mask_pixels[x, y] and not band_pixels[x, y]
+                for x, y in points
+            ):
                 continue
-            if blue > red + 20 and green > red + 10:
-                value = max(red, green, blue)
-                pixels[px, py] = (
-                    round(value * 0.95),
-                    round(value * 0.92),
-                    round(value * 0.88),
-                    alpha_value,
-                )
-    return cleaned
+
+            # Dark local residuals carry cracks; absolute residuals retain a
+            # small amount of authored placement from lighter wear without
+            # copying its generated color or large connected silhouette.
+            residual = 0
+            dark_residual = 0
+            for x, y in points:
+                delta = blur_pixels[x, y] - field_pixels[x, y]
+                residual += abs(delta)
+                dark_residual += max(0, delta)
+            block_x = left // PIXEL_CLUSTER
+            block_y = top // PIXEL_CLUSTER
+            score = dark_residual * 3 + residual
+            ranked.append(
+                (-score, _stable_order(block_x, block_y, salt), block_y, block_x)
+            )
+
+    ranked.sort()
+    return [(block_x, block_y) for _, _, block_y, block_x in ranked]
 
 
-# 잠금 후에도 틸 계열 팔레트 항목이 non-boss 산출물에 남으면 실패시키는 금지 목록.
-TEAL_PALETTE_FAMILY = frozenset(
-    {
-        (55, 106, 103),   # anomaly-2
-        (79, 167, 160),   # anomaly-3
-        (154, 223, 232),  # anomaly-4
-        (198, 244, 247),  # sig-ice
-        (56, 153, 166),   # sig-teal-item
-        (61, 225, 232),   # sig-neon-cyan
-    }
-)
-
-
-def build_sprite(source: Image.Image, allow_teal: bool = True) -> Image.Image:
-    if not allow_teal:
-        source = suppress_teal(source)
-    resized = warm_guard(source).resize(SPRITE_SIZE, Image.Resampling.BOX)
-    alpha = resized.getchannel("A").point(
-        lambda value: 255 if value >= ALPHA_CUTOFF else 0
+def _select_contrast_blocks(
+    ranked: list[tuple[int, int]],
+    count: int,
+) -> list[tuple[int, int]]:
+    """Select separated 2x2 accents so no generated crack can become a line."""
+    selected: list[tuple[int, int]] = []
+    for candidate in ranked:
+        if any(
+            abs(candidate[0] - other[0]) <= 1
+            and abs(candidate[1] - other[1]) <= 1
+            for other in selected
+        ):
+            continue
+        selected.append(candidate)
+        if len(selected) == count:
+            return selected
+    raise ValueError(
+        f"canonical floor cannot place {count} separated contrast blocks"
     )
-    resized.putalpha(alpha)
-    # 잠금 직후 despeckle — 렌더링 문법 계약 §1-d(plan v2): 고립 1px 노이즈 금지.
-    return despeckle(lock_rgba_to_palette(resized))
 
 
-def _mean_value(image: Image.Image) -> float:
-    pixels = [p for p in image.get_flattened_data() if p[3] > 0]
-    return sum(max(p[0], p[1], p[2]) for p in pixels) / len(pixels) / 255
+def _paint_block(
+    output: Image.Image,
+    block: tuple[int, int],
+    color: tuple[int, int, int, int] | None,
+    base_colors: dict[str, tuple[int, int, int, int]],
+) -> None:
+    pixels = output.load()
+    left = block[0] * PIXEL_CLUSTER
+    top = block[1] * PIXEL_CLUSTER
+    for offset_y in range(PIXEL_CLUSTER):
+        for offset_x in range(PIXEL_CLUSTER):
+            x = left + offset_x
+            y = top + offset_y
+            if color is not None:
+                pixels[x, y] = color
+            else:
+                # Toggle between the two source greys.  Every selected pixel is
+                # observably authored in the PNG, while both values still map to
+                # the same calm Stone role at runtime.
+                pixels[x, y] = (
+                    base_colors["mid"]
+                    if pixels[x, y] == base_colors["wear"]
+                    else base_colors["wear"]
+                )
+
+
+def build_band_sprite(
+    source: Image.Image,
+    base_floor: Image.Image,
+    band: str,
+    salt: int,
+) -> Image.Image:
+    if band not in SHARED_RATIOS or band not in CONTRAST_RATIOS:
+        raise ValueError(f"unknown floor band: {band}")
+
+    mask = canonical_diamond_mask()
+    protected = outer_band_mask(mask, OUTER_BAND_PIXELS)
+    ranked = _ranked_blocks(source, mask, protected, salt)
+    visible_count = sum(value > 0 for value in _pixels(mask))
+    total_blocks = round(
+        visible_count * (1.0 - SHARED_RATIOS[band]) / (PIXEL_CLUSTER ** 2)
+    )
+    contrast_blocks = round(
+        visible_count * CONTRAST_RATIOS[band] / (PIXEL_CLUSTER ** 2)
+    )
+    if total_blocks > len(ranked):
+        raise ValueError(f"{band} detail budget exceeds canonical floor interior")
+    if contrast_blocks > total_blocks:
+        raise ValueError(f"{band} contrast budget exceeds its detail budget")
+
+    contrast = _select_contrast_blocks(ranked, contrast_blocks)
+    contrast_set = set(contrast)
+    subtle = [block for block in ranked if block not in contrast_set][
+        : total_blocks - contrast_blocks
+    ]
+    if len(subtle) != total_blocks - contrast_blocks:
+        raise ValueError(f"{band} cannot fill its subtle detail budget")
+
+    output = base_floor.copy()
+    colors = _named_colors()
+    base_colors = floor_source_colors()
+    for block in subtle:
+        _paint_block(output, block, None, base_colors)
+    for block in contrast:
+        _paint_block(output, block, colors["grey-2"], base_colors)
+    return output
 
 
 def build_outputs(
@@ -157,31 +310,19 @@ def build_outputs(
 ) -> dict[str, Image.Image]:
     if sheet.size != SHEET_SIZE:
         raise ValueError(f"unexpected band floor source size: {sheet.size}")
-    if base_floor.size != SPRITE_SIZE:
-        raise ValueError(f"unexpected base floor size: {base_floor.size}")
+    base = _validate_base_floor(base_floor)
 
-    base_value = _mean_value(base_floor.convert("RGBA"))
-    outputs: dict[str, Image.Image] = {}
+    tops: dict[str, Image.Image] = {}
     for spec in SPECS:
-        is_boss = spec.output_name.startswith("env-floor-boss")
-        sprite = build_sprite(extract_cell(sheet, spec.cell_index), allow_teal=is_boss)
-        drift = abs(_mean_value(sprite) - base_value)
-        if drift > BASE_VALUE_TOLERANCE:
-            raise ValueError(
-                f"{spec.output_name} drifts from the shared floor value "
-                f"({drift:.3f} > {BASE_VALUE_TOLERANCE}) — §1-c base color gate"
+        if spec.band not in tops:
+            tops[spec.band] = build_band_sprite(
+                extract_cell(sheet, spec.cell_index),
+                base,
+                spec.band,
+                spec.cell_index,
             )
-        if not is_boss:
-            leaked = {
-                p[:3] for p in sprite.get_flattened_data() if p[3] > 0
-            } & TEAL_PALETTE_FAMILY
-            if leaked:
-                raise ValueError(
-                    f"{spec.output_name} keeps reserved teal colors {sorted(leaked)} "
-                    "— teal is allowed only on boss tiles (§1-c)"
-                )
-        outputs[spec.output_name] = sprite
-    return outputs
+
+    return {spec.output_name: tops[spec.band].copy() for spec in SPECS}
 
 
 def main() -> None:
@@ -196,8 +337,8 @@ def main() -> None:
     )
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for name, image in outputs.items():
-        image.save(OUTPUT / f"{name}.png", optimize=True)
-    print(f"wrote {len(outputs)} band floor sprites to {OUTPUT}")
+        (OUTPUT / f"{name}.png").write_bytes(encode_png(image))
+    print(f"wrote {len(outputs)} calm band floor sprites to {OUTPUT}")
 
 
 if __name__ == "__main__":

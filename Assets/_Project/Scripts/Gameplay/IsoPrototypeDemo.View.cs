@@ -124,6 +124,7 @@ namespace ProjectC.Gameplay
             if (_selection != null)
                 PositionSelection(_selectionPos);
             ApplyThrowRangePreviewView();
+            ApplyVerticalReadOnlyMarkerView();
             _hubWorld.ApplyView(_grid.iso, VisualPosition);
 
             RefreshFloorVisibility();
@@ -257,30 +258,58 @@ namespace ProjectC.Gameplay
                 !_b2HeroRoomLayout.ContainsRoomCell(playerPosition))
                 return false;
 
-            var projectedCenters = new List<Vector2>(_b2HeroRoomLayout.RoomCells.Count + 1);
+            var framingCells = new List<GridPos>(_b2HeroRoomLayout.RoomCells.Count + 1);
             foreach (GridPos roomCell in _b2HeroRoomLayout.RoomCells)
             {
                 if (_dungeon.Height.FloorIndex(roomCell.elevation) != activeFloorIndex)
                     continue;
-
-                Vector3 world = _grid.GridToWorld(roomCell);
-                projectedCenters.Add(new Vector2(world.x, world.y));
+                framingCells.Add(roomCell);
             }
 
             if (TryFindClosestB2RoomDoor(activeFloorIndex, out GridPos door))
+                framingCells.Add(door);
+
+            if (framingCells.Count == 0) return false;
+
+            // 직사각형 방은 투영 축이 바뀌면 가로/세로 필요량이 달라진다. 현재 시점만
+            // auto-fit하면 Q/E마다 orthographicSize가 바뀌어 월드 전체가 약 5% 맥동한다.
+            // 네 시점 중 가장 큰 필요 배율을 한 번 고정하고, 현재 시점은 중심만 다시 맞춘다.
+            float stableSize = playCameraSize;
+            var projectedCenters = new List<Vector2>(framingCells.Count);
+            for (int view = 0; view < 4; view++)
             {
-                Vector3 world = _grid.GridToWorld(door);
-                projectedCenters.Add(new Vector2(world.x, world.y));
+                ProjectB2FramingCells(framingCells, view, projectedCenters);
+                OrthographicCameraFrame candidate =
+                    OrthographicCameraFraming.FitProjectedBounds(
+                        projectedCenters,
+                        aspect,
+                        B2RoomHudSafeViewport,
+                        B2RoomCameraPadding,
+                        playCameraSize);
+                stableSize = Mathf.Max(stableSize, candidate.Size);
             }
 
-            if (projectedCenters.Count == 0) return false;
+            ProjectB2FramingCells(
+                framingCells,
+                _grid.iso.viewQuarterTurns,
+                projectedCenters);
             frame = OrthographicCameraFraming.FitProjectedBounds(
                 projectedCenters,
                 aspect,
                 B2RoomHudSafeViewport,
                 B2RoomCameraPadding,
-                playCameraSize);
+                stableSize);
             return true;
+        }
+
+        private void ProjectB2FramingCells(
+            IReadOnlyList<GridPos> cells,
+            int viewQuarterTurns,
+            List<Vector2> projectedCenters)
+        {
+            projectedCenters.Clear();
+            for (int i = 0; i < cells.Count; i++)
+                projectedCenters.Add(_grid.iso.GridToWorld(cells[i], viewQuarterTurns));
         }
 
         private bool TryFindClosestB2RoomDoor(

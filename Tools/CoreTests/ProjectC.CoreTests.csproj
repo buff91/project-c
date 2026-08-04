@@ -56,6 +56,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentSaveProfileTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DevelopmentViewportServiceTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DisplaySettingsDataTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFloorPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/DungeonFogBackdropLayoutTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/FloorFoundationPresentationTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/HudPresentationTests.cs" />
