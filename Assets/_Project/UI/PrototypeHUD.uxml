@@ -30,6 +30,7 @@
         <ui:VisualElement name="floor-instrument" class="artifact-panel pc-plate minimap-panel">
             <ui:VisualElement class="minimap-header">
                 <ui:VisualElement class="minimap-header-buttons">
+                    <ui:Button name="tactical-map-open" text="MAP" class="settings-button tactical-map-open" tooltip="전술 지도 (M)" />
                     <ui:Button name="mode-button" class="settings-button hud-mode-button" tooltip="플레이 시야 / 전체 구조 디버그 전환">
                         <ui:Label name="mode-label" text="FOV" class="hud-mode-label" />
                     </ui:Button>
@@ -161,6 +162,49 @@
         </ui:VisualElement>
 
         <ui:Instance template="DisplaySettings" class="settings-template-host" picking-mode="Ignore" />
+
+        <!-- PC 전용 읽기 전용 전술 지도. 월드 카메라를 움직이지 않고 기록된 층 지도만
+             UI Toolkit 뷰포트 안에서 팬/줌한다. Mobile은 base USS에서 계속 숨긴다. -->
+        <ui:VisualElement name="tactical-map-modal" class="settings-modal tactical-map-modal">
+            <ui:VisualElement name="tactical-map-window" class="artifact-panel pc-window tactical-map-window">
+                <ui:VisualElement class="settings-header tactical-map-header">
+                    <ui:VisualElement class="tactical-map-heading">
+                        <ui:Label name="tactical-map-title" text="TACTICAL MAP" class="settings-title tactical-map-title" picking-mode="Ignore" />
+                        <ui:Label name="tactical-map-floor-state" text="플레이 -- · 현재 층" class="tactical-map-floor-state" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Button name="tactical-map-close" text="×" class="settings-close tactical-map-close" tooltip="지도 닫기 (M / ESC)" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="tactical-map-body">
+                    <ui:VisualElement class="tactical-map-floor-rail">
+                        <ui:Label text="FLOORS" class="tactical-map-section-label" picking-mode="Ignore" />
+                        <ui:VisualElement name="tactical-map-floor-list" class="tactical-map-floor-list" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="tactical-map-viewport" class="tactical-map-viewport" focusable="true" tooltip="드래그 이동 · 휠 확대/축소">
+                        <ui:VisualElement name="tactical-map-canvas" class="tactical-map-canvas" picking-mode="Ignore">
+                            <ui:VisualElement name="tactical-map-player-marker" class="tactical-map-player-marker" picking-mode="Ignore">
+                                <ui:VisualElement class="minimap-player-glyph" picking-mode="Ignore">
+                                    <ui:VisualElement class="minimap-player-core" picking-mode="Ignore" />
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:Label name="tactical-map-floor-badge" text="B2" class="minimap-floor-badge tactical-map-floor-badge" picking-mode="Ignore" />
+                        <ui:Label name="tactical-map-north-label" text="N" class="minimap-north-label tactical-map-north-label" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="tactical-map-footer">
+                    <ui:VisualElement class="tactical-map-zoom-controls">
+                        <ui:Button name="tactical-map-zoom-out" text="−" class="pc-btn tactical-map-tool-button tactical-map-zoom-button" tooltip="지도 축소 (휠 아래)" />
+                        <ui:Label name="tactical-map-zoom-value" text="100%" class="pc-readout tactical-map-zoom-value" picking-mode="Ignore" />
+                        <ui:Button name="tactical-map-zoom-in" text="+" class="pc-btn tactical-map-tool-button tactical-map-zoom-button" tooltip="지도 확대 (휠 위)" />
+                        <ui:Button name="tactical-map-fit" text="FIT" class="pc-btn tactical-map-tool-button" tooltip="선택한 층 지도를 화면에 맞추기" />
+                        <ui:Button name="tactical-map-player" text="PLAYER" class="pc-btn tactical-map-tool-button tactical-map-player-button" tooltip="플레이 층과 플레이어 위치로 돌아가기" />
+                    </ui:VisualElement>
+                    <ui:Label name="tactical-map-hint" text="드래그 이동 · 휠 확대/축소 · M/ESC 닫기" class="tactical-map-hint" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
 
         <ui:VisualElement name="inventory-modal" class="settings-modal">
             <ui:VisualElement class="artifact-panel pc-window settings-card inventory-card diablo-inventory-card">

@@ -12,6 +12,8 @@ namespace ProjectC.Gameplay
     public partial class IsoPrototypeDemo
     {
         private SpriteRenderer _dungeonAtmosphereBackdrop;
+        private readonly Dictionary<GridPos, TileKind> _exploredMapTileKinds =
+            new Dictionary<GridPos, TileKind>();
 
         /// <summary>
         /// 평상시는 양방향 passive 창을 유지하지만 명시적 층 보기에서는 선택한 방향만 남긴다.
@@ -734,6 +736,8 @@ namespace ProjectC.Gameplay
         {
             _visibleTiles.Clear();
             _verticalPreviewTiles.Clear();
+            if (_exploredTiles.Count == 0)
+                _exploredMapTileKinds.Clear();
 
             // 허브 캠프는 안개 없이 전부 보인다.
             if (hubMode)
@@ -741,7 +745,7 @@ namespace ProjectC.Gameplay
                 foreach (var pair in _grid.Map.All())
                 {
                     _visibleTiles.Add(pair.Key);
-                    _exploredTiles.Add(pair.Key);
+                    RememberExploredMapTile(pair.Key, pair.Value.kind);
                 }
                 return;
             }
@@ -767,7 +771,7 @@ namespace ProjectC.Gameplay
                          fieldOfViewRadius))
             {
                 _visibleTiles.Add(pos);
-                _exploredTiles.Add(pos);
+                RememberExploredMapTile(pos);
             }
 
             // 실제 Hole만 양방향 시야 포털이다.
@@ -854,61 +858,163 @@ namespace ProjectC.Gameplay
             }
         }
 
+        private void RememberExploredMapTile(GridPos pos)
+        {
+            TileData tile = _grid?.Map.Get(pos);
+            if (tile == null) return;
+            RememberExploredMapTile(pos, tile.kind);
+        }
+
+        private void RememberExploredMapTile(GridPos pos, TileKind kind)
+        {
+            _exploredTiles.Add(pos);
+            _exploredMapTileKinds[pos] = kind;
+        }
+
         public int MinimapSize => roomSize;
+
+        /// <summary>
+        /// 지도 창은 플레이어 입력 단계의 정상 PLAY에서만 열 수 있다.
+        /// 조준·낙하 확인·수직 관찰·자유 카메라는 UI의 단일 진입 경로가 정리하며,
+        /// 여기서는 실제 행동 해결 중이거나 플레이가 끝난 상태만 거절한다.
+        /// </summary>
+        public bool CanOpenMapInspection =>
+            Application.isPlaying &&
+            !hubMode &&
+            viewMode == DungeonViewMode.Play &&
+            !_resolvingAction &&
+            _grid != null &&
+            _dungeon != null &&
+            _playerState != null &&
+            _playerState.IsAlive &&
+            (_runSummary == null || !_runSummary.Ended);
+
+        /// <summary>현재 층 또는 실제 탐색 기억이 하나 이상 있는 방문 층만 지도에서 선택한다.</summary>
+        public bool CanInspectFloor(int floorIndex)
+        {
+            if (hubMode || _dungeon == null || _grid == null ||
+                !_dungeon.TryGetFloor(floorIndex, out _))
+                return false;
+
+            bool isCurrentFloor = floorIndex == _activeFloorIndex;
+            bool hasExplored = false;
+            foreach (GridPos pos in _exploredTiles)
+            {
+                if (_dungeon.Height.FloorIndex(pos.elevation) != floorIndex) continue;
+                hasExplored = true;
+                break;
+            }
+
+            return MapInspectionRules.CanInspectFloor(isCurrentFloor, hasExplored);
+        }
 
         /// <summary>
         /// HUD 미니맵용 픽셀 채우기: 활성 층의 안개 상태(시야/탐색)를 그대로 반영한다.
         /// 좌표 회전은 적용하지 않는다(맵은 항상 북쪽 고정). true = 그릴 데이터 있음.
         /// </summary>
-        public bool FillMinimap(Color32[] pixels, int width, int height)
+        public bool FillMinimap(Color32[] pixels, int width, int height) =>
+            FillMapPixels(
+                pixels,
+                width,
+                height,
+                _activeFloorIndex,
+                inspection: false);
+
+        /// <summary>
+        /// 전술 지도용 북쪽 고정 스냅샷. 현재 층은 기존 미니맵과 같고,
+        /// 비활성 층은 마지막으로 본 타일 기억만 그려 live 상태와 엔티티를 누설하지 않는다.
+        /// </summary>
+        public bool FillInspectionMap(
+            Color32[] pixels,
+            int width,
+            int height,
+            int floorIndex)
         {
-            if (_dungeon == null || _grid == null || pixels == null || pixels.Length < width * height)
+            if (viewMode != DungeonViewMode.Play || !CanInspectFloor(floorIndex))
+                return false;
+
+            return FillMapPixels(pixels, width, height, floorIndex, inspection: true);
+        }
+
+        private bool FillMapPixels(
+            Color32[] pixels,
+            int width,
+            int height,
+            int floorIndex,
+            bool inspection)
+        {
+            if (_dungeon == null || _grid == null || pixels == null ||
+                width <= 0 || height <= 0 || width > pixels.Length / height)
                 return false;
 
             var empty = new Color32(0, 0, 0, 0);
             for (int i = 0; i < width * height; i++)
                 pixels[i] = empty;
 
-            bool debug = viewMode == DungeonViewMode.DebugAll;
+            bool isCurrentFloor = floorIndex == _activeFloorIndex;
+            bool debug = !inspection && viewMode == DungeonViewMode.DebugAll;
             foreach (var pair in _grid.Map.All())
             {
                 GridPos pos = pair.Key;
-                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
+                if (_dungeon.Height.FloorIndex(pos.elevation) != floorIndex) continue;
                 if (pos.x < 0 || pos.x >= width || pos.y < 0 || pos.y >= height) continue;
 
                 bool visible = debug || _visibleTiles.Contains(pos);
                 bool explored = _exploredTiles.Contains(pos);
-                if (!visible && !explored)
+                bool mapped = TryGetMappedSilhouette(pos, out MapSilhouetteKind silhouette);
+                MapInspectionTileState state = MapInspectionRules.ResolveTile(
+                    isCurrentFloor,
+                    visible,
+                    explored,
+                    mapped);
+                switch (state)
                 {
-                    if (!TryGetMappedSilhouette(pos, out MapSilhouetteKind silhouette))
-                        continue;
-                    pixels[pos.y * width + pos.x] = MappedMinimapColor(silhouette);
-                    continue;
+                    case MapInspectionTileState.Mapped:
+                        pixels[pos.y * width + pos.x] = MappedMinimapColor(silhouette);
+                        break;
+                    case MapInspectionTileState.Explored:
+                    {
+                        TileKind rememberedKind = isCurrentFloor
+                            ? pair.Value.kind
+                            : _exploredMapTileKinds.TryGetValue(pos, out TileKind knownKind)
+                                ? knownKind
+                                : TileKind.Floor;
+                        pixels[pos.y * width + pos.x] =
+                            MinimapTileColor(rememberedKind, visible: false);
+                        break;
+                    }
+                    case MapInspectionTileState.Visible:
+                        pixels[pos.y * width + pos.x] =
+                            MinimapTileColor(pair.Value.kind, visible: true);
+                        break;
+                }
+            }
+
+            if (MapInspectionRules.CanShowLiveEntities(isCurrentFloor))
+            {
+                foreach (ItemAgent item in _items)
+                {
+                    GridPos pos = item.Spawn.Position;
+                    if (item.Collected || !_visibleTiles.Contains(pos) && !debug) continue;
+                    if (_dungeon.Height.FloorIndex(pos.elevation) != floorIndex) continue;
+                    if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
+                        pixels[pos.y * width + pos.x] = new Color32(104, 200, 110, 255);
                 }
 
-                pixels[pos.y * width + pos.x] = MinimapTileColor(pair.Value.kind, visible);
-            }
+                foreach (EnemyAgent enemy in _enemies)
+                {
+                    GridPos pos = enemy.State.Position;
+                    if (!enemy.State.IsAlive || !_visibleTiles.Contains(pos) && !debug) continue;
+                    if (_dungeon.Height.FloorIndex(pos.elevation) != floorIndex) continue;
+                    if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
+                        pixels[pos.y * width + pos.x] = new Color32(224, 74, 58, 255);
+                }
 
-            foreach (ItemAgent item in _items)
-            {
-                GridPos pos = item.Spawn.Position;
-                if (item.Collected || !_visibleTiles.Contains(pos) && !debug) continue;
-                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
-                if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
-                    pixels[pos.y * width + pos.x] = new Color32(104, 200, 110, 255);
+                if (_playerPos.x >= 0 && _playerPos.x < width &&
+                    _playerPos.y >= 0 && _playerPos.y < height)
+                    pixels[_playerPos.y * width + _playerPos.x] =
+                        new Color32(255, 213, 84, 255);
             }
-
-            foreach (EnemyAgent enemy in _enemies)
-            {
-                GridPos pos = enemy.State.Position;
-                if (!enemy.State.IsAlive || !_visibleTiles.Contains(pos) && !debug) continue;
-                if (_dungeon.Height.FloorIndex(pos.elevation) != _activeFloorIndex) continue;
-                if (pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height)
-                    pixels[pos.y * width + pos.x] = new Color32(224, 74, 58, 255);
-            }
-
-            if (_playerPos.x >= 0 && _playerPos.x < width && _playerPos.y >= 0 && _playerPos.y < height)
-                pixels[_playerPos.y * width + _playerPos.x] = new Color32(255, 213, 84, 255);
 
             return true;
         }

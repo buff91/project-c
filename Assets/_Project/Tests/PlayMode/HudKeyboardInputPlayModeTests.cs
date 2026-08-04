@@ -10,7 +10,8 @@ namespace ProjectC.Tests.PlayMode
         {
             HudKeyboardAction.Cancel,
             HudKeyboardAction.ToggleInventory,
-            HudKeyboardAction.ToggleDebugPanel
+            HudKeyboardAction.ToggleDebugPanel,
+            HudKeyboardAction.ToggleMap
         };
 
         [Test]
@@ -23,13 +24,16 @@ namespace ProjectC.Tests.PlayMode
         [TestCase(Key.Escape)]
         [TestCase(Key.I)]
         [TestCase(Key.F1)]
+        [TestCase(Key.M)]
         public void SingleKey_EmitsOnlyMappedActionForOneFrame(Key key)
         {
             HudKeyboardAction expected = key == Key.Escape
                 ? HudKeyboardAction.Cancel
                 : key == Key.I
                     ? HudKeyboardAction.ToggleInventory
-                    : HudKeyboardAction.ToggleDebugPanel;
+                    : key == Key.M
+                        ? HudKeyboardAction.ToggleMap
+                        : HudKeyboardAction.ToggleDebugPanel;
             Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
             Press(keyboard[key]);
 

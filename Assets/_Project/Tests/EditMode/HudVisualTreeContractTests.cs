@@ -21,6 +21,24 @@ namespace ProjectC.Tests
             "minimap-floor-badge",
             "minimap-north-label",
             "minimap-player-marker",
+            "tactical-map-open",
+            "tactical-map-modal",
+            "tactical-map-window",
+            "tactical-map-title",
+            "tactical-map-floor-state",
+            "tactical-map-close",
+            "tactical-map-floor-list",
+            "tactical-map-viewport",
+            "tactical-map-canvas",
+            "tactical-map-floor-badge",
+            "tactical-map-north-label",
+            "tactical-map-player-marker",
+            "tactical-map-zoom-out",
+            "tactical-map-zoom-value",
+            "tactical-map-zoom-in",
+            "tactical-map-fit",
+            "tactical-map-player",
+            "tactical-map-hint",
             "settings-button",
             "game-menu-button",
             "rotate-left",
@@ -160,6 +178,35 @@ namespace ProjectC.Tests
             AssertSubtreeIgnoresPicking(
                 minimapPlayerMarker.Q<VisualElement>(className: "minimap-player-glyph"),
                 "Minimap player glyph");
+
+            Button tacticalMapOpen = tree.Q<Button>("tactical-map-open");
+            Assert.AreEqual("MAP", tacticalMapOpen.text);
+            StringAssert.Contains("M", tacticalMapOpen.tooltip);
+            VisualElement tacticalMapModal = tree.Q<VisualElement>("tactical-map-modal");
+            Assert.IsTrue(tacticalMapModal.ClassListContains("settings-modal"));
+            Assert.IsFalse(tacticalMapModal.ClassListContains("is-open"));
+            Assert.IsTrue(
+                tree.Q<VisualElement>("tactical-map-window").ClassListContains("pc-window"));
+            Button tacticalMapClose = tree.Q<Button>("tactical-map-close");
+            Assert.AreEqual("×", tacticalMapClose.text);
+            StringAssert.Contains("ESC", tacticalMapClose.tooltip);
+            Assert.AreEqual(
+                PickingMode.Position,
+                tree.Q<VisualElement>("tactical-map-viewport").pickingMode);
+            AssertSubtreeIgnoresPicking(
+                tree.Q<VisualElement>("tactical-map-canvas"),
+                "Tactical map canvas");
+            Assert.AreEqual(
+                PickingMode.Ignore,
+                tree.Q<Label>("tactical-map-floor-badge").pickingMode);
+            Assert.AreEqual(
+                PickingMode.Ignore,
+                tree.Q<Label>("tactical-map-north-label").pickingMode);
+            Assert.AreEqual("FIT", tree.Q<Button>("tactical-map-fit").text);
+            Assert.AreEqual("PLAYER", tree.Q<Button>("tactical-map-player").text);
+            StringAssert.Contains(
+                "휠 확대/축소",
+                tree.Q<Label>("tactical-map-hint").text);
             Assert.IsFalse(tree.Q("feedback-chip").ClassListContains("is-open"));
             Assert.IsFalse(tree.Q("vertical-hint-chip").ClassListContains("is-open"));
             VisualElement travelModeChip = tree.Q("travel-mode-chip");
@@ -242,6 +289,38 @@ namespace ProjectC.Tests
                 Does.Match(
                     @"\.hud-root\.hud-desktop\s+\.minimap-player-marker\s*\{[^}]*display:\s*flex;"),
                 "The scene can load the shared HUD directly, so its PC class must reveal the marker.");
+        }
+
+        [Test]
+        public void TacticalMap_IsDesktopOnlyAndUsesFixedFieldDeckWindow()
+        {
+            string baseStyle = System.IO.File.ReadAllText(System.IO.Path.Combine(
+                Application.dataPath,
+                "_Project/UI/PrototypeHUD.uss"));
+            string desktopStyle = System.IO.File.ReadAllText(System.IO.Path.Combine(
+                Application.dataPath,
+                "_Project/UI/PrototypeHUD.Desktop.uss"));
+
+            Assert.That(
+                baseStyle,
+                Does.Match(
+                    @"\.tactical-map-modal\.is-open\s*\{[^}]*display:\s*none;"),
+                "공용/Mobile 뷰에서는 전술 지도 모달이 열리면 안 된다");
+            Assert.That(
+                desktopStyle,
+                Does.Match(
+                    @"\.hud-root\.hud-desktop\s+\.tactical-map-modal\.is-open\s*\{[^}]*display:\s*flex;"),
+                "Desktop만 전술 지도 모달을 열어야 한다");
+            Assert.That(
+                desktopStyle,
+                Does.Match(
+                    @"\.tactical-map-window\.pc-window\s*\{[^}]*width:\s*520px;[^}]*height:\s*304px;"),
+                "640×360 Field Deck 안에서 승인한 지도 창 footprint를 유지해야 한다");
+            Assert.That(
+                desktopStyle,
+                Does.Match(
+                    @"\.tactical-map-viewport\s*\{[^}]*overflow:\s*hidden;"),
+                "확대한 지도 캔버스가 창 밖으로 새면 안 된다");
         }
 
         [TestCase(6, 13, 148f, 44f, 74f)]

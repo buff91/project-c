@@ -21,6 +21,12 @@ namespace ProjectC.Gameplay
             UpdateMinimap();
             UpdateBossPanel();
             UpdateVerticalViewControls();
+            if (IsTacticalMapOpen)
+            {
+                _tacticalMapFloorIndex = demo.ActiveFloorIndex;
+                RebuildTacticalMapFloors();
+                RefreshTacticalMapTexture();
+            }
         }
 
         private void HandleViewModeChanged(DungeonViewMode _)
