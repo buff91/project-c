@@ -323,7 +323,8 @@ namespace ProjectC.Gameplay
                 if (!CanPerformFollowUpAction(firingApproach))
                     yield break;
 
-                // 접근이 끝난 그 탭에서 조건이 갖춰졌으면 즉시 발사.
+                // 위협이 보이면 예산이 1스텝으로 잘리고 CanPerformFollowUpAction 이 발사를
+                // 막는다 — 접근 후 즉시 발사는 위협 없는 계획에서만 일어난다.
                 if (_playerState.IsAlive && enemy.State.IsAlive &&
                     RangedWeaponRules.TryFire(
                         _playerState, enemy.State, _grid.Map, _playerLoadout, _rangedCharges,

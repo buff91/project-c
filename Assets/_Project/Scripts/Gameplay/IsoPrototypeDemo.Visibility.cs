@@ -378,8 +378,9 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>
-        /// 2~3칸짜리 Hole은 물리적으로 한 개구부다. 각 셀의 깨진 가장자리는 모두 그리되
-        /// 목적 층 라벨은 대표 칸 하나에만 남겨 같은 문구가 타일마다 반복되지 않게 한다.
+        /// 인접한 Hole 셀 묶음은 물리적으로 한 개구부다. 각 셀의 깨진 가장자리는 모두 그리되
+        /// 목적 층 라벨은 개구부마다 대표 칸 하나에만 남겨 같은 문구가 타일마다 반복되지 않게
+        /// 한다. 한 층에 개구부가 여러 개면 각 개구부가 자기 대표 라벨을 따로 가진다.
         /// </summary>
         private bool ShouldShowVerticalLandmarkLabel(VerticalLandmarkAgent landmark)
         {
@@ -388,7 +389,8 @@ namespace ProjectC.Gameplay
             int floorIndex = _dungeon.Height.FloorIndex(landmark.Anchor.elevation);
             if (!_dungeon.TryGetFloor(floorIndex, out DungeonFloorInfo floor)) return true;
 
-            foreach (GridPos hole in floor.HoleTiles)
+            foreach (GridPos hole in HoleOpeningRules.OpeningContaining(
+                         floor.HoleTiles, landmark.Anchor))
             {
                 foreach (VerticalLandmarkAgent candidate in _verticalLandmarks)
                 {
