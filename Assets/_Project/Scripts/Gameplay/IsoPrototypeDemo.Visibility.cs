@@ -319,6 +319,9 @@ namespace ProjectC.Gameplay
 
         private void RefreshVerticalLandmarks()
         {
+            // 라벨 대표칸은 "현재 표시 중인 Hole 셀" 가운데 골라야 한다. 먼저 모든 root의
+            // 가시성을 확정한 뒤 두 번째 패스에서 라벨을 고르면, 정적 대표칸만 가려진 경우에도
+            // 같은 개구부의 보이는 형제가 라벨을 넘겨받을 수 있다.
             foreach (VerticalLandmarkAgent landmark in _verticalLandmarks)
             {
                 UpdateVerticalLandmarkTransform(landmark);
@@ -343,7 +346,13 @@ namespace ProjectC.Gameplay
                         ? anchorVisible || anchorPreview || destinationVisible || destinationPreview
                         : activeRoute && (anchorVisible || destinationVisible);
                 landmark.Root.SetActive(show);
-                if (!show) continue;
+            }
+
+            foreach (VerticalLandmarkAgent landmark in _verticalLandmarks)
+            {
+                if (!landmark.Root.activeSelf) continue;
+                landmark.Label.gameObject.SetActive(
+                    ShouldShowVerticalLandmarkLabel(landmark));
 
                 bool viewedFromBelow =
                     _dungeon.Height.FloorIndex(landmark.Anchor.elevation) > _activeFloorIndex;
@@ -353,6 +362,9 @@ namespace ProjectC.Gameplay
                         landmark.Kind, viewedFromBelow, destinationLabel, out VerticalRouteCue cue))
                     landmark.Label.text = cue.WorldLabel;
 
+                bool anchorVisible = _visibleTiles.Contains(landmark.Anchor);
+                bool destinationVisible = landmark.Destination.HasValue &&
+                                          _visibleTiles.Contains(landmark.Destination.Value);
                 float alpha = viewMode == DungeonViewMode.DebugAll ||
                               anchorVisible || destinationVisible
                     ? 1f
@@ -363,6 +375,34 @@ namespace ProjectC.Gameplay
                 labelColor.a = alpha;
                 landmark.Label.color = labelColor;
             }
+        }
+
+        /// <summary>
+        /// 2~3칸짜리 Hole은 물리적으로 한 개구부다. 각 셀의 깨진 가장자리는 모두 그리되
+        /// 목적 층 라벨은 대표 칸 하나에만 남겨 같은 문구가 타일마다 반복되지 않게 한다.
+        /// </summary>
+        private bool ShouldShowVerticalLandmarkLabel(VerticalLandmarkAgent landmark)
+        {
+            if (landmark.Kind != TileKind.Hole) return true;
+
+            int floorIndex = _dungeon.Height.FloorIndex(landmark.Anchor.elevation);
+            if (!_dungeon.TryGetFloor(floorIndex, out DungeonFloorInfo floor)) return true;
+
+            foreach (GridPos hole in floor.HoleTiles)
+            {
+                foreach (VerticalLandmarkAgent candidate in _verticalLandmarks)
+                {
+                    if (candidate.Kind != TileKind.Hole || candidate.Anchor != hole)
+                        continue;
+                    if (candidate.Root.activeSelf)
+                        return candidate.Anchor == landmark.Anchor;
+                    break;
+                }
+            }
+
+            // 현재 landmark 자체가 표시 중이면 정상 데이터에서는 위에서 반드시 잡힌다.
+            // 오래된/수제 레이아웃에 HoleTiles가 비어 있는 경우만 라벨을 보존한다.
+            return true;
         }
 
         private bool IsDebugLandmarkReachable(VerticalLandmarkAgent landmark)

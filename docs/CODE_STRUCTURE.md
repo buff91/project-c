@@ -80,6 +80,7 @@
 | `DungeonFloorPresentation.cs` | 카메라/열거 순서와 무관한 좌표 해시로 Facility 드레싱 3/32와 밴드 손상 타일 약 10~13%를 희소 배치하고 4방향 인접 반복을 억제한다 |
 | `PrototypeEnvironmentSprites.cs` | 타일·벽·문·비밀문·안개·광원 타일. 캐시 + 팔레트 의존 |
 | `PrototypeEnvironmentSprites.Foundation.cs` | B2 전용 face-only 10px fascia와 12×38 코너 지지대 픽셀. 윗면·충돌·격자를 모르는 절차 프레젠테이션 |
+| `PrototypeEnvironmentSprites.MapKnowledge.cs` | 같은 층 `Unknown + MappedSilhouette` 전용 중립 점묘·끊긴 다이아·`Floor/Barrier/Door/Gap` 범주 기호. 실제 타일 재질과 다른 층 관찰 면은 모른다 |
 | `TileVisualFacts.cs` | 호스트가 풀어 넘기는 격자 사실 묶음(진행 맥락·전면 여부·평면 방향·비밀문 힌트·허브 여부) |
 
 > 리팩토링 시 픽셀 동일성은 **씬 렌더 지문**으로 검증했다 — `IsoPrototype`/`Hub` 씬을 빌드해
@@ -179,7 +180,7 @@
 | `MapKnowledgeRules.cs` | FOV와 무관한 현재 층 mapped 공개 범위·비밀문/비밀방 footprint 제외·실제 `TileKind`를 `Floor/Barrier/Door/Gap` 공용 범주로 축약·mapped 경로의 자동 층 전환 진입 차단 |
 | `VerticalTraversalRules.cs` | 수직 이동 수단의 자동 발동 범위와 사다리 월드 표현 크기. 층 전환 계단은 밟는 즉시, 사다리는 명시적 상호작용 |
 | `VerticalRouteCue.cs` | 수직 이동 수단을 처음 봤을 때의 짧은 설명(`VerticalRouteRole` 6종). 색이 아니라 "어떻게 생겼고 무엇을 하면 어디로 가는지"를 말한다 |
-| `TravelRules.cs` | 실제/mapped 자동 이동 스텝 수와 인터럽트 우선순위(피해 > 새 적 > 새 아이템), 행동 직후 transient 적 발견 보존 판정. 스냅샷·문 행동·재계획은 Gameplay 호출부가 소유 |
+| `TravelRules.cs` | 실제/mapped 자동 이동의 스텝+후속 행동 예산과 인터럽트 우선순위(피해 > 새 적 > 새 아이템), 행동 직후 transient 적 발견 보존 판정. 접근 스냅샷·문 행동·재계획은 Gameplay 호출부가 소유 |
 | `WorldInputRules.cs` | 화면에 겹친 실제 타일/현재 활성 층 mapped 후보 중 하나 고르기 — 조작 층에 가까운 것(`LayerPriority`) 우선, 같으면 렌더 정렬 순서. 공개 전 비밀방은 제외하고 Hole 반대편 미리보기는 PLAY에서 읽기 전용 |
 
 ### 시야·조명·표현 규칙

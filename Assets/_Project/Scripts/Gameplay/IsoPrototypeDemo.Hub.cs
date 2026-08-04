@@ -74,9 +74,14 @@ namespace ProjectC.Gameplay
         }
 
         /// <summary>NPC/오브젝트 옆까지 걸어간 뒤 상호작용 이벤트를 쏜다. (허브 전용)</summary>
-        private IEnumerator ApproachAndInteract(IReadOnlyList<GridPos> path, GridPos target, string id)
+        private IEnumerator ApproachAndInteract(
+            ApproachPlan approach,
+            GridPos target,
+            string id)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
             if (_playerState.IsAlive && IsPlayerAdjacentTo(target))
                 HubInteractionRequested?.Invoke(id);
         }

@@ -87,9 +87,12 @@ namespace ProjectC.Gameplay
 
         /// <summary>탈출구까지 걸어가 "계속 탐색 vs 여기서 생환" 선택지를 띄운다.</summary>
         private IEnumerator ApproachAndOfferExtraction(
-            IReadOnlyList<GridPos> path, ExtractionAgent point)
+            ApproachPlan approach,
+            ExtractionAgent point)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
             if (!_playerState.IsAlive || !IsPlayerAdjacentTo(point.Position)) yield break;
 
             AtExtractionPoint = true;

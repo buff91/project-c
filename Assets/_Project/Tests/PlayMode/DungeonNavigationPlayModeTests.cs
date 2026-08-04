@@ -7,6 +7,7 @@ using ProjectC.Gameplay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace ProjectC.Tests.PlayMode
 {
@@ -66,6 +67,14 @@ namespace ProjectC.Tests.PlayMode
             Assert.IsFalse(
                 GetField<HashSet<GridPos>>(demo, "_exploredTiles").Contains(route.Target),
                 "닫힌 문 너머 목적지는 아직 Explored이면 안 된다");
+            Dictionary<GridPos, SpriteRenderer> mappedRenderers =
+                GetField<Dictionary<GridPos, SpriteRenderer>>(
+                    demo,
+                    "_mappedSilhouetteRenderers");
+            Assert.IsTrue(mappedRenderers.TryGetValue(route.Target, out SpriteRenderer mapped));
+            Assert.IsTrue(mapped.enabled);
+            StringAssert.StartsWith("Map Knowledge ", mapped.sprite.name,
+                "현재 층 Unknown은 다른 층 실제 표면이 아니라 전용 선·점 지도 문법을 써야 한다");
 
             Vector3 world = InvokeVisualPosition(demo, route.Target);
             Vector3 projected = camera.WorldToScreenPoint(world);
@@ -148,6 +157,203 @@ namespace ProjectC.Tests.PlayMode
             {
                 targetTile.kind = originalKind;
             }
+        }
+
+        [UnityTest]
+        public IEnumerator VisibleEnemyApproach_MovesOneStepWithoutAttacking()
+        {
+            IsoPrototypeDemo demo = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            Assert.NotNull(demo);
+            yield return null;
+
+            Assert.IsTrue(
+                TryPrepareVisibleEnemyApproach(
+                    demo,
+                    out CombatantState target,
+                    out List<GridPos> approach),
+                "현재 층에서 시야 안 적까지 두 칸 이상 필요한 접근 fixture를 찾지 못했다");
+
+            int hpBefore = target.Hp;
+            int turnBefore = demo.DebugTurnNumber;
+            GridPos expectedStep = approach[1];
+            InvokeTileTap(demo, target.Position);
+
+            float deadline = Time.realtimeSinceStartup + 5f;
+            yield return new WaitUntil(() =>
+                (!GetField<bool>(demo, "_resolvingAction") &&
+                 demo.DebugTurnNumber > turnBefore) ||
+                Time.realtimeSinceStartup >= deadline);
+
+            Assert.Less(Time.realtimeSinceStartup, deadline);
+            Assert.AreEqual(turnBefore + 1, demo.DebugTurnNumber,
+                "위협 중 자동 접근은 플레이어/적 턴 한 쌍만 소비해야 한다");
+            Assert.AreEqual(expectedStep, demo.PlayerState.Position,
+                "위협 중에는 목적지까지 달리지 않고 첫 걸음에서 멈춰야 한다");
+            Assert.AreEqual(hpBefore, target.Hp,
+                "한 칸 이동한 입력에서 같은 적을 이어서 공격하면 안 된다");
+        }
+
+        [UnityTest]
+        public IEnumerator TravelModeChip_RefreshesAfterEnemyPhaseRemovesThreat()
+        {
+            IsoPrototypeDemo demo = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            PrototypeHudController hud = Object.FindAnyObjectByType<PrototypeHudController>();
+            Assert.NotNull(demo);
+            Assert.NotNull(hud);
+            yield return null;
+
+            Assert.IsTrue(
+                TryPrepareVisibleEnemyApproach(
+                    demo,
+                    out _,
+                    out List<GridPos> approach));
+            GridManager grid = GetField<GridManager>(demo, "_grid");
+            PositionPlayer(demo, grid, approach[approach.Count - 1]);
+            yield return null;
+
+            Label travelMode = hud.GetComponent<UIDocument>()
+                .rootVisualElement.Q<Label>("travel-mode-label");
+            Assert.NotNull(travelMode);
+            Assert.AreEqual("위협 · 1행동", travelMode.text);
+
+            demo.DebugKillAllOnFloor();
+            int turnBefore = demo.DebugTurnNumber;
+            demo.WaitTurn();
+            float deadline = Time.realtimeSinceStartup + 5f;
+            yield return new WaitUntil(() =>
+                (!GetField<bool>(demo, "_resolvingAction") &&
+                 demo.DebugTurnNumber > turnBefore) ||
+                Time.realtimeSinceStartup >= deadline);
+
+            Assert.Less(Time.realtimeSinceStartup, deadline);
+            Assert.AreEqual("자동 이동", travelMode.text,
+                "적 페이즈 종료 뒤 다음 입력의 실제 이동 예산을 즉시 표시해야 한다");
+        }
+
+        [UnityTest]
+        public IEnumerator AdjacentRescue_ConsumesOneTurn()
+        {
+            IsoPrototypeDemo demo = Object.FindAnyObjectByType<IsoPrototypeDemo>();
+            Assert.NotNull(demo);
+            yield return null;
+
+            Assert.IsTrue(
+                TryPositionNextToRescueNpc(demo, out GridPos rescuePosition),
+                "구출 NPC 옆의 안전한 접근 칸을 찾지 못했다");
+            int turnBefore = demo.DebugTurnNumber;
+            InvokeTileTap(demo, rescuePosition);
+
+            float deadline = Time.realtimeSinceStartup + 5f;
+            yield return new WaitUntil(() =>
+                (!GetField<bool>(demo, "_resolvingAction") &&
+                 demo.RescuedThisRun != null) ||
+                Time.realtimeSinceStartup >= deadline);
+
+            Assert.Less(Time.realtimeSinceStartup, deadline);
+            Assert.IsNotNull(demo.RescuedThisRun);
+            Assert.AreEqual(turnBefore + 1, demo.DebugTurnNumber,
+                "이미 인접한 구출도 행동 하나와 적 페이즈 하나를 소비해야 한다");
+        }
+
+        private static bool TryPrepareVisibleEnemyApproach(
+            IsoPrototypeDemo demo,
+            out CombatantState target,
+            out List<GridPos> approach)
+        {
+            target = null;
+            approach = null;
+            GridManager grid = GetField<GridManager>(demo, "_grid");
+            DungeonLayout dungeon = GetField<DungeonLayout>(demo, "_dungeon");
+            if (!dungeon.TryGetFloor(demo.ActiveFloorIndex, out DungeonFloorInfo floor))
+                return false;
+
+            SuppressItemsOnFloor(demo, dungeon, floor.FloorIndex);
+            MethodInfo findEnemy = typeof(IsoPrototypeDemo).GetMethod(
+                "FindLivingEnemyAt",
+                PrivateInstance);
+            Assert.NotNull(findEnemy);
+
+            var enemies = new List<object>();
+            foreach (object enemy in (IEnumerable)GetUntypedField(demo, "_enemies"))
+            {
+                enemies.Add(enemy);
+                FieldInfo brain = enemy.GetType().GetField("Brain");
+                Assert.NotNull(brain);
+                brain.SetValue(enemy, null); // 적 페이즈의 위치 변화 없이 이동 예산만 검증한다.
+            }
+
+            foreach (object enemy in enemies)
+            {
+                FieldInfo stateField = enemy.GetType().GetField("State");
+                Assert.NotNull(stateField);
+                var state = (CombatantState)stateField.GetValue(enemy);
+                if (state == null || !state.IsAlive ||
+                    dungeon.Height.FloorIndex(state.Position.elevation) != floor.FloorIndex)
+                    continue;
+
+                foreach (KeyValuePair<GridPos, TileData> pair in grid.Map.All())
+                {
+                    GridPos start = pair.Key;
+                    if (pair.Value.kind != TileKind.Floor ||
+                        dungeon.Height.FloorIndex(start.elevation) != floor.FloorIndex ||
+                        findEnemy.Invoke(demo, new object[] { start }) != null)
+                        continue;
+
+                    List<GridPos> candidate = InteractionApproachRules.FindPathToAdjacent(
+                        grid.Map,
+                        start,
+                        state.Position,
+                        pos => findEnemy.Invoke(demo, new object[] { pos }) != null);
+                    if (candidate.Count < 3) continue;
+
+                    PositionPlayer(demo, grid, start);
+                    if (!GetField<HashSet<GridPos>>(demo, "_visibleTiles")
+                            .Contains(state.Position))
+                        continue;
+
+                    target = state;
+                    approach = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryPositionNextToRescueNpc(
+            IsoPrototypeDemo demo,
+            out GridPos rescuePosition)
+        {
+            rescuePosition = default;
+            GridManager grid = GetField<GridManager>(demo, "_grid");
+            foreach (object agent in (IEnumerable)GetUntypedField(demo, "_rescueNpcs"))
+            {
+                FieldInfo positionField = agent.GetType().GetField("Pos");
+                FieldInfo floorField = agent.GetType().GetField("FloorIndex");
+                Assert.NotNull(positionField);
+                Assert.NotNull(floorField);
+                GridPos target = (GridPos)positionField.GetValue(agent);
+                int floorIndex = (int)floorField.GetValue(agent);
+
+                foreach (GridPos candidate in new[]
+                         {
+                             target.North,
+                             target.East,
+                             target.South,
+                             target.West
+                         })
+                {
+                    if (!grid.Map.IsWalkable(candidate)) continue;
+
+                    demo.DebugJumpFloor(floorIndex - demo.ActiveFloorIndex);
+                    demo.DebugKillAllOnFloor();
+                    PositionPlayer(demo, grid, candidate);
+                    rescuePosition = target;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static DoorRouteFixture PrepareDoorRoute(IsoPrototypeDemo demo)

@@ -26,7 +26,7 @@ namespace ProjectC.Gameplay
 
         /// <summary>
         /// 화면 드래그만큼 현재 구도의 중심을 이동한다. 배율은 건드리지 않으므로
-        /// 일반 플레이와 B2 히어로룸 특수 프레임 모두 첫 드래그에서 줌이 튀지 않는다.
+        /// 일반 플레이 추적 프레임의 배율은 보존하므로 첫 드래그에서 줌이 튀지 않는다.
         /// </summary>
         public bool TryPanCamera(Vector2 screenDelta)
         {
@@ -78,7 +78,7 @@ namespace ProjectC.Gameplay
                    !_runSummary.Ended;
         }
 
-        /// <summary>기존 vertical/B2/follow 계산의 크기를 보존하고 중심만 자유 보기 값으로 바꾼다.</summary>
+        /// <summary>기존 vertical/follow 계산의 크기를 보존하고 중심만 자유 보기 값으로 바꾼다.</summary>
         private OrthographicCameraFrame ApplyCameraLook(OrthographicCameraFrame frame)
         {
             if (!_cameraLookActive || hubMode || viewMode != DungeonViewMode.Play ||
@@ -92,8 +92,8 @@ namespace ProjectC.Gameplay
         private Vector2 ClampCameraLookCenter(Vector2 requested)
         {
             _cameraLookKnownCenters.Clear();
-            // HUD 안전영역 때문에 일반 타일 경계 밖으로 보정된 B2 시작 프레임도 첫 드래그에서
-            // 갑자기 안쪽으로 튀지 않도록 자유 보기 진입 중심을 허용 경계에 포함한다.
+            // 자유 보기 진입 중심을 허용 경계에 포함해 첫 드래그에서
+            // 추적 프레임이 갑자기 안쪽으로 튀지 않게 한다.
             _cameraLookKnownCenters.Add(_cameraLookOriginCenter);
 
             foreach (GridPos pos in _mappedTiles)

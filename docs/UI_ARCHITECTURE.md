@@ -86,6 +86,10 @@ UGUI View로 옮긴다.
   Desktop의 그림 선택만 전용 USS가 소유하므로 버튼 콜백과 모바일 32×32 아이콘 계약은 바뀌지 않는다.
 - `ui-bracket-frame.png`는 열린 쿨 스틸 모서리와 짧은 마젠타 데이터 틱을 가진 12×12 9-slice다.
   바이탈·계기·보스/발견·로그·자원/행동 레일이 같은 `.pc-plate`를 쓴다.
+- 하단 행동 레일의 기존 `turn-pill`은 PC에서 이동 예산도 맡는다. 안전 상태는 틸 점과 `자동 이동`,
+  시야 내 살아 있는 적이 있으면 hazard 색 `위협 · 1행동`, 수직 관찰 중에는 `관찰`을 우선한다.
+  별도 패널·입력 영역을 만들지 않으며 Mobile은 기존 `내 턴` 문구를 유지한다. PC 런타임 기준은
+  `docs/captures/travel-mode-{safe,threat}-pc-2026-08-04.png`다.
 - `item-herb`와 `item-frost-shard`는 슬롯·피벗·게임 규칙을 유지한 채 화면 정체성을 각각
   **지혈 패치**와 **냉각 코일**로 교체한다. UI는 이 아트를 재해석하지 않고 기존 아이템 슬롯 매핑으로 소비한다.
 - 위 Field Deck 기준선은 2026-08-03 전체 Unity 회귀와 PC QHD 3상태 렌더를 통과했다. 후속의 기본 닫힘
@@ -112,6 +116,7 @@ UGUI View로 옮긴다.
 | `is-current` / `is-viewed` / `is-explored` | 층 눈금의 플레이·보기·진행 상태 | `floor-tick` | 현재=`--pc-gold` / 수직 보기 대상=`--pc-ui-accent`+긴 눈금 / 탐색함=`--pc-stone-dim` / 미도달=`--pc-inset` |
 | `is-selected` | 현재 선택된 수직 보기 방향 | `vertical-view-button` | PC 계기 안 `▲/◆/▼` 중 하나를 마젠타 UI accent 채움으로 표시 |
 | `is-observing` | 읽기 전용 인접층 관찰 중 | `floor-instrument`·`vertical-view-state`·`turn-pill`·`vertical-hint-chip` | 계기/힌트는 차가운 관찰 상태, 턴 문구는 `관찰`; 선택 방향의 `is-selected` 마젠타 채움과 함께 사용 |
+| `is-threat` | 시야 내 살아 있는 적 때문에 이동이 한 행동으로 제한됨 | PC `turn-pill` | hazard 색 점·`위협 · 1행동`; `is-observing` 중에는 붙이지 않음 |
 | `is-available` | 지금 실행 가능 | `hub-continue`(세이브 있음), `interact-button`(문맥 행동 있음) | 없으면 숨김/비활성 표현 |
 | `is-empty` | 채워지지 않은 칸 | `pc-heart`(HP 빈칸), `inventory-detail-icon` | 빈 칸 표현 |
 | `is-warning` | 경고 임계 | `hunger-label` | 경고색 |
@@ -216,7 +221,8 @@ UGUI View로 옮긴다.
 - **PC 상시 HUD 밀도**: Field Deck은 좌표·상시 튜토리얼 문장을 제거하고 높이와 현재 문맥만 남긴다.
   좌상 160px 바이탈, 상단 중앙 256px 과도 패널, 우상 176×104 층/보기/회전/미니맵 단일 계기,
   좌하 208×52 로그, 하단 자원 184×24 + 행동 268×24 두 레일이 640×360 배치를 소유한다.
-  공용 도구/행동 glyph는 12×12지만 hit area는 줄이지 않는다.
+  행동 레일의 기존 턴 칩은 `자동 이동`/`위협 · 1행동`을 표시하며, 공용 도구/행동 glyph는
+  12×12지만 hit area는 줄이지 않는다.
   행동 피드백은 3초 뒤 **강조만** 닫히고 네 줄 로그에 남는다. 수직 이동 설명은 발견 카드가 맡고 실제
   장치 위에 섰을 때만 한 줄 조작 힌트를 다시 보여준다.
 - **개발 화면 테스트**: 에디터/개발 빌드의 공용 설정 하단에서 `AUTO/MOBILE/PC` UI와 Game View 해상도 프리셋을 즉시 바꾼다. 릴리스 빌드에서는 이 섹션과 개발 오버라이드를 숨기고 무시한다.

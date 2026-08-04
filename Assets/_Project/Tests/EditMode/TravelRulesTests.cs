@@ -28,6 +28,86 @@ namespace ProjectC.Tests
         }
 
         [Test]
+        public void GetActionBudget_EnemyInSight_MovementConsumesWholeInput()
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: true,
+                pathSteps: 4);
+
+            Assert.AreEqual(1, budget.AllowedSteps);
+            Assert.IsFalse(budget.AllowsFollowUpAction,
+                "위협 중에는 한 칸 이동 뒤 같은 입력으로 공격·상호작용하면 안 된다");
+        }
+
+        [Test]
+        public void GetActionBudget_EnemyInSight_AdjacentTargetAllowsInteraction()
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: true,
+                pathSteps: 0);
+
+            Assert.AreEqual(0, budget.AllowedSteps);
+            Assert.IsTrue(budget.AllowsFollowUpAction,
+                "이미 인접했다면 이동 대신 상호작용 하나를 소비할 수 있어야 한다");
+        }
+
+        [Test]
+        public void GetActionBudget_NoEnemyInSight_PreservesAutoApproachAndInteraction()
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: false,
+                pathSteps: 4);
+
+            Assert.AreEqual(4, budget.AllowedSteps);
+            Assert.IsTrue(budget.AllowsFollowUpAction);
+        }
+
+        [Test]
+        public void CanPerformFollowUpAction_SafeStartButEnemyAppearsOnArrival_BlocksAction()
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: false,
+                pathSteps: 3);
+
+            Assert.IsFalse(TravelRules.CanPerformFollowUpAction(
+                budget,
+                moved: true,
+                enemyInSightAfterMovement: true,
+                interrupt: TravelInterrupt.EnemySighted));
+        }
+
+        [TestCase(TravelInterrupt.PlayerDamaged)]
+        [TestCase(TravelInterrupt.EnemySighted)]
+        [TestCase(TravelInterrupt.ItemSighted)]
+        public void CanPerformFollowUpAction_TravelInterrupt_BlocksAction(
+            TravelInterrupt interrupt)
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: false,
+                pathSteps: 1);
+
+            Assert.IsFalse(TravelRules.CanPerformFollowUpAction(
+                budget,
+                moved: true,
+                enemyInSightAfterMovement: false,
+                interrupt));
+        }
+
+        [Test]
+        public void CanPerformFollowUpAction_NoMovement_AllowsAdjacentActionUnderThreat()
+        {
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                enemyInSight: true,
+                pathSteps: 0);
+
+            Assert.IsTrue(TravelRules.CanPerformFollowUpAction(
+                budget,
+                moved: false,
+                enemyInSightAfterMovement: true,
+                interrupt: TravelInterrupt.None));
+        }
+
+        [Test]
         public void Evaluate_NewVisibleEnemy_InterruptsAsEnemySighted()
         {
             TravelInterrupt result = TravelRules.Evaluate(

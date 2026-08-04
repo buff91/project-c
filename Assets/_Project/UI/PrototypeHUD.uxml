@@ -152,9 +152,10 @@
                     <ui:VisualElement class="ui-icon ui-interact-icon" picking-mode="Ignore" />
                     <ui:Label name="interact-label" text="상호작용" class="action-button-label" />
                 </ui:Button>
-                <ui:VisualElement class="artifact-panel turn-pill">
-                    <ui:VisualElement class="turn-dot" />
-                    <ui:Label text="내 턴" class="turn-label" />
+                <!-- 비차단 이동 예산 칩. 관찰 중에는 이동 상태보다 관찰 잠금을 우선한다. -->
+                <ui:VisualElement name="travel-mode-chip" class="artifact-panel turn-pill travel-mode-chip" picking-mode="Ignore">
+                    <ui:VisualElement class="turn-dot" picking-mode="Ignore" />
+                    <ui:Label name="travel-mode-label" text="내 턴" class="turn-label" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

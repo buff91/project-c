@@ -69,6 +69,7 @@
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoGridTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/IsoVisualCatalogTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ItemStorageTests.cs" />
+    <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/MapKnowledgeSpriteTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/OrthographicCameraFramingTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/ProjectCAsepritePipelineTests.cs" />
     <Compile Remove="$(ProjectRoot)Assets/_Project/Tests/EditMode/PrototypeActorSpritesTests.cs" />

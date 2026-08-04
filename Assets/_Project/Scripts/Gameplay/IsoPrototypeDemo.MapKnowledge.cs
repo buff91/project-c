@@ -121,7 +121,7 @@ namespace ProjectC.Gameplay
             MapSilhouetteKind silhouette)
         {
             TileKind presentationKind = MappedPresentationKind(silhouette);
-            renderer.sprite = GetMappedSilhouetteSprite(silhouette, pos);
+            renderer.sprite = GetMappedSilhouetteSprite(silhouette);
             renderer.color = MappedSilhouetteColor(silhouette);
             renderer.transform.position = VisualPosition(pos);
             renderer.sortingOrder = _grid.iso.SortingOrder(
@@ -139,24 +139,8 @@ namespace ProjectC.Gameplay
             return _mappedSilhouettes.TryGetValue(pos, out silhouette);
         }
 
-        private Sprite GetMappedSilhouetteSprite(MapSilhouetteKind silhouette, GridPos pos)
-        {
-            TileKind presentationKind = MappedPresentationKind(silhouette);
-            TileVisualFacts source = TileFactsFor(presentationKind, pos);
-            // mapped는 실제 위치별 마모/Facility 드레싱을 공개하지 않는다. 높이 두께와
-            // 문 평면처럼 토폴로지를 읽는 데 필요한 기하만 남기고 공용 샘플을 쓴다.
-            var safeFacts = new TileVisualFacts(
-                source.Context,
-                source.Extruded,
-                source.PlaneRisesRight,
-                secretHinted: false,
-                hubMode: false,
-                hospitalDressing: false);
-            return EnvironmentSprites.GetTileSprite(
-                presentationKind,
-                new GridPos(0, 0, pos.elevation),
-                safeFacts);
-        }
+        private Sprite GetMappedSilhouetteSprite(MapSilhouetteKind silhouette) =>
+            EnvironmentSprites.GetMapKnowledgeSprite(silhouette);
 
         private static TileKind MappedPresentationKind(MapSilhouetteKind silhouette)
         {
@@ -173,10 +157,10 @@ namespace ProjectC.Gameplay
         {
             return silhouette switch
             {
-                MapSilhouetteKind.Barrier => new Color(0.31f, 0.38f, 0.42f, 0.30f),
-                MapSilhouetteKind.Door => new Color(0.52f, 0.43f, 0.29f, 0.28f),
-                MapSilhouetteKind.Gap => new Color(0.20f, 0.38f, 0.45f, 0.26f),
-                _ => new Color(0.39f, 0.49f, 0.53f, 0.22f)
+                MapSilhouetteKind.Barrier => new Color(0.48f, 0.50f, 0.51f, 0.52f),
+                MapSilhouetteKind.Door => new Color(0.55f, 0.53f, 0.47f, 0.52f),
+                MapSilhouetteKind.Gap => new Color(0.37f, 0.48f, 0.51f, 0.48f),
+                _ => new Color(0.44f, 0.48f, 0.50f, 0.50f)
             };
         }
 

@@ -120,10 +120,94 @@ namespace ProjectC.Gameplay
             _moveRoutine = StartCoroutine(RunPlayerAction(action, preserveVerticalLook));
         }
 
-        private bool TryFindApproach(GridPos target, out List<GridPos> path)
+        private readonly struct ApproachPlan
         {
-            path = FindPathToAdjacent(target);
-            return path.Count > 0;
+            public IReadOnlyList<GridPos> Path { get; }
+            public TravelActionBudget InitialBudget { get; }
+            public int PlayerHpBeforeTravel { get; }
+
+            public ApproachPlan(
+                IReadOnlyList<GridPos> path,
+                TravelActionBudget initialBudget,
+                int playerHpBeforeTravel)
+            {
+                Path = path;
+                InitialBudget = initialBudget;
+                PlayerHpBeforeTravel = playerHpBeforeTravel;
+            }
+        }
+
+        private bool TryFindApproach(GridPos target, out ApproachPlan approach)
+        {
+            List<GridPos> path = FindPathToAdjacent(target);
+            if (path.Count == 0)
+            {
+                approach = default;
+                return false;
+            }
+
+            approach = CreateApproachPlan(path);
+            return true;
+        }
+
+        private ApproachPlan CreateApproachPlan(List<GridPos> path)
+        {
+            TravelActionBudget budget = ApplyTravelActionBudget(path);
+            return new ApproachPlan(path, budget, _playerState.Hp);
+        }
+
+        /// <summary>
+        /// 이동 경로를 현재 위협 상태의 입력 예산으로 자르고, 허용 걸음 수와 이 경로 뒤
+        /// 같은 입력에서 후속 행동을 이어 갈 수 있는지를 함께 반환한다.
+        /// </summary>
+        private TravelActionBudget ApplyTravelActionBudget(List<GridPos> path)
+        {
+            int pathSteps = path.Count > 0 ? path.Count - 1 : 0;
+            TravelActionBudget budget = TravelRules.GetActionBudget(
+                IsTravelSingleActionMode,
+                pathSteps);
+            if (budget.AllowedSteps < pathSteps)
+            {
+                path.RemoveRange(
+                    budget.AllowedSteps + 1,
+                    path.Count - budget.AllowedSteps - 1);
+            }
+            return budget;
+        }
+
+        private bool CanPerformFollowUpAction(ApproachPlan approach)
+        {
+            if (approach.Path == null || approach.Path.Count == 0 ||
+                _playerPos != approach.Path[approach.Path.Count - 1])
+                return false;
+
+            bool moved = approach.Path.Count > 1;
+            if (moved && _travelCancelRequested)
+            {
+                InteractionFeedback?.Invoke("MOVE CANCELED");
+                return false;
+            }
+
+            TravelInterrupt interrupt = moved
+                ? EvaluateTravelInterruptAfterAction(
+                    _playerState.Hp < approach.PlayerHpBeforeTravel)
+                : TravelInterrupt.None;
+            bool allowed = TravelRules.CanPerformFollowUpAction(
+                approach.InitialBudget,
+                moved,
+                IsTravelSingleActionMode,
+                interrupt);
+            if (allowed || interrupt == TravelInterrupt.None)
+                return allowed;
+
+            FloatingText?.Show(_player.transform.position, "!", FloatingTextKind.Alert);
+            InteractionFeedback?.Invoke(interrupt switch
+            {
+                TravelInterrupt.PlayerDamaged => "INTERRUPTED — 피해를 입어 멈췄다",
+                TravelInterrupt.EnemySighted => "ENEMY SIGHTED — 적 발견!",
+                _ => "ITEM SIGHTED — 무언가 보인다"
+            });
+            return false;
         }
 
         /// <summary>
@@ -157,9 +241,11 @@ namespace ProjectC.Gameplay
                 HandleTileTapped(onward, tileExists: true);
         }
 
-        private IEnumerator ApproachAndAttack(IReadOnlyList<GridPos> path, EnemyAgent enemy)
+        private IEnumerator ApproachAndAttack(ApproachPlan approach, EnemyAgent enemy)
         {
-            yield return MovePlayerPath(path);
+            yield return MovePlayerPath(approach.Path);
+            if (!CanPerformFollowUpAction(approach))
+                yield break;
 
             if (_playerState.IsAlive && enemy.State.IsAlive &&
                 CombatRules.CanMelee(_grid.Map, _playerState, enemy.State, _playerLoadout.MeleeReach))
@@ -232,10 +318,10 @@ namespace ProjectC.Gameplay
                     _ => $"사거리 밖(MAX {range}) — 접근한다"
                 });
 
-                int allowedSteps = TravelRules.AllowedSteps(AnyEnemyVisible(), firingPath.Count - 1);
-                if (allowedSteps < firingPath.Count - 1)
-                    firingPath.RemoveRange(allowedSteps + 1, firingPath.Count - allowedSteps - 1);
-                yield return MovePlayerPath(firingPath);
+                ApproachPlan firingApproach = CreateApproachPlan(firingPath);
+                yield return MovePlayerPath(firingApproach.Path);
+                if (!CanPerformFollowUpAction(firingApproach))
+                    yield break;
 
                 // 접근이 끝난 그 탭에서 조건이 갖춰졌으면 즉시 발사.
                 if (_playerState.IsAlive && enemy.State.IsAlive &&

@@ -87,9 +87,7 @@ namespace ProjectC.Gameplay
             _combatButton?.SetEnabled(hasDemo && !observing);
             _waitButton?.SetEnabled(hasDemo && !observing);
             _potionButton?.SetEnabled(hasDemo && !observing);
-            _turnPill?.EnableInClassList("is-observing", observing);
-            if (_turnLabel != null)
-                _turnLabel.text = observing ? "관찰" : "내 턴";
+            UpdateTravelModeIndicator();
 
             if (_verticalViewUp != null)
                 _verticalViewUp.tooltip = hasDemo && demo.CanLookUp
@@ -185,5 +183,22 @@ namespace ProjectC.Gameplay
             hintRoot?.EnableInClassList(
                 "is-observing", demo != null && demo.IsVerticalLookActive);
         }
+
+        private void UpdateTravelModeIndicator()
+        {
+            bool observing = demo != null && demo.IsVerticalLookActive;
+            bool showTravelBudget = ActivePresentation == HudPresentationMode.Desktop;
+            bool singleAction = showTravelBudget && demo != null && demo.IsTravelSingleActionMode;
+            _turnPill?.EnableInClassList("is-observing", observing);
+            _turnPill?.EnableInClassList(
+                "is-threat", showTravelBudget && !observing && singleAction);
+            if (_turnLabel != null)
+                _turnLabel.text = showTravelBudget
+                    ? TravelModeLabel(observing, singleAction)
+                    : observing ? "관찰" : "내 턴";
+        }
+
+        internal static string TravelModeLabel(bool observing, bool singleAction) =>
+            observing ? "관찰" : singleAction ? "위협 · 1행동" : "자동 이동";
     }
 }
