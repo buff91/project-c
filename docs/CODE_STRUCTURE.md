@@ -99,7 +99,7 @@
 | `PrototypeHudController.Handlers.cs` | 데모 이벤트 핸들러(`Handle*`)·메시지 피드백·던전 입장/수직 경로 발견 카드의 큐 재생. `is-open`만 토글하고 opacity/translate는 USS에 맡긴다 |
 | `PrototypeHudController.ActionWheel.cs` | 액션 휠 빌드 + 플레이어 화면 좌표를 `HudWheelPlacement`에 넘기고 현재 고정 HUD bounds를 수집하는 배치 어댑터 |
 | `PrototypeHudController.EndGame.cs` | 출구 선택·게임오버 + 보스 패널 갱신. 보스가 상단 과도 슬롯을 쓰는 동안 발견 카드 시각을 멈추고, 닫히면 활성 큐 항목부터 재개한다 |
-| `PrototypeHudController.Labels.cs` | 행동·층/보기·회전·위치 라벨 갱신과 상호작용 버튼 |
+| `PrototypeHudController.Labels.cs` | 행동·층/보기·회전·위치 라벨 갱신과 상호작용 버튼. PC 턴 칩의 `자동 이동`/`위협 · 1행동`/`관찰` 이동 예산 표시도 소유한다(Mobile은 기존 `내 턴`) |
 | `PrototypeHudController.Readouts.cs` | 640×360에서 추가된 층 스택·상태이상 칩·4줄 메시지 로그. 기존 Core/데모 데이터를 화면 요소로만 번역한다 |
 
 ### Field Deck HUD 지원 타입·자산
@@ -180,6 +180,7 @@
 | `MapKnowledgeRules.cs` | FOV와 무관한 현재 층 mapped 공개 범위·비밀문/비밀방 footprint 제외·실제 `TileKind`를 `Floor/Barrier/Door/Gap` 공용 범주로 축약·mapped 경로의 자동 층 전환 진입 차단 |
 | `VerticalTraversalRules.cs` | 수직 이동 수단의 자동 발동 범위와 사다리 월드 표현 크기. 층 전환 계단은 밟는 즉시, 사다리는 명시적 상호작용 |
 | `VerticalRouteCue.cs` | 수직 이동 수단을 처음 봤을 때의 짧은 설명(`VerticalRouteRole` 6종). 색이 아니라 "어떻게 생겼고 무엇을 하면 어디로 가는지"를 말한다 |
+| `HoleOpeningRules.cs` | Hole 셀 목록을 같은 elevation 4방향 인접 성분(물리 개구부)으로 묶는다. "개구부당 라벨 하나" 판정이 층 전체가 아니라 실제 개구부에 붙게 한다 |
 | `TravelRules.cs` | 실제/mapped 자동 이동의 스텝+후속 행동 예산과 인터럽트 우선순위(피해 > 새 적 > 새 아이템), 행동 직후 transient 적 발견 보존 판정. 접근 스냅샷·문 행동·재계획은 Gameplay 호출부가 소유 |
 | `WorldInputRules.cs` | 화면에 겹친 실제 타일/현재 활성 층 mapped 후보 중 하나 고르기 — 조작 층에 가까운 것(`LayerPriority`) 우선, 같으면 렌더 정렬 순서. 공개 전 비밀방은 제외하고 Hole 반대편 미리보기는 PLAY에서 읽기 전용 |
 
