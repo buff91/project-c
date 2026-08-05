@@ -117,6 +117,7 @@ namespace ProjectC.Gameplay
                 if (_tapInput != null)
                 {
                     _tapInput.UiBlocker = IsPointerOverHud;
+                    _tapInput.WorldCommandBlocker = IsWorldCommandBlocked;
                 }
                 demo.ViewRotationChanged += HandleViewRotationChanged;
                 demo.ActiveFloorChanged += HandleActiveFloorChanged;
@@ -146,6 +147,9 @@ namespace ProjectC.Gameplay
 
         private void OnDisable()
         {
+            CloseTacticalMap();
+            UnbindTacticalMap();
+            DisposeTacticalMapTexture();
             _responsiveLayout?.Dispose();
             _responsiveLayout = null;
             _displaySettings?.Dispose();
@@ -199,6 +203,8 @@ namespace ProjectC.Gameplay
                 DismissDiscoveryNotice);
             if (_tapInput != null && _tapInput.UiBlocker == IsPointerOverHud)
                 _tapInput.UiBlocker = null;
+            if (_tapInput != null && _tapInput.WorldCommandBlocker == IsWorldCommandBlocked)
+                _tapInput.WorldCommandBlocker = null;
             _tapInput = null;
             _actionWheel?.RemoveFromClassList("is-open");
             PauseDiscoveryNoticeVisual();
@@ -330,6 +336,7 @@ namespace ProjectC.Gameplay
             _bossHealthFill = root.Q<VisualElement>("boss-health-fill");
             _bossHealthValue = root.Q<Label>("boss-health-value");
             _bossObjective = root.Q<Label>("boss-objective");
+            BindTacticalMap(root);
             BindReadouts(root);
             _lastVerticalLookMode = (VerticalLookMode)(-1);
             UpdateMinimap();
@@ -471,9 +478,21 @@ namespace ProjectC.Gameplay
             // 상태이상도 마찬가지다(빙결은 피해가 없어 HP 이벤트로도 안 잡힌다).
             // 조합이 그대로면 UpdateStatusChips 가 즉시 빠진다.
             UpdateStatusChips();
+            UpdateTacticalMapAvailability();
+
+            if (HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.ToggleMap))
+            {
+                ToggleTacticalMap();
+                return;
+            }
 
             if (HudKeyboardInput.WasPressedThisFrame(HudKeyboardAction.Cancel))
             {
+                if (IsTacticalMapOpen)
+                {
+                    CloseTacticalMap();
+                    return;
+                }
                 if (IsOpen(_actionWheel))
                 {
                     _actionWheel?.RemoveFromClassList("is-open");
@@ -552,6 +571,7 @@ namespace ProjectC.Gameplay
         {
             _actionWheel?.RemoveFromClassList("is-open");
             _inventoryModal?.RemoveFromClassList("is-open");
+            CloseTacticalMap();
             CloseGameMenu();
         }
 
@@ -559,6 +579,7 @@ namespace ProjectC.Gameplay
         {
             return (_displaySettings != null && _displaySettings.IsOpen) ||
                    IsOpen(_gameMenuModal) || IsOpen(_inventoryModal) ||
+                   IsTacticalMapOpen ||
                    IsOpen(_exitModal) || IsOpen(_gameoverOverlay);
         }
 

@@ -632,6 +632,7 @@ namespace ProjectC.Gameplay
             _turns.Reset();
             _visibleTiles.Clear();
             _exploredTiles.Clear();
+            _exploredMapTileKinds.Clear();
             _verticalPreviewTiles.Clear();
             _verticalLandmarks.Clear();
             _discoveredVerticalRoutes.Clear();

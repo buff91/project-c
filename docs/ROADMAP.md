@@ -294,6 +294,12 @@
   기존 유효 칸 마커가 우선한다. Core shim·Unity EditMode/PlayMode 전체 회귀와 실제 PC q0..q3 동일 배율,
   `vertical-observe-{down,up}-pc-2026-08-04.png`, 문 경계
   `camera-door-{inside,outside}-pc-2026-08-04.png`를 확인했다.
+- [x] **PC 전술 지도 확인** — `M`/미니맵 옆 `MAP`으로 방문 층의 기록 지도를 열고, 지도 안에서
+  층 선택·드래그 팬·단계형 확대/축소·현재 위치 재중앙을 지원한다. 비활성 층은 `Explored`만 보여
+  mapped/비밀/적·아이템·프롭·실시간 상태를 숨기며 모든 조작은 무턴·active floor/FOV/AI/월드 카메라
+  불변이다. Desktop 창·모달 입력 차단·Core 공개 규칙을 구현했고 Core shim 1241/1241,
+  Unity EditMode 1548/1548, PlayMode 36/36과 PC 현재층 맞춤/비활성층 2× 캡처
+  `tactical-map-{current,memory-zoom}-pc-2026-08-04.png`로 확인했다.
 - [x] **적 애니메이션 재생기 배선** — 스폰 시 `SpriteClipAnimator`를 붙이고 카탈로그 클립을
   넘긴다. Unity `Animator`가 `null`인 것은 의도된 구조다. `idle-north` 같은 방향 태그도 현재
   facing으로 선택하고 시점 회전 때 같은 상태의 방향 클립으로 교체한다. 배치 ② 전용 적 6종 원본도

@@ -52,6 +52,13 @@ namespace ProjectC.Gameplay
         public event System.Action CameraRecenterRequested;
 
         /// <summary>
+        /// 지도·인벤토리처럼 화면을 독점하는 UI가 월드 명령 전체를 잠글 때 주입하는 경계.
+        /// 포인터 좌표 하나만 검사하는 <see cref="UiBlocker"/>와 달리 Q/E·이동·상호작용·
+        /// 대기·카메라 팬/복귀·타일 탭을 한꺼번에 막는다.
+        /// </summary>
+        public System.Func<bool> WorldCommandBlocker;
+
+        /// <summary>
         /// PC 액션 휠 홀드 상태. 범용 Ctrl/Cmd 수정키는 OS 단축키와 충돌하므로
         /// 입력 레이어가 전용 Tab 액션으로 흡수해 HUD에 노출한다.
         /// </summary>
@@ -91,6 +98,15 @@ namespace ProjectC.Gameplay
 
         private void Update()
         {
+            if (WorldCommandBlocker?.Invoke() == true)
+            {
+                // 모달이 드래그 도중 열렸다면 제스처를 끊는다. 모달을 닫은 뒤에도 버튼을
+                // 계속 누른 상태로 월드 팬이 되살아나지 않으며, 오래된 hover도 남지 않는다.
+                CancelCameraPanGesture();
+                InvalidateHover();
+                return;
+            }
+
             UpdateCameraPan();
             if (CameraRecenterPressed()) CameraRecenterRequested?.Invoke();
 
@@ -413,6 +429,10 @@ namespace ProjectC.Gameplay
 #endif
         }
 
-        private void OnDisable() => CancelCameraPanGesture();
+        private void OnDisable()
+        {
+            CancelCameraPanGesture();
+            InvalidateHover();
+        }
     }
 }

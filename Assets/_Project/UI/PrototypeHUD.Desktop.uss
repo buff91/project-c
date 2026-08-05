@@ -1124,3 +1124,256 @@
 .hud-root.hud-desktop.is-ultrawide .floor-stack {
     right: 170px;
 }
+
+/* ── PC 전술 지도 ─────────────────────────────────────────
+   월드 카메라 대신 UI Toolkit 텍스처를 팬/줌한다. 상시 HUD에는 MAP 진입점 하나만
+   남기고, 열린 화면은 기존 모달 창(.settings-modal + .pc-window) 어휘를 재사용한다. */
+
+.hud-root.hud-desktop .tactical-map-open {
+    display: flex;
+    width: 28px;
+    min-width: 28px;
+    height: 14px;
+    margin-left: 2px;
+    padding: 0;
+    color: var(--pc-ui-accent);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--pc-ui-accent-dim);
+    border-radius: 0;
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .tactical-map-open:hover {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.48);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .tactical-map-modal.is-open {
+    display: flex;
+}
+
+.hud-root.hud-desktop .tactical-map-window.pc-window {
+    width: 520px;
+    height: 304px;
+    min-width: 520px;
+    min-height: 304px;
+    padding: 8px;
+}
+
+.hud-root.hud-desktop .tactical-map-header.settings-header {
+    height: 32px;
+    min-height: 32px;
+    margin-bottom: 4px;
+    border-bottom-color: var(--pc-stone-dim);
+}
+
+.hud-root.hud-desktop .tactical-map-heading {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.hud-root.hud-desktop .tactical-map-title {
+    height: 12px;
+    color: var(--pc-gold);
+    font-size: var(--pc-fs-1);
+    letter-spacing: 1px;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-state {
+    display: flex;
+    height: 12px;
+    margin-top: 0;
+    color: var(--pc-text);
+    font-size: var(--pc-fs-1);
+    white-space: nowrap;
+}
+
+.hud-root.hud-desktop .tactical-map-close {
+    margin-left: 8px;
+}
+
+.hud-root.hud-desktop .tactical-map-body {
+    min-height: 0;
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-rail {
+    width: 52px;
+    min-width: 52px;
+    margin-right: 8px;
+    padding-right: 4px;
+    border-right-width: 1px;
+    border-right-color: var(--pc-stone-dim);
+}
+
+.hud-root.hud-desktop .tactical-map-section-label {
+    height: 12px;
+    color: var(--pc-ui-accent);
+    font-size: var(--pc-fs-1);
+    letter-spacing: 1px;
+    -unity-text-align: middle-left;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-list {
+    min-height: 0;
+    flex-grow: 1;
+    margin-top: 2px;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-button {
+    height: 16px;
+    min-height: 16px;
+    margin-bottom: 1px;
+    padding: 0 4px;
+    color: var(--pc-dim);
+    background-color: var(--pc-inset);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+    border-right-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone-dim);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .tactical-map-floor-button.is-explored:hover,
+.hud-root.hud-desktop .tactical-map-floor-button.is-selected {
+    color: var(--pc-text);
+    background-color: rgba(44, 49, 56, 0.72);
+    border-bottom-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .tactical-map-floor-button.is-selected {
+    color: var(--pc-inset);
+    background-color: var(--pc-ui-accent);
+    border-left-color: var(--pc-ui-accent);
+    border-right-color: var(--pc-ui-accent);
+    border-top-color: var(--pc-ui-accent);
+}
+
+.hud-root.hud-desktop .tactical-map-floor-button.is-current,
+.hud-root.hud-desktop .tactical-map-floor-button.is-current.is-selected {
+    color: var(--pc-inset);
+    background-color: var(--pc-gold);
+    border-left-color: var(--pc-gold);
+    border-right-color: var(--pc-gold);
+    border-top-color: var(--pc-gold);
+    border-bottom-color: var(--pc-gold);
+}
+
+.hud-root.hud-desktop .tactical-map-floor-button:disabled {
+    opacity: 0.28;
+}
+
+.hud-root.hud-desktop .tactical-map-viewport {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    flex-grow: 1;
+    overflow: hidden;
+    background-color: var(--pc-inset);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--pc-stone-dim);
+    border-right-color: var(--pc-stone-dim);
+    border-top-color: var(--pc-stone);
+    border-bottom-color: var(--pc-stone-dim);
+    border-radius: 0;
+}
+
+.hud-root.hud-desktop .tactical-map-canvas {
+    position: absolute;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-badge,
+.hud-root.hud-desktop .tactical-map-north-label {
+    top: 4px;
+}
+
+.hud-root.hud-desktop .tactical-map-floor-badge {
+    left: 4px;
+}
+
+.hud-root.hud-desktop .tactical-map-north-label {
+    right: 4px;
+}
+
+.hud-root.hud-desktop .tactical-map-player-marker {
+    display: flex;
+    position: absolute;
+    width: 15px;
+    min-width: 15px;
+    height: 15px;
+    min-height: 15px;
+    translate: -50% 50%;
+    align-items: center;
+    justify-content: center;
+}
+
+.hud-root.hud-desktop .tactical-map-footer {
+    height: 36px;
+    min-height: 36px;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.hud-root.hud-desktop .tactical-map-zoom-controls {
+    height: 20px;
+    min-height: 20px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.hud-root.hud-desktop .tactical-map-tool-button.pc-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 18px;
+    min-height: 18px;
+    margin-right: 4px;
+    padding: 0 4px;
+    font-size: var(--pc-fs-1);
+}
+
+.hud-root.hud-desktop .tactical-map-zoom-button.pc-btn {
+    width: 22px;
+    min-width: 22px;
+    padding: 0;
+}
+
+.hud-root.hud-desktop .tactical-map-player-button.pc-btn {
+    width: 52px;
+    min-width: 52px;
+}
+
+.hud-root.hud-desktop .tactical-map-zoom-value.pc-readout {
+    width: 42px;
+    min-width: 42px;
+    height: 18px;
+    min-height: 18px;
+    margin-right: 4px;
+    padding: 0 4px;
+    color: var(--pc-ice);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-center;
+}
+
+.hud-root.hud-desktop .tactical-map-hint {
+    height: 12px;
+    margin-top: 2px;
+    color: var(--pc-dim);
+    font-size: var(--pc-fs-1);
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+}

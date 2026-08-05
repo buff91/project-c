@@ -88,6 +88,17 @@
   만들지 않는다. 단위/PlayMode 회귀와 PC 비교본은
   `docs/captures/camera-look-{follow,panned}-pc-2026-08-03.png`와 실제 마커 클릭 전후
   `docs/captures/camera-minimap-recenter-{panned,follow}-pc-2026-08-03.png`로 확인했다.
+  같은 PC HUD의 `MAP`/`M`은 월드 카메라와 분리된 520×304 전술 지도 창을 연다. 현재 층은 기존
+  미니맵의 `Visible/Explored/MappedSilhouette`와 live 표식을 확대해 보고, 실제 방문한 다른 층은
+  탐색 당시 `Explored` 타일 기억만 본다. 비활성 층의 mapped 윤곽·비밀·적·아이템·후속 타일 변화는
+  공개하지 않는다. 층 레일은 현재=골드·선택 기록=마젠타·미방문=disabled이고, 헤더/하단 문구도
+  `현재 층`과 `기록 B1 · 이동/전투 불가`를 문자로 구분한다. 지도 안 왼쪽/중클릭 드래그,
+  1×/1.5×/2×/3× 휠·버튼 줌, FIT, PLAYER는 모두 무턴이며 활성 층·플레이어·FOV·AI·월드 배율을
+  바꾸지 않는다. 열 때 조준·낙하 확인·수직 관찰·자유 카메라를 정리하고, 열린 동안 월드 명령과
+  hover를 입력 경계에서 막는다. PC 근거는
+  `docs/captures/tactical-map-current-pc-2026-08-04.png`와
+  `docs/captures/tactical-map-memory-zoom-pc-2026-08-04.png`이며, 같은 작업 트리의 Core shim과
+  Unity EditMode/PlayMode 전체 회귀도 통과했다.
 - **던전 화면 톤 / 메인 원정자**: PC Game View는 청흑 void·불투명 panel 안개 위에
   웜 그레이 콘크리트를 놓고, 호박색 물리광과 청록 신호색은 국소 표식에만 쓴다. 안개 다이아몬드는
   `Dungeon Backdrop` Sorting Layer에서 `Default` 월드보다 항상 뒤에 그린다. 교체 가능한

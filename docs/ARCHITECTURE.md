@@ -156,6 +156,14 @@ FOV와 무관하게 현재 층의 실제 `TileKind`를 `Floor / Barrier / Door /
 표식이 되지 않게 한다. 공개 이벤트가 발생하면 Gameplay `IsoPrototypeDemo.MapKnowledge`가 통로와 방
 footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 상태는 이 규칙의 입력이 아니다.
 
+### 5.4 MapInspectionRules — 기록 지도에 무엇을 공개할지
+지도 확인은 `FloorVisibilityRules`의 월드 렌더 모드가 아니라 UI용 읽기 전용 스냅샷이다. Core
+`MapInspectionRules`가 선택 층이 현재 층인지와 `Visible / Explored / MappedSilhouette`를 받아
+`None / Mapped / Explored / Visible` 중 하나로 접고, 비활성 층에서는 `Explored`만 허용한다.
+Gameplay는 이 결과를 북쪽 고정 픽셀 버퍼로 만들며 현재 층에만 플레이어·현재 보이는 적/아이템을
+합성한다. UI의 층 선택·팬·줌 상태는 `PrototypeHudController` 프레젠테이션에만 있고
+`ActiveFloorChanged`·턴·FOV·월드 카메라에는 들어가지 않는다.
+
 > **미리보기 집합도 FOV로 만든다** (`IsoPrototypeDemo.Visibility`): 반대편 층의 elevation 대역에서
 > `GridVisibility.Compute`를 한 번 더 돌린 결과를 쓴다. 예전에는 착지점 중심 체비셰프 박스를 전부
 > 넣어 **차폐를 아예 보지 않았고**, 벽 뒤와 닫힌 문 뒤 방까지 드러나 "void=불투명" 불변식과 충돌했다.
@@ -598,6 +606,9 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
 - **HudKeyboardInput**은 `Escape`·`I`·`F1`·Cmd/Ctrl+D의 눌림 edge를 HUD 액션으로 번역하는
   Input System/legacy 경계다. 각 컨트롤러는 장치 API 대신 액션만 읽되, 어떤 모달을 먼저 닫을지는
   계속 자체 상태 순서로 결정한다. 이동·Tab·중클릭·포인터/터치는 `IsoTapInput` 경계에 남는다.
+- PC 지도 확인의 `M`도 `HudKeyboardInput` 액션으로 번역한다. 지도 캔버스의 포인터 팬·휠 줌은
+  UI Toolkit 콜백이 프레젠테이션 값으로 소비하고, `IsoTapInput.WorldCommandBlocker`는 지도나 기존
+  차단형 모달이 열린 동안 월드 이동·회전·대기·상호작용·카메라 팬 이벤트를 만들지 않는다.
 - `HubHudController`의 버튼·포인터 콜백은 `HubUiBindingRegistry`가 정확한 delegate를 보관하고
   `OnDisable` 및 재바인딩 전에 대칭 해제한다. `OnEnable`마다 람다를 새로 더하면 허브 재진입 횟수만큼
   구매·이동·씬 전환이 중복 실행되므로 직접 `clicked +=`를 흩뿌리지 않는다.
@@ -613,6 +624,7 @@ footprint를 mapped 집합에 추가한다. 액터·아이템·프롭·원소 �
   프레젠테이션 상태이며 Core의 턴·FOV·AI·활성 층 상태가 아니다. 전체 맵을 보이는
   `debugCameraSize`는 던전 DebugAll에서만 쓴다. 패리티는 `OrthographicCameraFramingTests`가
   고정하고 회귀 사례 서술은 `STATUS.md`가 소유한다.
+  지도 확인의 확대/축소는 UI 지도 이미지 크기와 오프셋만 바꾸며 이 카메라 경로를 호출하지 않는다.
 - 방침: 화면공간 평면 = UI Toolkit, 월드 앵커/추종 = UGUI. 단, 투척 가능 칸처럼 **타일 바닥 자체를
   칠하고 FOV·아이소 정렬을 따르는 범위 데칼**은 월드 SpriteRenderer 표현이다
   (상세 `UI_ARCHITECTURE.md`).

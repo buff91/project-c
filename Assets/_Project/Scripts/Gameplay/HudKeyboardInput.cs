@@ -10,7 +10,8 @@ namespace ProjectC.Gameplay
     {
         Cancel = 0,
         ToggleInventory = 1,
-        ToggleDebugPanel = 2
+        ToggleDebugPanel = 2,
+        ToggleMap = 3
     }
 
     /// <summary>
@@ -37,6 +38,8 @@ namespace ProjectC.Gameplay
                                     keyboard.leftCtrlKey.isPressed ||
                                     keyboard.rightCtrlKey.isPressed;
                     return modifier && keyboard.dKey.wasPressedThisFrame;
+                case HudKeyboardAction.ToggleMap:
+                    return keyboard.mKey.wasPressedThisFrame;
                 default:
                     return false;
             }
@@ -54,6 +57,8 @@ namespace ProjectC.Gameplay
                                     Input.GetKey(KeyCode.LeftControl) ||
                                     Input.GetKey(KeyCode.RightControl);
                     return modifier && Input.GetKeyDown(KeyCode.D);
+                case HudKeyboardAction.ToggleMap:
+                    return Input.GetKeyDown(KeyCode.M);
                 default:
                     return false;
             }

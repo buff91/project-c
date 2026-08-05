@@ -61,7 +61,7 @@
 | `IsoPrototypeDemo.Rescue.cs` | 갇힌 동료 프롭 렌더·구출 처리. 배치·판정은 Core(`ShelterNpcRoster`·`DungeonFloorInfo.RescueNpc`)가 소유한다 — `BossArena`와 같은 모양. 한 판에 동료가 여럿이라 **상태를 목록으로 든다**(스칼라 한 벌이면 뒤 NPC가 앞 것을 덮어써 참조 잃은 GameObject 가 씬에 남았다) |
 | `IsoPrototypeDemo.BossArena.cs` | 보스 아레나 제단 렌더·FOV 추종·아레나 접근 전조 알림 |
 | `IsoPrototypeDemo.CombatFx.cs` | 전투/상태이상 연출 |
-| `IsoPrototypeDemo.Visibility.cs` | FOV 계산·mapped 공용 표현/미니맵 합성 호출·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림. mapped 집합 자체는 `IsoPrototypeDemo.MapKnowledge.cs`가 소유 |
+| `IsoPrototypeDemo.Visibility.cs` | FOV 계산·mapped 공용 표현/미니맵과 전술 지도 픽셀 합성·비활성 층 탐색 당시 `TileKind` 기억·수직 포털(개구부 미리보기 = 반대편 층 FOV 재계산)·후면 벽·플레이어 가림. mapped 집합 자체는 `IsoPrototypeDemo.MapKnowledge.cs`가 소유 |
 | `IsoPrototypeDemo.Lighting.cs` | 던전 어둠·정적 광원·접촉/방향성 그림자 + 플레이어 안정 상태 world tint·접지 AO + 활성 층 Floor 4방향 연결 영역별 room-coherent light presentation |
 | `IsoPrototypeDemo.Sprites.cs` | **어댑터** — 격자 질의(`DoorPlaneRisesRight`·`IsSecretDoorHinted`·`VisualContext`)를 풀어 스프라이트 팩토리에 넘긴다. 픽셀은 그리지 않는다 |
 
@@ -101,6 +101,7 @@
 | `PrototypeHudController.EndGame.cs` | 출구 선택·게임오버 + 보스 패널 갱신. 보스가 상단 과도 슬롯을 쓰는 동안 발견 카드 시각을 멈추고, 닫히면 활성 큐 항목부터 재개한다 |
 | `PrototypeHudController.Labels.cs` | 행동·층/보기·회전·위치 라벨 갱신과 상호작용 버튼. PC 턴 칩의 `자동 이동`/`위협 · 1행동`/`관찰` 이동 예산 표시도 소유한다(Mobile은 기존 `내 턴`) |
 | `PrototypeHudController.Readouts.cs` | 640×360에서 추가된 층 스택·상태이상 칩·4줄 메시지 로그. 기존 Core/데모 데이터를 화면 요소로만 번역한다 |
+| `PrototypeHudController.TacticalMap.cs` | PC 전술 지도 모달 바인딩·방문 층 레일·북쪽 고정 텍스처·드래그 팬·1×/1.5×/2×/3× 줌·FIT/PLAYER·모달 월드 입력 차단. 활성 층·턴·FOV·월드 카메라 상태는 소유하지 않는다 |
 
 ### Field Deck HUD 지원 타입·자산
 
@@ -108,9 +109,9 @@
 |------|------|
 | `HudWheelPlacement.cs` | 여섯 액션 셀의 전체 footprint를 패널 안으로 clamp하고 바이탈·우상 계기·로그·수직 힌트·하단 레일·보스/발견 패널과 겹치지 않는 가장 가까운 중심을 고르는 순수 계산 |
 | `HudTransientNoticeQueue.cs` | 던전 입장/수직 경로 발견 알림의 FIFO·활성 항목·완전 중복 제거. VisualElement·Coroutine을 몰라 보스 우선순위나 7초 수명은 컨트롤러에 남긴다 |
-| `PrototypeHUD.uxml` | Mobile/Desktop이 공유하는 의미 트리와 `name=` 바인딩 계약. Field Deck 대상 플레이트에 `.pc-plate`를 붙이되 배치값은 소유하지 않는다 |
-| `PrototypeHUD.Desktop.uss` | 채택 시안 `project-c-field-deck-hud-concept-v3`의 PC 640×360 배치: 분절 HP·우상 단일 계기·208×52 로그·184/268px 하단 두 레일·12px glyph 선택 |
-| `PrototypeHUD.uss` | 공용 상태 룩. `vertical-route-discovery.is-open`의 opacity/translate 0.16초 전환을 소유하며 컨트롤러 인라인 보간은 없다 |
+| `PrototypeHUD.uxml` | Mobile/Desktop이 공유하는 의미 트리와 `name=` 바인딩 계약. Field Deck 플레이트와 PC 전술 지도 의미 구조를 두되 배치값은 소유하지 않는다 |
+| `PrototypeHUD.Desktop.uss` | 채택 시안 `project-c-field-deck-hud-concept-v3`의 PC 640×360 배치 + 520×304 전술 지도 창·층 레일·지도 뷰포트·도구 배치 |
+| `PrototypeHUD.uss` | 공용 상태 룩. `vertical-route-discovery.is-open` 전환을 소유하고, PC 전용 전술 지도 진입점/모달은 base·Mobile에서 강제 숨긴다 |
 | `Tools/ArtPipeline/build_field_deck_glyphs_v1.py` | 설정·메뉴·좌/우 회전·백팩·대기·근접·원거리·상호작용 9종을 네이티브 12×12 hard-alpha, 쿨 스틸 3색 이내 `ui-field-*.png`로 생성 |
 | `Tools/ArtPipeline/build_ui_nineslice_v1.py` | `.pc-plate`용 12×12 `ui-bracket-frame.png`도 생성. 열린 쿨 스틸 모서리·붙은 마젠타 2px 데이터 틱·저알파 상단 헤어라인을 9-slice로 고정한다 |
 | `Tools/ArtPipeline/process_items_v3.py` | 항목별 v3 소스를 기존 런타임 아이템 슬롯으로 conform. 현 작업 트리의 `item-herb`=지혈 패치, `item-frost-shard`=냉각 코일 교체도 슬롯·피벗·게임 규칙을 바꾸지 않고 이 경로를 쓴다 |
@@ -118,6 +119,7 @@
 | `Tools/ArtPipeline/build_actor_knight_directional_v1.py` + `aseprite_build_animation.lua` | 승인된 원정자 `Frame_0`과 방향별 레퍼런스를 96×128 하드 알파 프레임으로 conform하고, 태그 밖 기준 프레임 1장 + 4방향 6상태 80장을 24개 Aseprite 태그로 조립한다 |
 | `Tools/ArtPipeline/build_arcade_enemy_directional_v1.py` + `aseprite_build_animation.lua` | 적 6종의 승인 identity를 각각 태그 밖 `Frame_0`과 `idle-south[0]`으로 보존하고, east/west exact screen-space mirror와 4방향 6상태 80프레임을 조립한다. 산출물은 파일당 81프레임·24태그, 합계 486프레임·144태그이며 contact sheet와 반복 GIF도 같은 빌더가 쓴다 |
 | `HudWheelPlacementTests.cs` / `HudTransientNoticeQueueTests.cs` / `test_build_field_deck_glyphs.py` / `test_process_arcade_occupation_actors_v1.py` / `test_build_actor_knight_directional_v1.py` / `test_build_arcade_enemy_directional_v1.py` | 화면 경계·고정 HUD 회피, 알림 순서/중복/초기화, glyph·적 identity·원정자/적 방향 타임라인의 크기/hard-alpha/색/클러스터/동서 미러/프레임 계약을 고정한다 |
+| `MapInspectionRulesTests.cs` / `IsoTapInputBlockerPlayModeTests.cs` / `TacticalMapPlayModeTests.cs` | 비활성층 정보 공개 경계, 모달 중 전 월드 입력/팬/호버 차단, 지도 열기·층 선택·줌·키보드 닫기의 무턴/활성층/FOV/카메라 불변을 고정한다 |
 
 ## Gameplay — 그 밖의 씬 서비스·패널·스토어
 
@@ -133,8 +135,8 @@
 | `GridSortingObject.cs` | 격자 위 스프라이트의 월드 위치·`sortingOrder`를 `IsoGrid` 규칙으로 갱신. 정렬 계산을 개별 오브젝트가 하지 않게 하는 장치 |
 | `FloorFoundationPresentation.cs` | B2 후보 칸에서 현재 화면의 실제 열린 전면과 회전 불변 볼록 코너 지지대를 수집하는 순수 프레젠테이션 계산. collider·입력·게임 상태 없음 |
 | `IsoGridGizmo.cs` | Scene 뷰에서 아이소 격자를 다이아몬드로 그려 좌표 변환을 눈으로 검증(에셋 없이) |
-| `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환과 중클릭 팬/Home 재중앙 등 **입력 추상화 액션**. Input System 패키지가 있으면 그걸, 없으면 레거시 `Input`을 쓰고 게임 로직에는 장치 API를 노출하지 않는다 |
-| `HudKeyboardInput.cs` | HUD 공용 키보드 액션(`Cancel`·인벤토리·디버그 패널)의 Input System/legacy 경계. 키의 눌림 edge만 번역하고 모달 우선순위는 각 컨트롤러가 소유한다 |
+| `IsoTapInput.cs` | 탭/클릭 → `GridPos` 역변환과 중클릭 팬/Home 재중앙 등 **입력 추상화 액션**. `WorldCommandBlocker`가 모달 동안 이동·회전·상호작용·대기·팬·호버를 한 경계에서 잠근다 |
+| `HudKeyboardInput.cs` | HUD 공용 키보드 액션(`Cancel`·인벤토리·디버그 패널·`ToggleMap`)의 Input System/legacy 경계. 키의 눌림 edge만 번역하고 모달 우선순위는 각 컨트롤러가 소유한다 |
 | `IsoVisualCatalog.cs` | `ScriptableObject` — 논리 타일/오브젝트 → 교체 가능한 픽셀아트 스프라이트 매핑 + 던전 역할색 슬롯. 빈 슬롯은 절차 생성 스프라이트로 대체된다(`PrototypePalette`가 여기를 먼저 묻는다) |
 | `ActorAnimationSet.cs` | `ScriptableObject` — Aseprite 태그 하나를 구운 프레임 시퀀스(`SpriteClip`). 타이밍을 "프레임 시작 시각 + 클립 총 길이"로 저장하고 방향 태그 우선/무방향 폴백으로 조회한다 |
 | `SpriteClipAnimator.cs` | 베이크된 태그 클립의 경량 재생기 — **Animator를 쓰지 않고 `renderer.sprite`만 만진다**(position·scale은 CombatFx, 안정 color는 `ApplyPlayerVisuals`/`ApplyEnemyVisuals` 소유). 방향 전환 시 루프 위상과 사망 마지막 프레임을 보존하며 시야 밖에서는 얼어붙는다 |
@@ -191,6 +193,7 @@
 | `SightRules.cs` | 시야선·수직 개구부 투시·근접 도달 기하·컬럼 span 해석(SSOT 표 참조). 옛 `VerticalOpeningRules`를 흡수했다 |
 | `GridVisibility.cs` | Recursive Shadowcasting 8옥탄트 **골격만**. 컬럼 판정은 `SightRules.ViewColumn`에 위임해 전투 LoS와 출처를 공유한다 |
 | `FloorVisibilityRules.cs` | `Visible` 실제 표현·`Explored` 기억 표현·현재 활성 층 `Unknown + MappedSilhouette` 대체 표현·비활성 층 수직 개구부 정책. mapped 공개 범주는 `MapKnowledgeRules`가 소유 |
+| `MapInspectionRules.cs` | 전술 지도 타일 지식을 `None/Mapped/Explored/Visible`로 접고, 비활성 층은 `Explored` 기억만·live entity는 현재 층만 허용하는 공개 경계 |
 | `GridLighting.cs` | 타일 단위 광량 0..1. Light2D를 쓰지 않고 `SpriteRenderer.color` 틴트에 곱한다 — FOV가 "무엇이 보이나"라면 여기는 "얼마나 밝은가"이고 안개 3상태(알파)와 직교한다 |
 | `SpriteClipRules.cs` | `SpriteClipTags` 6종 상수 + 시간 → 프레임 인덱스(`FrameAt`). 베이크(에디터)와 재생(Gameplay)이 이 상수를 공유한다 — 문자열이 갈라지면 클립이 **조용히** 무시된다 |
 | `ActorFacingRules.cs` | 월드 4방향 판정·시점 90도 회전 변환 + `idle-north` 형태 방향 태그 조합/파싱. Unity/렌더러를 모르는 Core 계약 |

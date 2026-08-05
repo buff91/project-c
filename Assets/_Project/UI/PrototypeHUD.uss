@@ -722,6 +722,14 @@
     display: flex;
 }
 
+/* 전술 지도는 PC 전용이다. 공용 UXML 계약은 두 View가 공유하지만 base와 Mobile에서는
+   진입점뿐 아니라 is-open 상태도 숨겨, 잘못된 호출이 모바일 배치를 열지 못하게 한다. */
+.tactical-map-open,
+.tactical-map-modal,
+.tactical-map-modal.is-open {
+    display: none;
+}
+
 .settings-card {
     width: 430px;
     padding: 18px;
