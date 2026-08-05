@@ -27,9 +27,11 @@
 - **테마**: 아포칼립스 + 사이버펑크 / **세력이 나눠 가진 붕괴 도시** (v0.3.4 — GDD §10).
   플레이어는 **픽서에게 계약을 받는 청부업자**이고 **초자연은 없다**. 로그라이트 메타 프로그레션.
 - **현재 상태 한 줄**(상세 `docs/STATUS.md`): 첫 던전은 **폐 아케이드 복합타워(상승, `B2 → … → 8F` + 옥상 출구
-  — v0.3.3 재설정, 코드 표시·에셋은 폐병원 구판에서 전환 중)** 10개 층 + 최상층
+  — v0.3.3 재설정, 표시 문자열·환경 소스의 폐병원 구판 전환 완료)** 10개 층 + 최상층
   보스 `감시자`(코드 ID `forgotten-catacombs` 유지, **생성기가 방향을 매개변수로 받는다**). 플레이어는 **단일 원정자**
-  (직업/영웅 선택 없음 — 정체성은 장비가 진다). 아트는 **포스트아포 마감 자산**으로 수렴, 잔여 발주가 남았다.
+  (직업/영웅 선택 없음 — 정체성은 장비가 진다). 원정자·적 6종은 **사이버펑크 4방향 6상태 타임라인 승인**,
+  PC HUD는 **Field Deck v1 + 전술 지도(`M`)·자유 카메라**. 잔여는 아케이드 소품·hole/사다리 규격 발주와
+  실플레이 리포트가 선행하는 밸런스 수치다.
 
 ## 아키텍처 규칙 (반드시 준수)
 
@@ -62,13 +64,15 @@ Assets/_Project/
   Scenes/ · UI/ · Editor/ArtPipeline/  # 씬 · UXML/USS · Aseprite 임포트 메뉴
   Art/Source/Aseprite/               # 정식 .aseprite 원본 + 기준 팔레트 .gpl — 게시 파이프라인이 여기에 쓴다
   Art/Runtime/ · Art/Environment/    # 실제로 게임에 연결된 PNG + 환경 카탈로그 (현재 동작 경로)
-Tools/  ArtPipeline(후처리 파이썬) · CoreTests(에디터 없이 도는 dotnet shim) · Hooks(로컬 검증 훅)
+Tools/  ArtPipeline(생성·마감 파이썬 + ComfyUI/Slack 리뷰) · CoreTests(에디터 없이 도는 dotnet shim)
+        · Telemetry(플레이테스트 리포트 분석) · Hooks(로컬 검증 훅)
 docs/ · GDD.md                       # 위 「문서 지도」 (+ art-direction/ · captures/ 검증 참고 이미지)
 ```
 
 ## 검증 (테스트 · 훅 · CI · MCP)
 
-- 테스트 경로는 **두 개**다 — Unity 없이 도는 **Core shim**(`./Tools/CoreTests/run-core-tests.sh`)과 에디터의 **전체
+- 테스트 경로는 **세 개**다 — Unity 없이 도는 **Core shim**(`./Tools/CoreTests/run-core-tests.sh`) ·
+  **Python 회귀**(ArtPipeline·Telemetry pytest) · 에디터의 **전체
   회귀**(EditMode + PlayMode 둘 다). 절차·한계·보고 형식은 `/test` 스킬이 소유한다. shim은 회귀를 대체하지 않는다
   (씬·스프라이트·HUD·UI Toolkit 계약은 에디터에서만 검증된다). **돌리지 않은 것을 "테스트 통과"라고 쓰지 않는다.**
 - **로컬 훅**(`.claude/settings.json` → `Tools/Hooks/`, 모든 브랜치) — `PostToolUse`(`check-comfy-workflow.sh`)는
