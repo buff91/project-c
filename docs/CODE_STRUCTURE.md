@@ -25,7 +25,7 @@
 
 ---
 
-## `IsoPrototypeDemo` — 관심사별 24개 파셜
+## `IsoPrototypeDemo` — 관심사별 파셜 (개수는 아래 표가 정의한다)
 
 한 `partial class IsoPrototypeDemo`(MonoBehaviour)를 다음 파일들이 나눠 소유한다.
 상태(필드·프로퍼티·이벤트)와 방 빌드·수명주기는 본체에, 나머지는 관심사별 파셜에 있다.
