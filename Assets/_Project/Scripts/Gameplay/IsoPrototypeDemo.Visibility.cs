@@ -736,8 +736,6 @@ namespace ProjectC.Gameplay
         {
             _visibleTiles.Clear();
             _verticalPreviewTiles.Clear();
-            if (_exploredTiles.Count == 0)
-                _exploredMapTileKinds.Clear();
 
             // 허브 캠프는 안개 없이 전부 보인다.
             if (hubMode)
@@ -961,7 +959,9 @@ namespace ProjectC.Gameplay
 
                 bool visible = debug || _visibleTiles.Contains(pos);
                 bool explored = _exploredTiles.Contains(pos);
-                bool mapped = TryGetMappedSilhouette(pos, out MapSilhouetteKind silhouette);
+                MapSilhouetteKind silhouette = default;
+                bool mapped = isCurrentFloor && !visible && !explored &&
+                              TryGetMappedSilhouette(pos, out silhouette);
                 MapInspectionTileState state = MapInspectionRules.ResolveTile(
                     isCurrentFloor,
                     visible,
